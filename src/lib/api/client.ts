@@ -20,42 +20,61 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Response Interceptor: Auto-Refresh Access Token on 401 or Redirect to Login
+// Helper function to perform token refresh
+export async function refreshPortalToken(): Promise<string | null> {
+  try {
+    const refreshToken = Cookies.get('refresh_token');
+    const { data } = await axios.post(
+      `${API_BASE_URL}/auth/refresh`,
+      { refreshToken },
+      { withCredentials: true }
+    );
+
+    const token = data.access_token || data.accessToken;
+    const rToken = data.refresh_token || data.refreshToken;
+
+    if (token) {
+      Cookies.set('access_token', token, { expires: 7, path: '/' });
+      if (rToken) Cookies.set('refresh_token', rToken, { expires: 30, path: '/' });
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      return token;
+    }
+  } catch {
+    // silent fallback
+  }
+  return null;
+}
+
+// Proactive background auto-refresh every 10 minutes
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    refreshPortalToken();
+  }, 10 * 60 * 1000);
+}
+
+// Response Interceptor: Auto-Refresh Access Token on 401
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
     const url = originalRequest?.url || '';
 
-    // Auth endpoints that should not trigger auto-redirect/refresh loops
     const isAuthEndpoint =
       url.includes('/auth/login') ||
       url.includes('/auth/register') ||
       url.includes('/auth/verify-email') ||
-      url.includes('/auth/refresh') ||
-      url.includes('/auth/me');
+      url.includes('/auth/refresh');
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
-      const refreshToken = Cookies.get('refresh_token');
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          });
-
-          if (data.access_token) {
-            Cookies.set('access_token', data.access_token, { expires: 1 / 96, path: '/' });
-            originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
-            return apiClient(originalRequest);
-          }
-        } catch {
-          // Refresh failed
-        }
+      const newToken = await refreshPortalToken();
+      if (newToken) {
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(originalRequest);
       }
 
-      // If refresh fails or no refresh token, clear cookies and redirect to login
+      // If refresh failed, clear cookies and redirect to login
       Cookies.remove('access_token', { path: '/' });
       Cookies.remove('refresh_token', { path: '/' });
 
