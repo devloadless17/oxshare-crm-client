@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Create Account — BBCorp Portal',
-  description: 'Sign up for a BBCorp trading account.',
+  title: 'Create Account — OxShare Portal',
+  description: 'Sign up for a OxShare trading account.',
 };
 
 export default function RegisterPage() {
@@ -12,7 +12,7 @@ export default function RegisterPage() {
         <div className="space-y-2 text-center">
           <h1 className="text-3xl font-bold tracking-tight">Create an account</h1>
           <p className="text-muted-foreground text-sm">
-            Start your trading journey with BBCorp
+            Start your trading journey with OxShare
           </p>
         </div>
         <div className="rounded-lg border bg-card p-8 shadow-sm space-y-4">

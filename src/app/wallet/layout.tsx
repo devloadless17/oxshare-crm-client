@@ -1,5 +1,5 @@
 import { PortalLayout } from '@/components/layout/portal-layout';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function WalletLayout({ children }: { children: React.ReactNode }) {
   return <PortalLayout>{children}</PortalLayout>;
 }
