@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { CheckCircle2, Clock, XCircle } from 'lucide-react';
 import api from '@/lib/api';
 
 export default function KycSubmittedPage() {
@@ -11,107 +12,57 @@ export default function KycSubmittedPage() {
     api.get('/kyc/status').then((r) => setStatus(r.data.status)).catch(() => {});
   }, []);
 
+  const isApproved = status === 'approved';
+  const isRejected = status === 'rejected';
+
   return (
-    <div className="submitted-wrap">
-      <div className="submitted-card">
-        <div className="submitted-icon">
-          {status === 'approved' ? '✅' : status === 'rejected' ? '❌' : '⏳'}
-        </div>
-        <h2 className="submitted-title">
-          {status === 'approved'
-            ? 'KYC Approved!'
-            : status === 'rejected'
-            ? 'KYC Rejected'
-            : 'Verification Submitted'}
-        </h2>
-        <p className="submitted-desc">
-          {status === 'approved'
-            ? 'Your identity has been verified. You now have full access to your account.'
-            : status === 'rejected'
-            ? 'Your KYC was not approved. Please review the reason and resubmit.'
-            : 'Your documents are under review. This usually takes 1–2 business days. We\'ll notify you once the review is complete.'}
-        </p>
-
-        <div className="submitted-steps">
-          <div className="submitted-step done">
-            <div className="step-dot">✓</div>
-            <div>
-              <div className="step-step-title">Documents Submitted</div>
-              <div className="step-step-sub">All required documents uploaded</div>
-            </div>
-          </div>
-          <div className="submitted-step-line" />
-          <div className={`submitted-step ${status === 'approved' || status === 'under_review' ? 'done' : 'pending'}`}>
-            <div className="step-dot">{status === 'approved' ? '✓' : '2'}</div>
-            <div>
-              <div className="step-step-title">Under Review</div>
-              <div className="step-step-sub">Compliance team is reviewing</div>
-            </div>
-          </div>
-          <div className="submitted-step-line" />
-          <div className={`submitted-step ${status === 'approved' ? 'done' : 'pending'}`}>
-            <div className="step-dot">{status === 'approved' ? '✓' : '3'}</div>
-            <div>
-              <div className="step-step-title">Approved</div>
-              <div className="step-step-sub">Account fully verified</div>
-            </div>
-          </div>
-        </div>
-
-        <Link href="/dashboard" className="back-btn">← Back to Dashboard</Link>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 max-w-lg mx-auto py-12 px-4 animate-in fade-in-0 zoom-in-95 duration-200">
+      {/* Icon Badge */}
+      <div
+        className={`flex h-24 w-24 items-center justify-center rounded-full border-4 shadow-2xl ${
+          isApproved
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500 shadow-emerald-500/20'
+            : isRejected
+            ? 'bg-rose-500/10 border-rose-500/30 text-rose-500 shadow-rose-500/20'
+            : 'bg-blue-600/10 border-blue-500/30 text-blue-500 shadow-blue-500/20'
+        }`}
+      >
+        {isApproved ? (
+          <CheckCircle2 className="h-12 w-12" />
+        ) : isRejected ? (
+          <XCircle className="h-12 w-12" />
+        ) : (
+          <Clock className="h-12 w-12 animate-pulse" />
+        )}
       </div>
 
-      <style jsx>{`
-        .submitted-wrap {
-          display: flex; align-items: center; justify-content: center;
-          min-height: 60vh;
-        }
-        .submitted-card {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(99,130,255,0.2);
-          border-radius: 24px;
-          padding: 48px 40px;
-          text-align: center;
-          max-width: 480px;
-          width: 100%;
-          animation: scaleIn 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both;
-        }
-        @keyframes scaleIn {
-          from { transform: scale(0.9); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-        .submitted-icon { font-size: 4rem; margin-bottom: 20px; }
-        .submitted-title { font-size: 1.6rem; font-weight: 700; color: #e8eeff; margin-bottom: 12px; }
-        .submitted-desc { color: #7c87b4; font-size: 0.92rem; line-height: 1.7; margin-bottom: 36px; }
+      {/* Main Status Text */}
+      <div className="space-y-2 max-w-md">
+        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
+          {isApproved
+            ? 'KYC Approved!'
+            : isRejected
+            ? 'KYC Verification Rejected'
+            : 'Verification Submitted'}
+        </h1>
+        <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
+          {isApproved
+            ? 'Your identity has been verified successfully. You now have full access to trading accounts and features.'
+            : isRejected
+            ? 'Your KYC documents were not approved. Please review the requirements and re-submit your verification.'
+            : "Your documents have been received and are currently under compliance review. This process usually takes 1–2 business days. We'll update your account status once review is complete."}
+        </p>
+      </div>
 
-        .submitted-steps { display: flex; flex-direction: column; align-items: flex-start; gap: 0; margin-bottom: 36px; text-align: left; }
-        .submitted-step { display: flex; align-items: center; gap: 16px; padding: 12px 0; }
-        .submitted-step-line { width: 2px; height: 20px; margin-left: 15px; background: rgba(99,130,255,0.2); }
-        .step-dot {
-          width: 32px; height: 32px; border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
-          background: rgba(99,130,255,0.1);
-          border: 2px solid rgba(99,130,255,0.2);
-          color: #7c87b4;
-        }
-        .submitted-step.done .step-dot {
-          background: linear-gradient(135deg, #6382ff, #a78bfa);
-          border-color: transparent; color: white;
-        }
-        .step-step-title { font-size: 0.88rem; font-weight: 600; color: #c7d2fe; }
-        .step-step-sub { font-size: 0.78rem; color: #7c87b4; margin-top: 2px; }
-        .submitted-step.pending .step-step-title { color: #5a6280; }
-
-        .back-btn {
-          display: inline-block;
-          background: linear-gradient(135deg, #6382ff, #a78bfa);
-          color: white; text-decoration: none; border-radius: 50px;
-          padding: 14px 32px; font-weight: 600; font-size: 0.95rem;
-          transition: all 0.2s;
-        }
-        .back-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99,130,255,0.35); }
-      `}</style>
+      {/* Action Button */}
+      <div className="pt-4">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3.5 rounded-full text-xs shadow-lg shadow-blue-600/25 transition-all hover:scale-[1.02] cursor-pointer"
+        >
+          Back to Dashboard
+        </Link>
+      </div>
     </div>
   );
 }

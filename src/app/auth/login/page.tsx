@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Shield, Lock, Mail, Eye, EyeOff, Loader2, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -138,42 +141,38 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label htmlFor="email" className="text-xs font-semibold text-foreground">
-                Email Address
-              </label>
+              <Label htmlFor="email">Email Address</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <input
+                <Input
                   id="email"
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
+                  className="pl-9"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-xs font-semibold text-foreground">
-                  Password
-                </label>
+                <Label htmlFor="password">Password</Label>
                 <Link href="/auth/forgot-password" className="text-[11px] font-medium text-blue-600 hover:underline">
                   Forgot password?
                 </Link>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <input
+                <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-10 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
+                  className="pl-9 pr-10"
                 />
                 <button
                   type="button"
@@ -185,11 +184,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white shadow-md shadow-blue-600/30 hover:bg-blue-500 disabled:opacity-50 transition-all cursor-pointer"
-            >
+            <Button type="submit" disabled={isLoading} className="w-full">
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -198,7 +193,7 @@ export default function LoginPage() {
               ) : (
                 <span>Sign in</span>
               )}
-            </button>
+            </Button>
           </form>
         </div>
 

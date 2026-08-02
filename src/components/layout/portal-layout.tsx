@@ -24,6 +24,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { ThemeToggle } from '../theme-toggle';
+import { useUser } from '@/context/UserContext';
 
 interface NavItem {
   label: string;
@@ -45,18 +46,13 @@ const NAV_ITEMS: NavItem[] = [
 
 export function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
+  const { user, logout } = useUser();
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   React.useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
-
-  const handleLogout = async () => {
-    document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    router.push('/login');
-  };
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -152,21 +148,23 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             }`}
           >
             <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow-sm">
-              U
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#0f172a]" />
+              {user?.firstName ? user.firstName[0].toUpperCase() : 'U'}
+              <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-[#0f172a] ${user?.verificationLevel === 1 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
             </div>
 
             {!collapsed && (
               <div className="flex-1 overflow-hidden">
-                <p className="truncate text-xs font-semibold text-white">Client Portal</p>
-                <p className="truncate text-[11px] text-slate-400">user@oxshare.com</p>
+                <p className="truncate text-xs font-semibold text-white">
+                  {user ? `${user.firstName} ${user.lastName}` : 'Client User'}
+                </p>
+                <p className="truncate text-[11px] text-slate-400">{user?.email || ''}</p>
               </div>
             )}
 
             {!collapsed && (
               <button
                 type="button"
-                onClick={handleLogout}
+                onClick={logout}
                 title="Logout"
                 className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-rose-500/20 hover:text-rose-400 transition-colors"
               >
@@ -209,9 +207,13 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           {/* Right Controls */}
           <div className="flex items-center gap-3">
             {/* Account Status Badge */}
-            <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+            <div className={`hidden sm:flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium ${
+              user?.verificationLevel === 1
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                : 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+            }`}>
               <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>Verified Account</span>
+              <span>{user?.verificationLevel === 1 ? 'Verified Account' : 'KYC Pending'}</span>
             </div>
 
             {/* Notifications */}

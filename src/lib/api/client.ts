@@ -11,7 +11,7 @@ export const apiClient = axios.create({
   },
 });
 
-// Request Interceptor: Attach 15-minute Access Token
+// Request Interceptor: Attach Access Token
 apiClient.interceptors.request.use((config) => {
   const token = Cookies.get('access_token');
   if (token) {
@@ -20,19 +20,20 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Response Interceptor: Auto-Refresh Access Token on 401 (excluding auth endpoints)
+// Response Interceptor: Auto-Refresh Access Token on 401 or Redirect to Login
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
     const url = originalRequest?.url || '';
 
-    // Do NOT intercept 401 for login, register, or verify-email requests
+    // Auth endpoints that should not trigger auto-redirect/refresh loops
     const isAuthEndpoint =
-      url.includes('/identity/login') ||
-      url.includes('/identity/register') ||
-      url.includes('/identity/verify-email') ||
-      url.includes('/identity/refresh');
+      url.includes('/auth/login') ||
+      url.includes('/auth/register') ||
+      url.includes('/auth/verify-email') ||
+      url.includes('/auth/refresh') ||
+      url.includes('/auth/me');
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
@@ -40,7 +41,7 @@ apiClient.interceptors.response.use(
       const refreshToken = Cookies.get('refresh_token');
       if (refreshToken) {
         try {
-          const { data } = await axios.post(`${API_BASE_URL}/identity/refresh`, {
+          const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
             refreshToken,
           });
 
@@ -49,10 +50,17 @@ apiClient.interceptors.response.use(
             originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
             return apiClient(originalRequest);
           }
-        } catch (refreshErr) {
-          Cookies.remove('access_token', { path: '/' });
-          Cookies.remove('refresh_token', { path: '/' });
+        } catch {
+          // Refresh failed
         }
+      }
+
+      // If refresh fails or no refresh token, clear cookies and redirect to login
+      Cookies.remove('access_token', { path: '/' });
+      Cookies.remove('refresh_token', { path: '/' });
+
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth/login')) {
+        window.location.href = '/auth/login';
       }
     }
 

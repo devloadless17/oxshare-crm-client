@@ -7,7 +7,7 @@ import { Shield, CheckCircle2, AlertCircle, Loader2, RefreshCw, ArrowRight } fro
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 
-export default function VerifyEmailPage() {
+function VerifyEmailForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
@@ -129,7 +129,6 @@ export default function VerifyEmailPage() {
                 className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 text-xs font-semibold text-white shadow-md hover:bg-blue-500 transition-all"
               >
                 <span>Sign In Now</span>
-                <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           ) : (
@@ -174,5 +173,13 @@ export default function VerifyEmailPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <React.Suspense fallback={<div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">Loading...</div>}>
+      <VerifyEmailForm />
+    </React.Suspense>
   );
 }

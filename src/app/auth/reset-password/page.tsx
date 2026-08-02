@@ -7,7 +7,7 @@ import { Shield, Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'l
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
 
@@ -144,5 +144,13 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <React.Suspense fallback={<div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">Loading...</div>}>
+      <ResetPasswordForm />
+    </React.Suspense>
   );
 }

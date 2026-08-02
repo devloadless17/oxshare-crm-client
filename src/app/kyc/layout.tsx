@@ -1,9 +1,17 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import api from '@/lib/api';
 
-const STEPS = [
+interface StepItem {
+  num: number;
+  label: string;
+  path: string;
+}
+
+const DEFAULT_STEPS: StepItem[] = [
   { num: 1, label: 'Personal Info', path: '/kyc/step/1' },
   { num: 2, label: 'ID Document', path: '/kyc/step/2' },
   { num: 3, label: 'Selfie', path: '/kyc/step/3' },
@@ -13,7 +21,25 @@ const STEPS = [
 
 export default function KycLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const currentStep = STEPS.findIndex((s) => pathname.startsWith(s.path)) + 1 || 1;
+  const [steps, setSteps] = useState<StepItem[]>(DEFAULT_STEPS);
+
+  useEffect(() => {
+    api.get('/kyc/config')
+      .then((res) => {
+        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+          const dynamicSteps = res.data.map((s: { stepNumber: number; title: string }) => ({
+            num: s.stepNumber,
+            label: s.title,
+            path: `/kyc/step/${s.stepNumber}`,
+          }));
+          setSteps(dynamicSteps);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const isSubmittedPage = pathname.includes('/kyc/submitted');
+  const currentStep = steps.findIndex((s) => pathname.startsWith(s.path)) + 1 || 1;
 
   return (
     <div className="kyc-shell">
@@ -26,30 +52,32 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
         <div className="kyc-header-tag">Identity Verification</div>
       </header>
 
-      {/* Progress Bar */}
-      <div className="kyc-progress-wrap">
-        <div className="kyc-progress-bar">
-          {STEPS.map((step) => {
-            const done = step.num < currentStep;
-            const active = step.num === currentStep;
-            return (
-              <div key={step.num} className={`kyc-step-node ${done ? 'done' : ''} ${active ? 'active' : ''}`}>
-                <div className="kyc-step-circle">
-                  {done ? (
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M2 7l3.5 3.5L12 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  ) : (
-                    <span>{step.num}</span>
-                  )}
+      {/* Progress Bar (Hidden on Submitted Page) */}
+      {!isSubmittedPage && (
+        <div className="kyc-progress-wrap">
+          <div className="kyc-progress-bar">
+            {steps.map((step) => {
+              const done = step.num < currentStep;
+              const active = step.num === currentStep;
+              return (
+                <div key={step.num} className={`kyc-step-node ${done ? 'done' : ''} ${active ? 'active' : ''}`}>
+                  <div className="kyc-step-circle">
+                    {done ? (
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M2 7l3.5 3.5L12 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    ) : (
+                      <span>{step.num}</span>
+                    )}
+                  </div>
+                  <span className="kyc-step-label">{step.label}</span>
+                  {step.num < steps.length && <div className={`kyc-step-line ${done ? 'done' : ''}`} />}
                 </div>
-                <span className="kyc-step-label">{step.label}</span>
-                {step.num < STEPS.length && <div className={`kyc-step-line ${done ? 'done' : ''}`} />}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content */}
       <main className="kyc-content">{children}</main>
@@ -117,11 +145,21 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
           border-radius: 50%;
           display: flex; align-items: center; justify-content: center;
           font-size: 0.85rem; font-weight: 600;
+          line-height: 1;
+          text-align: center;
           border: 2px solid rgba(99,130,255,0.25);
           color: #7c87b4;
           background: rgba(15, 20, 40, 0.8);
           transition: all 0.3s ease;
           position: relative; z-index: 2;
+        }
+        .kyc-step-circle span {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          line-height: 1;
+          margin: 0;
+          padding: 0;
         }
         .kyc-step-node.done .kyc-step-circle {
           background: linear-gradient(135deg, #6382ff, #a78bfa);
