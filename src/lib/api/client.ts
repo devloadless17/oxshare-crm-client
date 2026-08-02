@@ -1,7 +1,7 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/v1';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -19,13 +19,21 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Response Interceptor: Auto-Refresh Access Token using 30-day Refresh Token on 401
+// Response Interceptor: Auto-Refresh Access Token on 401 (excluding auth endpoints)
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const url = originalRequest?.url || '';
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Do NOT intercept 401 for login, register, or verify-email requests
+    const isAuthEndpoint =
+      url.includes('/identity/login') ||
+      url.includes('/identity/register') ||
+      url.includes('/identity/verify-email') ||
+      url.includes('/identity/refresh');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       const refreshToken = Cookies.get('refresh_token');
@@ -36,13 +44,11 @@ apiClient.interceptors.response.use(
           });
 
           if (data.access_token) {
-            // Save new 15-minute access token
-            Cookies.set('access_token', data.access_token, { expires: 1 / 96, path: '/' }); // 15 mins = 1/96 day
+            Cookies.set('access_token', data.access_token, { expires: 1 / 96, path: '/' });
             originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
             return apiClient(originalRequest);
           }
         } catch (refreshErr) {
-          // Token refresh failed -> Clear cookies
           Cookies.remove('access_token', { path: '/' });
           Cookies.remove('refresh_token', { path: '/' });
         }

@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001'}/identity/forgot-password`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/v1'}/identity/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

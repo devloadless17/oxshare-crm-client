@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Shield, Lock, Mail, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { api } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,7 +31,8 @@ export default function LoginPage() {
       router.push('/dashboard');
       router.refresh();
     } catch (err: any) {
-      setError(err.message || 'Sign in failed. Please try again.');
+      const msg = err?.response?.data?.message || err?.message || 'Sign in failed. Please try again.';
+      setError(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       setIsLoading(false);
     }

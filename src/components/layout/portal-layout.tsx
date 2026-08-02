@@ -82,7 +82,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             </div>
             {!collapsed && (
               <div className="flex flex-col">
-                <span className="text-sm font-bold tracking-wider text-white">OXSHARE</span>
+                <span suppressHydrationWarning className="text-sm font-bold tracking-wider text-white">OXSHARE</span>
                 <span className="text-[10px] font-semibold tracking-widest text-blue-400 uppercase">
                   Client Portal
                 </span>
