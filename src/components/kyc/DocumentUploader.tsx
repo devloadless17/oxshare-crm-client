@@ -9,6 +9,7 @@ export interface DocumentUploaderProps {
   accept?: string;
   hint?: string;
   uploaded?: boolean;
+  isErrored?: boolean;
   onUpload: (field: string, file: File) => Promise<void>;
   className?: string;
 }
@@ -19,6 +20,7 @@ export function DocumentUploader({
   accept = 'image/*,.pdf',
   hint,
   uploaded = false,
+  isErrored = false,
   onUpload,
   className,
 }: DocumentUploaderProps) {

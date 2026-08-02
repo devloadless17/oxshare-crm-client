@@ -45,6 +45,7 @@ interface DynamicStepRendererProps {
   addressDocType: string;
   uploadsState: Record<string, boolean>;
   selfieUploaded: boolean;
+  rejectedFields?: string[];
   onDocTypeChange: (type: string) => void;
   onAddressDocTypeChange: (type: string) => void;
   onChange: (key: string, value: string) => void;
@@ -58,6 +59,7 @@ export function DynamicStepRenderer({
   addressDocType,
   uploadsState,
   selfieUploaded,
+  rejectedFields = [],
   onDocTypeChange,
   onAddressDocTypeChange,
   onChange,
@@ -240,6 +242,8 @@ export function DynamicStepRenderer({
                 );
               }
 
+              const isErrored = rejectedFields.includes(field.name);
+
               // Document Uploader Component
               if (field.type === 'file') {
                 return (
@@ -254,11 +258,17 @@ export function DynamicStepRenderer({
                         : 'md:col-span-2'
                     }`}
                   >
+                    {isErrored && (
+                      <div className="text-[11px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2.5 py-1 rounded-md mb-1 inline-flex items-center gap-1">
+                        ⚠️ Document Returned for Correction
+                      </div>
+                    )}
                     <DocumentUploader
                       label={field.label}
                       field={field.name}
                       hint={field.hint}
                       uploaded={uploadsState[field.name]}
+                      isErrored={isErrored}
                       onUpload={onUpload}
                     />
                   </div>
@@ -269,10 +279,19 @@ export function DynamicStepRenderer({
               if (field.type === 'phone') {
                 return (
                   <div key={field.id} className="space-y-1.5">
-                    <Label>
-                      {field.label} {field.required && <span className="text-rose-500">*</span>}
+                    <Label className="flex items-center justify-between">
+                      <span>
+                        {field.label} {field.required && <span className="text-rose-500">*</span>}
+                      </span>
+                      {isErrored && (
+                        <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded">
+                          ⚠️ Correct Field
+                        </span>
+                      )}
                     </Label>
-                    <PhoneInput value={val} onChange={(phoneVal) => onChange(field.name, phoneVal)} />
+                    <div className={isErrored ? 'rounded-lg ring-2 ring-rose-500/80 bg-rose-500/5 p-0.5' : ''}>
+                      <PhoneInput value={val} onChange={(phoneVal) => onChange(field.name, phoneVal)} />
+                    </div>
                   </div>
                 );
               }
@@ -281,20 +300,29 @@ export function DynamicStepRenderer({
               if (field.type === 'date') {
                 return (
                   <div key={field.id} className="space-y-1.5">
-                    <Label>
-                      {field.label} {field.required && <span className="text-rose-500">*</span>}
+                    <Label className="flex items-center justify-between">
+                      <span>
+                        {field.label} {field.required && <span className="text-rose-500">*</span>}
+                      </span>
+                      {isErrored && (
+                        <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded">
+                          ⚠️ Correct Field
+                        </span>
+                      )}
                     </Label>
-                    <DatePicker
-                      value={val}
-                      onChange={(dateVal) => onChange(field.name, dateVal)}
-                      maxDate={
-                        field.name === 'dateOfBirth'
-                          ? new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000)
-                              .toISOString()
-                              .split('T')[0]
-                          : undefined
-                      }
-                    />
+                    <div className={isErrored ? 'rounded-lg ring-2 ring-rose-500/80 bg-rose-500/5 p-0.5' : ''}>
+                      <DatePicker
+                        value={val}
+                        onChange={(dateVal) => onChange(field.name, dateVal)}
+                        maxDate={
+                          field.name === 'dateOfBirth'
+                            ? new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000)
+                                .toISOString()
+                                .split('T')[0]
+                            : undefined
+                        }
+                      />
+                    </div>
                   </div>
                 );
               }
@@ -317,60 +345,77 @@ export function DynamicStepRenderer({
 
                 return (
                   <div key={field.id} className="space-y-1.5">
-                    <Label>
-                      {field.label} {field.required && <span className="text-rose-500">*</span>}
+                    <Label className="flex items-center justify-between">
+                      <span>
+                        {field.label} {field.required && <span className="text-rose-500">*</span>}
+                      </span>
+                      {isErrored && (
+                        <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded">
+                          ⚠️ Correct Field
+                        </span>
+                      )}
                     </Label>
-                    <Select value={val} onValueChange={(selected) => onChange(field.name, selected)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {optionsList.map((opt) => (
-                          <SelectItem key={`${opt.value}-${opt.label}`} value={opt.value}>
-                            <span className="flex items-center gap-2">
-                              {opt.flagCode && <CountryFlagIcon code={opt.flagCode} />}
-                              <span>{opt.label}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className={isErrored ? 'rounded-lg ring-2 ring-rose-500/80 bg-rose-500/5 p-0.5' : ''}>
+                      <Select value={val} onValueChange={(selected) => onChange(field.name, selected)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {optionsList.map((opt) => (
+                            <SelectItem key={`${opt.value}-${opt.label}`} value={opt.value}>
+                              <span className="flex items-center gap-2">
+                                {opt.flagCode && <CountryFlagIcon code={opt.flagCode} />}
+                                <span>{opt.label}</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 );
               }
 
               // Checkbox Component
-            if (field.type === 'checkbox') {
+              if (field.type === 'checkbox') {
+                return (
+                  <div key={field.id} className="flex items-center gap-2 md:col-span-2 pt-2">
+                    <input
+                      type="checkbox"
+                      id={field.id}
+                      checked={val === 'true'}
+                      onChange={(e) => onChange(field.name, e.target.checked ? 'true' : 'false')}
+                      className="rounded border-input text-blue-600 focus:ring-blue-600 h-4 w-4"
+                    />
+                    <Label htmlFor={field.id} className="text-xs cursor-pointer">
+                      {field.label} {field.required && <span className="text-rose-500">*</span>}
+                    </Label>
+                  </div>
+                );
+              }
+
+              // Text Input Component
               return (
-                <div key={field.id} className="flex items-center gap-2 md:col-span-2 pt-2">
-                  <input
-                    type="checkbox"
-                    id={field.id}
-                    checked={val === 'true'}
-                    onChange={(e) => onChange(field.name, e.target.checked ? 'true' : 'false')}
-                    className="rounded border-input text-blue-600 focus:ring-blue-600 h-4 w-4"
-                  />
-                  <Label htmlFor={field.id} className="text-xs cursor-pointer">
-                    {field.label} {field.required && <span className="text-rose-500">*</span>}
+                <div key={field.id} className="space-y-1.5">
+                  <Label className="flex items-center justify-between">
+                    <span>
+                      {field.label} {field.required && <span className="text-rose-500">*</span>}
+                    </span>
+                    {isErrored && (
+                      <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded">
+                        ⚠️ Correct Field
+                      </span>
+                    )}
                   </Label>
+                  <Input
+                    placeholder={field.hint || `Enter ${field.label.toLowerCase()}`}
+                    value={val}
+                    onChange={(e) => onChange(field.name, e.target.value)}
+                    className={isErrored ? 'border-rose-500 focus-visible:ring-rose-500 bg-rose-500/5' : ''}
+                  />
                 </div>
               );
-            }
-
-            // Text Input Component
-            return (
-              <div key={field.id} className="space-y-1.5">
-                <Label>
-                  {field.label} {field.required && <span className="text-rose-500">*</span>}
-                </Label>
-                <Input
-                  placeholder={field.hint || `Enter ${field.label.toLowerCase()}`}
-                  value={val}
-                  onChange={(e) => onChange(field.name, e.target.value)}
-                />
-              </div>
-            );
-          })}
+            })}
         </div>
       )}
     </div>

@@ -49,9 +49,15 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useUser();
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [kycStatus, setKycStatus] = React.useState<string>('not_started');
 
   React.useEffect(() => {
     setMobileOpen(false);
+    import('@/lib/api').then((m) => {
+      m.default.get('/kyc/status')
+        .then((r) => { if (r.data?.status) setKycStatus(r.data.status); })
+        .catch(() => {});
+    });
   }, [pathname]);
 
   return (
@@ -208,12 +214,24 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             {/* Account Status Badge */}
             <div className={`hidden sm:flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium ${
-              user?.verificationLevel === 1
+              user?.verificationLevel === 1 || kycStatus === 'approved'
                 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                : kycStatus === 'rejected'
+                ? 'border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold animate-pulse'
+                : kycStatus === 'submitted' || kycStatus === 'under_review'
+                ? 'border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400'
                 : 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
             }`}>
               <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>{user?.verificationLevel === 1 ? 'Verified Account' : 'KYC Pending'}</span>
+              <span>
+                {user?.verificationLevel === 1 || kycStatus === 'approved'
+                  ? 'Verified Account'
+                  : kycStatus === 'rejected'
+                  ? '⚠️ KYC Action Required'
+                  : kycStatus === 'submitted' || kycStatus === 'under_review'
+                  ? 'KYC Under Review'
+                  : 'KYC Pending'}
+              </span>
             </div>
 
             {/* Notifications */}

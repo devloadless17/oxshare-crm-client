@@ -17,8 +17,8 @@ export default function KycPage() {
         if (!isMounted) return;
         const data = res.data;
 
-        // If already submitted or approved
-        if (data.status === 'submitted' || data.status === 'under_review' || data.status === 'approved' || data.status === 'rejected') {
+        // If already submitted, under review, or approved
+        if (data.status === 'submitted' || data.status === 'under_review' || data.status === 'approved') {
           router.replace('/kyc/submitted');
           return;
         }

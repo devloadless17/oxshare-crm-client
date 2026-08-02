@@ -22,6 +22,9 @@ export default function KycStepPage() {
   const [loading, setLoading] = useState(false);
   const [fetchingInitialData, setFetchingInitialData] = useState(true);
   const [error, setError] = useState('');
+  const [kycStatus, setKycStatus] = useState<string>('not_started');
+  const [rejectionReason, setRejectionReason] = useState<string>('');
+  const [rejectedFields, setRejectedFields] = useState<string[]>([]);
 
   const set = (k: string, v: string) => {
     setFormData((p) => {
@@ -70,6 +73,12 @@ export default function KycStepPage() {
 
         const data = statusRes.data;
         const newUploads: Record<string, boolean> = { ...initialUploads };
+
+        if (data?.status) setKycStatus(data.status);
+        if (data?.rejectionReason) setRejectionReason(data.rejectionReason);
+        if (data?.rejectedFields && Array.isArray(data.rejectedFields)) {
+          setRejectedFields(data.rejectedFields);
+        }
 
         if (data?.personalInfo) {
           const merged = { ...data.personalInfo, ...initialPersonal };
@@ -226,6 +235,23 @@ export default function KycStepPage() {
 
   return (
     <div className="space-y-8">
+      {/* Rejection Notice Banner */}
+      {kycStatus === 'rejected' && (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs space-y-1.5 animate-in fade-in-0">
+          <div className="flex items-center gap-2 font-bold text-rose-400 text-sm">
+            <span>⚠️ Action Required: KYC Returned for Correction</span>
+          </div>
+          {rejectionReason && (
+            <p className="text-rose-300/90 text-xs">
+              <strong className="font-semibold text-rose-300">Admin Rejection Note:</strong> {rejectionReason}
+            </p>
+          )}
+          <p className="text-[11px] text-muted-foreground pt-1">
+            Please update the highlighted fields below with valid information and click continue. Your existing data remains saved.
+          </p>
+        </div>
+      )}
+
       {/* Dynamic Step Component Renderer */}
       <DynamicStepRenderer
         currentStepConfig={currentStepConfig}
@@ -234,6 +260,7 @@ export default function KycStepPage() {
         addressDocType={addressDocType}
         uploadsState={uploadsState}
         selfieUploaded={selfieUploaded}
+        rejectedFields={rejectedFields}
         onDocTypeChange={setDocType}
         onAddressDocTypeChange={setAddressDocType}
         onChange={set}
