@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/register', '/r/'];
+const PUBLIC_PATHS = [
+  '/auth',
+  '/login',
+  '/register',
+  '/verify-email',
+  '/forgot-password',
+  '/reset-password',
+  '/r/',
+];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -9,7 +17,7 @@ export function proxy(request: NextRequest) {
   const token = request.cookies.get('access_token')?.value;
 
   if (!isPublic && !token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/auth/login', request.url));
   }
   return NextResponse.next();
 }
