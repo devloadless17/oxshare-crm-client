@@ -7,8 +7,11 @@ import type { ResourceStatus } from '@/hooks/use-resource';
 /**
  * The loading / not-built-yet / error / ready branch, in one place.
  *
- * TWIN FILE — an identical copy lives at the same path in oxshare-crm-admin.
- * Behaviour changes belong in both.
+ * NEAR-TWIN of the same path in oxshare-crm-admin: same props, same four
+ * branches. Excluded from scripts/check-twins.sh because the loading state uses a
+ * different component in each app — admin renders its own components/ui/loader,
+ * this app uses lucide's Loader2. Keep the props and the branch behaviour in step
+ * by hand.
  */
 export function AsyncBoundary({
   status,

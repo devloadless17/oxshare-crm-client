@@ -30,6 +30,13 @@ if [ ! -d "$sibling" ]; then
   exit 0
 fi
 
+# NOT a twin, deliberately: src/components/async-boundary.tsx.
+# Same props and same four branches, but the admin app renders its own
+# components/ui/loader for the loading state while the portal uses lucide's
+# Loader2. Porting that component across would restyle the customer-facing portal,
+# which is a product decision, not a consistency cleanup. Keep the PROPS and the
+# branch behaviour in step by hand.
+#
 # NOT a twin, deliberately: src/lib/api/client.ts.
 # Its structure is parallel and its config block is delimited the same way, but two
 # differences are irreducible rather than configurable — the exported names
@@ -43,7 +50,6 @@ TWINS=(
   src/hooks/use-resource.ts
   src/components/query-provider.tsx
   src/components/backend-pending.tsx
-  src/components/async-boundary.tsx
   src/components/theme-provider.tsx
   src/components/theme-toggle.tsx
   src/lib/utils.ts
