@@ -2,8 +2,9 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api/errors';
 import { Button } from '@/components/ui/button';
 
 import { DynamicStepRenderer, KycStepConfig } from '@/components/kyc/DynamicStepRenderer';
@@ -25,6 +26,10 @@ export default function KycStepPage() {
   const [kycStatus, setKycStatus] = useState<string>('not_started');
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const [rejectedFields, setRejectedFields] = useState<string[]>([]);
+  // A failed load is fatal for this page, so it gets its own state rather than
+  // sharing `error`, which reports per-action (upload/save) failures.
+  const [loadError, setLoadError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   const set = (k: string, v: string) => {
     setFormData((p) => {
@@ -55,7 +60,10 @@ export default function KycStepPage() {
           initialPersonal = JSON.parse(cachedPersonal);
           // eslint-disable-next-line react-hooks/set-state-in-effect -- see note above
           setFormData(initialPersonal);
-        } catch {}
+        } catch {
+          // Corrupt sessionStorage is not worth surfacing: the form simply
+          // starts empty, which is the same state as a first visit.
+        }
       }
 
       const cachedUploads = sessionStorage.getItem('oxshare_kyc_uploads');
@@ -64,16 +72,26 @@ export default function KycStepPage() {
           initialUploads = JSON.parse(cachedUploads);
           setUploadsState(initialUploads);
           if (initialUploads['selfie']) setSelfieUploaded(true);
-        } catch {}
+        } catch {
+          // Corrupt sessionStorage is not worth surfacing: the form simply
+          // starts empty, which is the same state as a first visit.
+        }
       }
     }
 
     setFetchingInitialData(true);
+    setLoadError('');
 
-    Promise.all([
-      api.get('/kyc/config').catch(() => ({ data: [] })),
-      api.get('/kyc/status').catch(() => ({ data: null })),
-    ])
+    // Neither request may be swallowed.
+    //
+    // These used to carry `.catch(() => ({ data: [] }))` and
+    // `.catch(() => ({ data: null }))`. That turned a failed request into an
+    // empty config, which renders this page as a verification form with no
+    // fields and no error — the user is shown a broken onboarding step and told
+    // nothing. Both responses are required for a correct render: without the
+    // config there are no fields, and without the status we lose prefill and,
+    // worse, the rejection notice on a returned KYC.
+    Promise.all([api.get('/kyc/config'), api.get('/kyc/status')])
       .then(([configRes, statusRes]) => {
         if (configRes.data && Array.isArray(configRes.data)) {
           setStepConfigs(configRes.data);
@@ -115,10 +133,15 @@ export default function KycStepPage() {
           sessionStorage.setItem('oxshare_kyc_uploads', JSON.stringify(newUploads));
         }
       })
+      .catch((err: unknown) => {
+        setLoadError(
+          apiErrorMessage(err, 'Could not load your verification details. Please try again.'),
+        );
+      })
       .finally(() => {
         setFetchingInitialData(false);
       });
-  }, []);
+  }, [reloadKey]);
 
   /* Upload handler */
   const handleUpload = useCallback(async (field: string, file: File) => {
@@ -226,6 +249,30 @@ export default function KycStepPage() {
     }
   };
 
+  // Fail loudly. Rendering the form with `stepConfigs` empty would show the user
+  // an onboarding step with no fields and no explanation.
+  if (loadError) {
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-center justify-center min-h-[45vh] p-6 text-center space-y-4"
+      >
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 shadow-sm">
+          <AlertCircle className="h-7 w-7" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm font-bold text-foreground">
+            Could not load your verification details
+          </p>
+          <p className="text-xs text-muted-foreground max-w-sm">{loadError}</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setReloadKey((k) => k + 1)}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
   if (fetchingInitialData) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[45vh] p-6 text-center space-y-4">
@@ -302,7 +349,7 @@ export default function KycStepPage() {
 
         <Button
           type="button"
-          onClick={handleNext}
+          onClick={() => void handleNext()}
           disabled={loading}
           className="font-bold px-6 cursor-pointer"
         >
