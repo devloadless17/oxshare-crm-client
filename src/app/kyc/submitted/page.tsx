@@ -9,7 +9,10 @@ export default function KycSubmittedPage() {
   const [status, setStatus] = useState<string>('submitted');
 
   useEffect(() => {
-    api.get('/kyc/status').then((r) => setStatus(r.data.status)).catch(() => {});
+    api
+      .get('/kyc/status')
+      .then((r) => setStatus(r.data.status))
+      .catch(() => {});
   }, []);
 
   const isApproved = status === 'approved';
@@ -23,8 +26,8 @@ export default function KycSubmittedPage() {
           isApproved
             ? 'bg-success/10 border-success/30 text-success shadow-success/20'
             : isRejected
-            ? 'bg-destructive/10 border-destructive/30 text-destructive shadow-destructive/20'
-            : 'bg-info/10 border-info/30 text-info shadow-info/20'
+              ? 'bg-destructive/10 border-destructive/30 text-destructive shadow-destructive/20'
+              : 'bg-info/10 border-info/30 text-info shadow-info/20'
         }`}
       >
         {isApproved ? (
@@ -42,15 +45,15 @@ export default function KycSubmittedPage() {
           {isApproved
             ? 'KYC Approved!'
             : isRejected
-            ? 'KYC Verification Rejected'
-            : 'Verification Submitted'}
+              ? 'KYC Verification Rejected'
+              : 'Verification Submitted'}
         </h1>
         <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
           {isApproved
             ? 'Your identity has been verified successfully. You now have full access to trading accounts and features.'
             : isRejected
-            ? 'Your KYC documents were not approved. Please review the requirements and re-submit your verification.'
-            : "Your documents have been received and are currently under compliance review. This process usually takes 1–2 business days. We'll update your account status once review is complete."}
+              ? 'Your KYC documents were not approved. Please review the requirements and re-submit your verification.'
+              : "Your documents have been received and are currently under compliance review. This process usually takes 1–2 business days. We'll update your account status once review is complete."}
         </p>
       </div>
 

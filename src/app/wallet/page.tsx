@@ -16,7 +16,9 @@ export default function WalletPage() {
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase">USD Fiat Wallet</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">
+              USD Fiat Wallet
+            </span>
             <Wallet className="h-5 w-5 text-link" />
           </div>
           <div>
@@ -35,7 +37,9 @@ export default function WalletPage() {
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase">USDT Crypto Wallet</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">
+              USDT Crypto Wallet
+            </span>
             <Wallet className="h-5 w-5 text-link" />
           </div>
           <div>

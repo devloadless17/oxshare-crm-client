@@ -12,13 +12,18 @@ export default function KycPage() {
   useEffect(() => {
     let isMounted = true;
 
-    api.get('/kyc/status')
+    api
+      .get('/kyc/status')
       .then((res) => {
         if (!isMounted) return;
         const data = res.data;
 
         // If already submitted, under review, or approved
-        if (data.status === 'submitted' || data.status === 'under_review' || data.status === 'approved') {
+        if (
+          data.status === 'submitted' ||
+          data.status === 'under_review' ||
+          data.status === 'approved'
+        ) {
           router.replace('/kyc/submitted');
           return;
         }
@@ -61,7 +66,9 @@ export default function KycPage() {
 
       <div className="space-y-1">
         <h2 className="text-lg font-bold text-foreground">Resuming Identity Verification</h2>
-        <p className="text-xs text-muted-foreground">Fetching your progress and loading your last active step...</p>
+        <p className="text-xs text-muted-foreground">
+          Fetching your progress and loading your last active step...
+        </p>
       </div>
 
       {error && <p className="text-xs font-semibold text-destructive">{error}</p>}

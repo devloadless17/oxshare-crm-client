@@ -24,7 +24,8 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
   const [steps, setSteps] = useState<StepItem[]>(DEFAULT_STEPS);
 
   useEffect(() => {
-    api.get('/kyc/config')
+    api
+      .get('/kyc/config')
       .then((res) => {
         if (res.data && Array.isArray(res.data) && res.data.length > 0) {
           const dynamicSteps = res.data.map((s: { stepNumber: number; title: string }) => ({
@@ -61,18 +62,29 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
               const done = step.num < currentStep;
               const active = step.num === currentStep;
               return (
-                <div key={step.num} className={`kyc-step-node ${done ? 'done' : ''} ${active ? 'active' : ''}`}>
+                <div
+                  key={step.num}
+                  className={`kyc-step-node ${done ? 'done' : ''} ${active ? 'active' : ''}`}
+                >
                   <div className="kyc-step-circle">
                     {done ? (
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path d="M2 7l3.5 3.5L12 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path
+                          d="M2 7l3.5 3.5L12 3"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
                     ) : (
                       <span>{step.num}</span>
                     )}
                   </div>
                   <span className="kyc-step-label">{step.label}</span>
-                  {step.num < steps.length && <div className={`kyc-step-line ${done ? 'done' : ''}`} />}
+                  {step.num < steps.length && (
+                    <div className={`kyc-step-line ${done ? 'done' : ''}`} />
+                  )}
                 </div>
               );
             })}
@@ -101,8 +113,17 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
           z-index: 50;
           background: color-mix(in srgb, var(--background) 88%, transparent);
         }
-        .kyc-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; border-radius: 6px; }
-        .kyc-logo:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+        .kyc-logo {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          text-decoration: none;
+          border-radius: 6px;
+        }
+        .kyc-logo:focus-visible {
+          outline: 2px solid var(--ring);
+          outline-offset: 2px;
+        }
         .kyc-logo-mark {
           height: 26px;
           width: auto;
@@ -144,17 +165,22 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
           position: relative;
         }
         .kyc-step-circle {
-          width: 36px; height: 36px;
+          width: 36px;
+          height: 36px;
           border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 0.85rem; font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.85rem;
+          font-weight: 600;
           line-height: 1;
           text-align: center;
           border: 2px solid var(--border);
           color: var(--muted-foreground);
           background: var(--card);
           transition: all 0.3s ease;
-          position: relative; z-index: 2;
+          position: relative;
+          z-index: 2;
         }
         .kyc-step-circle span {
           display: flex;
@@ -182,8 +208,12 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
           text-align: center;
           white-space: nowrap;
         }
-        .kyc-step-node.active .kyc-step-label { color: var(--link); }
-        .kyc-step-node.done .kyc-step-label { color: var(--foreground); }
+        .kyc-step-node.active .kyc-step-label {
+          color: var(--link);
+        }
+        .kyc-step-node.done .kyc-step-label {
+          color: var(--foreground);
+        }
         .kyc-step-line {
           position: absolute;
           top: 18px;
@@ -193,16 +223,24 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
           background: var(--border);
           z-index: 1;
         }
-        .kyc-step-line.done { background: var(--primary); }
+        .kyc-step-line.done {
+          background: var(--primary);
+        }
         .kyc-content {
           max-width: 640px;
           margin: 0 auto;
           padding: 40px 20px 80px;
         }
         @media (max-width: 600px) {
-          .kyc-header { padding: 16px 20px; }
-          .kyc-progress-wrap { padding: 24px 16px 0; }
-          .kyc-step-label { font-size: 0.6rem; }
+          .kyc-header {
+            padding: 16px 20px;
+          }
+          .kyc-progress-wrap {
+            padding: 24px 16px 0;
+          }
+          .kyc-step-label {
+            font-size: 0.6rem;
+          }
         }
       `}</style>
     </div>

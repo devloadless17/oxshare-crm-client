@@ -7,8 +7,16 @@ import { cn } from '@/lib/utils';
 import { Input } from './input';
 import { ALL_COUNTRIES, type CountryItem } from '@/lib/countries-data';
 
-export function CountryFlagIcon({ code, className = 'w-5 h-3.5 rounded-2xs object-cover inline-block shadow-2xs' }: { code: string; className?: string }) {
-  const FlagComp = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[code.toUpperCase()];
+export function CountryFlagIcon({
+  code,
+  className = 'w-5 h-3.5 rounded-2xs object-cover inline-block shadow-2xs',
+}: {
+  code: string;
+  className?: string;
+}) {
+  const FlagComp = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[
+    code.toUpperCase()
+  ];
   if (!FlagComp) return <span className="text-xs">🌐</span>;
   return <FlagComp className={className} />;
 }
@@ -32,12 +40,14 @@ export function PhoneInput({
 }: PhoneInputProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
-  
+
   const matchedCountry = ALL_COUNTRIES.find((c) => value.startsWith(c.dialCode));
   const [selectedCountry, setSelectedCountry] = React.useState<CountryItem>(
-    matchedCountry || ALL_COUNTRIES.find((c) => c.dialCode === defaultCountryCode) || ALL_COUNTRIES[0],
+    matchedCountry ||
+      ALL_COUNTRIES.find((c) => c.dialCode === defaultCountryCode) ||
+      ALL_COUNTRIES[0],
   );
-  
+
   const [nationalNumber, setNationalNumber] = React.useState(() => {
     if (matchedCountry) {
       return value.slice(matchedCountry.dialCode.length).trim();
@@ -77,9 +87,7 @@ export function PhoneInput({
     if (!search) return true;
     const q = search.toLowerCase().trim();
     return (
-      c.name.toLowerCase().includes(q) ||
-      c.dialCode.includes(q) ||
-      c.code.toLowerCase().includes(q)
+      c.name.toLowerCase().includes(q) || c.dialCode.includes(q) || c.code.toLowerCase().includes(q)
     );
   });
 
@@ -96,7 +104,12 @@ export function PhoneInput({
           <CountryFlagIcon code={selectedCountry.code} />
           <span className="text-foreground font-medium">{selectedCountry.dialCode}</span>
         </span>
-        <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform duration-200', open && 'rotate-180')} />
+        <ChevronDown
+          className={cn(
+            'h-3.5 w-3.5 text-muted-foreground transition-transform duration-200',
+            open && 'rotate-180',
+          )}
+        />
       </button>
 
       {/* Number Input Field */}
@@ -131,7 +144,8 @@ export function PhoneInput({
               <div className="py-4 text-center text-xs text-muted-foreground">No country found</div>
             ) : (
               filteredCountries.map((c) => {
-                const isSelected = selectedCountry.code === c.code && selectedCountry.dialCode === c.dialCode;
+                const isSelected =
+                  selectedCountry.code === c.code && selectedCountry.dialCode === c.dialCode;
                 return (
                   <button
                     key={`${c.code}-${c.dialCode}`}

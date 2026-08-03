@@ -5,7 +5,10 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from './input';
 
-export interface DatePickerProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+export interface DatePickerProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  'onChange'
+> {
   value?: string;
   onChange?: (date: string) => void;
   maxDate?: string;
@@ -14,7 +17,10 @@ export interface DatePickerProps extends Omit<React.InputHTMLAttributes<HTMLInpu
 }
 
 const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
-  ({ className, value, onChange, maxDate, minDate, requireAdult = true, disabled, ...props }, ref) => {
+  (
+    { className, value, onChange, maxDate, minDate, requireAdult = true, disabled, ...props },
+    ref,
+  ) => {
     // Calculate max date allowable for 18+ (exactly 18 years ago from today)
     const adultMaxDate = React.useMemo(() => {
       const d = new Date();
