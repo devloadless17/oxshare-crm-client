@@ -36,7 +36,11 @@ export default function VerifyPendingPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-            <button className="resend-btn" onClick={resend} disabled={loading || !email}>
+            <button
+              className="resend-btn"
+              onClick={() => void resend()}
+              disabled={loading || !email}
+            >
               {loading ? 'Sending...' : 'Resend link'}
             </button>
           </div>

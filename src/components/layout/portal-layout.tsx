@@ -169,7 +169,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             }`}
           >
             <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-sm">
-              {user?.firstName ? user.firstName[0].toUpperCase() : 'U'}
+              {user?.firstName ? user.firstName.charAt(0).toUpperCase() : 'U'}
               <span
                 className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-card ${user?.verificationLevel === 1 ? 'bg-success' : 'bg-warning'}`}
               />
@@ -187,7 +187,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             {!collapsed && (
               <button
                 type="button"
-                onClick={logout}
+                onClick={() => void logout()}
                 title="Logout"
                 className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive focus-outline"
               >

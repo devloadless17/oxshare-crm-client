@@ -74,7 +74,7 @@ export function DocumentUploader({
         e.preventDefault();
         setDragging(false);
         const f = e.dataTransfer.files[0];
-        if (f) handleFile(f);
+        if (f) void handleFile(f);
       }}
       onClick={() => inputRef.current?.click()}
       role="button"
@@ -108,7 +108,7 @@ export function DocumentUploader({
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) handleFile(f);
+          if (f) void handleFile(f);
         }}
       />
 

@@ -96,7 +96,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
   const handleRetake = () => {
     setCaptured(null);
     setUploadedSuccess(false);
-    startCamera();
+    void startCamera();
   };
 
   return (
@@ -112,7 +112,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
                 <p className="text-[11px] text-muted-foreground">
                   Please allow camera permissions in your browser to take your selfie.
                 </p>
-                <Button size="sm" onClick={startCamera} className="mt-2 text-xs">
+                <Button size="sm" onClick={() => void startCamera()} className="mt-2 text-xs">
                   Retry Camera
                 </Button>
               </div>
@@ -137,7 +137,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
           {!cameraError && (
             <Button
               type="button"
-              onClick={capture}
+              onClick={() => void capture()}
               disabled={uploading}
               className="gap-2 rounded-full px-6 py-5 shadow-sm shadow-primary/20 text-sm font-bold cursor-pointer"
             >

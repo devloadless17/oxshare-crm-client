@@ -87,7 +87,7 @@ function ResetPasswordForm() {
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               <div className="space-y-1.5">
                 <label htmlFor="newPassword" className="text-xs font-semibold text-foreground">
                   New Password

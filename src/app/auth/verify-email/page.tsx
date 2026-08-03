@@ -44,7 +44,7 @@ function VerifyEmailForm() {
       }
     }
 
-    executeVerification();
+    void executeVerification();
   }, [token]);
 
   // Auto-Redirect Countdown Timer Effect

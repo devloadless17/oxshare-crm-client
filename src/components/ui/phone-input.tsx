@@ -42,10 +42,19 @@ export function PhoneInput({
   const [search, setSearch] = React.useState('');
 
   const matchedCountry = ALL_COUNTRIES.find((c) => value.startsWith(c.dialCode));
+  // ALL_COUNTRIES is a non-empty literal, but the compiler cannot know that and
+  // a `!` here would break silently if the list were ever filtered upstream.
+  const FALLBACK_COUNTRY: CountryItem = {
+    name: 'United States',
+    code: 'US',
+    dialCode: '+1',
+    flag: '🇺🇸',
+  };
   const [selectedCountry, setSelectedCountry] = React.useState<CountryItem>(
-    matchedCountry ||
-      ALL_COUNTRIES.find((c) => c.dialCode === defaultCountryCode) ||
-      ALL_COUNTRIES[0],
+    matchedCountry ??
+      ALL_COUNTRIES.find((c) => c.dialCode === defaultCountryCode) ??
+      ALL_COUNTRIES[0] ??
+      FALLBACK_COUNTRY,
   );
 
   const [nationalNumber, setNationalNumber] = React.useState(() => {

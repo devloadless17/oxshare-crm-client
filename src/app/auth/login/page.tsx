@@ -119,7 +119,7 @@ export default function LoginPage() {
                 <div className="pt-2 border-t border-destructive/20">
                   <button
                     type="button"
-                    onClick={handleResendEmail}
+                    onClick={() => void handleResendEmail()}
                     disabled={isResending || resendCooldown > 0}
                     className="inline-flex h-8 items-center gap-1.5 rounded-md bg-destructive px-3 text-[11px] font-semibold text-destructive-foreground shadow-xs hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
                   >
@@ -149,7 +149,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
