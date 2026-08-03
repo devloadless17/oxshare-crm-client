@@ -54,9 +54,9 @@ export default function KycPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center space-y-4">
-      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600/10 text-blue-500 border border-blue-500/20 shadow-xl shadow-blue-500/10">
-        <ShieldCheck className="h-8 w-8 text-blue-500" />
-        <Loader2 className="absolute h-14 w-14 animate-spin text-blue-500/40" />
+      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-link border border-primary/20 shadow-sm">
+        <ShieldCheck className="h-8 w-8 text-link" />
+        <Loader2 className="absolute h-14 w-14 animate-spin text-primary/40" />
       </div>
 
       <div className="space-y-1">
@@ -64,7 +64,7 @@ export default function KycPage() {
         <p className="text-xs text-muted-foreground">Fetching your progress and loading your last active step...</p>
       </div>
 
-      {error && <p className="text-xs font-semibold text-rose-500">{error}</p>}
+      {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
     </div>
   );
 }

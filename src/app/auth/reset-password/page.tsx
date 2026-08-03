@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Shield, Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 
@@ -53,16 +53,18 @@ function ResetPasswordForm() {
 
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
-            <Shield className="h-6 w-6" />
+          <div className="flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
+            <span className="text-xl font-semibold tracking-wide text-foreground">OXShare</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Set New Password</h1>
           <p className="text-xs text-muted-foreground">Enter a new secure password for your account</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-xl shadow-black/5 space-y-5">
+        <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5">
           {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -70,12 +72,12 @@ function ResetPasswordForm() {
 
           {success ? (
             <div className="py-4 text-center space-y-4">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
-              <h2 className="text-base font-bold text-emerald-500">Password Reset Successful!</h2>
+              <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
+              <h2 className="text-base font-bold text-success">Password Reset Successful!</h2>
               <p className="text-xs text-muted-foreground">Your password has been updated. You can now log in.</p>
               <Link
                 href="/auth/login"
-                className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500 transition-all"
+                className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
               >
                 Sign In to Portal
               </Link>
@@ -95,12 +97,12 @@ function ResetPasswordForm() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-10 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
+                    className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-10 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-2.5 rounded text-muted-foreground hover:text-foreground focus-outline"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -120,7 +122,7 @@ function ResetPasswordForm() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-10 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
+                    className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-10 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
               </div>
@@ -128,7 +130,7 @@ function ResetPasswordForm() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white shadow-md hover:bg-blue-500 disabled:opacity-50 transition-all cursor-pointer"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
               >
                 {isLoading ? (
                   <>

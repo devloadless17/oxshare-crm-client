@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Shield, Lock, Mail, Eye, EyeOff, Loader2, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, Loader2, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -90,28 +90,30 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
-            <Shield className="h-6 w-6" />
+          <div className="flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
+            <span className="text-xl font-semibold tracking-wide text-foreground">OXShare</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome to OxShare</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome to OXShare</h1>
           <p className="text-xs text-muted-foreground">Sign in to your client trading portal</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-xl shadow-black/5 space-y-5">
+        <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5">
           {error && (
-            <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-600 dark:text-rose-400 space-y-3">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive space-y-3">
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span className="font-medium">{error}</span>
               </div>
 
               {isUnverified && (
-                <div className="pt-2 border-t border-rose-500/20">
+                <div className="pt-2 border-t border-destructive/20">
                   <button
                     type="button"
                     onClick={handleResendEmail}
                     disabled={isResending || resendCooldown > 0}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-md bg-rose-600 px-3 text-[11px] font-semibold text-white shadow-xs hover:bg-rose-500 disabled:opacity-50 transition-all cursor-pointer"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-md bg-destructive px-3 text-[11px] font-semibold text-destructive-foreground shadow-xs hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
                   >
                     {isResending ? (
                       <>
@@ -133,7 +135,7 @@ export default function LoginPage() {
           )}
 
           {resendSuccess && (
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-500">
+            <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-xs text-success">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>{resendSuccess}</span>
             </div>
@@ -159,7 +161,7 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link href="/auth/forgot-password" className="text-[11px] font-medium text-blue-600 hover:underline">
+                <Link href="/auth/forgot-password" className="text-[11px] font-medium text-link hover:underline rounded-xs focus-outline">
                   Forgot password?
                 </Link>
               </div>
@@ -177,7 +179,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-2.5 rounded text-muted-foreground hover:text-foreground focus-outline"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -199,7 +201,7 @@ export default function LoginPage() {
 
         <p className="text-center text-xs text-muted-foreground">
           Don&apos;t have an account?{' '}
-          <Link href="/auth/register" className="font-semibold text-blue-600 hover:underline">
+          <Link href="/auth/register" className="font-semibold text-link hover:underline rounded-xs focus-outline">
             Create one
           </Link>
         </p>

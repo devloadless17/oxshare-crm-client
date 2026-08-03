@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'OxShare Portal',
-  description: 'Client Trading Portal.',
+  title: 'OXShare Client Portal',
+  description: 'OXShare client portal — trading accounts, wallet, and verification.',
 };
 
 export default function RootLayout({
@@ -27,8 +27,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased selection:bg-blue-600 selection:text-white`}>
-        <ThemeProvider defaultTheme="dark" storageKey="oxshare-portal-theme">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <ThemeProvider defaultTheme="light" storageKey="oxshare-portal-theme">
           <UserProvider>
             {children}
           </UserProvider>

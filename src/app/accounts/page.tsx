@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { LineChart, Plus, Shield } from 'lucide-react';
 
-export const metadata: Metadata = { title: 'Trading Accounts — OxShare Portal' };
+export const metadata: Metadata = { title: 'Trading Accounts — OXShare' };
 
 export default function AccountsPage() {
   return (
@@ -15,7 +15,7 @@ export default function AccountsPage() {
         </div>
         <button
           type="button"
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white shadow-xs hover:bg-blue-500 transition-colors"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary-hover focus-outline"
         >
           <Plus className="h-4 w-4" />
           Open New Account

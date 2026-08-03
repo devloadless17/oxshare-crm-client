@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Shield, CheckCircle2, AlertCircle, Loader2, RefreshCw, ArrowRight } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 
@@ -89,18 +89,20 @@ function VerifyEmailForm() {
 
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
-            <Shield className="h-6 w-6" />
+          <div className="flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
+            <span className="text-xl font-semibold tracking-wide text-foreground">OXShare</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Email Verification</h1>
-          <p className="text-xs text-muted-foreground">OxShare Secure Account Verification</p>
+          <p className="text-xs text-muted-foreground">OXShare Secure Account Verification</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-xl shadow-black/5 text-center space-y-5">
+        <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm text-center space-y-5">
           {isLoading ? (
             <div className="py-8 space-y-4">
-              <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/10">
-                <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+              <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-info/10">
+                <Loader2 className="h-8 w-8 text-info animate-spin" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-foreground">Verifying Token...</h3>
@@ -109,43 +111,43 @@ function VerifyEmailForm() {
             </div>
           ) : isSuccess ? (
             <div className="py-4 space-y-5">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 shadow-lg shadow-emerald-500/10">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/10 border border-success/20 text-success shadow-sm">
                 <CheckCircle2 className="h-8 w-8" />
               </div>
 
               <div>
-                <h2 className="text-lg font-bold text-emerald-500">Email Verified Successfully!</h2>
+                <h2 className="text-lg font-bold text-success">Email Verified Successfully!</h2>
                 <p className="text-xs text-muted-foreground mt-1">
                   Your email address has been confirmed. You now have full access to your OxShare trading account.
                 </p>
               </div>
 
               <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                Redirecting to sign-in page in <span className="font-bold text-blue-500">{countdown}s</span>...
+                Redirecting to sign-in page in <span className="font-bold text-link">{countdown}s</span>...
               </div>
 
               <Link
                 href="/auth/login"
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 text-xs font-semibold text-white shadow-md hover:bg-blue-500 transition-all"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-primary-foreground shadow-md hover:bg-primary-hover focus-outline"
               >
                 <span>Sign In Now</span>
               </Link>
             </div>
           ) : (
             <div className="py-4 space-y-5">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 border border-destructive/20 text-destructive">
                 <AlertCircle className="h-8 w-8" />
               </div>
 
               <div>
-                <h2 className="text-lg font-bold text-rose-500">Verification Failed</h2>
+                <h2 className="text-lg font-bold text-destructive">Verification Failed</h2>
                 <p className="text-xs text-muted-foreground mt-1">
                   {errorMessage || 'The verification link is invalid or has expired.'}
                 </p>
               </div>
 
               {resendMessage && (
-                <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-xs text-blue-500">
+                <div className="rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info">
                   {resendMessage}
                 </div>
               )}
@@ -155,7 +157,7 @@ function VerifyEmailForm() {
                   type="button"
                   onClick={handleResendLink}
                   disabled={resendCooldown > 0}
-                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background text-xs font-semibold text-foreground hover:bg-muted transition-all disabled:opacity-50 cursor-pointer"
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
                 >
                   <RefreshCw className={`h-4 w-4 ${resendCooldown > 0 ? 'animate-spin' : ''}`} />
                   {resendCooldown > 0 ? `Resend Link in ${resendCooldown}s` : 'Resend Verification Email'}
@@ -163,7 +165,7 @@ function VerifyEmailForm() {
 
                 <Link
                   href="/auth/login"
-                  className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500 transition-all"
+                  className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
                 >
                   Back to Sign In
                 </Link>

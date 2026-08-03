@@ -222,8 +222,8 @@ export default function KycStepPage() {
   if (fetchingInitialData) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[45vh] p-6 text-center space-y-4">
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600/10 text-blue-500 border border-blue-500/20 shadow-xl shadow-blue-500/10">
-          <Loader2 className="h-7 w-7 animate-spin text-blue-500" />
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-link border border-primary/20 shadow-sm">
+          <Loader2 className="h-7 w-7 animate-spin text-link" />
         </div>
         <div className="space-y-1">
           <p className="text-sm font-bold text-foreground">Loading Verification Details...</p>
@@ -237,13 +237,13 @@ export default function KycStepPage() {
     <div className="space-y-8">
       {/* Rejection Notice Banner */}
       {kycStatus === 'rejected' && (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs space-y-1.5 animate-in fade-in-0">
-          <div className="flex items-center gap-2 font-bold text-rose-400 text-sm">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs space-y-1.5 animate-in fade-in-0">
+          <div className="flex items-center gap-2 font-bold text-destructive text-sm">
             <span>⚠️ Action Required: KYC Returned for Correction</span>
           </div>
           {rejectionReason && (
-            <p className="text-rose-300/90 text-xs">
-              <strong className="font-semibold text-rose-300">Admin Rejection Note:</strong> {rejectionReason}
+            <p className="text-destructive text-xs">
+              <strong className="font-semibold text-destructive">Admin Rejection Note:</strong> {rejectionReason}
             </p>
           )}
           <p className="text-[11px] text-muted-foreground pt-1">
@@ -269,7 +269,7 @@ export default function KycStepPage() {
 
       {/* Global Error Banner */}
       {error && (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs font-semibold text-rose-500 animate-in fade-in-0">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs font-semibold text-destructive animate-in fade-in-0">
           {error}
         </div>
       )}
@@ -293,7 +293,7 @@ export default function KycStepPage() {
           type="button"
           onClick={handleNext}
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 cursor-pointer shadow-md shadow-blue-600/20"
+          className="font-bold px-6 cursor-pointer"
         >
           {loading
             ? 'Processing...'

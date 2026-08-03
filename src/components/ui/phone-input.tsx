@@ -90,13 +90,13 @@ export function PhoneInput({
         type="button"
         disabled={disabled}
         onClick={() => setOpen(!open)}
-        className="flex h-10 items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-2 text-xs font-semibold ring-offset-background hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all cursor-pointer min-w-[115px]"
+        className="flex h-10 items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-2 text-xs font-semibold ring-offset-background hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer min-w-[115px]"
       >
         <span className="flex items-center gap-2 truncate">
           <CountryFlagIcon code={selectedCountry.code} />
           <span className="text-foreground font-medium">{selectedCountry.dialCode}</span>
         </span>
-        <ChevronDown className={cn('h-3.5 w-3.5 opacity-50 transition-transform duration-200', open && 'rotate-180')} />
+        <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform duration-200', open && 'rotate-180')} />
       </button>
 
       {/* Number Input Field */}
@@ -121,7 +121,7 @@ export function PhoneInput({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search country or code..."
-              className="h-8 w-full rounded-md border border-input bg-muted/40 pl-8 pr-3 text-xs focus:bg-background focus:outline-none focus:ring-1 focus:ring-blue-600 transition-all"
+              className="h-8 w-full rounded-md border border-input bg-muted/40 pl-8 pr-3 text-xs focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
 
@@ -138,8 +138,8 @@ export function PhoneInput({
                     type="button"
                     onClick={() => handleSelectCountry(c)}
                     className={cn(
-                      'flex w-full items-center justify-between rounded-md px-2.5 py-2 text-xs transition-colors hover:bg-accent hover:text-accent-foreground text-left cursor-pointer',
-                      isSelected && 'bg-accent/80 font-semibold text-blue-500',
+                      'flex w-full items-center justify-between rounded-md px-2.5 py-2 text-xs hover:bg-accent hover:text-accent-foreground focus-outline text-left cursor-pointer',
+                      isSelected && 'bg-accent/80 font-semibold text-link',
                     )}
                   >
                     <span className="flex items-center gap-2 truncate pr-2">
@@ -148,7 +148,7 @@ export function PhoneInput({
                     </span>
                     <span className="flex items-center gap-1 shrink-0 font-mono text-[11px] text-muted-foreground">
                       <span>{c.dialCode}</span>
-                      {isSelected && <Check className="h-3.5 w-3.5 text-blue-600 ml-1" />}
+                      {isSelected && <Check className="h-3.5 w-3.5 text-link ml-1" />}
                     </span>
                   </button>
                 );

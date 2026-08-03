@@ -80,7 +80,7 @@ export function DynamicStepRenderer({
 
         <div className="space-y-4">
           <div className="rounded-2xl border border-border bg-card/60 p-5 space-y-3">
-            <div className="flex items-center gap-2 border-b border-border pb-3 text-blue-600 dark:text-blue-400">
+            <div className="flex items-center gap-2 border-b border-border pb-3 text-link">
               <User className="h-4 w-4" />
               <h3 className="text-xs font-bold uppercase tracking-wider">Personal Information</h3>
             </div>
@@ -111,7 +111,7 @@ export function DynamicStepRenderer({
           </div>
 
           <div className="rounded-2xl border border-border bg-card/60 p-5 space-y-3">
-            <div className="flex items-center gap-2 border-b border-border pb-3 text-blue-600 dark:text-blue-400">
+            <div className="flex items-center gap-2 border-b border-border pb-3 text-link">
               <FileText className="h-4 w-4" />
               <h3 className="text-xs font-bold uppercase tracking-wider">Verification Files</h3>
             </div>
@@ -119,31 +119,31 @@ export function DynamicStepRenderer({
               <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-background/50">
                 <span className="text-muted-foreground">ID Document</span>
                 {uploadsState['doc_front'] ? (
-                  <span className="flex items-center gap-1 text-emerald-500 font-semibold">
+                  <span className="flex items-center gap-1 text-success font-semibold">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Uploaded
                   </span>
                 ) : (
-                  <span className="text-rose-500 font-semibold">Missing</span>
+                  <span className="text-destructive font-semibold">Missing</span>
                 )}
               </div>
               <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-background/50">
                 <span className="text-muted-foreground">Selfie Photo</span>
                 {selfieUploaded ? (
-                  <span className="flex items-center gap-1 text-emerald-500 font-semibold">
+                  <span className="flex items-center gap-1 text-success font-semibold">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Captured
                   </span>
                 ) : (
-                  <span className="text-rose-500 font-semibold">Missing</span>
+                  <span className="text-destructive font-semibold">Missing</span>
                 )}
               </div>
               <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-background/50">
                 <span className="text-muted-foreground">Proof of Address</span>
                 {uploadsState['address_proof'] ? (
-                  <span className="flex items-center gap-1 text-emerald-500 font-semibold">
+                  <span className="flex items-center gap-1 text-success font-semibold">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Uploaded
                   </span>
                 ) : (
-                  <span className="text-rose-500 font-semibold">Missing</span>
+                  <span className="text-destructive font-semibold">Missing</span>
                 )}
               </div>
             </div>
@@ -175,9 +175,9 @@ export function DynamicStepRenderer({
                 key={dt.value}
                 type="button"
                 onClick={() => onDocTypeChange(dt.value)}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all cursor-pointer ${
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center focus-outline cursor-pointer ${
                   isSelected
-                    ? 'border-blue-600 bg-blue-600/10 text-blue-500 font-bold shadow-md shadow-blue-500/10'
+                    ? 'border-ring bg-primary/10 text-link font-bold shadow-sm'
                     : 'border-border bg-card/40 text-muted-foreground hover:bg-accent hover:text-foreground'
                 }`}
               >
@@ -202,9 +202,9 @@ export function DynamicStepRenderer({
                 key={dt.value}
                 type="button"
                 onClick={() => onAddressDocTypeChange(dt.value)}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all cursor-pointer ${
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center focus-outline cursor-pointer ${
                   isSelected
-                    ? 'border-blue-600 bg-blue-600/10 text-blue-500 font-bold shadow-md shadow-blue-500/10'
+                    ? 'border-ring bg-primary/10 text-link font-bold shadow-sm'
                     : 'border-border bg-card/40 text-muted-foreground hover:bg-accent hover:text-foreground'
                 }`}
               >
@@ -259,7 +259,7 @@ export function DynamicStepRenderer({
                     }`}
                   >
                     {isErrored && (
-                      <div className="text-[11px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2.5 py-1 rounded-md mb-1 inline-flex items-center gap-1">
+                      <div className="text-[11px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2.5 py-1 rounded-md mb-1 inline-flex items-center gap-1">
                         ⚠️ Document Returned for Correction
                       </div>
                     )}
@@ -281,15 +281,15 @@ export function DynamicStepRenderer({
                   <div key={field.id} className="space-y-1.5">
                     <Label className="flex items-center justify-between">
                       <span>
-                        {field.label} {field.required && <span className="text-rose-500">*</span>}
+                        {field.label} {field.required && <span className="text-destructive">*</span>}
                       </span>
                       {isErrored && (
-                        <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded">
+                        <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
                           ⚠️ Correct Field
                         </span>
                       )}
                     </Label>
-                    <div className={isErrored ? 'rounded-lg ring-2 ring-rose-500/80 bg-rose-500/5 p-0.5' : ''}>
+                    <div className={isErrored ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5' : ''}>
                       <PhoneInput value={val} onChange={(phoneVal) => onChange(field.name, phoneVal)} />
                     </div>
                   </div>
@@ -302,15 +302,15 @@ export function DynamicStepRenderer({
                   <div key={field.id} className="space-y-1.5">
                     <Label className="flex items-center justify-between">
                       <span>
-                        {field.label} {field.required && <span className="text-rose-500">*</span>}
+                        {field.label} {field.required && <span className="text-destructive">*</span>}
                       </span>
                       {isErrored && (
-                        <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded">
+                        <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
                           ⚠️ Correct Field
                         </span>
                       )}
                     </Label>
-                    <div className={isErrored ? 'rounded-lg ring-2 ring-rose-500/80 bg-rose-500/5 p-0.5' : ''}>
+                    <div className={isErrored ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5' : ''}>
                       <DatePicker
                         value={val}
                         onChange={(dateVal) => onChange(field.name, dateVal)}
@@ -347,15 +347,15 @@ export function DynamicStepRenderer({
                   <div key={field.id} className="space-y-1.5">
                     <Label className="flex items-center justify-between">
                       <span>
-                        {field.label} {field.required && <span className="text-rose-500">*</span>}
+                        {field.label} {field.required && <span className="text-destructive">*</span>}
                       </span>
                       {isErrored && (
-                        <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded">
+                        <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
                           ⚠️ Correct Field
                         </span>
                       )}
                     </Label>
-                    <div className={isErrored ? 'rounded-lg ring-2 ring-rose-500/80 bg-rose-500/5 p-0.5' : ''}>
+                    <div className={isErrored ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5' : ''}>
                       <Select value={val} onValueChange={(selected) => onChange(field.name, selected)}>
                         <SelectTrigger>
                           <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
@@ -385,10 +385,10 @@ export function DynamicStepRenderer({
                       id={field.id}
                       checked={val === 'true'}
                       onChange={(e) => onChange(field.name, e.target.checked ? 'true' : 'false')}
-                      className="rounded border-input text-blue-600 focus:ring-blue-600 h-4 w-4"
+                      className="rounded border-input accent-primary focus:ring-ring h-4 w-4"
                     />
                     <Label htmlFor={field.id} className="text-xs cursor-pointer">
-                      {field.label} {field.required && <span className="text-rose-500">*</span>}
+                      {field.label} {field.required && <span className="text-destructive">*</span>}
                     </Label>
                   </div>
                 );
@@ -399,10 +399,10 @@ export function DynamicStepRenderer({
                 <div key={field.id} className="space-y-1.5">
                   <Label className="flex items-center justify-between">
                     <span>
-                      {field.label} {field.required && <span className="text-rose-500">*</span>}
+                      {field.label} {field.required && <span className="text-destructive">*</span>}
                     </span>
                     {isErrored && (
-                      <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
                         ⚠️ Correct Field
                       </span>
                     )}
@@ -411,7 +411,7 @@ export function DynamicStepRenderer({
                     placeholder={field.hint || `Enter ${field.label.toLowerCase()}`}
                     value={val}
                     onChange={(e) => onChange(field.name, e.target.value)}
-                    className={isErrored ? 'border-rose-500 focus-visible:ring-rose-500 bg-rose-500/5' : ''}
+                    className={isErrored ? 'border-destructive focus-visible:ring-destructive bg-destructive/5' : ''}
                   />
                 </div>
               );

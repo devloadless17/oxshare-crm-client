@@ -14,20 +14,20 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Dashboard — OxShare Portal',
+  title: 'Dashboard — OXShare',
 };
 
 export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Top Banner / Welcome */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-border bg-linear-to-r from-blue-950/40 via-background to-background p-6 lg:p-8 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-border bg-card p-6 lg:p-8 shadow-xs">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
               Trading Overview
             </h1>
-            <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400 border border-blue-500/20">
+            <span className="rounded-full bg-info/10 px-2.5 py-0.5 text-xs font-semibold text-info border border-info/20">
               Live MT5 Sync
             </span>
           </div>
@@ -38,21 +38,21 @@ export default function DashboardPage() {
         <div className="flex flex-wrap items-center gap-2.5">
           <Link
             href="/deposit"
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-blue-500 transition-all"
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary-hover focus-outline"
           >
             <ArrowDownRight className="h-4 w-4" />
             <span>Deposit</span>
           </Link>
           <Link
             href="/withdraw"
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground shadow-xs hover:bg-muted transition-colors"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground shadow-xs hover:bg-muted focus-outline"
           >
             <ArrowUpRight className="h-4 w-4" />
             <span>Withdraw</span>
           </Link>
           <Link
             href="/accounts"
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground shadow-xs hover:bg-muted transition-colors"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground shadow-xs hover:bg-muted focus-outline"
           >
             <Plus className="h-4 w-4" />
             <span>New Account</span>
@@ -63,10 +63,10 @@ export default function DashboardPage() {
       {/* Stats Cards Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Wallet Balance */}
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-blue-500/50">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-ring/50">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">Wallet Balance</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-link">
               <Wallet className="h-4 w-4" />
             </div>
           </div>
@@ -75,16 +75,16 @@ export default function DashboardPage() {
             <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">USD Wallet</span>
               <span>•</span>
-              <span className="text-emerald-500 font-medium">Available</span>
+              <span className="text-success font-medium">Available</span>
             </div>
           </div>
         </div>
 
         {/* Crypto Balance */}
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-cyan-500/50">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-ring/50">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">USDT Balance</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-link">
               <Coins className="h-4 w-4" />
             </div>
           </div>
@@ -99,10 +99,10 @@ export default function DashboardPage() {
         </div>
 
         {/* Trading Accounts */}
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-purple-500/50">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-ring/50">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">Trading Accounts</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-link">
               <LineChart className="h-4 w-4" />
             </div>
           </div>
@@ -111,16 +111,16 @@ export default function DashboardPage() {
             <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">Active MT5</span>
               <span>•</span>
-              <span className="text-blue-500 font-medium">0 Open Positions</span>
+              <span className="text-info font-medium">0 Open Positions</span>
             </div>
           </div>
         </div>
 
         {/* Pending Transactions */}
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-amber-500/50">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-warning/50">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">Pending Transactions</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-warning/10 text-warning">
               <Clock className="h-4 w-4" />
             </div>
           </div>
@@ -129,7 +129,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
               <span>This Month</span>
               <span>•</span>
-              <span className="text-emerald-500 font-medium">0 Under Review</span>
+              <span className="text-success font-medium">0 Under Review</span>
             </div>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function DashboardPage() {
       {/* Quick Action Grid & Security Banner */}
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-5 shadow-xs flex items-center gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-link">
             <ArrowDownRight className="h-5 w-5" />
           </div>
           <div>
@@ -148,7 +148,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5 shadow-xs flex items-center gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-600/10 text-purple-600 dark:text-purple-400">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-link">
             <ArrowRightLeft className="h-5 w-5" />
           </div>
           <div>
@@ -158,7 +158,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5 shadow-xs flex items-center gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-600 dark:text-emerald-400">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-success/10 text-success">
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
@@ -177,7 +177,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href="/transactions"
-            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+            className="text-xs font-semibold text-link hover:underline rounded-xs focus-outline"
           >
             View All
           </Link>
@@ -191,7 +191,7 @@ export default function DashboardPage() {
           <div className="mt-5">
             <Link
               href="/deposit"
-              className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white shadow-xs hover:bg-blue-500 transition-colors"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary-hover focus-outline"
             >
               Make Your First Deposit
             </Link>

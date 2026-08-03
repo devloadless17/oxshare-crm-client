@@ -98,10 +98,10 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
       {/* Live Camera View */}
       {!captured && !uploadedSuccess && (
         <div className="flex flex-col items-center space-y-4 w-full">
-          <div className="relative h-72 w-72 overflow-hidden rounded-full border-4 border-blue-500/40 shadow-2xl shadow-blue-500/20 bg-muted/40 flex items-center justify-center">
+          <div className="relative h-72 w-72 overflow-hidden rounded-full border-4 border-primary/40 shadow-lg shadow-primary/10 bg-muted/40 flex items-center justify-center">
             {cameraError ? (
               <div className="flex flex-col items-center gap-2 p-4 text-center">
-                <VideoOff className="h-10 w-10 text-rose-500" />
+                <VideoOff className="h-10 w-10 text-destructive" />
                 <p className="text-xs font-bold text-foreground">Camera Access Required</p>
                 <p className="text-[11px] text-muted-foreground">
                   Please allow camera permissions in your browser to take your selfie.
@@ -119,7 +119,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
                   muted
                   className="h-full w-full object-cover transform -scale-x-100"
                 />
-                <div className="absolute inset-0 rounded-full border-2 border-dashed border-blue-400/60 pointer-events-none animate-pulse" />
+                <div className="absolute inset-0 rounded-full border-2 border-dashed border-primary/60 pointer-events-none animate-pulse" />
               </>
             )}
           </div>
@@ -133,7 +133,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
               type="button"
               onClick={capture}
               disabled={uploading}
-              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-5 shadow-lg shadow-blue-600/30 text-sm font-bold cursor-pointer"
+              className="gap-2 rounded-full px-6 py-5 shadow-sm shadow-primary/20 text-sm font-bold cursor-pointer"
             >
               {uploading ? (
                 <>
@@ -154,7 +154,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
       {/* Captured or Previously Uploaded Photo Preview */}
       {(captured || uploadedSuccess) && (
         <div className="flex flex-col items-center space-y-4 w-full">
-          <div className="relative h-72 w-72 overflow-hidden rounded-full border-4 border-emerald-500/50 shadow-2xl shadow-emerald-500/20 bg-muted flex items-center justify-center">
+          <div className="relative h-72 w-72 overflow-hidden rounded-full border-4 border-success/50 shadow-lg shadow-success/10 bg-muted flex items-center justify-center">
             {captured ? (
               <img
                 src={captured}
@@ -162,12 +162,12 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
                 className="h-full w-full object-cover transform -scale-x-100"
               />
             ) : (
-              <CheckCircle2 className="h-16 w-16 text-emerald-500" />
+              <CheckCircle2 className="h-16 w-16 text-success" />
             )}
           </div>
 
           <div className="flex flex-col items-center gap-3">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/30 px-4 py-2 rounded-xl">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-success bg-success/10 border border-success/30 px-4 py-2 rounded-xl">
               <CheckCircle2 className="h-4 w-4" />
               <span>Selfie Captured</span>
             </div>

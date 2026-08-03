@@ -46,8 +46,9 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
       {/* Header */}
       <header className="kyc-header">
         <Link href="/dashboard" className="kyc-logo">
-          <span className="kyc-logo-mark">OX</span>
-          <span className="kyc-logo-text">Share</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/oxshare-mark.svg" alt="" className="kyc-logo-mark" />
+          <span className="kyc-logo-text">OXShare</span>
         </Link>
         <div className="kyc-header-tag">Identity Verification</div>
       </header>
@@ -85,39 +86,41 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
       <style jsx>{`
         .kyc-shell {
           min-height: 100vh;
-          background: radial-gradient(ellipse at 30% 0%, #0f2027 0%, #0a0f1e 60%);
-          color: #f0f4ff;
-          font-family: 'Inter', sans-serif;
+          background: var(--background);
+          color: var(--foreground);
         }
         .kyc-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding: 20px 40px;
-          border-bottom: 1px solid rgba(99,130,255,0.15);
+          border-bottom: 1px solid var(--border);
           backdrop-filter: blur(12px);
           position: sticky;
           top: 0;
           z-index: 50;
-          background: rgba(10, 15, 30, 0.8);
+          background: color-mix(in srgb, var(--background) 88%, transparent);
         }
-        .kyc-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+        .kyc-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; border-radius: 6px; }
+        .kyc-logo:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
         .kyc-logo-mark {
-          background: linear-gradient(135deg, #6382ff, #a78bfa);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          font-weight: 800;
-          font-size: 1.4rem;
-          letter-spacing: -0.05em;
+          height: 26px;
+          width: auto;
+          display: block;
         }
-        .kyc-logo-text { color: #c7d2fe; font-weight: 600; font-size: 1rem; }
+        .kyc-logo-text {
+          color: var(--foreground);
+          font-weight: 600;
+          font-size: 1rem;
+          letter-spacing: 0.02em;
+        }
         .kyc-header-tag {
           font-size: 0.75rem;
-          color: #7c87b4;
+          color: var(--link);
           letter-spacing: 0.1em;
           text-transform: uppercase;
-          background: rgba(99,130,255,0.1);
-          border: 1px solid rgba(99,130,255,0.2);
+          background: color-mix(in srgb, var(--primary) 10%, transparent);
+          border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
           padding: 4px 12px;
           border-radius: 20px;
         }
@@ -147,9 +150,9 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
           font-size: 0.85rem; font-weight: 600;
           line-height: 1;
           text-align: center;
-          border: 2px solid rgba(99,130,255,0.25);
-          color: #7c87b4;
-          background: rgba(15, 20, 40, 0.8);
+          border: 2px solid var(--border);
+          color: var(--muted-foreground);
+          background: var(--card);
           transition: all 0.3s ease;
           position: relative; z-index: 2;
         }
@@ -162,35 +165,35 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
           padding: 0;
         }
         .kyc-step-node.done .kyc-step-circle {
-          background: linear-gradient(135deg, #6382ff, #a78bfa);
+          background: var(--primary);
           border-color: transparent;
-          color: white;
+          color: var(--primary-foreground);
         }
         .kyc-step-node.active .kyc-step-circle {
-          background: rgba(99,130,255,0.15);
-          border-color: #6382ff;
-          color: #a5b4fc;
-          box-shadow: 0 0 0 4px rgba(99,130,255,0.15);
+          background: color-mix(in srgb, var(--primary) 12%, transparent);
+          border-color: var(--ring);
+          color: var(--link);
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
         }
         .kyc-step-label {
           margin-top: 8px;
           font-size: 0.7rem;
-          color: #7c87b4;
+          color: var(--muted-foreground);
           text-align: center;
           white-space: nowrap;
         }
-        .kyc-step-node.active .kyc-step-label { color: #a5b4fc; }
-        .kyc-step-node.done .kyc-step-label { color: #818cf8; }
+        .kyc-step-node.active .kyc-step-label { color: var(--link); }
+        .kyc-step-node.done .kyc-step-label { color: var(--foreground); }
         .kyc-step-line {
           position: absolute;
           top: 18px;
           left: calc(50% + 18px);
           right: calc(-50% + 18px);
           height: 2px;
-          background: rgba(99,130,255,0.2);
+          background: var(--border);
           z-index: 1;
         }
-        .kyc-step-line.done { background: linear-gradient(90deg, #6382ff, #a78bfa); }
+        .kyc-step-line.done { background: var(--primary); }
         .kyc-content {
           max-width: 640px;
           margin: 0 auto;

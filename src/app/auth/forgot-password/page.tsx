@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Shield, Mail, Loader2, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Mail, Loader2, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 
@@ -38,16 +38,18 @@ export default function ForgotPasswordPage() {
 
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
-            <Shield className="h-6 w-6" />
+          <div className="flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
+            <span className="text-xl font-semibold tracking-wide text-foreground">OXShare</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Forgot Password</h1>
           <p className="text-xs text-muted-foreground">Enter your email to receive a password reset link</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-xl shadow-black/5 space-y-5">
+        <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5">
           {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -55,14 +57,14 @@ export default function ForgotPasswordPage() {
 
           {success ? (
             <div className="py-4 text-center space-y-4">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
-              <h2 className="text-base font-bold text-emerald-500">Reset Email Sent!</h2>
+              <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
+              <h2 className="text-base font-bold text-success">Reset Email Sent!</h2>
               <p className="text-xs text-muted-foreground">
                 If an account exists with <span className="font-semibold">{email}</span>, you will receive a reset link shortly.
               </p>
               <Link
                 href="/auth/login"
-                className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500 transition-all"
+                className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
               >
                 Return to Sign In
               </Link>
@@ -82,7 +84,7 @@ export default function ForgotPasswordPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
+                    className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
               </div>
@@ -90,7 +92,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white shadow-md hover:bg-blue-500 disabled:opacity-50 transition-all cursor-pointer"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
               >
                 {isLoading ? (
                   <>
@@ -106,7 +108,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          <Link href="/auth/login" className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:underline">
+          <Link href="/auth/login" className="inline-flex items-center gap-1 font-semibold text-link hover:underline rounded-xs focus-outline">
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Back to Sign In</span>
           </Link>

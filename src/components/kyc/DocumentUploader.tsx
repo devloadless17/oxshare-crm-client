@@ -76,12 +76,21 @@ export function DocumentUploader({
         if (f) handleFile(f);
       }}
       onClick={() => inputRef.current?.click()}
-      className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-200 cursor-pointer min-h-[170px] w-full ${
+      role="button"
+      tabIndex={0}
+      aria-label={`Upload ${label}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          inputRef.current?.click();
+        }
+      }}
+      className={`group focus-outline relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-200 cursor-pointer min-h-[170px] w-full ${
         dragging
-          ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20 scale-[1.01]'
+          ? 'border-ring bg-primary/10 shadow-sm'
           : isUploaded
-          ? 'border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-500/60'
-          : 'border-border bg-card/40 hover:border-blue-500/40 hover:bg-muted/30'
+          ? 'border-success/40 bg-success/5 hover:border-success/60'
+          : 'border-border bg-card/40 hover:border-ring/40 hover:bg-muted/30'
       } ${className || ''}`}
     >
       <input
@@ -97,7 +106,7 @@ export function DocumentUploader({
 
       {loading ? (
         <div className="flex flex-col items-center gap-3 py-2">
-          <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+          <Loader2 className="h-8 w-8 text-link animate-spin" />
           <div className="space-y-0.5">
             <p className="text-xs font-semibold text-foreground">Uploading File...</p>
             <p className="text-[11px] text-muted-foreground">Please wait a moment</p>
@@ -110,13 +119,13 @@ export function DocumentUploader({
               <img src={preview} alt={label} className="h-full w-full object-cover" />
             </div>
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-link">
               <FileText className="h-6 w-6" />
             </div>
           )}
 
           <div className="space-y-1 text-center max-w-full px-2">
-            <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-500">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-success">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>{label} Uploaded</span>
             </div>
@@ -135,8 +144,8 @@ export function DocumentUploader({
       ) : (
         <div className="flex flex-col items-center gap-2.5">
           <div
-            className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-transform group-hover:scale-110 ${
-              dragging ? 'bg-blue-600 text-white' : 'bg-blue-500/10 text-blue-500'
+            className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+              dragging ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-link'
             }`}
           >
             <UploadCloud className="h-6 w-6" />
@@ -147,7 +156,7 @@ export function DocumentUploader({
               {hint || 'Drag & drop your file here, or click to browse'}
             </p>
             {uploadError && (
-              <p className="text-[11px] font-semibold text-rose-500 mt-1">{uploadError}</p>
+              <p className="text-[11px] font-semibold text-destructive mt-1">{uploadError}</p>
             )}
           </div>
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
