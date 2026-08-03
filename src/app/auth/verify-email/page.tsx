@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api/errors';
 
 function VerifyEmailForm() {
   const router = useRouter();
@@ -36,9 +37,8 @@ function VerifyEmailForm() {
       try {
         await api.auth.verifyEmail(token);
         setIsSuccess(true);
-      } catch (err: any) {
-        const msg = err?.response?.data?.message || err.message || 'Verification token is invalid or has expired.';
-        setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
+      } catch (err: unknown) {
+        setErrorMessage(apiErrorMessage(err, 'Verification token is invalid or has expired.'));
       } finally {
         setIsLoading(false);
       }
@@ -106,7 +106,9 @@ function VerifyEmailForm() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-foreground">Verifying Token...</h3>
-                <p className="text-xs text-muted-foreground mt-1">Please wait while we confirm your security credentials.</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Please wait while we confirm your security credentials.
+                </p>
               </div>
             </div>
           ) : isSuccess ? (
@@ -118,12 +120,14 @@ function VerifyEmailForm() {
               <div>
                 <h2 className="text-lg font-bold text-success">Email Verified Successfully!</h2>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Your email address has been confirmed. You now have full access to your OxShare trading account.
+                  Your email address has been confirmed. You now have full access to your OxShare
+                  trading account.
                 </p>
               </div>
 
               <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                Redirecting to sign-in page in <span className="font-bold text-link">{countdown}s</span>...
+                Redirecting to sign-in page in{' '}
+                <span className="font-bold text-link">{countdown}s</span>...
               </div>
 
               <Link
@@ -160,7 +164,9 @@ function VerifyEmailForm() {
                   className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
                 >
                   <RefreshCw className={`h-4 w-4 ${resendCooldown > 0 ? 'animate-spin' : ''}`} />
-                  {resendCooldown > 0 ? `Resend Link in ${resendCooldown}s` : 'Resend Verification Email'}
+                  {resendCooldown > 0
+                    ? `Resend Link in ${resendCooldown}s`
+                    : 'Resend Verification Email'}
                 </button>
 
                 <Link
@@ -180,7 +186,13 @@ function VerifyEmailForm() {
 
 export default function VerifyEmailPage() {
   return (
-    <React.Suspense fallback={<div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">Loading...</div>}>
+    <React.Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">
+          Loading...
+        </div>
+      }
+    >
       <VerifyEmailForm />
     </React.Suspense>
   );

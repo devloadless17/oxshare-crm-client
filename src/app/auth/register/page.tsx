@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Lock, Mail, User, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api/errors';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -38,14 +39,15 @@ export default function RegisterPage() {
         lastName,
       });
 
-      setSuccessMessage(res.message || 'Registration successful! Please check your email to verify your account.');
+      setSuccessMessage(
+        res.message || 'Registration successful! Please check your email to verify your account.',
+      );
 
       setTimeout(() => {
         router.push('/auth/login');
       }, 3000);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Registration failed. Please try again.';
-      setError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Registration failed. Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -64,8 +66,12 @@ export default function RegisterPage() {
             <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
             <span className="text-xl font-semibold tracking-wide text-foreground">OXShare</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Create OXShare Account</h1>
-          <p className="text-xs text-muted-foreground">Start trading with zero commission & deep liquidity</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Create OXShare Account
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            Start trading with zero commission & deep liquidity
+          </p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5">
@@ -184,7 +190,10 @@ export default function RegisterPage() {
 
         <p className="text-center text-xs text-muted-foreground">
           Already have an account?{' '}
-          <Link href="/auth/login" className="font-semibold text-link hover:underline rounded-xs focus-outline">
+          <Link
+            href="/auth/login"
+            className="font-semibold text-link hover:underline rounded-xs focus-outline"
+          >
             Sign in
           </Link>
         </p>

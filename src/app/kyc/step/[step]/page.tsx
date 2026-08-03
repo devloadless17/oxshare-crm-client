@@ -37,6 +37,13 @@ export default function KycStepPage() {
   };
 
   // ── Restore saved state and fetch active steps from backend ────────────────
+  //
+  // The sessionStorage reads below are a deliberate exception to
+  // react-hooks/set-state-in-effect. This IS the case the rule's own docs
+  // allow — synchronising React state with an external system on mount — and
+  // the alternatives are both worse: a lazy useState initialiser would read
+  // sessionStorage during render, which the server cannot do, producing a
+  // hydration mismatch on a form the user has half-filled.
   useEffect(() => {
     let initialPersonal: Record<string, string> = {};
     let initialUploads: Record<string, boolean> = {};
@@ -46,6 +53,7 @@ export default function KycStepPage() {
       if (cachedPersonal) {
         try {
           initialPersonal = JSON.parse(cachedPersonal);
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- see note above
           setFormData(initialPersonal);
         } catch {}
       }
@@ -132,8 +140,7 @@ export default function KycStepPage() {
   }, []);
 
   const currentStepConfig =
-    stepConfigs.find((s) => s.stepNumber === stepNumber) ||
-    stepConfigs[stepNumber - 1];
+    stepConfigs.find((s) => s.stepNumber === stepNumber) || stepConfigs[stepNumber - 1];
 
   const totalSteps = stepConfigs.length || 5;
 
@@ -227,7 +234,9 @@ export default function KycStepPage() {
         </div>
         <div className="space-y-1">
           <p className="text-sm font-bold text-foreground">Loading Verification Details...</p>
-          <p className="text-xs text-muted-foreground">Restoring your step progress and form data</p>
+          <p className="text-xs text-muted-foreground">
+            Restoring your step progress and form data
+          </p>
         </div>
       </div>
     );
@@ -243,11 +252,13 @@ export default function KycStepPage() {
           </div>
           {rejectionReason && (
             <p className="text-destructive text-xs">
-              <strong className="font-semibold text-destructive">Admin Rejection Note:</strong> {rejectionReason}
+              <strong className="font-semibold text-destructive">Admin Rejection Note:</strong>{' '}
+              {rejectionReason}
             </p>
           )}
           <p className="text-[11px] text-muted-foreground pt-1">
-            Please update the highlighted fields below with valid information and click continue. Your existing data remains saved.
+            Please update the highlighted fields below with valid information and click continue.
+            Your existing data remains saved.
           </p>
         </div>
       )}
@@ -298,8 +309,8 @@ export default function KycStepPage() {
           {loading
             ? 'Processing...'
             : stepNumber === totalSteps || currentStepConfig?.slug === 'review'
-            ? 'Submit Verification'
-            : 'Continue'}
+              ? 'Submit Verification'
+              : 'Continue'}
         </Button>
       </div>
     </div>

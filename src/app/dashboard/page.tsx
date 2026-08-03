@@ -10,7 +10,6 @@ import {
   Plus,
   ArrowRightLeft,
   ShieldCheck,
-  TrendingUp,
 } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -119,7 +118,9 @@ export default function DashboardPage() {
         {/* Pending Transactions */}
         <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-warning/50">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">Pending Transactions</span>
+            <span className="text-xs font-semibold text-muted-foreground">
+              Pending Transactions
+            </span>
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-warning/10 text-warning">
               <Clock className="h-4 w-4" />
             </div>
@@ -143,7 +144,9 @@ export default function DashboardPage() {
           </div>
           <div>
             <p className="text-sm font-semibold">Instant Deposit</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Fund your wallet via USDT or Wire</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Fund your wallet via USDT or Wire
+            </p>
           </div>
         </div>
 
@@ -163,7 +166,9 @@ export default function DashboardPage() {
           </div>
           <div>
             <p className="text-sm font-semibold">KYC Status</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Level 1 Verified • Trading Enabled</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Level 1 Verified • Trading Enabled
+            </p>
           </div>
         </div>
       </div>
@@ -173,7 +178,9 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between border-b border-border p-6">
           <div>
             <h2 className="text-base font-semibold">Recent Transactions</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Latest deposits, withdrawals, and MT5 transfers</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Latest deposits, withdrawals, and MT5 transfers
+            </p>
           </div>
           <Link
             href="/transactions"
@@ -186,7 +193,8 @@ export default function DashboardPage() {
           <ReceiptIcon className="mx-auto h-12 w-12 text-muted-foreground/40" />
           <h3 className="mt-3 text-sm font-semibold">No Transactions Recorded Yet</h3>
           <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-            Your recent deposits, withdrawals, and internal transfers will appear here automatically.
+            Your recent deposits, withdrawals, and internal transfers will appear here
+            automatically.
           </p>
           <div className="mt-5">
             <Link

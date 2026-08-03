@@ -26,10 +26,43 @@ export const kycApi = {
     } catch {
       // Fallback default dynamic fields if server offline
       return [
-        { id: '1', fieldName: 'id_document', label: 'Government Photo ID (Passport / National ID)', fieldType: 'file', isRequired: true, isActive: true, sortOrder: 1 },
-        { id: '2', fieldName: 'proof_of_address', label: 'Proof of Address (Utility Bill / Bank Statement)', fieldType: 'file', isRequired: true, isActive: true, sortOrder: 2 },
-        { id: '3', fieldName: 'tax_id', label: 'Tax Identification Number (TIN / SSN)', fieldType: 'text', isRequired: false, isActive: true, sortOrder: 3 },
-        { id: '4', fieldName: 'country_residence', label: 'Country of Residence', fieldType: 'select', options: ['United Arab Emirates', 'Saudi Arabia', 'Kuwait', 'Qatar', 'United Kingdom'], isRequired: true, isActive: true, sortOrder: 4 },
+        {
+          id: '1',
+          fieldName: 'id_document',
+          label: 'Government Photo ID (Passport / National ID)',
+          fieldType: 'file',
+          isRequired: true,
+          isActive: true,
+          sortOrder: 1,
+        },
+        {
+          id: '2',
+          fieldName: 'proof_of_address',
+          label: 'Proof of Address (Utility Bill / Bank Statement)',
+          fieldType: 'file',
+          isRequired: true,
+          isActive: true,
+          sortOrder: 2,
+        },
+        {
+          id: '3',
+          fieldName: 'tax_id',
+          label: 'Tax Identification Number (TIN / SSN)',
+          fieldType: 'text',
+          isRequired: false,
+          isActive: true,
+          sortOrder: 3,
+        },
+        {
+          id: '4',
+          fieldName: 'country_residence',
+          label: 'Country of Residence',
+          fieldType: 'select',
+          options: ['United Arab Emirates', 'Saudi Arabia', 'Kuwait', 'Qatar', 'United Kingdom'],
+          isRequired: true,
+          isActive: true,
+          sortOrder: 4,
+        },
       ];
     }
   },

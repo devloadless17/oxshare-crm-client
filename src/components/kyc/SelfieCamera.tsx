@@ -14,7 +14,6 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
 
-  const [isCameraActive, setIsCameraActive] = React.useState(false);
   const [captured, setCaptured] = React.useState<string | null>(null);
   const [uploading, setUploading] = React.useState(false);
   const [uploadedSuccess, setUploadedSuccess] = React.useState(uploaded);
@@ -25,12 +24,10 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-    setIsCameraActive(false);
   }, []);
 
   const startCamera = React.useCallback(async () => {
     try {
-      setCameraError(false);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -41,20 +38,29 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
       });
 
       streamRef.current = s;
-      setIsCameraActive(true);
 
       if (videoRef.current) {
         videoRef.current.srcObject = s;
       }
+      // Cleared only once the camera is actually running. Resetting it up front
+      // flashed the error away before we knew whether this attempt would work.
+      setCameraError(false);
     } catch {
       setCameraError(true);
-      setIsCameraActive(false);
     }
   }, []);
 
+  // Acquiring the camera is external-system synchronisation — the textbook
+  // case an effect is for. getUserMedia is also the only way to do it: there
+  // is no render-time equivalent, and it must be released on unmount or the
+  // camera light stays on after the user navigates away.
   React.useEffect(() => {
     if (!uploadedSuccess && !captured) {
-      startCamera();
+      // The rule traces into startCamera and sees setCameraError, which is set
+      // from the getUserMedia result — i.e. from the external system, which is
+      // the pattern the rule itself documents as correct.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void startCamera();
     }
     return () => {
       stopCamera();
@@ -171,7 +177,12 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
               <CheckCircle2 className="h-4 w-4" />
               <span>Selfie Captured</span>
             </div>
-            <Button type="button" variant="outline" onClick={handleRetake} className="gap-2 text-xs">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleRetake}
+              className="gap-2 text-xs"
+            >
               <RefreshCw className="h-3.5 w-3.5" />
               <span>Retake Photo</span>
             </Button>

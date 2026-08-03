@@ -9,9 +9,10 @@ export interface DocumentUploaderProps {
   accept?: string;
   hint?: string;
   uploaded?: boolean;
-  isErrored?: boolean;
   onUpload: (field: string, file: File) => Promise<void>;
   className?: string;
+  /** The admin rejected this specific field — show it, don't just track it. */
+  isErrored?: boolean;
 }
 
 export function DocumentUploader({
@@ -20,9 +21,9 @@ export function DocumentUploader({
   accept = 'image/*,.pdf',
   hint,
   uploaded = false,
-  isErrored = false,
   onUpload,
   className,
+  isErrored = false,
 }: DocumentUploaderProps) {
   const [dragging, setDragging] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
@@ -50,8 +51,8 @@ export function DocumentUploader({
         setPreview(null);
         setFileName(null);
         const msg =
-          (err as { response?: { data?: { message?: string } } })?.response?.data
-            ?.message || 'Upload failed. Please try again.';
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Upload failed. Please try again.';
         setUploadError(msg);
       } finally {
         setLoading(false);
@@ -85,12 +86,19 @@ export function DocumentUploader({
           inputRef.current?.click();
         }
       }}
+      aria-invalid={isErrored || undefined}
       className={`group focus-outline relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-200 cursor-pointer min-h-[170px] w-full ${
         dragging
           ? 'border-ring bg-primary/10 shadow-sm'
-          : isUploaded
-          ? 'border-success/40 bg-success/5 hover:border-success/60'
-          : 'border-border bg-card/40 hover:border-ring/40 hover:bg-muted/30'
+          : isErrored
+            ? // A rejected document must look rejected. The parent has passed
+              // this flag since the resubmission flow was built; the component
+              // accepted it and rendered it identically to an untouched field,
+              // so a client re-uploading had no idea which document to fix.
+              'border-destructive/70 bg-destructive/5 hover:border-destructive'
+            : isUploaded
+              ? 'border-success/40 bg-success/5 hover:border-success/60'
+              : 'border-border bg-card/40 hover:border-ring/40 hover:bg-muted/30'
       } ${className || ''}`}
     >
       <input

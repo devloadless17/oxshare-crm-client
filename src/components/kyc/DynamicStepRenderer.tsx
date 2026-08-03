@@ -52,6 +52,18 @@ interface DynamicStepRendererProps {
   onUpload: (field: string, file: File) => Promise<void>;
 }
 
+/**
+ * FR-CORE-15: applicants must be 18+, so the date-of-birth picker stops there.
+ *
+ * Evaluated once when the module loads, not during render. Date.now() in a
+ * render body (or in a useMemo, which React may re-run at any time) makes the
+ * component impure: two renders a millisecond apart can disagree. The value is
+ * fresh per page load, and the real check is server-side anyway.
+ */
+const MAX_DATE_OF_BIRTH = new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000)
+  .toISOString()
+  .split('T')[0];
+
 export function DynamicStepRenderer({
   currentStepConfig,
   formData,
@@ -97,7 +109,9 @@ export function DynamicStepRenderer({
               </div>
               <div>
                 <span className="text-muted-foreground block text-[11px]">Phone</span>
-                <span className="font-semibold text-foreground font-mono">{formData.phone || '-'}</span>
+                <span className="font-semibold text-foreground font-mono">
+                  {formData.phone || '-'}
+                </span>
               </div>
               <div>
                 <span className="text-muted-foreground block text-[11px]">Nationality</span>
@@ -281,7 +295,8 @@ export function DynamicStepRenderer({
                   <div key={field.id} className="space-y-1.5">
                     <Label className="flex items-center justify-between">
                       <span>
-                        {field.label} {field.required && <span className="text-destructive">*</span>}
+                        {field.label}{' '}
+                        {field.required && <span className="text-destructive">*</span>}
                       </span>
                       {isErrored && (
                         <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
@@ -289,8 +304,17 @@ export function DynamicStepRenderer({
                         </span>
                       )}
                     </Label>
-                    <div className={isErrored ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5' : ''}>
-                      <PhoneInput value={val} onChange={(phoneVal) => onChange(field.name, phoneVal)} />
+                    <div
+                      className={
+                        isErrored
+                          ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5'
+                          : ''
+                      }
+                    >
+                      <PhoneInput
+                        value={val}
+                        onChange={(phoneVal) => onChange(field.name, phoneVal)}
+                      />
                     </div>
                   </div>
                 );
@@ -302,7 +326,8 @@ export function DynamicStepRenderer({
                   <div key={field.id} className="space-y-1.5">
                     <Label className="flex items-center justify-between">
                       <span>
-                        {field.label} {field.required && <span className="text-destructive">*</span>}
+                        {field.label}{' '}
+                        {field.required && <span className="text-destructive">*</span>}
                       </span>
                       {isErrored && (
                         <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
@@ -310,17 +335,17 @@ export function DynamicStepRenderer({
                         </span>
                       )}
                     </Label>
-                    <div className={isErrored ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5' : ''}>
+                    <div
+                      className={
+                        isErrored
+                          ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5'
+                          : ''
+                      }
+                    >
                       <DatePicker
                         value={val}
                         onChange={(dateVal) => onChange(field.name, dateVal)}
-                        maxDate={
-                          field.name === 'dateOfBirth'
-                            ? new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000)
-                                .toISOString()
-                                .split('T')[0]
-                            : undefined
-                        }
+                        maxDate={field.name === 'dateOfBirth' ? MAX_DATE_OF_BIRTH : undefined}
                       />
                     </div>
                   </div>
@@ -347,7 +372,8 @@ export function DynamicStepRenderer({
                   <div key={field.id} className="space-y-1.5">
                     <Label className="flex items-center justify-between">
                       <span>
-                        {field.label} {field.required && <span className="text-destructive">*</span>}
+                        {field.label}{' '}
+                        {field.required && <span className="text-destructive">*</span>}
                       </span>
                       {isErrored && (
                         <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
@@ -355,8 +381,17 @@ export function DynamicStepRenderer({
                         </span>
                       )}
                     </Label>
-                    <div className={isErrored ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5' : ''}>
-                      <Select value={val} onValueChange={(selected) => onChange(field.name, selected)}>
+                    <div
+                      className={
+                        isErrored
+                          ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5'
+                          : ''
+                      }
+                    >
+                      <Select
+                        value={val}
+                        onValueChange={(selected) => onChange(field.name, selected)}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
                         </SelectTrigger>
@@ -411,7 +446,11 @@ export function DynamicStepRenderer({
                     placeholder={field.hint || `Enter ${field.label.toLowerCase()}`}
                     value={val}
                     onChange={(e) => onChange(field.name, e.target.value)}
-                    className={isErrored ? 'border-destructive focus-visible:ring-destructive bg-destructive/5' : ''}
+                    className={
+                      isErrored
+                        ? 'border-destructive focus-visible:ring-destructive bg-destructive/5'
+                        : ''
+                    }
                   />
                 </div>
               );

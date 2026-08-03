@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api/errors';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -37,9 +38,8 @@ function ResetPasswordForm() {
     try {
       await api.auth.resetPassword(token, newPassword);
       setSuccess(true);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Password reset failed.';
-      setError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Password reset failed.'));
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +59,9 @@ function ResetPasswordForm() {
             <span className="text-xl font-semibold tracking-wide text-foreground">OXShare</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Set New Password</h1>
-          <p className="text-xs text-muted-foreground">Enter a new secure password for your account</p>
+          <p className="text-xs text-muted-foreground">
+            Enter a new secure password for your account
+          </p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5">
@@ -74,7 +76,9 @@ function ResetPasswordForm() {
             <div className="py-4 text-center space-y-4">
               <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
               <h2 className="text-base font-bold text-success">Password Reset Successful!</h2>
-              <p className="text-xs text-muted-foreground">Your password has been updated. You can now log in.</p>
+              <p className="text-xs text-muted-foreground">
+                Your password has been updated. You can now log in.
+              </p>
               <Link
                 href="/auth/login"
                 className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
@@ -151,7 +155,13 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <React.Suspense fallback={<div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">Loading...</div>}>
+    <React.Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">
+          Loading...
+        </div>
+      }
+    >
       <ResetPasswordForm />
     </React.Suspense>
   );

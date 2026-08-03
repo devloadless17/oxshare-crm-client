@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { LineChart, Plus, Shield } from 'lucide-react';
+import { LineChart, Plus } from 'lucide-react';
 
 export const metadata: Metadata = { title: 'Trading Accounts — OXShare' };
 
@@ -26,7 +26,8 @@ export default function AccountsPage() {
         <LineChart className="mx-auto h-12 w-12 text-muted-foreground/40" />
         <h3 className="mt-4 text-sm font-semibold">No Active Trading Accounts</h3>
         <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-          Create an MT5 live or demo account to start trading forex, indices, commodities, and crypto.
+          Create an MT5 live or demo account to start trading forex, indices, commodities, and
+          crypto.
         </p>
       </div>
     </div>

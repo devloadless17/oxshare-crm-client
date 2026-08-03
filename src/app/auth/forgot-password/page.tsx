@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Mail, Loader2, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api/errors';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = React.useState('');
@@ -22,9 +23,8 @@ export default function ForgotPasswordPage() {
     try {
       await api.auth.forgotPassword(email);
       setSuccess(true);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to request password reset.';
-      setError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to request password reset.'));
     } finally {
       setIsLoading(false);
     }
@@ -44,7 +44,9 @@ export default function ForgotPasswordPage() {
             <span className="text-xl font-semibold tracking-wide text-foreground">OXShare</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Forgot Password</h1>
-          <p className="text-xs text-muted-foreground">Enter your email to receive a password reset link</p>
+          <p className="text-xs text-muted-foreground">
+            Enter your email to receive a password reset link
+          </p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5">
@@ -60,7 +62,8 @@ export default function ForgotPasswordPage() {
               <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
               <h2 className="text-base font-bold text-success">Reset Email Sent!</h2>
               <p className="text-xs text-muted-foreground">
-                If an account exists with <span className="font-semibold">{email}</span>, you will receive a reset link shortly.
+                If an account exists with <span className="font-semibold">{email}</span>, you will
+                receive a reset link shortly.
               </p>
               <Link
                 href="/auth/login"
@@ -108,7 +111,10 @@ export default function ForgotPasswordPage() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          <Link href="/auth/login" className="inline-flex items-center gap-1 font-semibold text-link hover:underline rounded-xs focus-outline">
+          <Link
+            href="/auth/login"
+            className="inline-flex items-center gap-1 font-semibold text-link hover:underline rounded-xs focus-outline"
+          >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Back to Sign In</span>
           </Link>

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   LineChart,
@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from '../theme-toggle';
 import { useUser } from '@/context/UserContext';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 
 interface NavItem {
   label: string;
@@ -47,16 +49,22 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useUser();
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const [kycStatus, setKycStatus] = React.useState<string>('not_started');
 
-  React.useEffect(() => {
-    setMobileOpen(false);
-    import('@/lib/api').then((m) => {
-      m.default.get('/kyc/status')
-        .then((r) => { if (r.data?.status) setKycStatus(r.data.status); })
-        .catch(() => {});
-    });
-  }, [pathname]);
+  // The drawer closes where it is opened from — on the click that navigates.
+  // Doing it in an effect keyed on `pathname` meant a second render pass after
+  // every navigation just to flip a boolean.
+  const closeMobile = () => setMobileOpen(false);
+
+  // The sidebar badge follows the KYC status, refetched per route so it cannot
+  // show 'submitted' after the user has just been approved on another tab.
+  const { data: kycStatus = 'not_started' } = useQuery({
+    queryKey: ['kyc', 'status', pathname],
+    queryFn: async () => {
+      const res = await apiClient.get<{ status?: string }>('/kyc/status');
+      return res.data?.status ?? 'not_started';
+    },
+    retry: false,
+  });
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -64,7 +72,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs lg:hidden"
-          onClick={() => setMobileOpen(false)}
+          onClick={closeMobile}
         />
       )}
 
@@ -76,12 +84,21 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
       >
         {/* Sidebar Header */}
         <div className="flex h-16 items-center justify-between border-b border-border px-4">
-          <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden rounded-md focus-outline">
+          <Link
+            href="/dashboard"
+            onClick={closeMobile}
+            className="flex items-center gap-3 overflow-hidden rounded-md focus-outline"
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/oxshare-mark.svg" alt="OXShare" className="h-7 w-auto shrink-0" />
             {!collapsed && (
               <div className="flex flex-col">
-                <span suppressHydrationWarning className="text-sm font-semibold tracking-wider text-foreground">OXShare</span>
+                <span
+                  suppressHydrationWarning
+                  className="text-sm font-semibold tracking-wider text-foreground"
+                >
+                  OXShare
+                </span>
                 <span className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
                   Client Portal
                 </span>
@@ -101,7 +118,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           {/* Mobile Close */}
           <button
             type="button"
-            onClick={() => setMobileOpen(false)}
+            onClick={closeMobile}
             className="flex lg:hidden h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-outline"
           >
             <X className="h-5 w-5" />
@@ -118,6 +135,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={closeMobile}
                 title={collapsed ? item.label : undefined}
                 className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium focus-outline ${
                   isActive
@@ -127,12 +145,12 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
               >
                 <Icon
                   className={`h-5 w-5 shrink-0 ${
-                    isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-link'
+                    isActive
+                      ? 'text-primary-foreground'
+                      : 'text-muted-foreground group-hover:text-link'
                   }`}
                 />
-                {!collapsed && (
-                  <span className="flex-1 truncate">{item.label}</span>
-                )}
+                {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
                 {!collapsed && item.badge && (
                   <span className="ml-auto rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-semibold text-warning">
                     {item.badge}
@@ -152,7 +170,9 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           >
             <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-sm">
               {user?.firstName ? user.firstName[0].toUpperCase() : 'U'}
-              <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-card ${user?.verificationLevel === 1 ? 'bg-success' : 'bg-warning'}`} />
+              <span
+                className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-card ${user?.verificationLevel === 1 ? 'bg-success' : 'bg-warning'}`}
+              />
             </div>
 
             {!collapsed && (
@@ -210,24 +230,26 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           {/* Right Controls */}
           <div className="flex items-center gap-3">
             {/* Account Status Badge */}
-            <div className={`hidden sm:flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium ${
-              user?.verificationLevel === 1 || kycStatus === 'approved'
-                ? 'border-success/30 bg-success/10 text-success'
-                : kycStatus === 'rejected'
-                ? 'border-destructive/30 bg-destructive/10 text-destructive font-bold animate-pulse'
-                : kycStatus === 'submitted' || kycStatus === 'under_review'
-                ? 'border-info/30 bg-info/10 text-info'
-                : 'border-warning/30 bg-warning/10 text-warning'
-            }`}>
+            <div
+              className={`hidden sm:flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium ${
+                user?.verificationLevel === 1 || kycStatus === 'approved'
+                  ? 'border-success/30 bg-success/10 text-success'
+                  : kycStatus === 'rejected'
+                    ? 'border-destructive/30 bg-destructive/10 text-destructive font-bold animate-pulse'
+                    : kycStatus === 'submitted' || kycStatus === 'under_review'
+                      ? 'border-info/30 bg-info/10 text-info'
+                      : 'border-warning/30 bg-warning/10 text-warning'
+              }`}
+            >
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span>
                 {user?.verificationLevel === 1 || kycStatus === 'approved'
                   ? 'Verified Account'
                   : kycStatus === 'rejected'
-                  ? '⚠️ KYC Action Required'
-                  : kycStatus === 'submitted' || kycStatus === 'under_review'
-                  ? 'KYC Under Review'
-                  : 'KYC Pending'}
+                    ? '⚠️ KYC Action Required'
+                    : kycStatus === 'submitted' || kycStatus === 'under_review'
+                      ? 'KYC Under Review'
+                      : 'KYC Pending'}
               </span>
             </div>
 

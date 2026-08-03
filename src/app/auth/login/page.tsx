@@ -3,12 +3,22 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, Eye, EyeOff, Loader2, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import {
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+  CheckCircle2,
+} from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { apiErrorMessage } from '@/lib/api/errors';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -49,12 +59,11 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await api.auth.login({ email, password, role: 'CLIENT' });
+      await api.auth.login({ email, password });
       router.push('/dashboard');
       router.refresh();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Sign in failed. Please try again.';
-      const formattedMsg = Array.isArray(msg) ? msg.join(', ') : msg;
+    } catch (err: unknown) {
+      const formattedMsg = apiErrorMessage(err, 'Sign in failed. Please try again.');
       setError(formattedMsg);
 
       if (formattedMsg.toLowerCase().includes('verify your email')) {
@@ -74,9 +83,8 @@ export default function LoginPage() {
       const res = await api.auth.resendVerification(email);
       setResendSuccess(res.message || 'Verification link resent! Check your inbox.');
       setResendCooldown(60);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to resend verification link.';
-      setError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to resend verification link.'));
     } finally {
       setIsResending(false);
     }
@@ -161,7 +169,10 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link href="/auth/forgot-password" className="text-[11px] font-medium text-link hover:underline rounded-xs focus-outline">
+                <Link
+                  href="/auth/forgot-password"
+                  className="text-[11px] font-medium text-link hover:underline rounded-xs focus-outline"
+                >
                   Forgot password?
                 </Link>
               </div>
@@ -201,7 +212,10 @@ export default function LoginPage() {
 
         <p className="text-center text-xs text-muted-foreground">
           Don&apos;t have an account?{' '}
-          <Link href="/auth/register" className="font-semibold text-link hover:underline rounded-xs focus-outline">
+          <Link
+            href="/auth/register"
+            className="font-semibold text-link hover:underline rounded-xs focus-outline"
+          >
             Create one
           </Link>
         </p>

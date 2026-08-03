@@ -4,6 +4,7 @@ import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 
 import { UserProvider } from '@/context/UserContext';
+import { QueryProvider } from '@/components/query-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -29,9 +30,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider defaultTheme="light" storageKey="oxshare-portal-theme">
-          <UserProvider>
-            {children}
-          </UserProvider>
+          <QueryProvider>
+            <UserProvider>{children}</UserProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>
