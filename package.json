@@ -6,12 +6,15 @@
     "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start --port 3000",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings 60",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "gen:api-types": "openapi-typescript http://localhost:3001/api/docs-json -o src/lib/api/types.gen.ts"
+    "gen:api-types": "openapi-typescript http://localhost:3001/api/docs-json -o src/lib/api/types.gen.ts",
+    "prepare": "husky",
+    "check:twins": "./scripts/check-twins.sh"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.2",
@@ -49,9 +52,18 @@
     "@vitejs/plugin-react": "^6.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
     "openapi-typescript": "^7.13.0",
+    "prettier": "^3.9.6",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "typescript-eslint": "^8.66.0",
     "vitest": "^4.1.10"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "./scripts/gate-file.sh"
+    ]
   }
 }
