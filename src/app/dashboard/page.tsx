@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  Wallet,
-  Coins,
   LineChart,
   Clock,
   ArrowDownRight,
@@ -11,6 +9,7 @@ import {
   ArrowRightLeft,
   ShieldCheck,
 } from 'lucide-react';
+import { WalletBalanceCards } from '@/components/dashboard/wallet-balance-cards';
 
 export const metadata: Metadata = {
   title: 'Dashboard — OXShare',
@@ -61,41 +60,14 @@ export default function DashboardPage() {
 
       {/* Stats Cards Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Wallet Balance */}
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-ring/50">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">Wallet Balance</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-link">
-              <Wallet className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-bold tracking-tight">$0.00</p>
-            <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">USD Wallet</span>
-              <span>•</span>
-              <span className="text-success font-medium">Available</span>
-            </div>
-          </div>
-        </div>
+        {/* Live balances, from GET /wallet. */}
+        <WalletBalanceCards />
 
-        {/* Crypto Balance */}
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-ring/50">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">USDT Balance</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-link">
-              <Coins className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-bold tracking-tight">0.00</p>
-            <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">USDT TRC20</span>
-              <span>•</span>
-              <span>Instant Deposit</span>
-            </div>
-          </div>
-        </div>
+        {/* The two tiles below are still placeholders, and deliberately so: no
+            endpoint exists for either yet. Trading accounts and open positions
+            arrive with the MT5 bridge, pending transactions with the payments
+            provider integration. Wire them when those land — do not leave a
+            hardcoded count next to a live balance any longer than necessary. */}
 
         {/* Trading Accounts */}
         <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-ring/50">
