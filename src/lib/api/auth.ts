@@ -1,3 +1,4 @@
+import type { components } from './types.gen';
 import { apiClient, clearSession, setSessionCookies, startProactiveRefresh } from './client';
 
 export interface LoginDto {
@@ -12,18 +13,16 @@ export interface RegisterDto {
   lastName?: string;
 }
 
-export interface AuthResponse {
-  access_token: string;
-  refresh_token?: string;
-  user: {
-    id: string;
-    email: string;
-    firstName?: string;
-    lastName?: string;
-    role: string;
-    isEmailVerified: boolean;
-  };
-}
+/**
+ * Aliased from the generated schema. The hand-written version declared
+ * `user.role` and `user.isEmailVerified`, neither of which the backend's
+ * `sanitize()` ever returned — the field is `emailVerified`, and there is no
+ * `role` on a portal user. That is the class of silent drift the alias removes.
+ *
+ * snake_case is correct here: the portal endpoints answer `access_token` /
+ * `refresh_token` while the admin API answers camelCase. Known and frozen.
+ */
+export type AuthResponse = components['schemas']['AuthTokensResponseDto'];
 
 // The backend mounts these under both /auth and /identity
 // (@Controller(['auth', 'identity'])). This file used /identity while

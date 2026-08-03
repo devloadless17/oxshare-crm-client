@@ -4,2756 +4,3130 @@
  */
 
 export interface paths {
-  '/health': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** API health check */
+        get: operations["HealthController_check"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** API health check */
-    get: operations['HealthController_check'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/auth/register': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register a new portal user */
+        post: operations["AuthController_register[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Register a new portal user */
-    post: operations['AuthController_register[0]'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/identity/register': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/identity/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register a new portal user */
+        post: operations["AuthController_register[1]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Register a new portal user */
-    post: operations['AuthController_register[1]'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/auth/verify-email': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Verify email via token from email link */
+        get: operations["AuthController_verifyEmail[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Verify email via token from email link */
-    get: operations['AuthController_verifyEmail[0]'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/identity/verify-email': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/identity/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Verify email via token from email link */
+        get: operations["AuthController_verifyEmail[1]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Verify email via token from email link */
-    get: operations['AuthController_verifyEmail[1]'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/auth/resend-verification': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/auth/resend-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resend email verification link */
+        post: operations["AuthController_resendVerification[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Resend email verification link */
-    post: operations['AuthController_resendVerification[0]'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/identity/resend-verification': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/identity/resend-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resend email verification link */
+        post: operations["AuthController_resendVerification[1]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Resend email verification link */
-    post: operations['AuthController_resendVerification[1]'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/auth/login': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login — also sets the JWT cookies (deliberately readable by JS, not httpOnly) */
+        post: operations["AuthController_login[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Login — sets httpOnly JWT cookies */
-    post: operations['AuthController_login[0]'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/identity/login': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/identity/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login — also sets the JWT cookies (deliberately readable by JS, not httpOnly) */
+        post: operations["AuthController_login[1]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Login — sets httpOnly JWT cookies */
-    post: operations['AuthController_login[1]'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/auth/refresh': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh access token */
+        post: operations["AuthController_refresh[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Refresh access token */
-    post: operations['AuthController_refresh[0]'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/identity/refresh': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/identity/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh access token */
+        post: operations["AuthController_refresh[1]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Refresh access token */
-    post: operations['AuthController_refresh[1]'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/auth/logout': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout — clears JWT cookies */
+        post: operations["AuthController_logout[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Logout — clears JWT cookies */
-    post: operations['AuthController_logout[0]'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/identity/logout': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/identity/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout — clears JWT cookies */
+        post: operations["AuthController_logout[1]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Logout — clears JWT cookies */
-    post: operations['AuthController_logout[1]'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/auth/me': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get current authenticated user */
+        get: operations["AuthController_me[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get current authenticated user */
-    get: operations['AuthController_me[0]'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/identity/me': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/identity/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get current authenticated user */
+        get: operations["AuthController_me[1]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get current authenticated user */
-    get: operations['AuthController_me[1]'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/trading/ping': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/trading/ping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health ping for trading module */
+        get: operations["TradingController_ping"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Health ping for trading module */
-    get: operations['TradingController_ping'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/partners/ping': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/partners/ping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health ping for partners module */
+        get: operations["PartnersController_ping"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Health ping for partners module */
-    get: operations['PartnersController_ping'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/wallet': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/wallet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in client's wallets — balance, on_hold and available, all as strings */
+        get: operations["WalletController_myWallets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** The signed-in client's wallets — balance, on_hold and available, all as strings */
-    get: operations['WalletController_myWallets'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/wallet/ledger': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/wallet/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in client's own ledger entries */
+        get: operations["WalletController_myLedger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** The signed-in client's own ledger entries */
-    get: operations['WalletController_myLedger'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/payments/withdrawals': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/payments/withdrawals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request a withdrawal — requires KYC level 1; reserves the amount on hold */
+        post: operations["PaymentsController_requestWithdrawal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Request a withdrawal — requires KYC level 1; reserves the amount on hold */
-    post: operations['PaymentsController_requestWithdrawal'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/payments/transactions': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/payments/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in client's own transactions */
+        get: operations["PaymentsController_myTransactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** The signed-in client's own transactions */
-    get: operations['PaymentsController_myTransactions'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/kyc/config': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/kyc/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get active KYC onboarding steps */
+        get: operations["KycController_getConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get active KYC onboarding steps */
-    get: operations['KycController_getConfig'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/kyc/status': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/kyc/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get current user KYC status and submitted data */
+        get: operations["KycController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get current user KYC status and submitted data */
-    get: operations['KycController_status'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/kyc/step': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/kyc/step": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save data for a KYC step (personal/document/selfie/address) */
+        post: operations["KycController_saveStep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Save data for a KYC step (personal/document/selfie/address) */
-    post: operations['KycController_saveStep'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/kyc/upload': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/kyc/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload a KYC file (doc_front, doc_back, selfie, address_proof) */
+        post: operations["KycController_uploadFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Upload a KYC file (doc_front, doc_back, selfie, address_proof) */
-    post: operations['KycController_uploadFile'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/kyc/submit': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/kyc/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit KYC for review — all steps must be complete */
+        post: operations["KycController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Submit KYC for review — all steps must be complete */
-    post: operations['KycController_submit'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/kyc/reset': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/kyc/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset KYC submission for current user */
+        post: operations["KycController_reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Reset KYC submission for current user */
-    post: operations['KycController_reset'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/uploads/kyc/{file}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/uploads/kyc/{file}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Serve a KYC document to its owner or a kyc.review admin */
+        get: operations["UploadsController_serveKycFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Serve a KYC document to its owner or a kyc.review admin */
-    get: operations['UploadsController_serveKycFile'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/auth/login': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin login */
+        post: operations["AdminController_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Admin login */
-    post: operations['AdminController_login'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/auth/refresh': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin refresh token */
+        post: operations["AdminController_refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Admin refresh token */
-    post: operations['AdminController_refresh'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/auth/logout': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin logout */
+        post: operations["AdminController_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Admin logout */
-    post: operations['AdminController_logout'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/auth/me': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get current admin */
+        get: operations["AdminController_me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get current admin */
-    get: operations['AdminController_me'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/invite': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invite a new sub-admin with a role or explicit permissions (requires users.create) */
+        post: operations["AdminController_invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Invite a new sub-admin with a role or explicit permissions (requires users.create) */
-    post: operations['AdminController_invite'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/invite/validate': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/invite/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Validate invite token — returns email and name for pre-fill */
+        get: operations["AdminController_validateInvite"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Validate invite token — returns email and name for pre-fill */
-    get: operations['AdminController_validateInvite'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/invite/accept': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/invite/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept invite and set password — logs admin in immediately */
+        post: operations["AdminController_acceptInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Accept invite and set password — logs admin in immediately */
-    post: operations['AdminController_acceptInvite'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/kyc': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/kyc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all KYC submissions, optionally filtered by status */
+        get: operations["AdminController_listKyc"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** List all KYC submissions, optionally filtered by status */
-    get: operations['AdminController_listKyc'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/kyc/{userId}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/kyc/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get full KYC submission for a user */
+        get: operations["AdminController_getKyc"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get full KYC submission for a user */
-    get: operations['AdminController_getKyc'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/kyc/{userId}/claim': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/kyc/{userId}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Claim a submitted KYC for review (sets under_review) */
+        patch: operations["AdminController_claimKyc"];
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Claim a submitted KYC for review (sets under_review) */
-    patch: operations['AdminController_claimKyc'];
-    trace?: never;
-  };
-  '/admin/kyc/{userId}/approve': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/kyc/{userId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Approve KYC — bumps user verificationLevel to 1; returns the updated submission */
+        patch: operations["AdminController_approveKyc"];
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Approve KYC — bumps user verificationLevel to 1; returns the updated submission */
-    patch: operations['AdminController_approveKyc'];
-    trace?: never;
-  };
-  '/admin/kyc/{userId}/reject': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/kyc/{userId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Reject KYC with a reason (free text or a configured reasonId); returns the updated submission */
+        patch: operations["AdminController_rejectKyc"];
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Reject KYC with a reason (free text or a configured reasonId); returns the updated submission */
-    patch: operations['AdminController_rejectKyc'];
-    trace?: never;
-  };
-  '/admin/clients': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Paginated, filterable client list */
+        get: operations["AdminController_listClients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Paginated, filterable client list */
-    get: operations['AdminController_listClients'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/clients/{id}/status': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/clients/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Suspend or reactivate a client account (requires users.suspend) */
+        patch: operations["AdminController_setClientStatus"];
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Suspend or reactivate a client account (requires users.suspend) */
-    patch: operations['AdminController_setClientStatus'];
-    trace?: never;
-  };
-  '/admin/rejection-reasons': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/rejection-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List configurable rejection reasons, optionally by context (kyc | withdrawal) */
+        get: operations["AdminController_listRejectionReasons"];
+        put?: never;
+        /** Add a rejection reason (master admin only) */
+        post: operations["AdminController_createRejectionReason"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** List configurable rejection reasons, optionally by context (kyc | withdrawal) */
-    get: operations['AdminController_listRejectionReasons'];
-    put?: never;
-    /** Add a rejection reason (master admin only) */
-    post: operations['AdminController_createRejectionReason'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/rejection-reasons/{id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/rejection-reasons/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Rename a rejection reason (master admin only) */
+        put: operations["AdminController_updateRejectionReason"];
+        post?: never;
+        /** Delete a rejection reason (master admin only) */
+        delete: operations["AdminController_deleteRejectionReason"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    /** Rename a rejection reason (master admin only) */
-    put: operations['AdminController_updateRejectionReason'];
-    post?: never;
-    /** Delete a rejection reason (master admin only) */
-    delete: operations['AdminController_deleteRejectionReason'];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/withdrawals': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/withdrawals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Withdrawal requests with per-state counts (amounts are strings) */
+        get: operations["AdminController_listWithdrawals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Withdrawal requests with per-state counts (amounts are strings) */
-    get: operations['AdminController_listWithdrawals'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/withdrawals/{id}/approve': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/withdrawals/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Approve a pending withdrawal — funds stay on hold until settlement */
+        patch: operations["AdminController_approveWithdrawal"];
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Approve a pending withdrawal — funds stay on hold until settlement */
-    patch: operations['AdminController_approveWithdrawal'];
-    trace?: never;
-  };
-  '/admin/withdrawals/{id}/reject': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/withdrawals/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Reject a pending withdrawal — releases the hold, emails the client */
+        patch: operations["AdminController_rejectWithdrawal"];
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Reject a pending withdrawal — releases the hold, emails the client */
-    patch: operations['AdminController_rejectWithdrawal'];
-    trace?: never;
-  };
-  '/admin/withdrawals/{id}/settle': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/withdrawals/{id}/settle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark an approved withdrawal paid — posts the debit and clears the hold */
+        patch: operations["AdminController_settleWithdrawal"];
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Mark an approved withdrawal paid — posts the debit and clears the hold */
-    patch: operations['AdminController_settleWithdrawal'];
-    trace?: never;
-  };
-  '/admin/ledger': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Append-only ledger, filterable for reconciliation */
+        get: operations["AdminController_listLedger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Append-only ledger, filterable for reconciliation */
-    get: operations['AdminController_listLedger'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/commission-plans': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/commission-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** IB programs / commission plans, ordered by ladder position */
+        get: operations["AdminController_listPrograms"];
+        put?: never;
+        /** Create a commission plan (validated: shares ≤ 100%, mode/value coherence) */
+        post: operations["AdminController_createProgram"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** IB programs / commission plans, ordered by ladder position */
-    get: operations['AdminController_listPrograms'];
-    put?: never;
-    /** Create a commission plan (validated: shares ≤ 100%, mode/value coherence) */
-    post: operations['AdminController_createProgram'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/commission-plans/{id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/commission-plans/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a commission plan — audited with before/after values */
+        put: operations["AdminController_updateProgram"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    /** Update a commission plan — audited with before/after values */
-    put: operations['AdminController_updateProgram'];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/commission-plans/{id}/active': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/commission-plans/{id}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Activate or deactivate a plan — plans are never deleted, accruals reference them */
+        patch: operations["AdminController_setProgramActive"];
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Activate or deactivate a plan — plans are never deleted, accruals reference them */
-    patch: operations['AdminController_setProgramActive'];
-    trace?: never;
-  };
-  '/admin/permissions': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Permission catalog grouped by module (requires roles.view or users.view) */
+        get: operations["AdminController_getPermissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Permission catalog grouped by module (requires roles.view or users.view) */
-    get: operations['AdminController_getPermissions'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/roles': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List RBAC roles (requires roles.view or users.view) */
+        get: operations["AdminController_listRoles"];
+        put?: never;
+        /** Create a custom role (requires roles.manage) */
+        post: operations["AdminController_createRole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** List RBAC roles (requires roles.view or users.view) */
-    get: operations['AdminController_listRoles'];
-    put?: never;
-    /** Create a custom role (requires roles.manage) */
-    post: operations['AdminController_createRole'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/roles/{id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/roles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a custom role (requires roles.manage) */
+        put: operations["AdminController_updateRole"];
+        post?: never;
+        /** Delete a custom role (requires roles.manage) */
+        delete: operations["AdminController_deleteRole"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    /** Update a custom role (requires roles.manage) */
-    put: operations['AdminController_updateRole'];
-    post?: never;
-    /** Delete a custom role (requires roles.manage) */
-    delete: operations['AdminController_deleteRole'];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/users': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List admin accounts (requires users.view) */
+        get: operations["AdminController_listAdmins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** List admin accounts (requires users.view) */
-    get: operations['AdminController_listAdmins'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/users/{id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update an admin’s name, role, or permissions (requires users.edit) */
+        patch: operations["AdminController_updateAdmin"];
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** Update an admin’s name, role, or permissions (requires users.edit) */
-    patch: operations['AdminController_updateAdmin'];
-    trace?: never;
-  };
-  '/admin/audit-log': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Append-only admin action log (master admin only) */
+        get: operations["AdminController_listAuditLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Append-only admin action log (master admin only) */
-    get: operations['AdminController_listAuditLog'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/kyc-config': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/kyc-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get current KYC onboarding steps configuration */
+        get: operations["AdminController_getKycConfig"];
+        /** Update entire KYC onboarding steps configuration */
+        put: operations["AdminController_updateKycConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get current KYC onboarding steps configuration */
-    get: operations['AdminController_getKycConfig'];
-    /** Update entire KYC onboarding steps configuration */
-    put: operations['AdminController_updateKycConfig'];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/kyc-config/steps': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/kyc-config/steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a new KYC step */
+        post: operations["AdminController_addKycStep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Add a new KYC step */
-    post: operations['AdminController_addKycStep'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/kyc-config/steps/{id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/kyc-config/steps/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a specific KYC step */
+        put: operations["AdminController_updateKycStep"];
+        post?: never;
+        /** Delete a KYC step */
+        delete: operations["AdminController_deleteKycStep"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    /** Update a specific KYC step */
-    put: operations['AdminController_updateKycStep'];
-    post?: never;
-    /** Delete a KYC step */
-    delete: operations['AdminController_deleteKycStep'];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/admin/kyc-config/reset': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/admin/kyc-config/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset KYC steps to default */
+        post: operations["AdminController_resetKycConfig"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Reset KYC steps to default */
-    post: operations['AdminController_resetKycConfig'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    RegisterDto: {
-      /** @example John */
-      firstName: string;
-      /** @example Doe */
-      lastName: string;
-      /** @example john@example.com */
-      email: string;
-      /** @example StrongPass123! */
-      password: string;
-      /** @example US */
-      country?: string;
-      /** @example +1234567890 */
-      phone?: string;
+    schemas: {
+        RegisterDto: {
+            /** @example John */
+            firstName: string;
+            /** @example Doe */
+            lastName: string;
+            /** @example john@example.com */
+            email: string;
+            /** @example StrongPass123! */
+            password: string;
+            /** @example US */
+            country?: string;
+            /** @example +1234567890 */
+            phone?: string;
+        };
+        UserProfileDto: {
+            id: string;
+            /** @example client@oxshare.com */
+            email: string;
+            /** @example John */
+            firstName: string;
+            /** @example Doe */
+            lastName: string;
+            /** @enum {string} */
+            type: "individual" | "corporate";
+            /** @enum {string} */
+            status: "active" | "suspended";
+            /**
+             * @description KYC tier. 0 = unverified, 1 = approved.
+             * @example 1
+             */
+            verificationLevel: number;
+            emailVerified: boolean;
+            /** @example United Arab Emirates */
+            country?: string;
+            /** @example +971501234567 */
+            phone?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AuthTokensResponseDto: {
+            /** @description JWT. Also set as a readable cookie. */
+            access_token: string;
+            refresh_token: string;
+            user: components["schemas"]["UserProfileDto"];
+            /** @description Mirrors user.emailVerified; kept for older portal builds. */
+            emailVerified: boolean;
+        };
+        MessageResponseDto: {
+            /** @example Logged out. */
+            message: string;
+        };
+        ResendVerificationDto: {
+            /** @example john@example.com */
+            email: string;
+        };
+        LoginDto: {
+            /** @example john@example.com */
+            email: string;
+            /** @example StrongPass123! */
+            password: string;
+            /** @example CLIENT */
+            role?: string;
+        };
+        WalletDto: {
+            id: string;
+            userId: string;
+            /** @enum {string} */
+            currency: "USD" | "USDT";
+            /**
+             * @description Decimal string (§6.1).
+             * @example 700.00000000
+             */
+            balance: string;
+            /**
+             * @description Reserved against pending withdrawals.
+             * @example 0.00000000
+             */
+            onHold: string;
+            /**
+             * @description balance − onHold, computed server-side so both sides agree.
+             * @example 700.00000000
+             */
+            available: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        LedgerEntryDto: {
+            id: string;
+            walletId: string;
+            userId: string;
+            /** @description Signed monetary value as a string */
+            amount: string;
+            /** @description Running balance after this entry, as a string */
+            balanceAfter: string;
+            /** @enum {string} */
+            entryType: "deposit" | "withdrawal" | "commission" | "rebate" | "payout" | "adjustment";
+            referenceType: string;
+            referenceId: string;
+            /** @enum {string} */
+            currency: "USD" | "USDT";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        LedgerListResponseDto: {
+            items: components["schemas"]["LedgerEntryDto"][];
+            /** @description Total matching entries, ignoring pagination. */
+            total: number;
+            page: number;
+            limit: number;
+        };
+        RequestWithdrawalDto: {
+            /** @example 300.00000000 */
+            amount: string;
+            /** @enum {string} */
+            currency: "USD" | "USDT";
+            /** @description Payout target, e.g. an IBAN or a USDT address. */
+            destination: string;
+            /** @enum {string} */
+            provider: "whish" | "usdt";
+        };
+        TransactionDto: {
+            id: string;
+            userId: string;
+            walletId: string;
+            /** @enum {string} */
+            direction: "deposit" | "withdrawal";
+            /**
+             * @description Decimal string (§6.1).
+             * @example 300.00000000
+             */
+            amount: string;
+            /** @enum {string} */
+            currency: "USD" | "USDT";
+            /** @enum {string} */
+            state: "pending" | "approved" | "rejected" | "success" | "failed";
+            /** @enum {string} */
+            provider?: "whish" | "usdt";
+            /** @description The provider's own reference. Backs UNIQUE(provider, provider_ref), which is what makes settlement idempotent in the database (§6.3). */
+            providerRef?: Record<string, never>;
+            destination?: Record<string, never>;
+            rejectionReason?: Record<string, never>;
+            reviewedBy?: Record<string, never>;
+            reviewedAt?: Record<string, never>;
+            settledAt?: Record<string, never>;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        KycFieldConfigDto: {
+            /** @example f-1 */
+            id: string;
+            /**
+             * @description Machine name the portal submits.
+             * @example firstName
+             */
+            name: string;
+            /** @example First Name */
+            label: string;
+            /** @enum {string} */
+            type: "text" | "date" | "phone" | "select" | "file" | "camera" | "checkbox";
+            required: boolean;
+            /** @description Choices, for type: select. */
+            options?: string[];
+            /** @example As on your ID */
+            hint?: string;
+        };
+        KycStepConfigDto: {
+            /** @example step-1 */
+            id: string;
+            /** @example 1 */
+            stepNumber: number;
+            /**
+             * @description Submitted as the `step` key on POST /kyc/step.
+             * @example personal
+             */
+            slug: string;
+            /** @example Personal Information */
+            title: string;
+            description?: string;
+            /**
+             * @description lucide icon name.
+             * @example User
+             */
+            icon?: string;
+            enabled: boolean;
+            fields: components["schemas"]["KycFieldConfigDto"][];
+        };
+        KycDocumentStateDto: {
+            /** @example passport */
+            docType?: string;
+            frontFilePath?: string;
+            frontFileName?: string;
+            backFilePath?: string;
+            backFileName?: string;
+        };
+        KycFileStateDto: {
+            filePath?: string;
+            fileName?: string;
+            /** @example utility_bill */
+            docType?: string;
+            /** @description Second page, for multi-page address proof. */
+            page2FilePath?: string;
+        };
+        KycStatusDto: {
+            userId: string;
+            /** @enum {string} */
+            status: "not_started" | "in_progress" | "submitted" | "under_review" | "approved" | "rejected";
+            /** @description Free-form key/value bag whose keys come from the step configuration. */
+            personalInfo?: {
+                [key: string]: unknown;
+            };
+            document?: components["schemas"]["KycDocumentStateDto"];
+            selfie?: components["schemas"]["KycFileStateDto"];
+            addressProof?: components["schemas"]["KycFileStateDto"];
+            /** @description Set when status is rejected. */
+            rejectionReason?: string;
+            /** @description Field names the client must re-submit. */
+            rejectedFields?: string[];
+            /** Format: date-time */
+            submittedAt?: string;
+            reviewedBy?: string;
+            /** Format: date-time */
+            reviewedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        SaveKycStepDto: {
+            /** @example personal */
+            step: string;
+            /**
+             * @example {
+             *       "firstName": "John",
+             *       "lastName": "Doe"
+             *     }
+             */
+            data: {
+                [key: string]: unknown;
+            };
+        };
+        PermissionItemDto: {
+            key: string;
+            label: string;
+        };
+        PermissionModuleDto: {
+            moduleName: string;
+            description: string;
+            permissions: components["schemas"]["PermissionItemDto"][];
+        };
+        AdminLoginDto: {
+            /** @example admin@oxshare.com */
+            email: string;
+            /** @example admin123 */
+            password: string;
+        };
+        AdminProfileDto: {
+            id: string;
+            email: string;
+            name: string;
+            /** @enum {string} */
+            role: "master_admin" | "sub_admin";
+            permissions: string[];
+            roleId?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminLoginResponseDto: {
+            admin: components["schemas"]["AdminProfileDto"];
+            accessToken: string;
+            refreshToken: string;
+        };
+        InviteDto: {
+            /** @example new.admin@oxshare.com */
+            email: string;
+            /** @example Jane Doe */
+            name: string;
+            /** @description Existing role id to assign on acceptance. */
+            roleId?: string;
+            /** @description Explicit permission keys, when not assigning a role. */
+            permissions?: string[];
+        };
+        InviteResponseDto: {
+            message: string;
+            /** @description Dev only — removed in production */
+            token: string;
+            inviteUrl: string;
+        };
+        AcceptInviteDto: {
+            /** @description Single-use token from the invitation email. */
+            token: string;
+            password: string;
+        };
+        KycDocumentDto: {
+            docType?: string;
+            frontFilePath?: string;
+            backFilePath?: string;
+            frontFileName?: string;
+            backFileName?: string;
+        };
+        KycSelfieDto: {
+            filePath?: string;
+            fileName?: string;
+        };
+        KycAddressProofDto: {
+            docType?: string;
+            filePath?: string;
+            fileName?: string;
+            page2FilePath?: string;
+            page2FileName?: string;
+        };
+        KycUserDto: {
+            id: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+        };
+        KycSubmissionDto: {
+            userId: string;
+            /** @enum {string} */
+            status: "not_started" | "in_progress" | "submitted" | "under_review" | "approved" | "rejected";
+            /** Format: date-time */
+            submittedAt?: string;
+            /** Format: date-time */
+            reviewedAt?: string;
+            reviewedBy?: string;
+            rejectionReason?: string;
+            rejectedFields?: string[];
+            personalInfo?: {
+                [key: string]: string;
+            };
+            document?: components["schemas"]["KycDocumentDto"];
+            selfie?: components["schemas"]["KycSelfieDto"];
+            addressProof?: components["schemas"]["KycAddressProofDto"];
+            user?: components["schemas"]["KycUserDto"] | null;
+        };
+        KycListResponseDto: {
+            items: components["schemas"]["KycSubmissionDto"][];
+            total: number;
+            page: number;
+            limit: number;
+            counts: {
+                [key: string]: number;
+            };
+        };
+        RejectDto: {
+            /** @description Free-text reason, when not using a configured reasonId. */
+            reason?: string;
+            /** @description Id of a configured rejection reason. */
+            reasonId?: string;
+            /** @description Field names the client must re-submit, e.g. ["doc_front"]. */
+            rejectedFields?: string[];
+        };
+        ClientRowDto: {
+            id: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+            /** @enum {string} */
+            type: "individual" | "referral" | "partner";
+            /** @enum {string} */
+            status: "active" | "pending" | "suspended";
+            /** @enum {number} */
+            verificationLevel: 0 | 1;
+            country?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ClientListResponseDto: {
+            items: components["schemas"]["ClientRowDto"][];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        ClientStatusDto: {
+            /**
+             * @description Suspending blocks sign-in but preserves the client and their ledger history.
+             * @enum {string}
+             */
+            status: "active" | "suspended";
+        };
+        RejectionReasonResponseDto: {
+            id: string;
+            /** @enum {string} */
+            context: "kyc" | "withdrawal";
+            label: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        RejectionReasonDto: {
+            /** @enum {string} */
+            context: "kyc" | "withdrawal";
+            /** @example Document expired */
+            label: string;
+        };
+        WithdrawalUserDto: {
+            id: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+        };
+        WithdrawalRowDto: {
+            id: string;
+            /** @description Monetary value — always a string, never a number */
+            amount: string;
+            /** @enum {string} */
+            currency: "USD" | "USDT";
+            /** @enum {string} */
+            state: "pending" | "approved" | "success" | "failure" | "rejected";
+            provider: string;
+            providerRef?: string | null;
+            destination?: string | null;
+            rejectionReason?: string | null;
+            /** Format: date-time */
+            requestedAt: string;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            /** Format: date-time */
+            settledAt?: string | null;
+            user: components["schemas"]["WithdrawalUserDto"];
+        };
+        WithdrawalListResponseDto: {
+            items: components["schemas"]["WithdrawalRowDto"][];
+            total: number;
+            page: number;
+            limit: number;
+            counts: {
+                [key: string]: number;
+            };
+        };
+        WithdrawalRejectDto: {
+            /** @description Free-text reason, when not using a configured reasonId. */
+            reason?: string;
+            /** @description Id of a configured rejection reason. */
+            reasonId?: string;
+        };
+        SettleWithdrawalDto: {
+            /** @example wise-tx-9f3a1c */
+            providerRef: string;
+        };
+        IbProgramDto: {
+            id: string;
+            name: string;
+            description?: string | null;
+            position: number;
+            /** @enum {string} */
+            mode: "commission" | "rebate" | "hybrid";
+            /** @enum {string} */
+            method: "spread_share" | "per_lot" | "fixed_per_deal";
+            /** @description Percentage or money depending on method — always a string */
+            commissionValue: string;
+            /** @description Client rebate value — always a string */
+            rebateValue: string;
+            /** @description L1 share of the commission pool, percent as a string */
+            l1Share: string;
+            /** @description L2 share of the commission pool, percent as a string */
+            l2Share: string;
+            /** @description Hours accruals wait before confirming (§12.6) */
+            settlementWindowHours: number;
+            /** @description Credit the client rebate on deal close instead of after the window (§12.8) */
+            rebateOnClose: boolean;
+            selectable: boolean;
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ProgramDto: {
+            /** @example Standard IB */
+            name: string;
+            description?: string;
+            /** @description Display order in the plan list. */
+            position?: number;
+            /** @enum {string} */
+            mode: "commission" | "rebate" | "hybrid";
+            /** @enum {string} */
+            method: "spread_share" | "per_lot" | "fixed_per_deal";
+            /**
+             * @description Money/percent as a decimal string (§6.1) — never a number.
+             * @example 12.50000000
+             */
+            commissionValue: string;
+            /** @example 2.00000000 */
+            rebateValue?: string;
+            /**
+             * @description Level-1 IB share, percent as a decimal string.
+             * @example 70.00000000
+             */
+            l1Share: string;
+            /**
+             * @description Level-2 IB share. Resolution stops at L2 — there is no L3.
+             * @example 30.00000000
+             */
+            l2Share: string;
+            /** @description Hours an accrual is held before it can be confirmed. */
+            settlementWindowHours?: number;
+            /** @description Pay the rebate on position close rather than on open. */
+            rebateOnClose?: boolean;
+            /** @description Offer this plan to IBs for self-selection. */
+            selectable?: boolean;
+            active?: boolean;
+        };
+        ProgramActiveDto: {
+            active: boolean;
+        };
+        RoleResponseDto: {
+            id: string;
+            name: string;
+            description?: string;
+            permissions: string[];
+            isSystem: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        RoleDto: {
+            /** @example KYC Reviewer */
+            name: string;
+            description?: string;
+            /**
+             * @description Permission keys from GET /admin/permissions.
+             * @example [
+             *       "kyc.view",
+             *       "kyc.review"
+             *     ]
+             */
+            permissions: string[];
+        };
+        UpdateRoleDto: {
+            name?: string;
+            description?: string;
+            permissions?: string[];
+        };
+        UpdateAdminDto: {
+            name?: string;
+            /** @description Reassign to an existing role. */
+            roleId?: string;
+            /** @description Direct permission grants. */
+            permissions?: string[];
+        };
+        AuditEntryDto: {
+            id: string;
+            actorId: string;
+            actorEmail: string;
+            action: string;
+            subjectType: string;
+            subjectId: string;
+            details?: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AuditListResponseDto: {
+            items: components["schemas"]["AuditEntryDto"][];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        KycFieldDto: {
+            id: string;
+            /**
+             * @description Machine name submitted by the portal.
+             * @example firstName
+             */
+            name: string;
+            /** @example First Name */
+            label: string;
+            /** @enum {string} */
+            type: "text" | "date" | "phone" | "select" | "file" | "camera" | "checkbox";
+            required: boolean;
+            /** @description Choices, for type: select. */
+            options?: string[];
+            /** @example As shown on your ID */
+            hint?: string;
+        };
+        KycStepDto: {
+            id?: string;
+            /** @description Server-assigned ordering; ignored on create. */
+            stepNumber?: number;
+            /** @example personal */
+            slug: string;
+            /** @example Personal Information */
+            title: string;
+            description?: string;
+            /**
+             * @description lucide icon name.
+             * @example User
+             */
+            icon?: string;
+            enabled?: boolean;
+            fields: components["schemas"]["KycFieldDto"][];
+        };
+        KycConfigDto: {
+            steps: components["schemas"]["KycStepDto"][];
+        };
     };
-    ResendVerificationDto: {
-      /** @example john@example.com */
-      email: string;
-    };
-    LoginDto: {
-      /** @example john@example.com */
-      email: string;
-      /** @example StrongPass123! */
-      password: string;
-      /** @example CLIENT */
-      role?: string;
-    };
-    RequestWithdrawalDto: Record<string, never>;
-    PermissionItemDto: {
-      key: string;
-      label: string;
-    };
-    PermissionModuleDto: {
-      moduleName: string;
-      description: string;
-      permissions: components['schemas']['PermissionItemDto'][];
-    };
-    AdminLoginDto: Record<string, never>;
-    AdminProfileDto: {
-      id: string;
-      email: string;
-      name: string;
-      /** @enum {string} */
-      role: 'master_admin' | 'sub_admin';
-      permissions: string[];
-      roleId?: string;
-      /** Format: date-time */
-      createdAt: string;
-    };
-    AdminLoginResponseDto: {
-      admin: components['schemas']['AdminProfileDto'];
-      accessToken: string;
-      refreshToken: string;
-    };
-    MessageResponseDto: {
-      message: string;
-    };
-    InviteDto: Record<string, never>;
-    InviteResponseDto: {
-      message: string;
-      /** @description Dev only — removed in production */
-      token: string;
-      inviteUrl: string;
-    };
-    AcceptInviteDto: Record<string, never>;
-    KycDocumentDto: {
-      docType?: string;
-      frontFilePath?: string;
-      backFilePath?: string;
-      frontFileName?: string;
-      backFileName?: string;
-    };
-    KycSelfieDto: {
-      filePath?: string;
-      fileName?: string;
-    };
-    KycAddressProofDto: {
-      docType?: string;
-      filePath?: string;
-      fileName?: string;
-      page2FilePath?: string;
-      page2FileName?: string;
-    };
-    KycUserDto: {
-      id: string;
-      email: string;
-      firstName: string;
-      lastName: string;
-    };
-    KycSubmissionDto: {
-      userId: string;
-      /** @enum {string} */
-      status:
-        'not_started' | 'in_progress' | 'submitted' | 'under_review' | 'approved' | 'rejected';
-      /** Format: date-time */
-      submittedAt?: string;
-      /** Format: date-time */
-      reviewedAt?: string;
-      reviewedBy?: string;
-      rejectionReason?: string;
-      rejectedFields?: string[];
-      personalInfo?: {
-        [key: string]: string;
-      };
-      document?: components['schemas']['KycDocumentDto'];
-      selfie?: components['schemas']['KycSelfieDto'];
-      addressProof?: components['schemas']['KycAddressProofDto'];
-      user?: components['schemas']['KycUserDto'] | null;
-    };
-    KycListResponseDto: {
-      items: components['schemas']['KycSubmissionDto'][];
-      total: number;
-      page: number;
-      limit: number;
-      counts: {
-        [key: string]: number;
-      };
-    };
-    RejectDto: Record<string, never>;
-    ClientRowDto: {
-      id: string;
-      email: string;
-      firstName: string;
-      lastName: string;
-      /** @enum {string} */
-      type: 'individual' | 'referral' | 'partner';
-      /** @enum {string} */
-      status: 'active' | 'pending' | 'suspended';
-      /** @enum {number} */
-      verificationLevel: 0 | 1;
-      country?: string;
-      /** Format: date-time */
-      createdAt: string;
-    };
-    ClientListResponseDto: {
-      items: components['schemas']['ClientRowDto'][];
-      total: number;
-      page: number;
-      limit: number;
-    };
-    ClientStatusDto: Record<string, never>;
-    RejectionReasonResponseDto: {
-      id: string;
-      /** @enum {string} */
-      context: 'kyc' | 'withdrawal';
-      label: string;
-      /** Format: date-time */
-      createdAt: string;
-    };
-    RejectionReasonDto: Record<string, never>;
-    WithdrawalUserDto: {
-      id: string;
-      email: string;
-      firstName: string;
-      lastName: string;
-    };
-    WithdrawalRowDto: {
-      id: string;
-      /** @description Monetary value — always a string, never a number */
-      amount: string;
-      /** @enum {string} */
-      currency: 'USD' | 'USDT';
-      /** @enum {string} */
-      state: 'pending' | 'approved' | 'success' | 'failure' | 'rejected';
-      provider: string;
-      providerRef?: string | null;
-      destination?: string | null;
-      rejectionReason?: string | null;
-      /** Format: date-time */
-      requestedAt: string;
-      /** Format: date-time */
-      reviewedAt?: string | null;
-      /** Format: date-time */
-      settledAt?: string | null;
-      user: components['schemas']['WithdrawalUserDto'];
-    };
-    WithdrawalListResponseDto: {
-      items: components['schemas']['WithdrawalRowDto'][];
-      total: number;
-      page: number;
-      limit: number;
-      counts: {
-        [key: string]: number;
-      };
-    };
-    WithdrawalRejectDto: Record<string, never>;
-    SettleWithdrawalDto: Record<string, never>;
-    LedgerEntryDto: {
-      id: string;
-      walletId: string;
-      userId: string;
-      /** @description Signed monetary value as a string */
-      amount: string;
-      /** @description Running balance after this entry, as a string */
-      balanceAfter: string;
-      /** @enum {string} */
-      entryType: 'deposit' | 'withdrawal' | 'commission' | 'rebate' | 'payout' | 'adjustment';
-      referenceType: string;
-      referenceId: string;
-      /** @enum {string} */
-      currency: 'USD' | 'USDT';
-      /** Format: date-time */
-      createdAt: string;
-    };
-    LedgerListResponseDto: {
-      items: components['schemas']['LedgerEntryDto'][];
-      total: number;
-      page: number;
-      limit: number;
-    };
-    IbProgramDto: {
-      id: string;
-      name: string;
-      description?: string | null;
-      position: number;
-      /** @enum {string} */
-      mode: 'commission' | 'rebate' | 'hybrid';
-      /** @enum {string} */
-      method: 'spread_share' | 'per_lot' | 'fixed_per_deal';
-      /** @description Percentage or money depending on method — always a string */
-      commissionValue: string;
-      /** @description Client rebate value — always a string */
-      rebateValue: string;
-      /** @description L1 share of the commission pool, percent as a string */
-      l1Share: string;
-      /** @description L2 share of the commission pool, percent as a string */
-      l2Share: string;
-      /** @description Hours accruals wait before confirming (§12.6) */
-      settlementWindowHours: number;
-      /** @description Credit the client rebate on deal close instead of after the window (§12.8) */
-      rebateOnClose: boolean;
-      selectable: boolean;
-      active: boolean;
-      /** Format: date-time */
-      createdAt: string;
-      /** Format: date-time */
-      updatedAt: string;
-    };
-    ProgramDto: Record<string, never>;
-    ProgramActiveDto: Record<string, never>;
-    RoleResponseDto: {
-      id: string;
-      name: string;
-      description?: string;
-      permissions: string[];
-      isSystem: boolean;
-      /** Format: date-time */
-      createdAt: string;
-    };
-    RoleDto: Record<string, never>;
-    UpdateRoleDto: Record<string, never>;
-    UpdateAdminDto: Record<string, never>;
-    AuditEntryDto: {
-      id: string;
-      actorId: string;
-      actorEmail: string;
-      action: string;
-      subjectType: string;
-      subjectId: string;
-      details?: {
-        [key: string]: unknown;
-      };
-      /** Format: date-time */
-      createdAt: string;
-    };
-    AuditListResponseDto: {
-      items: components['schemas']['AuditEntryDto'][];
-      total: number;
-      page: number;
-      limit: number;
-    };
-    KycConfigDto: Record<string, never>;
-    KycStepDto: Record<string, never>;
-  };
-  responses: never;
-  parameters: never;
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  HealthController_check: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_register[0]': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['RegisterDto'];
-      };
-    };
-    responses: {
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_register[1]': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['RegisterDto'];
-      };
-    };
-    responses: {
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_verifyEmail[0]': {
-    parameters: {
-      query: {
-        token: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_verifyEmail[1]': {
-    parameters: {
-      query: {
-        token: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_resendVerification[0]': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ResendVerificationDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_resendVerification[1]': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ResendVerificationDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_login[0]': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['LoginDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_login[1]': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['LoginDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_refresh[0]': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_refresh[1]': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_logout[0]': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_logout[1]': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_me[0]': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  'AuthController_me[1]': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  TradingController_ping: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  PartnersController_ping: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  WalletController_myWallets: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  WalletController_myLedger: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  PaymentsController_requestWithdrawal: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['RequestWithdrawalDto'];
-      };
-    };
-    responses: {
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  PaymentsController_myTransactions: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  KycController_getConfig: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  KycController_status: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  KycController_saveStep: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  KycController_uploadFile: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  KycController_submit: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  KycController_reset: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  UploadsController_serveKycFile: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        file: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  AdminController_login: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['AdminLoginDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['AdminLoginResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_refresh: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['AdminLoginResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_logout: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['MessageResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_me: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['AdminProfileDto'];
-        };
-      };
-    };
-  };
-  AdminController_invite: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['InviteDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['InviteResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_validateInvite: {
-    parameters: {
-      query: {
-        token: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  AdminController_acceptInvite: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['AcceptInviteDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  AdminController_listKyc: {
-    parameters: {
-      query: {
-        status: string;
-        q: string;
-        page: string;
-        limit: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['KycListResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_getKyc: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        userId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['KycSubmissionDto'];
-        };
-      };
-    };
-  };
-  AdminController_claimKyc: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        userId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['KycSubmissionDto'];
-        };
-      };
-    };
-  };
-  AdminController_approveKyc: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        userId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['KycSubmissionDto'];
-        };
-      };
-    };
-  };
-  AdminController_rejectKyc: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        userId: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['RejectDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['KycSubmissionDto'];
-        };
-      };
-    };
-  };
-  AdminController_listClients: {
-    parameters: {
-      query: {
-        page: string;
-        limit: string;
-        q: string;
-        type: string;
-        status: string;
-        level: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ClientListResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_setClientStatus: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ClientStatusDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  AdminController_listRejectionReasons: {
-    parameters: {
-      query: {
-        context: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['RejectionReasonResponseDto'][];
-        };
-      };
-    };
-  };
-  AdminController_createRejectionReason: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['RejectionReasonDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['RejectionReasonResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_updateRejectionReason: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['RejectionReasonResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_deleteRejectionReason: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['MessageResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_listWithdrawals: {
-    parameters: {
-      query: {
-        state: string;
-        page: string;
-        limit: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WithdrawalListResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_approveWithdrawal: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WithdrawalRowDto'];
-        };
-      };
-    };
-  };
-  AdminController_rejectWithdrawal: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['WithdrawalRejectDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WithdrawalRowDto'];
-        };
-      };
-    };
-  };
-  AdminController_settleWithdrawal: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['SettleWithdrawalDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WithdrawalRowDto'];
-        };
-      };
-    };
-  };
-  AdminController_listLedger: {
-    parameters: {
-      query: {
-        userId: string;
-        walletId: string;
-        entryType: string;
-        page: string;
-        limit: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['LedgerListResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_listPrograms: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['IbProgramDto'][];
-        };
-      };
-    };
-  };
-  AdminController_createProgram: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ProgramDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['IbProgramDto'];
-        };
-      };
-    };
-  };
-  AdminController_updateProgram: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ProgramDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['IbProgramDto'];
-        };
-      };
-    };
-  };
-  AdminController_setProgramActive: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ProgramActiveDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['IbProgramDto'];
-        };
-      };
-    };
-  };
-  AdminController_getPermissions: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': {
-            [key: string]: components['schemas']['PermissionModuleDto'];
-          };
-        };
-      };
-    };
-  };
-  AdminController_listRoles: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['RoleResponseDto'][];
-        };
-      };
-    };
-  };
-  AdminController_createRole: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['RoleDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['RoleResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_updateRole: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['UpdateRoleDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['RoleResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_deleteRole: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['MessageResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_listAdmins: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['AdminProfileDto'][];
-        };
-      };
-    };
-  };
-  AdminController_updateAdmin: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['UpdateAdminDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['AdminProfileDto'];
-        };
-      };
-    };
-  };
-  AdminController_listAuditLog: {
-    parameters: {
-      query: {
-        page: string;
-        limit: string;
-        action: string;
-        subjectType: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['AuditListResponseDto'];
-        };
-      };
-    };
-  };
-  AdminController_getKycConfig: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  AdminController_updateKycConfig: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['KycConfigDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  AdminController_addKycStep: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['KycStepDto'];
-      };
-    };
-    responses: {
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  AdminController_updateKycStep: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['KycStepDto'];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  AdminController_deleteKycStep: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
-  AdminController_resetKycConfig: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
+    HealthController_check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "AuthController_register[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthTokensResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_register[1]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthTokensResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_verifyEmail[0]": {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_verifyEmail[1]": {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_resendVerification[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResendVerificationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_resendVerification[1]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResendVerificationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_login[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthTokensResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_login[1]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthTokensResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_refresh[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthTokensResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_refresh[1]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthTokensResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_logout[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_logout[1]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_me[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfileDto"];
+                };
+            };
+        };
+    };
+    "AuthController_me[1]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfileDto"];
+                };
+            };
+        };
+    };
+    TradingController_ping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PartnersController_ping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    WalletController_myWallets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletDto"][];
+                };
+            };
+        };
+    };
+    WalletController_myLedger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerListResponseDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_requestWithdrawal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestWithdrawalDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_myTransactions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionDto"][];
+                };
+            };
+        };
+    };
+    KycController_getConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KycStepConfigDto"][];
+                };
+            };
+        };
+    };
+    KycController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KycStatusDto"];
+                };
+            };
+        };
+    };
+    KycController_saveStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveKycStepDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    KycController_uploadFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                    /** @example doc_front */
+                    field: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    KycController_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    KycController_reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UploadsController_serveKycFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminController_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminLoginDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminLoginResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminLoginResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProfileDto"];
+                };
+            };
+        };
+    };
+    AdminController_invite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_validateInvite: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminController_acceptInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInviteDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminController_listKyc: {
+        parameters: {
+            query: {
+                status: string;
+                q: string;
+                page: string;
+                limit: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KycListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_getKyc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KycSubmissionDto"];
+                };
+            };
+        };
+    };
+    AdminController_claimKyc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KycSubmissionDto"];
+                };
+            };
+        };
+    };
+    AdminController_approveKyc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KycSubmissionDto"];
+                };
+            };
+        };
+    };
+    AdminController_rejectKyc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KycSubmissionDto"];
+                };
+            };
+        };
+    };
+    AdminController_listClients: {
+        parameters: {
+            query: {
+                page: string;
+                limit: string;
+                q: string;
+                type: string;
+                status: string;
+                level: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_setClientStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientStatusDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminController_listRejectionReasons: {
+        parameters: {
+            query: {
+                context: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RejectionReasonResponseDto"][];
+                };
+            };
+        };
+    };
+    AdminController_createRejectionReason: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectionReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RejectionReasonResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_updateRejectionReason: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RejectionReasonResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_deleteRejectionReason: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_listWithdrawals: {
+        parameters: {
+            query: {
+                state: string;
+                page: string;
+                limit: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WithdrawalListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_approveWithdrawal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WithdrawalRowDto"];
+                };
+            };
+        };
+    };
+    AdminController_rejectWithdrawal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawalRejectDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WithdrawalRowDto"];
+                };
+            };
+        };
+    };
+    AdminController_settleWithdrawal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettleWithdrawalDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WithdrawalRowDto"];
+                };
+            };
+        };
+    };
+    AdminController_listLedger: {
+        parameters: {
+            query: {
+                userId: string;
+                walletId: string;
+                entryType: string;
+                page: string;
+                limit: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_listPrograms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbProgramDto"][];
+                };
+            };
+        };
+    };
+    AdminController_createProgram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbProgramDto"];
+                };
+            };
+        };
+    };
+    AdminController_updateProgram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbProgramDto"];
+                };
+            };
+        };
+    };
+    AdminController_setProgramActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramActiveDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbProgramDto"];
+                };
+            };
+        };
+    };
+    AdminController_getPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: components["schemas"]["PermissionModuleDto"];
+                    };
+                };
+            };
+        };
+    };
+    AdminController_listRoles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleResponseDto"][];
+                };
+            };
+        };
+    };
+    AdminController_createRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_updateRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRoleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_deleteRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_listAdmins: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProfileDto"][];
+                };
+            };
+        };
+    };
+    AdminController_updateAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAdminDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProfileDto"];
+                };
+            };
+        };
+    };
+    AdminController_listAuditLog: {
+        parameters: {
+            query: {
+                page: string;
+                limit: string;
+                action: string;
+                subjectType: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminController_getKycConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminController_updateKycConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KycConfigDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminController_addKycStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KycStepDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminController_updateKycStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KycStepDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminController_deleteKycStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminController_resetKycConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
 }

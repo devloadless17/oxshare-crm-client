@@ -5,31 +5,19 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, startProactiveRefresh } from '@/lib/api/client';
 import { authApi } from '@/lib/api/auth';
 
+import type { components } from '@/lib/api/types.gen';
+
 /**
- * Hand-written, and it should not be.
+ * Aliased from the schema generated out of the backend's Swagger, so a backend
+ * rename is a compile error rather than a runtime surprise.
  *
- * The admin app aliases every response type out of types.gen.ts, so a backend
- * rename is a compile error. `npm run gen:api-types` is wired up here too, but
- * the identity controller carries no @ApiOkResponse DTOs — GET /auth/me is
- * documented in Swagger with `content?: never`, so there is nothing to alias.
- *
- * Replace this with `components['schemas'][...]` the moment those DTOs exist.
- * Until then this shape is an assumption, and a backend field rename fails
- * silently at runtime rather than loudly at build time.
+ * This was hand-written until GET /auth/me gained a `UserProfileDto`. The
+ * hand-written copy had already drifted in three places: it declared
+ * `type: 'referral' | 'partner'` (the backend enum is `individual | corporate`),
+ * a `status: 'pending'` that does not exist, and `verificationLevel: 0 | 1`
+ * where the backend returns a plain number.
  */
-export interface UserProfile {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  type: 'individual' | 'referral' | 'partner';
-  status: 'active' | 'suspended' | 'pending';
-  verificationLevel: 0 | 1;
-  emailVerified: boolean;
-  country?: string;
-  phone?: string;
-  createdAt: string;
-}
+export type UserProfile = components['schemas']['UserProfileDto'];
 
 interface UserContextType {
   user: UserProfile | null;
