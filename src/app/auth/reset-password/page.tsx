@@ -7,6 +7,7 @@ import { Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-re
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { t } from '@/lib/i18n';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -24,12 +25,12 @@ function ResetPasswordForm() {
     setError(null);
 
     if (!token) {
-      setError('Password reset token is missing.');
+      setError(t('auth.reset.missingToken'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError(t('auth.reset.mismatch'));
       return;
     }
 
@@ -39,7 +40,7 @@ function ResetPasswordForm() {
       await api.auth.resetPassword(token, newPassword);
       setSuccess(true);
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, 'Password reset failed.'));
+      setError(apiErrorMessage(err, t('auth.reset.failed')));
     } finally {
       setIsLoading(false);
     }
@@ -56,12 +57,12 @@ function ResetPasswordForm() {
           <div className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
-            <span className="text-xl font-semibold tracking-wide text-foreground">OXShare</span>
+            <span className="text-xl font-semibold tracking-wide text-foreground">
+              {t('app.name')}
+            </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Set New Password</h1>
-          <p className="text-xs text-muted-foreground">
-            Enter a new secure password for your account
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">{t('auth.reset.heading')}</h1>
+          <p className="text-xs text-muted-foreground">{t('auth.reset.tagline')}</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5">
@@ -75,22 +76,20 @@ function ResetPasswordForm() {
           {success ? (
             <div className="py-4 text-center space-y-4">
               <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
-              <h2 className="text-base font-bold text-success">Password Reset Successful!</h2>
-              <p className="text-xs text-muted-foreground">
-                Your password has been updated. You can now log in.
-              </p>
+              <h2 className="text-base font-bold text-success">{t('auth.reset.successTitle')}</h2>
+              <p className="text-xs text-muted-foreground">{t('auth.reset.successBody')}</p>
               <Link
                 href="/auth/login"
                 className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
               >
-                Sign In to Portal
+                {t('auth.reset.signInCta')}
               </Link>
             </div>
           ) : (
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               <div className="space-y-1.5">
                 <label htmlFor="newPassword" className="text-xs font-semibold text-foreground">
-                  New Password
+                  {t('auth.reset.newPassword')}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -100,7 +99,7 @@ function ResetPasswordForm() {
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder={t('auth.login.passwordPlaceholder')}
                     className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-10 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <button
@@ -115,7 +114,7 @@ function ResetPasswordForm() {
 
               <div className="space-y-1.5">
                 <label htmlFor="confirmPassword" className="text-xs font-semibold text-foreground">
-                  Confirm Password
+                  {t('auth.reset.confirmPassword')}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -125,7 +124,7 @@ function ResetPasswordForm() {
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder={t('auth.login.passwordPlaceholder')}
                     className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-10 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
@@ -139,10 +138,10 @@ function ResetPasswordForm() {
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Resetting Password...</span>
+                    <span>{t('auth.reset.submitting')}</span>
                   </>
                 ) : (
-                  <span>Update Password</span>
+                  <span>{t('auth.reset.submitCta')}</span>
                 )}
               </button>
             </form>
@@ -158,7 +157,7 @@ export default function ResetPasswordPage() {
     <React.Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">
-          Loading...
+          {t('common.loadingEllipsis')}
         </div>
       }
     >

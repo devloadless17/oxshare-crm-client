@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import api from '@/lib/api';
+import { t } from '@/lib/i18n';
 
 export default function VerifyPendingPage() {
   const [email, setEmail] = useState('');
@@ -20,19 +21,16 @@ export default function VerifyPendingPage() {
     <div className="pending-wrap">
       <div className="pending-card">
         <div className="pending-icon">📬</div>
-        <h2>Check your inbox</h2>
-        <p>
-          We sent a verification link to your email address. Click the link to verify your account
-          and get started.
-        </p>
-        <p className="note">Didn&apos;t receive it? Check your spam folder, or resend below.</p>
+        <h2>{t('auth.verify.checkInbox')}</h2>
+        <p>{t('auth.verify.pendingBodyLong')}</p>
+        <p className="note">{t('auth.verify.spamHint')}</p>
 
         {!sent ? (
           <div className="resend-form">
             <input
               className="resend-input"
               type="email"
-              placeholder="Your email address"
+              placeholder={t('auth.verify.emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -41,11 +39,11 @@ export default function VerifyPendingPage() {
               onClick={() => void resend()}
               disabled={loading || !email}
             >
-              {loading ? 'Sending...' : 'Resend link'}
+              {loading ? t('auth.verify.sending') : t('auth.verify.resendLink')}
             </button>
           </div>
         ) : (
-          <div className="sent-note">✓ Sent! Check your inbox again.</div>
+          <div className="sent-note">{t('auth.verify.resendConfirmed')}</div>
         )}
       </div>
 

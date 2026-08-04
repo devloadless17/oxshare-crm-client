@@ -35,7 +35,20 @@ const I18N_ENFORCED = [
   'src/app/auth/register/page.tsx',
   'src/app/wallet/page.tsx',
   'src/app/kyc/submitted/page.tsx',
+  'src/app/auth/forgot-password/page.tsx',
+  'src/app/auth/reset-password/page.tsx',
+  'src/app/auth/verify-email/page.tsx',
 ];
+
+/*
+ * NOT enforced yet, and why — so the gap is a decision rather than an oversight.
+ *
+ * src/app/verify-email/pending/page.tsx: its copy IS externalised, but the file
+ * uses styled-jsx, and `jsx-no-literals` flags the CSS template literal as a
+ * string child. Adding it would mean either suppressing the rule on the file —
+ * which enforces nothing — or converting the screen to Tailwind, which is a
+ * rewrite this change has no business doing. Convert the screen, then add it.
+ */
 
 /**
  * Text that is not copy: punctuation, separators and symbols a translator would

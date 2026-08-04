@@ -6,6 +6,7 @@ import { Mail, Loader2, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-reac
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { t } from '@/lib/i18n';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = React.useState('');
@@ -24,7 +25,7 @@ export default function ForgotPasswordPage() {
       await api.auth.forgotPassword(email);
       setSuccess(true);
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, 'Failed to request password reset.'));
+      setError(apiErrorMessage(err, t('auth.forgot.failed')));
     } finally {
       setIsLoading(false);
     }
@@ -41,12 +42,12 @@ export default function ForgotPasswordPage() {
           <div className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
-            <span className="text-xl font-semibold tracking-wide text-foreground">OXShare</span>
+            <span className="text-xl font-semibold tracking-wide text-foreground">
+              {t('app.name')}
+            </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Forgot Password</h1>
-          <p className="text-xs text-muted-foreground">
-            Enter your email to receive a password reset link
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">{t('auth.forgot.heading')}</h1>
+          <p className="text-xs text-muted-foreground">{t('auth.forgot.tagline')}</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5">
@@ -60,23 +61,22 @@ export default function ForgotPasswordPage() {
           {success ? (
             <div className="py-4 text-center space-y-4">
               <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
-              <h2 className="text-base font-bold text-success">Reset Email Sent!</h2>
+              <h2 className="text-base font-bold text-success">{t('auth.forgot.sentTitle')}</h2>
               <p className="text-xs text-muted-foreground">
-                If an account exists with <span className="font-semibold">{email}</span>, you will
-                receive a reset link shortly.
+                {t('auth.forgot.sentBody', { email })}
               </p>
               <Link
                 href="/auth/login"
                 className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
               >
-                Return to Sign In
+                {t('auth.forgot.returnToSignIn')}
               </Link>
             </div>
           ) : (
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               <div className="space-y-1.5">
                 <label htmlFor="email" className="text-xs font-semibold text-foreground">
-                  Email Address
+                  {t('auth.register.email')}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -86,7 +86,7 @@ export default function ForgotPasswordPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
+                    placeholder={t('auth.login.emailPlaceholder')}
                     className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
@@ -100,10 +100,10 @@ export default function ForgotPasswordPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Sending Link...</span>
+                    <span>{t('auth.forgot.sending')}</span>
                   </>
                 ) : (
-                  <span>Send Password Reset Link</span>
+                  <span>{t('auth.forgot.submitCta')}</span>
                 )}
               </button>
             </form>
@@ -116,7 +116,7 @@ export default function ForgotPasswordPage() {
             className="inline-flex items-center gap-1 font-semibold text-link hover:underline rounded-xs focus-outline"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Back to Sign In</span>
+            <span>{t('auth.forgot.backToSignIn')}</span>
           </Link>
         </p>
       </div>

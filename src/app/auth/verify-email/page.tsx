@@ -7,6 +7,7 @@ import { CheckCircle2, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { t } from '@/lib/i18n';
 
 function VerifyEmailForm() {
   const router = useRouter();
@@ -28,7 +29,7 @@ function VerifyEmailForm() {
     async function executeVerification() {
       if (!token) {
         setIsLoading(false);
-        setErrorMessage('Verification token is missing in URL parameters.');
+        setErrorMessage(t('auth.verify.missingToken'));
         return;
       }
 
@@ -38,7 +39,7 @@ function VerifyEmailForm() {
         await api.auth.verifyEmail(token);
         setIsSuccess(true);
       } catch (err: unknown) {
-        setErrorMessage(apiErrorMessage(err, 'Verification token is invalid or has expired.'));
+        setErrorMessage(apiErrorMessage(err, t('auth.verify.invalidToken')));
       } finally {
         setIsLoading(false);
       }
@@ -92,10 +93,12 @@ function VerifyEmailForm() {
           <div className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
-            <span className="text-xl font-semibold tracking-wide text-foreground">OXShare</span>
+            <span className="text-xl font-semibold tracking-wide text-foreground">
+              {t('app.name')}
+            </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Email Verification</h1>
-          <p className="text-xs text-muted-foreground">OXShare Secure Account Verification</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t('auth.verify.heading')}</h1>
+          <p className="text-xs text-muted-foreground">{t('auth.verify.tagline')}</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm text-center space-y-5">
@@ -105,9 +108,9 @@ function VerifyEmailForm() {
                 <Loader2 className="h-8 w-8 text-info animate-spin" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-foreground">Verifying Token...</h3>
+                <h3 className="text-sm font-bold text-foreground">{t('auth.verify.verifying')}</h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Please wait while we confirm your security credentials.
+                  {t('auth.verify.verifyingBody')}
                 </p>
               </div>
             </div>
@@ -118,23 +121,21 @@ function VerifyEmailForm() {
               </div>
 
               <div>
-                <h2 className="text-lg font-bold text-success">Email Verified Successfully!</h2>
+                <h2 className="text-lg font-bold text-success">{t('auth.verify.verifiedTitle')}</h2>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Your email address has been confirmed. You now have full access to your OxShare
-                  trading account.
+                  {t('auth.verify.verifiedBody')}
                 </p>
               </div>
 
               <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                Redirecting to sign-in page in{' '}
-                <span className="font-bold text-link">{countdown}s</span>...
+                {t('auth.verify.redirecting', { seconds: countdown })}
               </div>
 
               <Link
                 href="/auth/login"
                 className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-primary-foreground shadow-md hover:bg-primary-hover focus-outline"
               >
-                <span>Sign In Now</span>
+                <span>{t('auth.verify.signInNow')}</span>
               </Link>
             </div>
           ) : (
@@ -144,9 +145,11 @@ function VerifyEmailForm() {
               </div>
 
               <div>
-                <h2 className="text-lg font-bold text-destructive">Verification Failed</h2>
+                <h2 className="text-lg font-bold text-destructive">
+                  {t('auth.verify.failedHeading')}
+                </h2>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {errorMessage || 'The verification link is invalid or has expired.'}
+                  {errorMessage || t('auth.verify.invalidToken')}
                 </p>
               </div>
 
@@ -166,14 +169,14 @@ function VerifyEmailForm() {
                   <RefreshCw className={`h-4 w-4 ${resendCooldown > 0 ? 'animate-spin' : ''}`} />
                   {resendCooldown > 0
                     ? `Resend Link in ${resendCooldown}s`
-                    : 'Resend Verification Email'}
+                    : t('auth.verify.resendCta')}
                 </button>
 
                 <Link
                   href="/auth/login"
                   className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
                 >
-                  Back to Sign In
+                  {t('auth.verify.backToSignIn')}
                 </Link>
               </div>
             </div>
@@ -189,7 +192,7 @@ export default function VerifyEmailPage() {
     <React.Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">
-          Loading...
+          {t('common.loadingEllipsis')}
         </div>
       }
     >
