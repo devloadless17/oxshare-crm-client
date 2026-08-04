@@ -61,6 +61,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await authApi.logout();
     queryClient.clear();
+    // A HARD navigation, deliberately. `queryClient.clear()` drops the cache but
+    // not the rest of the JS context; a full load is what guarantees no wallet
+    // balance or KYC data survives the logout into the next session on a shared
+    // device.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = '/auth/login';
   }, [queryClient]);
 
