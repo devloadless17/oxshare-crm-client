@@ -34,11 +34,11 @@ export default defineConfig({
        * A FLOOR, not a target — see the note in the admin app's copy. Filled in
        * from a measured run below; may only ever go up.
        */
-      // Raised after registration and the document uploader gained tests.
-      // Measured 2026-08-04: statements 33.9, branches 29.4, functions 27.8,
-      // lines 34.3. Set a couple of points under, so an unrelated refactor that
-      // moves a branch count by one does not fail CI spuriously.
-      thresholds: { lines: 32, functions: 25, branches: 27, statements: 32 },
+      // Raised after the selfie camera gained tests. Measured 2026-08-04:
+      // statements 39.7, branches 33.9, functions 31.7, lines 40.5. Set a couple of
+      // points under, so an unrelated refactor that moves a branch count by one
+      // does not fail CI spuriously.
+      thresholds: { lines: 38, functions: 29, branches: 31, statements: 37 },
     },
   },
 });

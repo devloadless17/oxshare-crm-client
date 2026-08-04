@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { Camera, VideoOff, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, Loader2, RefreshCw, VideoOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { apiErrorMessage } from '@/lib/api/errors';
 
 export interface SelfieCameraProps {
   onUpload: (field: string, file: File) => Promise<void>;
@@ -18,6 +19,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
   const [uploading, setUploading] = React.useState(false);
   const [uploadedSuccess, setUploadedSuccess] = React.useState(uploaded);
   const [cameraError, setCameraError] = React.useState(false);
+  const [uploadError, setUploadError] = React.useState<string | null>(null);
 
   const stopCamera = React.useCallback(() => {
     if (streamRef.current) {
@@ -78,7 +80,16 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
     setCaptured(dataUrl);
     stopCamera();
 
-    // Auto-upload captured selfie in background
+    /*
+     * Upload the captured frame.
+     *
+     * This used to be `catch { /* ignore *\/ }`, and `captured` is set above
+     * BEFORE the upload is attempted — so a failed upload left the client looking
+     * at their own photo under a "Selfie Captured" badge, believing they had
+     * submitted a selfie that never reached the server. They found out when KYC was
+     * rejected for a missing selfie.
+     */
+    setUploadError(null);
     setUploading(true);
     try {
       const res = await fetch(dataUrl);
@@ -86,8 +97,8 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
       const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
       await onUpload('selfie', file);
       setUploadedSuccess(true);
-    } catch {
-      // ignore
+    } catch (err: unknown) {
+      setUploadError(apiErrorMessage(err, 'Could not upload your selfie. Please retake it.'));
     } finally {
       setUploading(false);
     }
@@ -96,6 +107,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
   const handleRetake = () => {
     setCaptured(null);
     setUploadedSuccess(false);
+    setUploadError(null);
     void startCamera();
   };
 
@@ -176,10 +188,28 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
           </div>
 
           <div className="flex flex-col items-center gap-3">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-success bg-success/10 border border-success/30 px-4 py-2 rounded-xl">
-              <CheckCircle2 className="h-4 w-4" />
-              <span>Selfie Captured</span>
-            </div>
+            {uploadError ? (
+              <div
+                role="alert"
+                className="flex items-center gap-1.5 text-xs font-bold text-destructive bg-destructive/10 border border-destructive/30 px-4 py-2 rounded-xl max-w-xs text-center"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{uploadError}</span>
+              </div>
+            ) : uploading ? (
+              <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground px-4 py-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Uploading…</span>
+              </div>
+            ) : (
+              // Only once the upload has actually landed.
+              uploadedSuccess && (
+                <div className="flex items-center gap-1.5 text-xs font-bold text-success bg-success/10 border border-success/30 px-4 py-2 rounded-xl">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Selfie Captured</span>
+                </div>
+              )
+            )}
             <Button
               type="button"
               variant="outline"
