@@ -12,30 +12,21 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ALL_COUNTRIES, ALL_NATIONALITIES } from '@/lib/countries-data';
-import { DocumentUploader } from './DocumentUploader';
-import { SelfieCamera } from './SelfieCamera';
+import { DocumentUploader } from './document-uploader';
+import { SelfieCamera } from './selfie-camera';
 import { CheckCircle2, User, FileText } from 'lucide-react';
+import type { components } from '@/lib/api/types.gen';
 
-export interface KycFieldConfig {
-  id: string;
-  name: string;
-  label: string;
-  type: 'text' | 'date' | 'phone' | 'select' | 'file' | 'camera' | 'checkbox';
-  required: boolean;
-  options?: string[];
-  hint?: string;
-}
-
-export interface KycStepConfig {
-  id: string;
-  stepNumber: number;
-  slug: string;
-  title: string;
-  description: string;
-  icon: string;
-  enabled: boolean;
-  fields: KycFieldConfig[];
-}
+/**
+ * Aliased from the schema generated out of the backend's Swagger, so this
+ * renderer cannot disagree with what /kyc/config actually returns.
+ *
+ * These were hand-written and had drifted: both declared `description` and `icon`
+ * as REQUIRED, while the backend marks them optional. Any step configured without
+ * a description would have been a runtime surprise rather than a compile error.
+ */
+export type KycFieldConfig = components['schemas']['KycFieldConfigDto'];
+export type KycStepConfig = components['schemas']['KycStepConfigDto'];
 
 interface DynamicStepRendererProps {
   currentStepConfig?: KycStepConfig;

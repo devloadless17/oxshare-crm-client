@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/lib/api';
+import type { components } from '@/lib/api/types.gen';
+import { useResource } from '@/hooks/use-resource';
+
+type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
 
 interface StepItem {
   num: number;
@@ -21,23 +24,30 @@ const DEFAULT_STEPS: StepItem[] = [
 
 export default function KycLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [steps, setSteps] = useState<StepItem[]>(DEFAULT_STEPS);
+  /*
+   * Same ['kyc-config'] query key the step page uses, so react-query serves both
+   * from one request. These were two independent fetches of /kyc/config on every
+   * visit to a step.
+   *
+   * Falling back to DEFAULT_STEPS when the config is unavailable is deliberate and
+   * is the one place in this repo where a fallback is right: this is the progress
+   * rail, and showing generic step labels beside a page that is itself reporting
+   * the error is better than a blank sidebar. The step page owns telling the user
+   * something went wrong.
+   */
+  const config = useResource(
+    ['kyc-config'],
+    async (signal) => (await api.get<KycStepConfigDto[]>('/kyc/config', { signal })).data,
+  );
 
-  useEffect(() => {
-    api
-      .get('/kyc/config')
-      .then((res) => {
-        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-          const dynamicSteps = res.data.map((s: { stepNumber: number; title: string }) => ({
-            num: s.stepNumber,
-            label: s.title,
-            path: `/kyc/step/${s.stepNumber}`,
-          }));
-          setSteps(dynamicSteps);
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const steps: StepItem[] =
+    config.data && config.data.length > 0
+      ? config.data.map((s) => ({
+          num: s.stepNumber,
+          label: s.title,
+          path: `/kyc/step/${s.stepNumber}`,
+        }))
+      : DEFAULT_STEPS;
 
   const isSubmittedPage = pathname.includes('/kyc/submitted');
   const currentStep = steps.findIndex((s) => pathname.startsWith(s.path)) + 1 || 1;

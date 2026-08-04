@@ -1,7 +1,9 @@
 import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
+  plugins: [react()],
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
   },
@@ -9,5 +11,33 @@ export default defineConfig({
     // .tsx too: the previous glob was .test.ts only, so a component test could
     // be written, committed, and silently never run.
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    // jsdom, so a screen can actually be rendered and asserted on. Before this
+    // there was no way to test a page at all, only pure functions.
+    environment: 'jsdom',
+    setupFiles: ['./vitest.setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'json-summary'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        // Generated wholesale from the backend's OpenAPI document.
+        'src/lib/api/types.gen.ts',
+        '**/*.test.{ts,tsx}',
+        // Layout shells and providers are wiring, not decisions.
+        'src/app/**/layout.tsx',
+        'src/components/query-provider.tsx',
+        'src/components/theme-provider.tsx',
+        // A static data table, not logic.
+        'src/lib/countries-data.ts',
+      ],
+      /*
+       * A FLOOR, not a target — see the note in the admin app's copy. Filled in
+       * from a measured run below; may only ever go up.
+       */
+      // Measured 2026-08-04: statements 20.8, branches 17.0, functions 15.6,
+      // lines 20.9. Set a couple of points under, so an unrelated refactor that
+      // moves a branch count by one does not fail CI spuriously.
+      thresholds: { lines: 18, functions: 13, branches: 14, statements: 18 },
+    },
   },
 });

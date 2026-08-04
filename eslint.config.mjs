@@ -105,6 +105,28 @@ export default defineConfig([
   },
 
   {
+    // ── File size, as a ratchet ─────────────────────────────────────────────
+    // 400 code lines (comments and blanks excluded, so documenting a decision is
+    // never penalised). An `error`, not a warning, because both frontends run at
+    // --max-warnings 0 and a warning nobody can see is not a limit.
+    //
+    // The overrides below pin the four files that already exceed it at their
+    // CURRENT size. They cannot grow, and new files must come in under 400. Lower
+    // these numbers as the files are split; never raise one.
+    files: ['src/app/**/*.tsx', 'src/components/**/*.tsx'],
+    rules: {
+      'max-lines': ['error', { max: 400, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
+    // Pinned at their current size — see the note above.
+    files: ['src/components/kyc/dynamic-step-renderer.tsx'],
+    rules: {
+      'max-lines': ['error', { max: 450, skipBlankLines: true, skipComments: true }],
+    },
+  },
+
+  {
     // Test files may use loose typing against fixtures.
     files: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     rules: {

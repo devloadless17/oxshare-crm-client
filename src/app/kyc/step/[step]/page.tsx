@@ -5,31 +5,37 @@ import { useParams, useRouter } from 'next/navigation';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { parseBooleanRecord, parseStringRecord } from '@/lib/json';
+import { useResource } from '@/hooks/use-resource';
+import type { components } from '@/lib/api/types.gen';
 import { Button } from '@/components/ui/button';
 
-import { DynamicStepRenderer, KycStepConfig } from '@/components/kyc/DynamicStepRenderer';
+import { DynamicStepRenderer } from '@/components/kyc/dynamic-step-renderer';
+
+/**
+ * Aliased from the generated schema, so the field-by-field reads below are checked
+ * against what the backend actually returns. These were untyped, which made every
+ * `data?.personalInfo` and `data.document.docType` an unchecked access on `any` —
+ * 30 of this repo's lint warnings came from this one pair of calls.
+ */
+type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
+type KycStatusDto = components['schemas']['KycStatusDto'];
 
 export default function KycStepPage() {
   const params = useParams();
   const router = useRouter();
   const stepNumber = Number(params.step) || 1;
 
-  const [stepConfigs, setStepConfigs] = useState<KycStepConfig[]>([]);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [docType, setDocType] = useState('passport');
   const [addressDocType, setAddressDocType] = useState('utility_bill');
   const [uploadsState, setUploadsState] = useState<Record<string, boolean>>({});
   const [selfieUploaded, setSelfieUploaded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [fetchingInitialData, setFetchingInitialData] = useState(true);
   const [error, setError] = useState('');
   const [kycStatus, setKycStatus] = useState<string>('not_started');
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const [rejectedFields, setRejectedFields] = useState<string[]>([]);
-  // A failed load is fatal for this page, so it gets its own state rather than
-  // sharing `error`, which reports per-action (upload/save) failures.
-  const [loadError, setLoadError] = useState('');
-  const [reloadKey, setReloadKey] = useState(0);
 
   const set = (k: string, v: string) => {
     setFormData((p) => {
@@ -41,107 +47,94 @@ export default function KycStepPage() {
     });
   };
 
-  // ── Restore saved state and fetch active steps from backend ────────────────
-  //
-  // The sessionStorage reads below are a deliberate exception to
-  // react-hooks/set-state-in-effect. This IS the case the rule's own docs
-  // allow — synchronising React state with an external system on mount — and
-  // the alternatives are both worse: a lazy useState initialiser would read
-  // sessionStorage during render, which the server cannot do, producing a
-  // hydration mismatch on a form the user has half-filled.
+  /*
+   * Two queries, then one effect that syncs their result into form state.
+   *
+   * ['kyc-config'] is the SAME key the kyc layout uses, so react-query serves both
+   * from a single request instead of each fetching /kyc/config independently.
+   *
+   * Neither query may be swallowed. They used to carry
+   * `.catch(() => ({ data: [] }))` and `.catch(() => ({ data: null }))`, which
+   * turned a failed request into an empty config — rendering this page as a
+   * verification form with no fields and no error, so the user saw a broken step
+   * and was told nothing. Both are required for a correct render: without the
+   * config there are no fields, and without the status we lose prefill and, worse,
+   * the rejection notice on a returned KYC.
+   */
+  const configQuery = useResource(
+    ['kyc-config'],
+    async (signal) => (await api.get<KycStepConfigDto[]>('/kyc/config', { signal })).data,
+  );
+  const statusQuery = useResource(
+    ['kyc-status'],
+    async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
+  );
+
+  const fetchingInitialData = configQuery.status === 'loading' || statusQuery.status === 'loading';
+  const loadError =
+    configQuery.status === 'error' || configQuery.status === 'unavailable'
+      ? apiErrorMessage(configQuery.error, 'Could not load your verification details.')
+      : statusQuery.status === 'error' || statusQuery.status === 'unavailable'
+        ? apiErrorMessage(statusQuery.error, 'Could not load your verification details.')
+        : '';
+
+  const stepConfigs = configQuery.data ?? [];
+
+  /*
+   * Restores half-filled input from sessionStorage and folds in whatever the
+   * server already has.
+   *
+   * The sessionStorage reads are a deliberate exception to
+   * react-hooks/set-state-in-effect: this IS the case the rule's own docs allow,
+   * synchronising React state with an external system. A lazy useState initialiser
+   * would read sessionStorage during render, which the server cannot do, producing
+   * a hydration mismatch on a form the user has half-filled.
+   *
+   * Local edits win over the server copy — the client typed them more recently.
+   */
   useEffect(() => {
-    let initialPersonal: Record<string, string> = {};
-    let initialUploads: Record<string, boolean> = {};
+    if (typeof window === 'undefined') return;
 
-    if (typeof window !== 'undefined') {
-      const cachedPersonal = sessionStorage.getItem('oxshare_kyc_personal');
-      if (cachedPersonal) {
-        try {
-          initialPersonal = JSON.parse(cachedPersonal);
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- see note above
-          setFormData(initialPersonal);
-        } catch {
-          // Corrupt sessionStorage is not worth surfacing: the form simply
-          // starts empty, which is the same state as a first visit.
-        }
-      }
+    const cachedPersonal = parseStringRecord(sessionStorage.getItem('oxshare_kyc_personal'));
+    const cachedUploads = parseBooleanRecord(sessionStorage.getItem('oxshare_kyc_uploads'));
+    const data = statusQuery.data;
 
-      const cachedUploads = sessionStorage.getItem('oxshare_kyc_uploads');
-      if (cachedUploads) {
-        try {
-          initialUploads = JSON.parse(cachedUploads);
-          setUploadsState(initialUploads);
-          if (initialUploads['selfie']) setSelfieUploaded(true);
-        } catch {
-          // Corrupt sessionStorage is not worth surfacing: the form simply
-          // starts empty, which is the same state as a first visit.
-        }
-      }
+    const fromServer = data?.personalInfo
+      ? Object.fromEntries(
+          Object.entries(data.personalInfo)
+            .filter(([, v]) => v !== null && v !== undefined)
+            .map(([k, v]) => [k, String(v)]),
+        )
+      : {};
+    const mergedPersonal = { ...fromServer, ...cachedPersonal };
+    if (Object.keys(mergedPersonal).length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- see note above
+      setFormData(mergedPersonal);
+      sessionStorage.setItem('oxshare_kyc_personal', JSON.stringify(mergedPersonal));
     }
 
-    setFetchingInitialData(true);
-    setLoadError('');
-
-    // Neither request may be swallowed.
-    //
-    // These used to carry `.catch(() => ({ data: [] }))` and
-    // `.catch(() => ({ data: null }))`. That turned a failed request into an
-    // empty config, which renders this page as a verification form with no
-    // fields and no error — the user is shown a broken onboarding step and told
-    // nothing. Both responses are required for a correct render: without the
-    // config there are no fields, and without the status we lose prefill and,
-    // worse, the rejection notice on a returned KYC.
-    Promise.all([api.get('/kyc/config'), api.get('/kyc/status')])
-      .then(([configRes, statusRes]) => {
-        if (configRes.data && Array.isArray(configRes.data)) {
-          setStepConfigs(configRes.data);
-        }
-
-        const data = statusRes.data;
-        const newUploads: Record<string, boolean> = { ...initialUploads };
-
-        if (data?.status) setKycStatus(data.status);
-        if (data?.rejectionReason) setRejectionReason(data.rejectionReason);
-        if (data?.rejectedFields && Array.isArray(data.rejectedFields)) {
-          setRejectedFields(data.rejectedFields);
-        }
-
-        if (data?.personalInfo) {
-          const merged = { ...data.personalInfo, ...initialPersonal };
-          setFormData(merged);
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('oxshare_kyc_personal', JSON.stringify(merged));
-          }
-        }
-        if (data?.document) {
-          if (data.document.docType) setDocType(data.document.docType);
-          if (data.document.frontFilePath) newUploads['doc_front'] = true;
-          if (data.document.backFilePath) newUploads['doc_back'] = true;
-        }
-        if (data?.selfie?.filePath) {
-          setSelfieUploaded(true);
-          newUploads['selfie'] = true;
-        }
-        if (data?.addressProof) {
-          if (data.addressProof.docType) setAddressDocType(data.addressProof.docType);
-          if (data.addressProof.filePath) newUploads['address_proof'] = true;
-          if (data.addressProof.page2FilePath) newUploads['address_proof_2'] = true;
-        }
-
-        setUploadsState(newUploads);
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('oxshare_kyc_uploads', JSON.stringify(newUploads));
-        }
-      })
-      .catch((err: unknown) => {
-        setLoadError(
-          apiErrorMessage(err, 'Could not load your verification details. Please try again.'),
-        );
-      })
-      .finally(() => {
-        setFetchingInitialData(false);
-      });
-  }, [reloadKey]);
+    const uploads: Record<string, boolean> = { ...cachedUploads };
+    if (data?.status) setKycStatus(data.status);
+    if (data?.rejectionReason) setRejectionReason(data.rejectionReason);
+    if (data?.rejectedFields) setRejectedFields(data.rejectedFields);
+    if (data?.document) {
+      if (data.document.docType) setDocType(data.document.docType);
+      if (data.document.frontFilePath) uploads['doc_front'] = true;
+      if (data.document.backFilePath) uploads['doc_back'] = true;
+    }
+    if (data?.selfie?.filePath) {
+      setSelfieUploaded(true);
+      uploads['selfie'] = true;
+    }
+    if (data?.addressProof) {
+      if (data.addressProof.docType) setAddressDocType(data.addressProof.docType);
+      if (data.addressProof.filePath) uploads['address_proof'] = true;
+      if (data.addressProof.page2FilePath) uploads['address_proof_2'] = true;
+    }
+    if (uploads['selfie']) setSelfieUploaded(true);
+    setUploadsState(uploads);
+    sessionStorage.setItem('oxshare_kyc_uploads', JSON.stringify(uploads));
+  }, [statusQuery.data]);
 
   /* Upload handler */
   const handleUpload = useCallback(async (field: string, file: File) => {
@@ -149,7 +142,9 @@ export default function KycStepPage() {
     const form = new FormData();
     form.append('file', file);
     form.append('field', field);
-    await api.post('/kyc/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    await api.post<{ message?: string }>('/kyc/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
 
     setUploadsState((p) => {
       const updated = { ...p, [field]: true };
@@ -195,7 +190,7 @@ export default function KycStepPage() {
           setLoading(false);
           return;
         }
-        await api.post('/kyc/step', { step: 'personal', data: formData });
+        await api.post<{ message?: string }>('/kyc/step', { step: 'personal', data: formData });
       } else if (slug === 'document') {
         if (!uploadsState['doc_front']) {
           setError('Please upload the front of your document.');
@@ -208,26 +203,29 @@ export default function KycStepPage() {
           setLoading(false);
           return;
         }
-        await api.post('/kyc/step', { step: 'document', data: { docType } });
+        await api.post<{ message?: string }>('/kyc/step', { step: 'document', data: { docType } });
       } else if (slug === 'selfie') {
         if (!selfieUploaded) {
           setError('Please take or upload your selfie.');
           setLoading(false);
           return;
         }
-        await api.post('/kyc/step', { step: 'selfie', data: {} });
+        await api.post<{ message?: string }>('/kyc/step', { step: 'selfie', data: {} });
       } else if (slug === 'address') {
         if (!uploadsState['address_proof']) {
           setError('Please upload your proof of address.');
           setLoading(false);
           return;
         }
-        await api.post('/kyc/step', { step: 'address', data: { docType: addressDocType } });
+        await api.post<{ message?: string }>('/kyc/step', {
+          step: 'address',
+          data: { docType: addressDocType },
+        });
       } else if (slug === 'review') {
         if (formData.firstName || formData.lastName) {
-          await api.post('/kyc/step', { step: 'personal', data: formData });
+          await api.post<{ message?: string }>('/kyc/step', { step: 'personal', data: formData });
         }
-        await api.post('/kyc/submit');
+        await api.post<{ message?: string }>('/kyc/submit');
         router.push('/kyc/submitted');
         return;
       }
@@ -236,9 +234,9 @@ export default function KycStepPage() {
         router.push(`/kyc/step/${stepNumber + 1}`);
       } else {
         if (formData.firstName || formData.lastName) {
-          await api.post('/kyc/step', { step: 'personal', data: formData });
+          await api.post<{ message?: string }>('/kyc/step', { step: 'personal', data: formData });
         }
-        await api.post('/kyc/submit');
+        await api.post<{ message?: string }>('/kyc/submit');
         router.push('/kyc/submitted');
       }
     } catch (e: unknown) {
@@ -266,7 +264,14 @@ export default function KycStepPage() {
           </p>
           <p className="text-xs text-muted-foreground max-w-sm">{loadError}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setReloadKey((k) => k + 1)}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            void configQuery.refetch();
+            void statusQuery.refetch();
+          }}
+        >
           Try again
         </Button>
       </div>

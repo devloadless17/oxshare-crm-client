@@ -162,6 +162,9 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
         <div className="flex flex-col items-center space-y-4 w-full">
           <div className="relative h-72 w-72 overflow-hidden rounded-full border-4 border-success/50 shadow-lg shadow-success/10 bg-muted flex items-center justify-center">
             {captured ? (
+              /* eslint-disable-next-line @next/next/no-img-element -- `captured` is
+                 a data: URI from canvas.toDataURL(), which next/image cannot
+                 optimise; it would need unoptimized and add nothing. */
               <img
                 src={captured}
                 alt="Selfie preview"

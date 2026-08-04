@@ -24,6 +24,16 @@ export interface RegisterDto {
  */
 export type AuthResponse = components['schemas']['AuthTokensResponseDto'];
 
+/** `{ message }` — what the verify/resend/reset endpoints answer. */
+export type MessageResponse = components['schemas']['MessageResponseDto'];
+
+/**
+ * `{ message, userId }` — registration does NOT return tokens, because the
+ * account is unverified until the emailed link is followed. Aliasing this is what
+ * caught the backend briefly documenting the route as returning tokens.
+ */
+export type RegistrationResponse = components['schemas']['RegistrationResponseDto'];
+
 // The backend mounts these under both /auth and /identity
 // (@Controller(['auth', 'identity'])). This file used /identity while
 // UserContext used /auth, for the same session — one prefix now, so a change to
@@ -39,7 +49,7 @@ export const authApi = {
   },
 
   async register(dto: RegisterDto) {
-    const { data } = await apiClient.post('/auth/register', dto);
+    const { data } = await apiClient.post<RegistrationResponse>('/auth/register', dto);
     return data;
   },
 
@@ -53,12 +63,14 @@ export const authApi = {
    * implementation of the same screen sat unused at /verify-email.
    */
   async verifyEmail(token: string) {
-    const { data } = await apiClient.get('/auth/verify-email', { params: { token } });
+    const { data } = await apiClient.get<MessageResponse>('/auth/verify-email', {
+      params: { token },
+    });
     return data;
   },
 
   async resendVerification(email: string) {
-    const { data } = await apiClient.post('/auth/resend-verification', { email });
+    const { data } = await apiClient.post<MessageResponse>('/auth/resend-verification', { email });
     return data;
   },
 
@@ -76,12 +88,15 @@ export const authApi = {
    * Tracked with the other contract gaps in docs/DECISIONS.md.
    */
   async forgotPassword(email: string) {
-    const { data } = await apiClient.post('/auth/forgot-password', { email });
+    const { data } = await apiClient.post<MessageResponse>('/auth/forgot-password', { email });
     return data;
   },
 
   async resetPassword(token: string, newPassword: string) {
-    const { data } = await apiClient.post('/auth/reset-password', { token, newPassword });
+    const { data } = await apiClient.post<MessageResponse>('/auth/reset-password', {
+      token,
+      newPassword,
+    });
     return data;
   },
 

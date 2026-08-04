@@ -114,8 +114,9 @@ admin's.
 
 ## Gotchas specific to this repo
 
-- **Dark mode is still half-wired** — the Tailwind v4 `@custom-variant dark` is missing. Admin is
-  fixed; copy from there. Light is the default in both apps; dark is opt-in.
+- Dark mode is fully wired: `globals.css` is byte-identical to admin's, carries the Tailwind v4
+  `@custom-variant dark`, and `ThemeProvider` is mounted with `attribute="class"`. Light is the
+  default; dark is opt-in.
 - The `sessionStorage` restore effect in `kyc/step/[step]/page.tsx` carries a reasoned
   `react-hooks/set-state-in-effect` exemption. Keep the comment and the disable — a lazy
   `useState` initialiser there would cause a hydration mismatch on a half-filled form.

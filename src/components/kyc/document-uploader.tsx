@@ -86,7 +86,7 @@ export function DocumentUploader({
           inputRef.current?.click();
         }
       }}
-      aria-invalid={isErrored || undefined}
+      aria-describedby={isErrored ? `${field}-error` : undefined}
       className={`group focus-outline relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-200 cursor-pointer min-h-[170px] w-full ${
         dragging
           ? 'border-ring bg-primary/10 shadow-sm'
@@ -124,6 +124,9 @@ export function DocumentUploader({
         <div className="flex flex-col items-center gap-3 py-1 w-full">
           {preview && preview !== 'pdf' ? (
             <div className="relative h-20 w-32 overflow-hidden rounded-xl border border-border shadow-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element -- `preview` is
+                  a data: URI produced by FileReader, which next/image cannot
+                  optimise; it would need unoptimized and add nothing. */}
               <img src={preview} alt={label} className="h-full w-full object-cover" />
             </div>
           ) : (
@@ -164,7 +167,13 @@ export function DocumentUploader({
               {hint || 'Drag & drop your file here, or click to browse'}
             </p>
             {uploadError && (
-              <p className="text-[11px] font-semibold text-destructive mt-1">{uploadError}</p>
+              <p
+                id={`${field}-error`}
+                role="alert"
+                className="text-[11px] font-semibold text-destructive mt-1"
+              >
+                {uploadError}
+              </p>
             )}
           </div>
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
