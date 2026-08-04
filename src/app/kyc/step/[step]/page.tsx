@@ -16,6 +16,7 @@ import type { components } from '@/lib/api/types.gen';
 import { Button } from '@/components/ui/button';
 
 import { DynamicStepRenderer } from '@/components/kyc/dynamic-step-renderer';
+import { t } from '@/lib/i18n';
 
 /**
  * Aliased from the generated schema, so the field-by-field reads below are checked
@@ -76,9 +77,9 @@ export default function KycStepPage() {
   const fetchingInitialData = configQuery.status === 'loading' || statusQuery.status === 'loading';
   const loadError =
     configQuery.status === 'error' || configQuery.status === 'unavailable'
-      ? apiErrorMessage(configQuery.error, 'Could not load your verification details.')
+      ? apiErrorMessage(configQuery.error, t('kyc.loadFailed'))
       : statusQuery.status === 'error' || statusQuery.status === 'unavailable'
-        ? apiErrorMessage(statusQuery.error, 'Could not load your verification details.')
+        ? apiErrorMessage(statusQuery.error, t('kyc.loadFailed'))
         : '';
 
   const stepConfigs = configQuery.data ?? [];
@@ -179,7 +180,7 @@ export default function KycStepPage() {
           !formData.country ||
           !formData.phone
         ) {
-          setError('Please fill in all required fields.');
+          setError(t('kyc.requiredFields'));
           setLoading(false);
           return;
         }
@@ -187,14 +188,14 @@ export default function KycStepPage() {
         const minAgeDate = new Date();
         minAgeDate.setFullYear(minAgeDate.getFullYear() - 18);
         if (dob > minAgeDate) {
-          setError('You must be at least 18 years old to register and complete KYC.');
+          setError(t('kyc.tooYoung'));
           setLoading(false);
           return;
         }
         await api.post<{ message?: string }>('/kyc/step', { step: 'personal', data: formData });
       } else if (slug === 'document') {
         if (!uploadsState['doc_front']) {
-          setError('Please upload the front of your document.');
+          setError(t('kyc.needDocFront'));
           setLoading(false);
           return;
         }
@@ -207,14 +208,14 @@ export default function KycStepPage() {
         await api.post<{ message?: string }>('/kyc/step', { step: 'document', data: { docType } });
       } else if (slug === 'selfie') {
         if (!selfieUploaded) {
-          setError('Please take or upload your selfie.');
+          setError(t('kyc.needSelfie'));
           setLoading(false);
           return;
         }
         await api.post<{ message?: string }>('/kyc/step', { step: 'selfie', data: {} });
       } else if (slug === 'address') {
         if (!uploadsState['address_proof']) {
-          setError('Please upload your proof of address.');
+          setError(t('kyc.needAddressProof'));
           setLoading(false);
           return;
         }
@@ -241,7 +242,7 @@ export default function KycStepPage() {
         router.push('/kyc/submitted');
       }
     } catch (e: unknown) {
-      setError(apiErrorMessage(e, 'Something went wrong. Please try again.'));
+      setError(apiErrorMessage(e, t('common.genericError')));
     } finally {
       setLoading(false);
     }
@@ -259,9 +260,7 @@ export default function KycStepPage() {
           <AlertCircle className="h-7 w-7" />
         </div>
         <div className="space-y-1">
-          <p className="text-sm font-bold text-foreground">
-            Could not load your verification details
-          </p>
+          <p className="text-sm font-bold text-foreground">{t('kyc.loadFailedShort')}</p>
           <p className="text-xs text-muted-foreground max-w-sm">{loadError}</p>
         </div>
         <Button
@@ -272,7 +271,7 @@ export default function KycStepPage() {
             void statusQuery.refetch();
           }}
         >
-          Try again
+          {t('common.retry')}
         </Button>
       </div>
     );
@@ -285,10 +284,8 @@ export default function KycStepPage() {
           <Loader2 className="h-7 w-7 animate-spin text-link" />
         </div>
         <div className="space-y-1">
-          <p className="text-sm font-bold text-foreground">Loading Verification Details...</p>
-          <p className="text-xs text-muted-foreground">
-            Restoring your step progress and form data
-          </p>
+          <p className="text-sm font-bold text-foreground">{t('kyc.loadingTitle')}</p>
+          <p className="text-xs text-muted-foreground">{t('kyc.loadingBody')}</p>
         </div>
       </div>
     );
@@ -300,18 +297,15 @@ export default function KycStepPage() {
       {kycStatus === 'rejected' && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs space-y-1.5 animate-in fade-in-0">
           <div className="flex items-center gap-2 font-bold text-destructive text-sm">
-            <span>⚠️ Action Required: KYC Returned for Correction</span>
+            <span>{t('kyc.actionRequired')}</span>
           </div>
           {rejectionReason && (
             <p className="text-destructive text-xs">
-              <strong className="font-semibold text-destructive">Admin Rejection Note:</strong>{' '}
+              <strong className="font-semibold text-destructive">{t('kyc.rejectionNote')}</strong>{' '}
               {rejectionReason}
             </p>
           )}
-          <p className="text-[11px] text-muted-foreground pt-1">
-            Please update the highlighted fields below with valid information and click continue.
-            Your existing data remains saved.
-          </p>
+          <p className="text-[11px] text-muted-foreground pt-1">{t('kyc.updateHighlighted')}</p>
         </div>
       )}
 
@@ -346,7 +340,7 @@ export default function KycStepPage() {
             onClick={() => router.push(`/kyc/step/${stepNumber - 1}`)}
             disabled={loading}
           >
-            Back
+            {t('common.back')}
           </Button>
         ) : (
           <div />
@@ -359,10 +353,10 @@ export default function KycStepPage() {
           className="font-bold px-6 cursor-pointer"
         >
           {loading
-            ? 'Processing...'
+            ? t('kyc.processing')
             : stepNumber === totalSteps || currentStepConfig?.slug === 'review'
-              ? 'Submit Verification'
-              : 'Continue'}
+              ? t('kyc.submitCta')
+              : t('common.continue')}
         </Button>
       </div>
     </div>

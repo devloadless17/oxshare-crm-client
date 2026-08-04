@@ -6,6 +6,7 @@ import * as Flags from 'country-flag-icons/react/3x2';
 import { cn } from '@/lib/utils';
 import { Input } from './input';
 import { ALL_COUNTRIES, type CountryItem } from '@/lib/countries-data';
+import { t } from '@/lib/i18n';
 
 export function CountryFlagIcon({
   code,
@@ -17,7 +18,7 @@ export function CountryFlagIcon({
   const FlagComp = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[
     code.toUpperCase()
   ];
-  if (!FlagComp) return <span className="text-xs">🌐</span>;
+  if (!FlagComp) return <span className="text-xs">{'\u{1F310}'}</span>;
   return <FlagComp className={className} />;
 }
 
@@ -142,7 +143,7 @@ export function PhoneInput({
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search country or code..."
+              placeholder={t('country.searchPlaceholder')}
               className="h-8 w-full rounded-md border border-input bg-muted/40 pl-8 pr-3 text-xs focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
@@ -150,7 +151,9 @@ export function PhoneInput({
           {/* Country List */}
           <div className="max-h-60 overflow-y-auto space-y-0.5 scrollbar-thin">
             {filteredCountries.length === 0 ? (
-              <div className="py-4 text-center text-xs text-muted-foreground">No country found</div>
+              <div className="py-4 text-center text-xs text-muted-foreground">
+                {t('country.noneFound')}
+              </div>
             ) : (
               filteredCountries.map((c) => {
                 const isSelected =

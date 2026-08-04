@@ -22,7 +22,7 @@ export interface SelfieCameraProps {
 function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('Could not encode the captured image.'))),
+      (blob) => (blob ? resolve(blob) : reject(new Error(t('kyc.encodeFailed')))),
       'image/jpeg',
     );
   });
@@ -103,7 +103,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
      *
      * This used to be `catch { /* ignore *\/ }`, and `captured` is set above
      * BEFORE the upload is attempted — so a failed upload left the client looking
-     * at their own photo under a "Selfie Captured" badge, believing they had
+     * at their own photo under a "{t('kyc.selfieCaptured')}" badge, believing they had
      * submitted a selfie that never reached the server. They found out when KYC was
      * rejected for a missing selfie.
      */
@@ -158,12 +158,10 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
             {cameraError ? (
               <div className="flex flex-col items-center gap-2 p-4 text-center">
                 <VideoOff className="h-10 w-10 text-destructive" />
-                <p className="text-xs font-bold text-foreground">Camera Access Required</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Please allow camera permissions in your browser to take your selfie.
-                </p>
+                <p className="text-xs font-bold text-foreground">{t('kyc.cameraDeniedTitle')}</p>
+                <p className="text-[11px] text-muted-foreground">{t('kyc.cameraDeniedBody')}</p>
                 <Button size="sm" onClick={() => void startCamera()} className="mt-2 text-xs">
-                  Retry Camera
+                  {t('kyc.cameraRetry')}
                 </Button>
               </div>
             ) : (
@@ -181,7 +179,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
           </div>
 
           <p className="text-xs font-medium text-muted-foreground text-center">
-            Center your face inside the circle and click snap photo.
+            {t('kyc.cameraHint')}
           </p>
 
           {!cameraError && (
@@ -194,12 +192,12 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
               {uploading ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Processing...</span>
+                  <span>{t('kyc.processing')}</span>
                 </>
               ) : (
                 <>
                   <Camera className="h-5 w-5" />
-                  <span>Snap Photo</span>
+                  <span>{t('kyc.snapPhoto')}</span>
                 </>
               )}
             </Button>
@@ -237,14 +235,14 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
             ) : uploading ? (
               <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground px-4 py-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Uploading…</span>
+                <span>{t('kyc.uploadingSelfie')}</span>
               </div>
             ) : (
               // Only once the upload has actually landed.
               uploadedSuccess && (
                 <div className="flex items-center gap-1.5 text-xs font-bold text-success bg-success/10 border border-success/30 px-4 py-2 rounded-xl">
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>Selfie Captured</span>
+                  <span>{t('kyc.selfieCaptured')}</span>
                 </div>
               )
             )}
@@ -255,7 +253,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
               className="gap-2 text-xs"
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              <span>Retake Photo</span>
+              <span>{t('kyc.retakePhoto')}</span>
             </Button>
           </div>
         </div>

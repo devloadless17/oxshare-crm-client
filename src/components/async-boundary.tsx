@@ -3,6 +3,7 @@
 import { Loader2 } from 'lucide-react';
 import { BackendPending } from '@/components/backend-pending';
 import type { ResourceStatus } from '@/hooks/use-resource';
+import { t } from '@/lib/i18n';
 
 /**
  * The loading / not-built-yet / error / ready branch, in one place.
@@ -54,15 +55,13 @@ export function AsyncBoundary({
         className="rounded-xl border border-border bg-card p-8 text-center space-y-3"
         role="alert"
       >
-        <p className="text-sm text-muted-foreground">
-          {errorMessage ?? 'Something went wrong loading this page.'}
-        </p>
+        <p className="text-sm text-muted-foreground">{errorMessage ?? t('common.genericError')}</p>
         <button
           type="button"
           onClick={onRetry}
           className="h-9 px-4 rounded-lg border border-input bg-card text-xs font-semibold hover:bg-muted focus-outline"
         >
-          Retry
+          {t('common.retryShort')}
         </button>
       </div>
     );

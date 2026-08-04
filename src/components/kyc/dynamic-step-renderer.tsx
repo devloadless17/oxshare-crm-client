@@ -16,6 +16,7 @@ import { DocumentUploader } from './document-uploader';
 import { SelfieCamera } from './selfie-camera';
 import { CheckCircle2, User, FileText } from 'lucide-react';
 import type { components } from '@/lib/api/types.gen';
+import { t } from '@/lib/i18n';
 
 /**
  * Aliased from the schema generated out of the backend's Swagger, so this
@@ -84,31 +85,37 @@ export function DynamicStepRenderer({
           <div className="rounded-2xl border border-border bg-card/60 p-5 space-y-3">
             <div className="flex items-center gap-2 border-b border-border pb-3 text-link">
               <User className="h-4 w-4" />
-              <h3 className="text-xs font-bold uppercase tracking-wider">Personal Information</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider">
+                {t('kyc.personalInfo')}
+              </h3>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
               <div>
-                <span className="text-muted-foreground block text-[11px]">Full Name</span>
+                <span className="text-muted-foreground block text-[11px]">{t('kyc.fullName')}</span>
                 <span className="font-semibold text-foreground">
                   {formData.firstName || '-'} {formData.lastName || '-'}
                 </span>
               </div>
               <div>
-                <span className="text-muted-foreground block text-[11px]">Date of Birth</span>
+                <span className="text-muted-foreground block text-[11px]">
+                  {t('kyc.dateOfBirth')}
+                </span>
                 <span className="font-semibold text-foreground">{formData.dateOfBirth || '-'}</span>
               </div>
               <div>
-                <span className="text-muted-foreground block text-[11px]">Phone</span>
+                <span className="text-muted-foreground block text-[11px]">{t('kyc.phone')}</span>
                 <span className="font-semibold text-foreground font-mono">
                   {formData.phone || '-'}
                 </span>
               </div>
               <div>
-                <span className="text-muted-foreground block text-[11px]">Nationality</span>
+                <span className="text-muted-foreground block text-[11px]">
+                  {t('kyc.nationality')}
+                </span>
                 <span className="font-semibold text-foreground">{formData.nationality || '-'}</span>
               </div>
               <div>
-                <span className="text-muted-foreground block text-[11px]">Country</span>
+                <span className="text-muted-foreground block text-[11px]">{t('kyc.country')}</span>
                 <span className="font-semibold text-foreground">{formData.country || '-'}</span>
               </div>
             </div>
@@ -117,37 +124,39 @@ export function DynamicStepRenderer({
           <div className="rounded-2xl border border-border bg-card/60 p-5 space-y-3">
             <div className="flex items-center gap-2 border-b border-border pb-3 text-link">
               <FileText className="h-4 w-4" />
-              <h3 className="text-xs font-bold uppercase tracking-wider">Verification Files</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider">
+                {t('kyc.verificationFiles')}
+              </h3>
             </div>
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-background/50">
-                <span className="text-muted-foreground">ID Document</span>
+                <span className="text-muted-foreground">{t('kyc.idDocument')}</span>
                 {uploadsState['doc_front'] ? (
                   <span className="flex items-center gap-1 text-success font-semibold">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Uploaded
+                    <CheckCircle2 className="h-3.5 w-3.5" /> {t('kyc.uploaded')}
                   </span>
                 ) : (
-                  <span className="text-destructive font-semibold">Missing</span>
+                  <span className="text-destructive font-semibold">{t('kyc.missing')}</span>
                 )}
               </div>
               <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-background/50">
-                <span className="text-muted-foreground">Selfie Photo</span>
+                <span className="text-muted-foreground">{t('kyc.selfiePhoto')}</span>
                 {selfieUploaded ? (
                   <span className="flex items-center gap-1 text-success font-semibold">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Captured
+                    <CheckCircle2 className="h-3.5 w-3.5" /> {t('kyc.captured')}
                   </span>
                 ) : (
-                  <span className="text-destructive font-semibold">Missing</span>
+                  <span className="text-destructive font-semibold">{t('kyc.missing')}</span>
                 )}
               </div>
               <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-background/50">
-                <span className="text-muted-foreground">Proof of Address</span>
+                <span className="text-muted-foreground">{t('kyc.proofOfAddress')}</span>
                 {uploadsState['address_proof'] ? (
                   <span className="flex items-center gap-1 text-success font-semibold">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Uploaded
+                    <CheckCircle2 className="h-3.5 w-3.5" /> {t('kyc.uploaded')}
                   </span>
                 ) : (
-                  <span className="text-destructive font-semibold">Missing</span>
+                  <span className="text-destructive font-semibold">{t('kyc.missing')}</span>
                 )}
               </div>
             </div>
@@ -170,8 +179,8 @@ export function DynamicStepRenderer({
         <div className="grid grid-cols-3 gap-3 mb-4">
           {[
             { value: 'passport', label: 'Passport' },
-            { value: 'national_id', label: 'National ID' },
-            { value: 'driving_license', label: 'Driving License' },
+            { value: 'national_id', label: t('kyc.docNationalId') },
+            { value: 'driving_license', label: t('kyc.docDrivingLicense') },
           ].map((dt) => {
             const isSelected = docType === dt.value;
             return (
@@ -196,9 +205,9 @@ export function DynamicStepRenderer({
       {slug === 'address' && (
         <div className="grid grid-cols-3 gap-3 mb-4">
           {[
-            { value: 'utility_bill', label: 'Utility Bill' },
-            { value: 'bank_statement', label: 'Bank Statement' },
-            { value: 'tenancy_agreement', label: 'Tenancy Agreement' },
+            { value: 'utility_bill', label: t('kyc.docUtilityBill') },
+            { value: 'bank_statement', label: t('kyc.docBankStatement') },
+            { value: 'tenancy_agreement', label: t('kyc.docTenancyAgreement') },
           ].map((dt) => {
             const isSelected = addressDocType === dt.value;
             return (
@@ -264,7 +273,7 @@ export function DynamicStepRenderer({
                   >
                     {isErrored && (
                       <div className="text-[11px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2.5 py-1 rounded-md mb-1 inline-flex items-center gap-1">
-                        ⚠️ Document Returned for Correction
+                        {t('kyc.documentReturned')}
                       </div>
                     )}
                     <DocumentUploader
@@ -290,7 +299,7 @@ export function DynamicStepRenderer({
                       </span>
                       {isErrored && (
                         <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
-                          ⚠️ Correct Field
+                          {t('kyc.correctField')}
                         </span>
                       )}
                     </Label>
@@ -321,7 +330,7 @@ export function DynamicStepRenderer({
                       </span>
                       {isErrored && (
                         <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
-                          ⚠️ Correct Field
+                          {t('kyc.correctField')}
                         </span>
                       )}
                     </Label>
@@ -367,7 +376,7 @@ export function DynamicStepRenderer({
                       </span>
                       {isErrored && (
                         <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
-                          ⚠️ Correct Field
+                          {t('kyc.correctField')}
                         </span>
                       )}
                     </Label>
@@ -428,7 +437,7 @@ export function DynamicStepRenderer({
                     </span>
                     {isErrored && (
                       <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
-                        ⚠️ Correct Field
+                        {t('kyc.correctField')}
                       </span>
                     )}
                   </Label>

@@ -150,8 +150,8 @@ export function DocumentUploader({
         <div className="flex flex-col items-center gap-3 py-2">
           <Loader2 className="h-8 w-8 text-link animate-spin" />
           <div className="space-y-0.5">
-            <p className="text-xs font-semibold text-foreground">Uploading File...</p>
-            <p className="text-[11px] text-muted-foreground">Please wait a moment</p>
+            <p className="text-xs font-semibold text-foreground">{t('kyc.uploadingFile')}</p>
+            <p className="text-[11px] text-muted-foreground">{t('kyc.uploadWait')}</p>
           </div>
         </div>
       ) : isUploaded ? (
@@ -172,7 +172,7 @@ export function DocumentUploader({
           <div className="space-y-1 text-center max-w-full px-2">
             <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-success">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <span>{label} Uploaded</span>
+              <span>{t('kyc.uploadedSuffix', { label })}</span>
             </div>
             {fileName && (
               <p className="text-[11px] text-muted-foreground truncate max-w-[200px] mx-auto">
@@ -183,7 +183,7 @@ export function DocumentUploader({
 
           <div className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-background/80 px-3 py-1 text-[11px] font-semibold text-foreground shadow-2xs group-hover:bg-muted transition-colors mt-1">
             <RefreshCw className="h-3 w-3 text-muted-foreground" />
-            <span>Click or drag to replace</span>
+            <span>{t('kyc.replaceHint')}</span>
           </div>
         </div>
       ) : (
@@ -198,7 +198,7 @@ export function DocumentUploader({
           <div className="space-y-1">
             <p className="text-xs font-bold text-foreground">{label}</p>
             <p className="text-[11px] font-medium text-muted-foreground">
-              {hint || 'Drag & drop your file here, or click to browse'}
+              {hint || t('kyc.dropHint')}
             </p>
             {uploadError && (
               <p
@@ -211,7 +211,7 @@ export function DocumentUploader({
             )}
           </div>
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-            PNG, JPG, PDF · Max 10MB
+            {t('kyc.uploadFormats', { limit: MAX_UPLOAD_BYTES / (1024 * 1024) })}
           </span>
         </div>
       )}

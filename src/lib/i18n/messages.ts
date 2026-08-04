@@ -243,6 +243,7 @@ export const messages = {
   'kyc.approvedTitle': 'KYC Approved!',
   'kyc.rejectedTitle': 'KYC Verification Rejected',
   'kyc.backToDashboard': 'Back to Dashboard',
+  'kyc.loadFailedShort': 'Could not load your verification details',
   'kyc.loadFailed': 'Could not load your verification details.',
   'kyc.statusLoadFailed': 'Could not load your verification status.',
   'kyc.uploadTooLarge':
@@ -252,8 +253,74 @@ export const messages = {
   'kyc.selfieRetake': 'Retake',
   'kyc.selfieCapture': 'Capture',
 
+  // ── KYC: review summary and steps ─────────────────────────────────────────
+  'kyc.personalInfo': 'Personal Information',
+  'kyc.fullName': 'Full Name',
+  'kyc.dateOfBirth': 'Date of Birth',
+  'kyc.phone': 'Phone',
+  'kyc.nationality': 'Nationality',
+  'kyc.country': 'Country',
+  'kyc.verificationFiles': 'Verification Files',
+  'kyc.idDocument': 'ID Document',
+  'kyc.selfiePhoto': 'Selfie Photo',
+  'kyc.proofOfAddress': 'Proof of Address',
+  'kyc.uploaded': 'Uploaded',
+  'kyc.captured': 'Captured',
+  'kyc.missing': 'Missing',
+  'kyc.docNationalId': 'National ID',
+  'kyc.docDrivingLicense': 'Driving License',
+  'kyc.docUtilityBill': 'Utility Bill',
+  'kyc.docBankStatement': 'Bank Statement',
+  'kyc.docTenancyAgreement': 'Tenancy Agreement',
+  'kyc.loadingTitle': 'Loading Verification Details…',
+  'kyc.loadingBody': 'Restoring your step progress and form data',
+  'kyc.rejectionNote': 'Admin Rejection Note:',
+  'kyc.actionRequired': '⚠️ Action Required: KYC Returned for Correction',
+  'kyc.updateHighlighted':
+    'Please update the highlighted fields below with valid information and click continue. Your existing data remains saved.',
+  'kyc.documentReturned': '⚠️ Document Returned for Correction',
+  'kyc.correctField': '⚠️ Correct Field',
+  'kyc.submitCta': 'Submit Verification',
+  'kyc.processing': 'Processing…',
+  'kyc.requiredFields': 'Please fill in all required fields.',
+  'kyc.tooYoung': 'You must be at least 18 years old to register and complete KYC.',
+  'kyc.needDocFront': 'Please upload the front of your document.',
+  'kyc.needSelfie': 'Please take or upload your selfie.',
+  'kyc.needAddressProof': 'Please upload your proof of address.',
+
+  // ── KYC: capture and upload ───────────────────────────────────────────────
+  'kyc.cameraDeniedTitle': 'Camera Access Required',
+  'kyc.cameraDeniedBody': 'Please allow camera permissions in your browser to take your selfie.',
+  'kyc.cameraRetry': 'Retry Camera',
+  'kyc.cameraHint': 'Center your face inside the circle and click snap photo.',
+  'kyc.snapPhoto': 'Snap Photo',
+  'kyc.uploadingSelfie': 'Uploading…',
+  'kyc.selfieCaptured': 'Selfie Captured',
+  'kyc.retakePhoto': 'Retake Photo',
+  'kyc.encodeFailed': 'Could not encode the captured image.',
+  'kyc.uploadingFile': 'Uploading File…',
+  'kyc.uploadWait': 'Please wait a moment',
+  'kyc.replaceHint': 'Click or drag to replace',
+  'kyc.uploadFormats': 'PNG, JPG, PDF · Max {limit}MB',
+  'kyc.dropHint': 'Drag & drop your file here, or click to browse',
+  'kyc.uploadedSuffix': '{label} Uploaded',
+
+  // ── Country / phone picker ────────────────────────────────────────────────
+  'country.noneFound': 'No country found',
+  'country.searchPlaceholder': 'Search country or code…',
+
   // ── Shared / generic ──────────────────────────────────────────────────────
   'common.retry': 'Try again',
+  /*
+   * Two labels for one action, preserved rather than unified.
+   *
+   * AsyncBoundary's button says "Retry"; the KYC step page says "Try again".
+   * Making them one string is a product decision and a visible change, and an
+   * extraction pass is the wrong commit to smuggle it into — a test caught this
+   * the moment the two were collapsed. Recorded here so the inconsistency is
+   * visible and resolvable on purpose.
+   */
+  'common.retryShort': 'Retry',
   'common.loading': 'Loading',
   'common.cancel': 'Cancel',
   'common.continue': 'Continue',

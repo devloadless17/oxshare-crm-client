@@ -42,6 +42,11 @@ const I18N_ENFORCED = [
   'src/components/dashboard/wallet-balance-cards.tsx',
   'src/app/accounts/page.tsx',
   'src/app/kyc/page.tsx',
+  'src/app/kyc/step/[step]/page.tsx',
+  'src/components/kyc/dynamic-step-renderer.tsx',
+  'src/components/kyc/selfie-camera.tsx',
+  'src/components/kyc/document-uploader.tsx',
+  'src/components/async-boundary.tsx',
 ];
 
 /*
