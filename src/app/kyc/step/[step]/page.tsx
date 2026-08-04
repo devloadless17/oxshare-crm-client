@@ -240,8 +240,7 @@ export default function KycStepPage() {
         router.push('/kyc/submitted');
       }
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } } };
-      setError(err?.response?.data?.message ?? 'Something went wrong. Please try again.');
+      setError(apiErrorMessage(e, 'Something went wrong. Please try again.'));
     } finally {
       setLoading(false);
     }

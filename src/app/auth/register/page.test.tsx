@@ -1,0 +1,138 @@
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { renderWithProviders } from '@/test/render';
+import RegisterPage from './page';
+
+/**
+ * Account creation.
+ *
+ * The behaviour worth pinning is that registration does NOT sign the client in.
+ * It answers `{ message, userId }` and the account stays unverified until the
+ * emailed link is followed — this screen shows the message and then sends the
+ * client to sign-in on a timer. The backend briefly documented this route as
+ * returning auth tokens, which was wrong; a test here is what stops the frontend
+ * quietly growing code that expects a session.
+ */
+
+const { register } = vi.hoisted(() => ({ register: vi.fn() }));
+const push = vi.fn();
+
+// Both exports: lib/api/index.ts exposes `api` named AND as default, and this page
+// uses the named one. Mocking only `default` leaves `api` undefined and the
+// resulting TypeError is swallowed by the page's own catch.
+vi.mock('@/lib/api', () => {
+  const api = { auth: { register } };
+  return { api, default: api };
+});
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push, refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+function apiError(message: string, status = 409): Error {
+  return Object.assign(new Error(`Request failed with status code ${status}`), {
+    response: { status, data: { message } },
+  });
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  register.mockResolvedValue({
+    message: 'Registration successful. Please check your email to verify your account.',
+    userId: 'u-new',
+  });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+async function fillAndSubmit(over: Partial<Record<string, string>> = {}) {
+  const user = userEvent.setup();
+  renderWithProviders(<RegisterPage />);
+  await user.type(await screen.findByLabelText(/first name/i), over.firstName ?? 'John');
+  await user.type(screen.getByLabelText(/last name/i), over.lastName ?? 'Doe');
+  await user.type(screen.getByLabelText(/email/i), over.email ?? 'new@oxshare.com');
+  await user.type(screen.getByLabelText(/password/i), over.password ?? 'Passw0rd!');
+  await user.click(screen.getByRole('button', { name: /complete registration/i }));
+  return user;
+}
+
+describe('portal registration', () => {
+  it('sends exactly the four fields the endpoint accepts', async () => {
+    await fillAndSubmit();
+
+    await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
+    // forbidNonWhitelisted is on server-side, so an extra property here is a 400.
+    expect(register).toHaveBeenCalledWith({
+      email: 'new@oxshare.com',
+      password: 'Passw0rd!',
+      firstName: 'John',
+      lastName: 'Doe',
+    });
+  });
+
+  it('shows the API message and does NOT treat the client as signed in', async () => {
+    await fillAndSubmit();
+
+    expect(await screen.findByText(/check your email to verify/i)).toBeInTheDocument();
+    // No session exists yet, so nothing may navigate to a private area.
+    expect(push).not.toHaveBeenCalledWith('/dashboard');
+  });
+
+  it('sends the client to sign-in after showing the message', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await fillAndSubmit();
+
+    await waitFor(() => expect(register).toHaveBeenCalled());
+    await screen.findByText(/check your email to verify/i);
+
+    // The redirect is deliberately delayed so the message is readable.
+    expect(push).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(3000);
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/auth/login'));
+  });
+
+  it('surfaces a duplicate-email rejection', async () => {
+    register.mockRejectedValueOnce(apiError('An account with this email already exists.'));
+
+    await fillAndSubmit();
+
+    expect(await screen.findByText(/already exists/i)).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a rejected password without clearing the form', async () => {
+    register.mockRejectedValueOnce(apiError('password must be longer than 8 characters', 400));
+
+    await fillAndSubmit({ password: 'short' });
+
+    expect(await screen.findByText(/longer than 8 characters/i)).toBeInTheDocument();
+    // Re-typing everything after one bad field is the fastest way to lose a signup.
+    expect(screen.getByLabelText(/first name/i)).toHaveValue('John');
+    expect(screen.getByLabelText(/email/i)).toHaveValue('new@oxshare.com');
+  });
+
+  it('returns the button to its idle state after a failure', async () => {
+    register.mockRejectedValueOnce(apiError('An account with this email already exists.'));
+
+    await fillAndSubmit();
+
+    await screen.findByText(/already exists/i);
+    expect(screen.getByRole('button', { name: /complete registration/i })).toBeEnabled();
+  });
+
+  it('does not call the API with an incomplete form', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<RegisterPage />);
+
+    await user.type(await screen.findByLabelText(/first name/i), 'John');
+    await user.click(screen.getByRole('button', { name: /complete registration/i }));
+
+    // As on sign-in, the inputs are `required`, so the browser blocks submit and
+    // the guarantee to assert is "no request" rather than a specific message.
+    expect(register).not.toHaveBeenCalled();
+  });
+});

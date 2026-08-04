@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { UploadCloud, CheckCircle2, FileText, Loader2, RefreshCw } from 'lucide-react';
+import { apiErrorMessage } from '@/lib/api/errors';
 
 export interface DocumentUploaderProps {
   label: string;
@@ -50,10 +51,12 @@ export function DocumentUploader({
       } catch (err: unknown) {
         setPreview(null);
         setFileName(null);
-        const msg =
-          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-          'Upload failed. Please try again.';
-        setUploadError(msg);
+        // apiErrorMessage, not an inline read of err.response.data.message. This was
+        // the fourth hand-rolled copy of that extraction in the two frontends, and
+        // like the others it had no `error.message` fallback — so a network failure,
+        // which carries no `response`, showed the generic string instead of the
+        // reason.
+        setUploadError(apiErrorMessage(err, 'Upload failed. Please try again.'));
       } finally {
         setLoading(false);
       }
