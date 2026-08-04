@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { BackendPending } from '@/components/backend-pending';
 import type { ResourceStatus } from '@/hooks/use-resource';
 import { t } from '@/lib/i18n';
+import { apiErrorRequestId } from '@/lib/api/errors';
 
 /**
  * The loading / not-built-yet / error / ready branch, in one place.
@@ -20,6 +21,7 @@ export function AsyncBoundary({
   endpoints,
   onRetry,
   errorMessage,
+  error,
   children,
 }: {
   status: ResourceStatus;
@@ -36,6 +38,15 @@ export function AsyncBoundary({
    */
   onRetry: () => unknown;
   errorMessage?: string;
+  /**
+   * The raw error, only so the request id can be shown under the message.
+   *
+   * Passed as the error rather than as an extracted id because every call site
+   * already holds it — asking each one to call `apiErrorRequestId` first would
+   * be a second thing to remember, and the one that forgot would be silently
+   * back to an unreportable failure.
+   */
+  error?: unknown;
   children: React.ReactNode;
 }) {
   if (status === 'loading') {
@@ -50,12 +61,24 @@ export function AsyncBoundary({
   if (status === 'unavailable') return <BackendPending endpoints={endpoints} />;
 
   if (status === 'error') {
+    const requestId = apiErrorRequestId(error);
     return (
       <div
         className="rounded-xl border border-border bg-card p-8 text-center space-y-3"
         role="alert"
       >
         <p className="text-sm text-muted-foreground">{errorMessage ?? t('common.genericError')}</p>
+        {/*
+          The id the API already logged with this failure. Rendered small and
+          selectable rather than hidden behind a "details" toggle: its whole
+          purpose is to be copied into a support message, and a user who has to
+          find it first mostly will not.
+        */}
+        {requestId && (
+          <p className="text-[11px] font-mono text-muted-foreground/70 select-all">
+            {t('common.errorReference', { id: requestId })}
+          </p>
+        )}
         <button
           type="button"
           onClick={onRetry}

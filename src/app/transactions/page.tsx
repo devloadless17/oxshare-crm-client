@@ -118,6 +118,7 @@ export default function TransactionsPage() {
         endpoints={['GET /payments/transactions']}
         onRetry={() => void transactions.refetch()}
         errorMessage={apiErrorMessage(transactions.error, t('transactions.loadFailed'))}
+        error={transactions.error}
       >
         {rows.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card py-16 text-center">

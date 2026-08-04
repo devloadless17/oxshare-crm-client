@@ -85,6 +85,7 @@ export default function WalletPage() {
         endpoints={['GET /wallet']}
         onRetry={() => void wallets.refetch()}
         errorMessage={apiErrorMessage(wallets.error, t('wallet.loadFailed'))}
+        error={wallets.error}
       >
         <div className="grid gap-6 md:grid-cols-2">
           {CURRENCIES.map(({ code, label, note }) => (

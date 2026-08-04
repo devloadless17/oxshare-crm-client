@@ -209,6 +209,7 @@ export default function WithdrawPage() {
           endpoints={['GET /wallet', 'POST /payments/withdrawals']}
           onRetry={() => void wallets.refetch()}
           errorMessage={apiErrorMessage(wallets.error, t('withdraw.loadFailed'))}
+          error={wallets.error}
         >
           <WithdrawForm wallets={wallets.data ?? []} onDone={() => setSubmitted(true)} />
         </AsyncBoundary>

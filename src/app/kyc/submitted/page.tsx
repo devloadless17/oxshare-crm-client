@@ -52,6 +52,7 @@ export default function KycSubmittedPage() {
       endpoints={['GET /kyc/status']}
       onRetry={() => statusQuery.refetch()}
       errorMessage={apiErrorMessage(statusQuery.error, t('kyc.statusLoadFailed'))}
+      error={statusQuery.error}
     >
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 max-w-lg mx-auto py-12 px-4 animate-in fade-in-0 zoom-in-95 duration-200">
         {/* Icon Badge */}
