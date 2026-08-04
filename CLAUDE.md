@@ -97,6 +97,31 @@ while the admin API answers camelCase. `lib/api/client.ts` asserts the one shape
 actually sends rather than reading both — reading both is how a rename goes unnoticed until
 sessions silently stop refreshing. This divergence is known and frozen.
 
+### Mocking the API in a test
+
+`src/lib/api/index.ts` exports `api` **both** as a named export and as the default,
+and pages use whichever the author reached for. So a `vi.mock` must supply both:
+
+```ts
+vi.mock('@/lib/api', () => {
+  const api = { get, post, admin: { getRoles } };
+  return { api, default: api };
+});
+```
+
+Mocking only `default` leaves the named `api` undefined. The page then throws on
+first use, its own `catch` swallows the TypeError, and you get a generic "failed to
+load" state — which reads as a broken query rather than a broken mock. That has cost
+real time twice.
+
+Two other traps worth knowing before writing a screen test:
+
+- **Await something the query renders**, not a header control. Headers usually render
+  during `loading`, so awaiting a header button asserts against an empty list.
+- **`required` inputs mean native validation blocks submit**, so a page's own
+  "please fill in everything" branch is unreachable through the UI. Assert "no
+  request was made" rather than a specific message.
+
 ## Twin files
 
 These exist at the **same path** in `oxshare-crm-admin` and are meant to stay identical:
