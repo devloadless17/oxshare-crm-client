@@ -9,8 +9,8 @@ export function proxy(request: NextRequest) {
     // gate is unaffected by R-3.2 — only the NAME changed. Both spellings are
     // accepted because the `__Host-` prefix appears only where TLS makes it
     // valid (see the backend's common/security/session-cookies.ts).
-    request.cookies.get('__Host-oxshare_portal_at')?.value ??
-      request.cookies.get('oxshare_portal_at')?.value,
+    request.cookies.get('__Host-oxshare_crm_portal_at')?.value ??
+      request.cookies.get('oxshare_crm_portal_at')?.value,
   );
 
   return decision.allow
