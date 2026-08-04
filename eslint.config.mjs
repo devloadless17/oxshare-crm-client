@@ -211,7 +211,11 @@ export default defineConfig([
   {
     // Config files are not part of the app's tsconfig project graph, so
     // type-aware rules cannot resolve them.
-    files: ['*.mjs', '*.mts', '*.config.ts'],
+    // Build tooling, not application code: these are not in the tsconfig project,
+    // so type-aware rules cannot resolve them. `scripts/**` is included because
+    // gen-openapi.mjs lives there — CI parses it, a developer's earlier run may
+    // not have, and a lint rule that fails only on the runner is the worst kind.
+    files: ['*.mjs', '*.mts', '*.config.ts', 'scripts/**/*.mjs', 'scripts/**/*.js'],
     ...tseslint.configs.disableTypeChecked,
   },
 ]);
