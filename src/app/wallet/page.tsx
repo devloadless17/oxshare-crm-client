@@ -6,6 +6,7 @@ import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { walletApi, type Wallet as WalletRecord } from '@/lib/api/wallet';
 import { formatMoney, isZeroMoney } from '@/lib/money';
+import { t } from '@/lib/i18n';
 
 /**
  * Presentation order for the balance cards. The backend only rows a wallet once
@@ -73,17 +74,15 @@ export default function WalletPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">My Wallet</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          View your central wallet balances and manage fund allocation
-        </p>
+        <p className="text-sm text-muted-foreground mt-1">{t('wallet.subtitle')}</p>
       </div>
 
       <AsyncBoundary
         status={wallets.status}
-        label="Loading your wallet balances"
+        label={t('wallet.loading')}
         endpoints={['GET /wallet']}
         onRetry={() => void wallets.refetch()}
-        errorMessage={apiErrorMessage(wallets.error, 'Could not load your wallet balances.')}
+        errorMessage={apiErrorMessage(wallets.error, t('wallet.loadFailed'))}
       >
         <div className="grid gap-6 md:grid-cols-2">
           {CURRENCIES.map(({ code, label, note }) => (

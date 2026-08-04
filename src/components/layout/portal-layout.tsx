@@ -25,9 +25,11 @@ import { ThemeToggle } from '../theme-toggle';
 import { useUser } from '@/context/UserContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { t, type MessageKey } from '@/lib/i18n';
 
 export interface NavItem {
-  label: string;
+  /** A message key, not a string — resolved through t() at render time. */
+  label: MessageKey;
   href: string;
   icon: React.ElementType;
   badge?: string | number;
@@ -58,14 +60,14 @@ export interface NavItem {
  * the reminder that it needs to be.
  */
 export const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Trading Accounts', href: '/accounts', icon: LineChart },
-  { label: 'Wallet', href: '/wallet', icon: Wallet },
-  { label: 'Deposit', href: '/deposit', icon: ArrowDownRight, comingSoon: true },
-  { label: 'Withdraw', href: '/withdraw', icon: ArrowUpRight, comingSoon: true },
-  { label: 'Transactions', href: '/transactions', icon: Receipt, comingSoon: true },
-  { label: 'KYC Verification', href: '/kyc', icon: ShieldCheck, badge: 'Required' },
-  { label: 'Profile', href: '/profile', icon: User, comingSoon: true },
+  { label: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'nav.accounts', href: '/accounts', icon: LineChart },
+  { label: 'nav.wallet', href: '/wallet', icon: Wallet },
+  { label: 'nav.deposit', href: '/deposit', icon: ArrowDownRight, comingSoon: true },
+  { label: 'nav.withdraw', href: '/withdraw', icon: ArrowUpRight, comingSoon: true },
+  { label: 'nav.transactions', href: '/transactions', icon: Receipt, comingSoon: true },
+  { label: 'nav.kyc', href: '/kyc', icon: ShieldCheck, badge: t('kyc.required') },
+  { label: 'nav.profile', href: '/profile', icon: User, comingSoon: true },
 ];
 
 export function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -114,17 +116,17 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             className="flex items-center gap-3 overflow-hidden rounded-md focus-outline"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/oxshare-mark.svg" alt="OXShare" className="h-7 w-auto shrink-0" />
+            <img src="/oxshare-mark.svg" alt={t('app.name')} className="h-7 w-auto shrink-0" />
             {!collapsed && (
               <div className="flex flex-col">
                 <span
                   suppressHydrationWarning
                   className="text-sm font-semibold tracking-wider text-foreground"
                 >
-                  OXShare
+                  {t('app.name')}
                 </span>
                 <span className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
-                  Client Portal
+                  {t('app.portalName')}
                 </span>
               </div>
             )}
@@ -161,17 +163,17 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
               return (
                 <div
                   key={item.href}
-                  title={collapsed ? `${item.label} — coming soon` : undefined}
+                  title={collapsed ? t('nav.comingSoonTitle', { label: t(item.label) }) : undefined}
                   aria-disabled="true"
                   className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground/60 cursor-not-allowed select-none ${
                     collapsed ? 'justify-center px-0' : ''
                   }`}
                 >
                   <Icon className="h-5 w-5 shrink-0 text-muted-foreground/60" />
-                  {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                  {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
                   {!collapsed && (
                     <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                      Soon
+                      {t('nav.comingSoon')}
                     </span>
                   )}
                 </div>
@@ -183,7 +185,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 onClick={closeMobile}
-                title={collapsed ? item.label : undefined}
+                title={collapsed ? t(item.label) : undefined}
                 className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium focus-outline ${
                   isActive
                     ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20 font-semibold'
@@ -197,7 +199,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
                       : 'text-muted-foreground group-hover:text-link'
                   }`}
                 />
-                {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
                 {!collapsed && item.badge && (
                   <span className="ml-auto rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-semibold text-warning">
                     {item.badge}

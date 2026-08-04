@@ -9,6 +9,7 @@ import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { clearKycDraft } from '@/lib/kyc-draft';
+import { t } from '@/lib/i18n';
 
 type KycStatusDto = components['schemas']['KycStatusDto'];
 
@@ -47,10 +48,10 @@ export default function KycSubmittedPage() {
   return (
     <AsyncBoundary
       status={statusQuery.status}
-      label="Loading your verification status"
+      label={t('common.loading')}
       endpoints={['GET /kyc/status']}
       onRetry={() => statusQuery.refetch()}
-      errorMessage={apiErrorMessage(statusQuery.error, 'Could not load your verification status.')}
+      errorMessage={apiErrorMessage(statusQuery.error, t('kyc.statusLoadFailed'))}
     >
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 max-w-lg mx-auto py-12 px-4 animate-in fade-in-0 zoom-in-95 duration-200">
         {/* Icon Badge */}
@@ -76,10 +77,10 @@ export default function KycSubmittedPage() {
         <div className="space-y-2 max-w-md">
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
             {isApproved
-              ? 'KYC Approved!'
+              ? t('kyc.approvedTitle')
               : isRejected
-                ? 'KYC Verification Rejected'
-                : 'Verification Submitted'}
+                ? t('kyc.rejectedTitle')
+                : t('kyc.submittedTitle')}
           </h1>
           <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
             {isApproved
@@ -96,7 +97,7 @@ export default function KycSubmittedPage() {
             href="/dashboard"
             className="inline-flex items-center justify-center bg-primary hover:bg-primary-hover text-primary-foreground font-bold px-8 py-3.5 rounded-full text-xs shadow-sm shadow-primary/25 focus-outline cursor-pointer"
           >
-            Back to Dashboard
+            {t('kyc.backToDashboard')}
           </Link>
         </div>
       </div>

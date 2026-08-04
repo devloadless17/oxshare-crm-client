@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { UploadCloud, CheckCircle2, FileText, Loader2, RefreshCw } from 'lucide-react';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { t } from '@/lib/i18n';
 
 export interface DocumentUploaderProps {
   label: string;
@@ -32,8 +33,10 @@ export interface DocumentUploaderProps {
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 function tooLargeMessage(file: File): string {
-  const mb = (file.size / (1024 * 1024)).toFixed(1);
-  return `That file is ${mb} MB. The limit is 10 MB — please upload a smaller scan or photo.`;
+  return t('kyc.uploadTooLarge', {
+    size: (file.size / (1024 * 1024)).toFixed(1),
+    limit: MAX_UPLOAD_BYTES / (1024 * 1024),
+  });
 }
 
 export function DocumentUploader({
@@ -84,7 +87,7 @@ export function DocumentUploader({
         // like the others it had no `error.message` fallback — so a network failure,
         // which carries no `response`, showed the generic string instead of the
         // reason.
-        setUploadError(apiErrorMessage(err, 'Upload failed. Please try again.'));
+        setUploadError(apiErrorMessage(err, t('kyc.uploadFailed')));
       } finally {
         setLoading(false);
       }

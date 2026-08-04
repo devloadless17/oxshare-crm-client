@@ -4,6 +4,7 @@ import * as React from 'react';
 import { AlertCircle, Camera, CheckCircle2, Loader2, RefreshCw, VideoOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { t } from '@/lib/i18n';
 
 export interface SelfieCameraProps {
   onUpload: (field: string, file: File) => Promise<void>;
@@ -98,7 +99,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
       await onUpload('selfie', file);
       setUploadedSuccess(true);
     } catch (err: unknown) {
-      setUploadError(apiErrorMessage(err, 'Could not upload your selfie. Please retake it.'));
+      setUploadError(apiErrorMessage(err, t('kyc.selfieFailed')));
     } finally {
       setUploading(false);
     }
