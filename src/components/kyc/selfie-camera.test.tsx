@@ -42,10 +42,22 @@ beforeEach(() => {
   })) as unknown as HTMLCanvasElement['getContext'];
   HTMLCanvasElement.prototype.toDataURL = vi.fn(() => 'data:image/jpeg;base64,AAAA');
 
-  // capture() turns the data URL back into a Blob via fetch.
+  // capture() turns the data URL back into a Blob via fetch, and the ONLY thing
+  // it calls on the result is `.blob()`. So the stub provides exactly that.
+  //
+  // It used to resolve `new Response(new Blob(...))`, which passed on Node 24
+  // and failed all six capture tests on CI's Node 22: a jsdom Blob is not the
+  // Blob that Node's undici `Response` expects, and how leniently undici accepts
+  // it changed between the two. That is an interop detail of three libraries
+  // with nothing to do with the behaviour under test, and it made main red while
+  // every local run was green.
   vi.stubGlobal(
     'fetch',
-    vi.fn(() => Promise.resolve(new Response(new Blob(['x'], { type: 'image/jpeg' })))),
+    vi.fn(() =>
+      Promise.resolve({
+        blob: () => Promise.resolve(new Blob(['x'], { type: 'image/jpeg' })),
+      } as unknown as Response),
+    ),
   );
 });
 
