@@ -205,7 +205,36 @@ export const messages = {
   'dashboard.recentTitle': 'Recent Activity',
   'dashboard.recentSubtitle': 'Latest deposits, withdrawals, and MT5 transfers',
   'dashboard.viewAllSoon': 'View All — soon',
-  'dashboard.noActivityTitle': 'No activity yet',
+  'dashboard.noActivityTitle': 'No Transactions Recorded Yet',
+  'dashboard.newAccount': 'New Account',
+  'dashboard.statTradingAccounts': 'Trading Accounts',
+  'dashboard.statActiveMt5': 'Active MT5',
+  'dashboard.statPendingTx': 'Pending Transactions',
+  'dashboard.statThisMonth': 'This Month',
+  'dashboard.instantDeposit': 'Instant Deposit',
+  'dashboard.instantDepositHint': 'Fund your wallet via USDT or Wire',
+  'dashboard.internalTransfer': 'Internal Transfer',
+  'dashboard.internalTransferHint': 'Move funds between MT5 accounts',
+  'dashboard.kycStatus': 'KYC Status',
+  'dashboard.kycVerified': 'Level 1 Verified • Trading Enabled',
+  'dashboard.openPositions': '{count} Open Positions',
+  'dashboard.underReview': '{count} Under Review',
+  'dashboard.noActivityBody':
+    'Your recent deposits, withdrawals and transfers will appear here automatically.',
+  'accounts.emptyBody': 'Create an MT5 live or demo account to start trading.',
+  'dashboard.recentTransactions': 'Recent Transactions',
+
+  'wallet.usdWallet': 'USD Wallet',
+  'wallet.usdtWallet': 'USDT TRC20',
+
+  'accounts.title': 'Trading Accounts',
+  'accounts.subtitle': 'Manage your MetaTrader 5 trading accounts and leverage settings',
+  'accounts.openNew': 'Open New Account',
+  'accounts.empty': 'No Active Trading Accounts',
+
+  'kyc.resumingTitle': 'Resuming Identity Verification',
+  'kyc.resumingBody': 'Fetching your progress and loading your last active step…',
+  'kyc.layoutTitle': 'Identity Verification',
   'dashboard.firstDepositSoon': 'Make Your First Deposit — soon',
 
   // ── KYC ───────────────────────────────────────────────────────────────────

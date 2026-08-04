@@ -6,6 +6,7 @@ import { Loader2, ShieldCheck } from 'lucide-react';
 import api from '@/lib/api';
 import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
+import { t } from '@/lib/i18n';
 
 type KycStatusDto = components['schemas']['KycStatusDto'];
 
@@ -69,10 +70,8 @@ export default function KycPage() {
       </div>
 
       <div className="space-y-1">
-        <h2 className="text-lg font-bold text-foreground">Resuming Identity Verification</h2>
-        <p className="text-xs text-muted-foreground">
-          Fetching your progress and loading your last active step...
-        </p>
+        <h2 className="text-lg font-bold text-foreground">{t('kyc.resumingTitle')}</h2>
+        <p className="text-xs text-muted-foreground">{t('kyc.resumingBody')}</p>
       </div>
     </div>
   );

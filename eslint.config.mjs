@@ -38,6 +38,10 @@ const I18N_ENFORCED = [
   'src/app/auth/forgot-password/page.tsx',
   'src/app/auth/reset-password/page.tsx',
   'src/app/auth/verify-email/page.tsx',
+  'src/app/dashboard/page.tsx',
+  'src/components/dashboard/wallet-balance-cards.tsx',
+  'src/app/accounts/page.tsx',
+  'src/app/kyc/page.tsx',
 ];
 
 /*
@@ -54,7 +58,26 @@ const I18N_ENFORCED = [
  * Text that is not copy: punctuation, separators and symbols a translator would
  * leave untouched anyway.
  */
-const ALLOWED_JSX_LITERALS = ['·', '—', '–', '/', '%', '+', '-', '×', ':', '*', '(', ')', '&'];
+const ALLOWED_JSX_LITERALS = [
+  '·',
+  '—',
+  '–',
+  '/',
+  '%',
+  '+',
+  '-',
+  '×',
+  ':',
+  '*',
+  '(',
+  ')',
+  '&',
+  // Separators and placeholder zeros in stat tiles. Not copy: a translator has
+  // nothing to do with them, and listing them keeps the rule usable on screens
+  // that are otherwise fully converted.
+  '•',
+  '0',
+];
 
 export default defineConfig([
   globalIgnores([

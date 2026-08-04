@@ -10,6 +10,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { WalletBalanceCards } from '@/components/dashboard/wallet-balance-cards';
+import { t } from '@/lib/i18n';
 
 export const metadata: Metadata = {
   title: 'Dashboard — OXShare',
@@ -23,15 +24,13 @@ export default function DashboardPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
-              Trading Overview
+              {t('dashboard.title')}
             </h1>
             <span className="rounded-full bg-info/10 px-2.5 py-0.5 text-xs font-semibold text-info border border-info/20">
-              Live MT5 Sync
+              {t('dashboard.liveBadge')}
             </span>
           </div>
-          <p className="text-xs md:text-sm text-muted-foreground">
-            Welcome back! Monitor your live balances, trading accounts, and recent transactions.
-          </p>
+          <p className="text-xs md:text-sm text-muted-foreground">{t('dashboard.welcome')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           {/*
@@ -46,9 +45,9 @@ export default function DashboardPage() {
             className="inline-flex h-9 items-center gap-2 rounded-lg bg-muted px-4 text-xs font-semibold text-muted-foreground/70 cursor-not-allowed"
           >
             <ArrowDownRight className="h-4 w-4" />
-            <span>Deposit</span>
+            <span>{t('wallet.deposit')}</span>
             <span className="rounded-full bg-background/60 px-1.5 py-0.5 text-[10px] uppercase">
-              Soon
+              {t('nav.comingSoon')}
             </span>
           </button>
           <button
@@ -58,9 +57,9 @@ export default function DashboardPage() {
             className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-muted px-4 text-xs font-semibold text-muted-foreground/70 cursor-not-allowed"
           >
             <ArrowUpRight className="h-4 w-4" />
-            <span>Withdraw</span>
+            <span>{t('wallet.withdraw')}</span>
             <span className="rounded-full bg-background/60 px-1.5 py-0.5 text-[10px] uppercase">
-              Soon
+              {t('nav.comingSoon')}
             </span>
           </button>
           <Link
@@ -68,7 +67,7 @@ export default function DashboardPage() {
             className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground shadow-xs hover:bg-muted focus-outline"
           >
             <Plus className="h-4 w-4" />
-            <span>New Account</span>
+            <span>{t('dashboard.newAccount')}</span>
           </Link>
         </div>
       </div>
@@ -87,7 +86,9 @@ export default function DashboardPage() {
         {/* Trading Accounts */}
         <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-ring/50">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">Trading Accounts</span>
+            <span className="text-xs font-semibold text-muted-foreground">
+              {t('dashboard.statTradingAccounts')}
+            </span>
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-link">
               <LineChart className="h-4 w-4" />
             </div>
@@ -95,9 +96,11 @@ export default function DashboardPage() {
           <div className="mt-4">
             <p className="text-2xl font-bold tracking-tight">0</p>
             <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Active MT5</span>
+              <span className="font-medium text-foreground">{t('dashboard.statActiveMt5')}</span>
               <span>•</span>
-              <span className="text-info font-medium">0 Open Positions</span>
+              <span className="text-info font-medium">
+                {t('dashboard.openPositions', { count: 0 })}
+              </span>
             </div>
           </div>
         </div>
@@ -106,7 +109,7 @@ export default function DashboardPage() {
         <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-warning/50">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">
-              Pending Transactions
+              {t('dashboard.statPendingTx')}
             </span>
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-warning/10 text-warning">
               <Clock className="h-4 w-4" />
@@ -115,9 +118,11 @@ export default function DashboardPage() {
           <div className="mt-4">
             <p className="text-2xl font-bold tracking-tight">0</p>
             <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
-              <span>This Month</span>
+              <span>{t('dashboard.statThisMonth')}</span>
               <span>•</span>
-              <span className="text-success font-medium">0 Under Review</span>
+              <span className="text-success font-medium">
+                {t('dashboard.underReview', { count: 0 })}
+              </span>
             </div>
           </div>
         </div>
@@ -130,9 +135,9 @@ export default function DashboardPage() {
             <ArrowDownRight className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold">Instant Deposit</p>
+            <p className="text-sm font-semibold">{t('dashboard.instantDeposit')}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Fund your wallet via USDT or Wire
+              {t('dashboard.instantDepositHint')}
             </p>
           </div>
         </div>
@@ -142,8 +147,10 @@ export default function DashboardPage() {
             <ArrowRightLeft className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold">Internal Transfer</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Move funds between MT5 accounts</p>
+            <p className="text-sm font-semibold">{t('dashboard.internalTransfer')}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t('dashboard.internalTransferHint')}
+            </p>
           </div>
         </div>
 
@@ -152,10 +159,8 @@ export default function DashboardPage() {
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold">KYC Status</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Level 1 Verified • Trading Enabled
-            </p>
+            <p className="text-sm font-semibold">{t('dashboard.kycStatus')}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('dashboard.kycVerified')}</p>
           </div>
         </div>
       </div>
@@ -164,20 +169,19 @@ export default function DashboardPage() {
       <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
         <div className="flex items-center justify-between border-b border-border p-6">
           <div>
-            <h2 className="text-base font-semibold">Recent Transactions</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Latest deposits, withdrawals, and MT5 transfers
-            </p>
+            <h2 className="text-base font-semibold">{t('dashboard.recentTransactions')}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('dashboard.recentSubtitle')}</p>
           </div>
           {/* /transactions has no page yet; GET /payments/transactions exists. */}
-          <span className="text-xs font-semibold text-muted-foreground/60">View All — soon</span>
+          <span className="text-xs font-semibold text-muted-foreground/60">
+            {t('dashboard.viewAllSoon')}
+          </span>
         </div>
         <div className="p-12 text-center">
           <ReceiptIcon className="mx-auto h-12 w-12 text-muted-foreground/40" />
-          <h3 className="mt-3 text-sm font-semibold">No Transactions Recorded Yet</h3>
+          <h3 className="mt-3 text-sm font-semibold">{t('dashboard.noActivityTitle')}</h3>
           <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-            Your recent deposits, withdrawals, and internal transfers will appear here
-            automatically.
+            {t('dashboard.noActivityBody')}
           </p>
           <div className="mt-5">
             <button
@@ -186,7 +190,7 @@ export default function DashboardPage() {
               title="Deposits are coming soon"
               className="inline-flex h-9 items-center gap-2 rounded-lg bg-muted px-4 text-xs font-semibold text-muted-foreground/70 cursor-not-allowed"
             >
-              Make Your First Deposit — soon
+              {t('dashboard.firstDepositSoon')}
             </button>
           </div>
         </div>

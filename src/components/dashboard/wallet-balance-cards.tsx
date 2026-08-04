@@ -4,6 +4,7 @@ import { Wallet, Coins, Loader2 } from 'lucide-react';
 import { useResource } from '@/hooks/use-resource';
 import { walletApi } from '@/lib/api/wallet';
 import { formatMoney } from '@/lib/money';
+import { t } from '@/lib/i18n';
 
 /**
  * The two balance tiles on the dashboard, as a client island.
@@ -70,11 +71,11 @@ export function WalletBalanceCards() {
         label="Wallet Balance"
         icon={<Wallet className="h-4 w-4" aria-hidden="true" />}
         value={display(usd?.available, 'USD')}
-        caption={<span className="font-medium text-foreground">USD Wallet</span>}
+        caption={<span className="font-medium text-foreground">{t('wallet.usdWallet')}</span>}
         accent={
           <>
             <span>•</span>
-            <span className="text-success font-medium">Available</span>
+            <span className="text-success font-medium">{t('wallet.available')}</span>
           </>
         }
       />
@@ -82,11 +83,11 @@ export function WalletBalanceCards() {
         label="USDT Balance"
         icon={<Coins className="h-4 w-4" aria-hidden="true" />}
         value={display(usdt?.available, 'USDT')}
-        caption={<span className="font-medium text-foreground">USDT TRC20</span>}
+        caption={<span className="font-medium text-foreground">{t('wallet.usdtWallet')}</span>}
         accent={
           <>
             <span>•</span>
-            <span>Instant Deposit</span>
+            <span>{t('dashboard.instantDeposit')}</span>
           </>
         }
       />

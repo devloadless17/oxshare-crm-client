@@ -5,6 +5,7 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
+import { t } from '@/lib/i18n';
 
 type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
 
@@ -59,9 +60,9 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
         <Link href="/dashboard" className="kyc-logo">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/oxshare-mark.svg" alt="" className="kyc-logo-mark" />
-          <span className="kyc-logo-text">OXShare</span>
+          <span className="kyc-logo-text">{t('app.name')}</span>
         </Link>
-        <div className="kyc-header-tag">Identity Verification</div>
+        <div className="kyc-header-tag">{t('kyc.layoutTitle')}</div>
       </header>
 
       {/* Progress Bar (Hidden on Submitted Page) */}
