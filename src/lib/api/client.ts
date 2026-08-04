@@ -141,17 +141,11 @@ export function refreshPortalToken(): Promise<string | null> {
       // channels for one session means two threat models). Nothing to read,
       // nothing to send, nothing to leak.
       //
-      // snake_case is still asserted here rather than reading both casings:
-      // these endpoints answer access_token, and reading both "just in case" is
-      // how a rename goes unnoticed until sessions silently stop refreshing.
-      const { data } = await axios.post<{ access_token?: string }>(
-        `${API_BASE_URL}${REFRESH_PATH}`,
-        {},
-        { withCredentials: true },
-      );
-      // The rotated cookies — session and CSRF — arrive on the response and are
-      // installed by the browser. A truthy answer just means "the session lives".
-      return data.access_token ?? 'refreshed';
+      await axios.post(`${API_BASE_URL}${REFRESH_PATH}`, {}, { withCredentials: true });
+      // The rotated cookies — session and CSRF — arrive on the response and the
+      // browser installs them. The body carries no tokens, so there is nothing to
+      // read: reaching 200 IS the result. Callers only need "did it survive".
+      return 'refreshed';
     } catch {
       return null;
     } finally {
