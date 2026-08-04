@@ -310,6 +310,9 @@ export const messages = {
   'country.searchPlaceholder': 'Search country or code…',
 
   // ── Shared / generic ──────────────────────────────────────────────────────
+  'backendPending.body':
+    "This page's UI is ready, but the API it needs is not implemented yet. It will light up automatically once these endpoints exist:",
+
   'common.retry': 'Try again',
   /*
    * Two labels for one action, preserved rather than unified.
