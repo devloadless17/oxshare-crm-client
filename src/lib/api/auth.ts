@@ -1,5 +1,5 @@
 import type { components } from './types.gen';
-import { apiClient, clearSession, setSessionCookies, startProactiveRefresh } from './client';
+import { apiClient, clearSession, startProactiveRefresh } from './client';
 
 export interface LoginDto {
   email: string;
@@ -41,10 +41,12 @@ export type RegistrationResponse = components['schemas']['RegistrationResponseDt
 export const authApi = {
   async login(dto: LoginDto): Promise<AuthResponse> {
     const { data } = await apiClient.post<AuthResponse>('/auth/login', dto);
-    if (data.access_token) {
-      setSessionCookies(data.access_token, data.refresh_token);
-      startProactiveRefresh();
-    }
+    // Nothing to store: the server sets the session as httpOnly cookies and the
+    // browser installs them from this very response (PLATFORM-CONVENTIONS R-3.2).
+    // This used to write them from `data.access_token`, which is why the response
+    // still carries the tokens at all — they are now unused by the app and should
+    // come out of the payload the next time that DTO is touched.
+    startProactiveRefresh();
     return data;
   },
 

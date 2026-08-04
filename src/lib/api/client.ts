@@ -27,23 +27,49 @@ export const apiClient = axios.create({
 // Cookie lifetimes must match the tokens inside them: proxy.ts gates private
 // routes on the mere PRESENCE of the access cookie, so a cookie that outlives
 // its JWT waves the user through to a page where every request 401s.
-const ACCESS_TOKEN_DAYS = 1 / 96; // 15 minutes — matches the portal access token lifetime
-const REFRESH_TOKEN_DAYS = 30;
-const ACCESS_COOKIE = 'access_token';
-const REFRESH_COOKIE = 'refresh_token';
 const REFRESH_PATH = '/auth/refresh';
 const AUTH_ENDPOINT_PATTERN = /\/(auth|identity)\/(login|register|verify-email|refresh)/;
 const LOGIN_PATH = '/auth/login';
 // ─── twin:config:end ──────────────────────────────────────────────────────────
 
-// The backend reads the cookie (cookies travel via withCredentials). The header
-// is kept only for tooling that replays requests outside the browser.
+/**
+ * The session travels as httpOnly cookies, which the browser attaches on its own
+ * (`withCredentials` above). There is nothing for JS to read and nothing to
+ * attach — the `Authorization: Bearer` header this interceptor used to build was
+ * decorative even then, because the API has only ever read the cookie.
+ *
+ * What IS attached here is the anti-forgery token
+ * (PLATFORM-CONVENTIONS §3.0 / R-3.6). The CSRF cookie is deliberately readable
+ * by JS — it is a proof of same-origin, not a credential — and echoing it into a
+ * header is the half a cross-origin page cannot perform, because setting a custom
+ * header triggers a CORS preflight the API refuses.
+ */
 apiClient.interceptors.request.use((config) => {
-  const token = Cookies.get(ACCESS_COOKIE);
-  if (token) config.headers.Authorization = `Bearer ${token}`;
   config.headers['X-Request-Id'] = newCorrelationId();
+
+  if (STATE_CHANGING.test(config.method ?? 'get')) {
+    const csrf = readCsrfCookie();
+    if (csrf) config.headers[CSRF_HEADER] = csrf;
+  }
   return config;
 });
+
+const STATE_CHANGING = /^(post|put|patch|delete)$/i;
+const CSRF_HEADER = 'X-OxShare-CSRF';
+
+/**
+ * Reads the CSRF cookie under both spellings.
+ *
+ * The name gains a `__Host-` prefix wherever the deployment has TLS, because
+ * that prefix is what stops another OxShare site writing this cookie — the
+ * browser enforces Secure + Path=/ + no Domain on it, so a sibling host cannot
+ * create, overwrite or shadow it. Plain HTTP on localhost cannot satisfy Secure,
+ * hence two spellings and one reader. Prefer the prefixed one: if both somehow
+ * exist, the prefixed cookie is the one nothing else could have set.
+ */
+function readCsrfCookie(): string | undefined {
+  return Cookies.get('__Host-oxshare_csrf') ?? Cookies.get('oxshare_csrf');
+}
 
 /**
  * A correlation id for one request — PLATFORM-CONVENTIONS R-6.1.
@@ -71,32 +97,22 @@ function newCorrelationId(): string {
 }
 
 /**
- * Cookie lifetimes must match the tokens inside them.
+ * There is no session-cookie writer here any more, deliberately.
  *
- * proxy.ts gates every private route on the mere PRESENCE of access_token. The
- * refresh path used to write that cookie with a 7-day expiry while the JWT
- * inside it lives 15 minutes — so for the next 7 days the proxy waved the user
- * through to a page where every request 401s. Both writers use these now.
+ * The server sets `httpOnly` cookies (PLATFORM-CONVENTIONS R-3.2), so this app
+ * cannot read or write them — which is the entire point. Previously it wrote
+ * them itself from the login response, which meant the access token and a
+ * 30-day refresh token sat in `document.cookie`, readable by any XSS, any
+ * compromised transitive dependency and any browser extension on this origin.
+ * On a portal that also handles KYC documents and wallet balances, that is the
+ * whole account.
+ *
+ * Ending a session is now a server call, not a local delete: only the server can
+ * clear an httpOnly cookie, and only the server can revoke the refresh token
+ * behind it. A local delete was always the weaker half — it left the refresh
+ * token valid for 30 days.
  */
-
-export function setSessionCookies(accessToken: string, refreshToken?: string): void {
-  Cookies.set(ACCESS_COOKIE, accessToken, {
-    expires: ACCESS_TOKEN_DAYS,
-    path: '/',
-    sameSite: 'lax',
-  });
-  if (refreshToken) {
-    Cookies.set(REFRESH_COOKIE, refreshToken, {
-      expires: REFRESH_TOKEN_DAYS,
-      path: '/',
-      sameSite: 'lax',
-    });
-  }
-}
-
 export function clearSession(): void {
-  Cookies.remove(ACCESS_COOKIE, { path: '/' });
-  Cookies.remove(REFRESH_COOKIE, { path: '/' });
   stopProactiveRefresh();
 }
 
@@ -114,21 +130,22 @@ export function refreshPortalToken(): Promise<string | null> {
   if (inFlight) return inFlight;
   inFlight = (async () => {
     try {
-      const refreshToken = Cookies.get(REFRESH_COOKIE);
-      // snake_case: the client-portal endpoints answer access_token /
-      // refresh_token, unlike the admin API's camelCase. Reading both "just in
-      // case" is how a rename goes unnoticed until a session silently stops
-      // refreshing, so this asserts the one shape the backend actually sends.
-      const { data } = await axios.post<{ access_token?: string; refresh_token?: string }>(
+      // No body: the refresh token is an httpOnly cookie the browser attaches,
+      // and the API accepts it from nowhere else (R-3.1 — two credential
+      // channels for one session means two threat models). Nothing to read,
+      // nothing to send, nothing to leak.
+      //
+      // snake_case is still asserted here rather than reading both casings:
+      // these endpoints answer access_token, and reading both "just in case" is
+      // how a rename goes unnoticed until sessions silently stop refreshing.
+      const { data } = await axios.post<{ access_token?: string }>(
         `${API_BASE_URL}${REFRESH_PATH}`,
-        { refreshToken },
+        {},
         { withCredentials: true },
       );
-      if (data.access_token) {
-        setSessionCookies(data.access_token, data.refresh_token);
-        return data.access_token;
-      }
-      return null;
+      // The rotated cookies — session and CSRF — arrive on the response and are
+      // installed by the browser. A truthy answer just means "the session lives".
+      return data.access_token ?? 'refreshed';
     } catch {
       return null;
     } finally {
@@ -145,9 +162,12 @@ let proactiveTimer: ReturnType<typeof setInterval> | null = null;
 
 export function startProactiveRefresh(): void {
   if (typeof window === 'undefined' || proactiveTimer) return;
+  // Gated on the CSRF cookie rather than the refresh cookie: it is the one
+  // cookie this app can still see, it is set and cleared alongside the session,
+  // and so it is an accurate "a session exists" signal without being a credential.
   proactiveTimer = setInterval(
     () => {
-      if (Cookies.get(REFRESH_COOKIE)) void refreshPortalToken();
+      if (readCsrfCookie()) void refreshPortalToken();
     },
     10 * 60 * 1000,
   );
@@ -184,9 +204,12 @@ apiClient.interceptors.response.use(
       !isAuthEndpoint
     ) {
       originalRequest._retry = true;
-      const newToken = await refreshPortalToken();
-      if (newToken) {
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+      const refreshed = await refreshPortalToken();
+      if (refreshed) {
+        // No header to re-attach: the rotated session cookie travels on its own.
+        // The CSRF header is rebuilt by the request interceptor on the retry,
+        // which matters because refresh ROTATES the token — replaying the old
+        // one would fail the binding check.
         return apiClient(originalRequest);
       }
       clearSession();
