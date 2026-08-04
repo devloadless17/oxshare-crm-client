@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { t } from '@/lib/i18n';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -52,7 +53,7 @@ export default function LoginPage() {
     setResendSuccess(null);
 
     if (!email || !password) {
-      setError('Please fill in both email and password.');
+      setError(t('auth.login.missingFields'));
       return;
     }
 
@@ -63,7 +64,7 @@ export default function LoginPage() {
       router.push('/dashboard');
       router.refresh();
     } catch (err: unknown) {
-      const formattedMsg = apiErrorMessage(err, 'Sign in failed. Please try again.');
+      const formattedMsg = apiErrorMessage(err, t('auth.login.failed'));
       setError(formattedMsg);
 
       if (formattedMsg.toLowerCase().includes('verify your email')) {
@@ -81,10 +82,10 @@ export default function LoginPage() {
 
     try {
       const res = await api.auth.resendVerification(email);
-      setResendSuccess(res.message || 'Verification link resent! Check your inbox.');
+      setResendSuccess(res.message || t('auth.login.resendSuccess'));
       setResendCooldown(60);
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, 'Failed to resend verification link.'));
+      setError(apiErrorMessage(err, t('auth.login.resendFailed')));
     } finally {
       setIsResending(false);
     }
@@ -101,10 +102,14 @@ export default function LoginPage() {
           <div className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
-            <span className="text-xl font-semibold tracking-wide text-foreground">OXShare</span>
+            <span className="text-xl font-semibold tracking-wide text-foreground">
+              {t('app.name')}
+            </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome to OXShare</h1>
-          <p className="text-xs text-muted-foreground">Sign in to your client trading portal</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {t('auth.login.heading')}
+          </h1>
+          <p className="text-xs text-muted-foreground">{t('auth.login.tagline')}</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5">
@@ -126,14 +131,14 @@ export default function LoginPage() {
                     {isResending ? (
                       <>
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span>Sending Link...</span>
+                        <span>{t('auth.login.resendSending')}</span>
                       </>
                     ) : resendCooldown > 0 ? (
-                      <span>Resend in {resendCooldown}s</span>
+                      <span>{t('auth.login.resendCooldown', { seconds: resendCooldown })}</span>
                     ) : (
                       <>
                         <RefreshCw className="h-3.5 w-3.5" />
-                        <span>Resend Verification Email</span>
+                        <span>{t('auth.login.resendCta')}</span>
                       </>
                     )}
                   </button>
@@ -151,7 +156,7 @@ export default function LoginPage() {
 
           <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email">{t('auth.login.emailLabel')}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -160,7 +165,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t('auth.login.emailPlaceholder')}
                   className="pl-9"
                 />
               </div>
@@ -168,12 +173,12 @@ export default function LoginPage() {
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t('auth.login.password')}</Label>
                 <Link
                   href="/auth/forgot-password"
                   className="text-[11px] font-medium text-link hover:underline rounded-xs focus-outline"
                 >
-                  Forgot password?
+                  {t('auth.login.forgot')}
                 </Link>
               </div>
               <div className="relative">
@@ -184,7 +189,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t('auth.login.passwordPlaceholder')}
                   className="pl-9 pr-10"
                 />
                 <button
@@ -201,22 +206,22 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Signing in...</span>
+                  <span>{t('auth.login.submitting')}</span>
                 </>
               ) : (
-                <span>Sign in</span>
+                <span>{t('auth.login.submit')}</span>
               )}
             </Button>
           </form>
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          Don&apos;t have an account?{' '}
+          {t('auth.login.noAccount')}{' '}
           <Link
             href="/auth/register"
             className="font-semibold text-link hover:underline rounded-xs focus-outline"
           >
-            Create one
+            {t('auth.login.register')}
           </Link>
         </p>
       </div>

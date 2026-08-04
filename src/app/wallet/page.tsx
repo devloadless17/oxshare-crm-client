@@ -45,8 +45,10 @@ function BalanceCard({
                 it is noise on every card. */}
             {!isZeroMoney(wallet.onHold) && (
               <p className="text-xs text-muted-foreground mt-1">
-                {formatMoney(wallet.onHold, currency)} on hold ·{' '}
-                {formatMoney(wallet.balance, currency)} total
+                {t('wallet.onHold', {
+                  amount: formatMoney(wallet.onHold, currency),
+                  total: formatMoney(wallet.balance, currency),
+                })}
               </p>
             )}
             <p className="text-xs text-muted-foreground mt-1">{note}</p>
@@ -55,7 +57,7 @@ function BalanceCard({
           <>
             <p className="text-3xl font-bold text-muted-foreground">—</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Not opened yet. This wallet appears after your first {currency} deposit.
+              {t('wallet.notOpened', { currency })}
             </p>
           </>
         )}
@@ -73,7 +75,7 @@ export default function WalletPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">My Wallet</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('wallet.heading')}</h1>
         <p className="text-sm text-muted-foreground mt-1">{t('wallet.subtitle')}</p>
       </div>
 
@@ -95,16 +97,16 @@ export default function WalletPage() {
             >
               <button className="flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary-hover">
                 <ArrowDownRight className="h-4 w-4" aria-hidden="true" />{' '}
-                {code === 'USD' ? 'Deposit' : 'Deposit USDT'}
+                {code === 'USD' ? t('wallet.deposit') : t('wallet.depositUsdt')}
               </button>
               <button className="flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-input bg-card px-3 text-xs font-semibold hover:bg-muted">
                 {code === 'USD' ? (
                   <>
-                    <ArrowUpRight className="h-4 w-4" aria-hidden="true" /> Withdraw
+                    <ArrowUpRight className="h-4 w-4" aria-hidden="true" /> {t('wallet.withdraw')}
                   </>
                 ) : (
                   <>
-                    <ArrowRightLeft className="h-4 w-4" aria-hidden="true" /> Transfer
+                    <ArrowRightLeft className="h-4 w-4" aria-hidden="true" /> {t('wallet.transfer')}
                   </>
                 )}
               </button>

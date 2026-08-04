@@ -7,6 +7,7 @@ import { Lock, Mail, User, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } fro
 import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { t } from '@/lib/i18n';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -64,14 +65,14 @@ export default function RegisterPage() {
           <div className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
-            <span className="text-xl font-semibold tracking-wide text-foreground">OXShare</span>
+            <span className="text-xl font-semibold tracking-wide text-foreground">
+              {t('app.name')}
+            </span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Create OXShare Account
+            {t('auth.register.heading')}
           </h1>
-          <p className="text-xs text-muted-foreground">
-            Start trading with zero commission & deep liquidity
-          </p>
+          <p className="text-xs text-muted-foreground">{t('auth.register.tagline')}</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5">
@@ -93,7 +94,7 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label htmlFor="firstName" className="text-xs font-semibold text-foreground">
-                  First Name
+                  {t('auth.register.firstName')}
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -103,7 +104,7 @@ export default function RegisterPage() {
                     required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="John"
+                    placeholder={t('auth.register.firstNamePlaceholder')}
                     className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
@@ -111,7 +112,7 @@ export default function RegisterPage() {
 
               <div className="space-y-1.5">
                 <label htmlFor="lastName" className="text-xs font-semibold text-foreground">
-                  Last Name
+                  {t('auth.register.lastName')}
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -121,7 +122,7 @@ export default function RegisterPage() {
                     required
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Doe"
+                    placeholder={t('auth.register.lastNamePlaceholder')}
                     className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
@@ -130,7 +131,7 @@ export default function RegisterPage() {
 
             <div className="space-y-1.5">
               <label htmlFor="email" className="text-xs font-semibold text-foreground">
-                Email Address
+                {t('auth.register.email')}
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -140,7 +141,7 @@ export default function RegisterPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t('auth.login.emailPlaceholder')}
                   className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
@@ -148,7 +149,7 @@ export default function RegisterPage() {
 
             <div className="space-y-1.5">
               <label htmlFor="password" className="text-xs font-semibold text-foreground">
-                Password
+                {t('auth.register.password')}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -158,7 +159,7 @@ export default function RegisterPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t('auth.login.passwordPlaceholder')}
                   className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-10 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                 />
                 <button
@@ -179,22 +180,22 @@ export default function RegisterPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Creating Account...</span>
+                  <span>{t('auth.register.submitting')}</span>
                 </>
               ) : (
-                <span>Complete Registration</span>
+                <span>{t('auth.register.submitCta')}</span>
               )}
             </button>
           </form>
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          Already have an account?{' '}
+          {t('auth.register.hasAccount')}{' '}
           <Link
             href="/auth/login"
             className="font-semibold text-link hover:underline rounded-xs focus-outline"
           >
-            Sign in
+            {t('auth.register.signIn')}
           </Link>
         </p>
       </div>
