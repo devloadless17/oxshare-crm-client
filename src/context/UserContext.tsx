@@ -4,6 +4,7 @@ import React, { createContext, useContext, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, startProactiveRefresh } from '@/lib/api/client';
 import { authApi } from '@/lib/api/auth';
+import { clearKycDraft } from '@/lib/kyc-draft';
 
 import type { components } from '@/lib/api/types.gen';
 
@@ -61,6 +62,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await authApi.logout();
     queryClient.clear();
+    // The half-filled KYC form holds the client's name, date of birth and
+    // address, and sessionStorage SURVIVES the full page load below — so the
+    // "no KYC data survives the logout" guarantee this function claims was not
+    // true of the one place that data actually sat. See lib/kyc-draft.ts.
+    clearKycDraft();
     // A HARD navigation, deliberately. `queryClient.clear()` drops the cache but
     // not the rest of the JS context; a full load is what guarantees no wallet
     // balance or KYC data survives the logout into the next session on a shared

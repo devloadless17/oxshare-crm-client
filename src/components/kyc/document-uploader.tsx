@@ -16,6 +16,26 @@ export interface DocumentUploaderProps {
   isErrored?: boolean;
 }
 
+/**
+ * Matches the backend's `MAX_UPLOAD_BYTES` (kyc.controller.ts).
+ *
+ * `accept="image/*,.pdf"` is a file-picker FILTER, not a validation — it is
+ * advisory, trivially bypassed, and says nothing about size. So an oversize
+ * document was uploaded in full before the server rejected it: on a phone over
+ * mobile data, that is a long wait ending in a failure the client could have
+ * been told about instantly.
+ *
+ * The server is still the control — this is UX, and the two numbers are only
+ * meaningful together. If they ever disagree the server wins and the client is
+ * merely wrong about when to complain, which is the safe direction.
+ */
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+function tooLargeMessage(file: File): string {
+  const mb = (file.size / (1024 * 1024)).toFixed(1);
+  return `That file is ${mb} MB. The limit is 10 MB — please upload a smaller scan or photo.`;
+}
+
 export function DocumentUploader({
   label,
   field,
@@ -36,6 +56,14 @@ export function DocumentUploader({
   const handleFile = React.useCallback(
     async (file: File) => {
       if (!file) return;
+      // Checked before the request, so the client is told immediately instead of
+      // after uploading megabytes they were always going to be refused.
+      if (file.size > MAX_UPLOAD_BYTES) {
+        setPreview(null);
+        setFileName(null);
+        setUploadError(tooLargeMessage(file));
+        return;
+      }
       setLoading(true);
       setUploadError(null);
       try {

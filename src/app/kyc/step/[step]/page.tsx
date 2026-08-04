@@ -5,7 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
-import { parseBooleanRecord, parseStringRecord } from '@/lib/json';
+import {
+  readPersonalDraft,
+  readUploadsDraft,
+  writePersonalDraft,
+  writeUploadsDraft,
+} from '@/lib/kyc-draft';
 import { useResource } from '@/hooks/use-resource';
 import type { components } from '@/lib/api/types.gen';
 import { Button } from '@/components/ui/button';
@@ -40,9 +45,7 @@ export default function KycStepPage() {
   const set = (k: string, v: string) => {
     setFormData((p) => {
       const updated = { ...p, [k]: v };
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('oxshare_kyc_personal', JSON.stringify(updated));
-      }
+      writePersonalDraft(updated);
       return updated;
     });
   };
@@ -95,8 +98,8 @@ export default function KycStepPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const cachedPersonal = parseStringRecord(sessionStorage.getItem('oxshare_kyc_personal'));
-    const cachedUploads = parseBooleanRecord(sessionStorage.getItem('oxshare_kyc_uploads'));
+    const cachedPersonal = readPersonalDraft();
+    const cachedUploads = readUploadsDraft();
     const data = statusQuery.data;
 
     const fromServer = data?.personalInfo
@@ -110,7 +113,7 @@ export default function KycStepPage() {
     if (Object.keys(mergedPersonal).length > 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- see note above
       setFormData(mergedPersonal);
-      sessionStorage.setItem('oxshare_kyc_personal', JSON.stringify(mergedPersonal));
+      writePersonalDraft(mergedPersonal);
     }
 
     const uploads: Record<string, boolean> = { ...cachedUploads };
@@ -133,7 +136,7 @@ export default function KycStepPage() {
     }
     if (uploads['selfie']) setSelfieUploaded(true);
     setUploadsState(uploads);
-    sessionStorage.setItem('oxshare_kyc_uploads', JSON.stringify(uploads));
+    writeUploadsDraft(uploads);
   }, [statusQuery.data]);
 
   /* Upload handler */
@@ -148,9 +151,7 @@ export default function KycStepPage() {
 
     setUploadsState((p) => {
       const updated = { ...p, [field]: true };
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('oxshare_kyc_uploads', JSON.stringify(updated));
-      }
+      writeUploadsDraft(updated);
       return updated;
     });
 

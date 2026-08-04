@@ -73,11 +73,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Three sibling repos each have a lockfile; pin the root so Next doesn't guess
+  // which one is the workspace. The admin app already does this.
+  turbopack: { root: __dirname },
   async rewrites() {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3001/:path*',
+        destination: `${process.env.API_ORIGIN ?? 'http://localhost:3001'}/:path*`,
       },
     ];
   },

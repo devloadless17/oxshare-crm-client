@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Clock, XCircle } from 'lucide-react';
 import api from '@/lib/api';
@@ -7,10 +8,24 @@ import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { AsyncBoundary } from '@/components/async-boundary';
+import { clearKycDraft } from '@/lib/kyc-draft';
 
 type KycStatusDto = components['schemas']['KycStatusDto'];
 
 export default function KycSubmittedPage() {
+  /*
+   * Reaching this screen means the server has the submission, so the copy in
+   * this tab is redundant — and a redundant copy of someone's date of birth and
+   * address is personal data retained for no purpose. Cleared on mount rather
+   * than at submit time so it also covers a client who navigates back here.
+   *
+   * Not in an effect body that depends on the query: the draft should go
+   * whether or not the status request succeeds.
+   */
+  useEffect(() => {
+    clearKycDraft();
+  }, []);
+
   /*
    * On useResource rather than useEffect, and no longer swallowing failures.
    *

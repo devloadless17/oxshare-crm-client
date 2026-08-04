@@ -92,3 +92,31 @@ describe('decodeJwtPayload', () => {
     expect(decodeJwtPayload(`h.${b64}.s`)).toBeNull();
   });
 });
+
+describe('isPublicPath — whole segments, not string prefixes', () => {
+  it('admits the public routes themselves and their children', () => {
+    expect(isPublicPath('/login')).toBe(true);
+    expect(isPublicPath('/auth/login')).toBe(true);
+    expect(isPublicPath('/auth/verify-email')).toBe(true);
+    expect(isPublicPath('/verify-email/pending')).toBe(true);
+  });
+
+  it('keeps /r/ a prefix, because referral codes are the whole point of it', () => {
+    expect(isPublicPath('/r/ABC123')).toBe(true);
+  });
+
+  it('does NOT admit a route that merely starts with the same characters', () => {
+    // The regression: a plain startsWith made every one of these public, so a
+    // route added later could become unauthenticated without anyone deciding it.
+    expect(isPublicPath('/login-help')).toBe(false);
+    expect(isPublicPath('/logins')).toBe(false);
+    expect(isPublicPath('/register-partner')).toBe(false);
+    expect(isPublicPath('/reset-password-admin')).toBe(false);
+  });
+
+  it('still gates the private routes', () => {
+    expect(isPublicPath('/dashboard')).toBe(false);
+    expect(isPublicPath('/wallet')).toBe(false);
+    expect(isPublicPath('/kyc')).toBe(false);
+  });
+});

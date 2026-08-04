@@ -26,22 +26,46 @@ import { useUser } from '@/context/UserContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 
-interface NavItem {
+export interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
   badge?: string | number;
+  /** Route not built yet — rendered as a disabled "Soon" entry, never a link. */
+  comingSoon?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
+/**
+ * Four of these used to be live links to routes that do not exist.
+ *
+ * `/deposit`, `/withdraw`, `/transactions` and `/profile` have no `page.tsx`, so
+ * every one of them was a Next 404 — in the customer-facing app, in the primary
+ * navigation. Deposit and Withdraw were also the two call-to-action buttons at
+ * the top of the dashboard, which is the most likely thing a funded client
+ * clicks. A client who hits 404 on "Withdraw" does not conclude that a screen is
+ * unfinished; they conclude the platform cannot pay them.
+ *
+ * The admin app already solved this exact problem and the root CLAUDE.md records
+ * its `comingSoon` treatment as the house pattern ("Unbuilt sidebar entries
+ * render as disabled 'Soon' items ... they are committed scope, don't delete the
+ * links"). This is that pattern, ported.
+ *
+ * They stay in the list rather than being deleted because they ARE committed
+ * scope — CORE-06 deposit, CORE-07/08 withdrawal + OTP, IND-05 — and the backend
+ * is already ahead of the UI here: POST /payments/withdrawals and
+ * GET /payments/transactions both exist and are called from nowhere. Marking
+ * them is an honest statement of what is not wired yet; deleting them would lose
+ * the reminder that it needs to be.
+ */
+export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Trading Accounts', href: '/accounts', icon: LineChart },
   { label: 'Wallet', href: '/wallet', icon: Wallet },
-  { label: 'Deposit', href: '/deposit', icon: ArrowDownRight },
-  { label: 'Withdraw', href: '/withdraw', icon: ArrowUpRight },
-  { label: 'Transactions', href: '/transactions', icon: Receipt },
+  { label: 'Deposit', href: '/deposit', icon: ArrowDownRight, comingSoon: true },
+  { label: 'Withdraw', href: '/withdraw', icon: ArrowUpRight, comingSoon: true },
+  { label: 'Transactions', href: '/transactions', icon: Receipt, comingSoon: true },
   { label: 'KYC Verification', href: '/kyc', icon: ShieldCheck, badge: 'Required' },
-  { label: 'Profile', href: '/profile', icon: User },
+  { label: 'Profile', href: '/profile', icon: User, comingSoon: true },
 ];
 
 export function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -130,6 +154,29 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+
+            // Rendered as a div, not a disabled Link: an anchor with a dead href
+            // is still navigable by keyboard, by middle-click and by a crawler.
+            if (item.comingSoon) {
+              return (
+                <div
+                  key={item.href}
+                  title={collapsed ? `${item.label} — coming soon` : undefined}
+                  aria-disabled="true"
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground/60 cursor-not-allowed select-none ${
+                    collapsed ? 'justify-center px-0' : ''
+                  }`}
+                >
+                  <Icon className="h-5 w-5 shrink-0 text-muted-foreground/60" />
+                  {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                  {!collapsed && (
+                    <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                      Soon
+                    </span>
+                  )}
+                </div>
+              );
+            }
 
             return (
               <Link

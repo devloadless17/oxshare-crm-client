@@ -27,7 +27,16 @@ export type GuardDecision = { allow: true } | { allow: false; redirectTo: string
 const ALLOW: GuardDecision = { allow: true };
 
 export function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  return PUBLIC_PATHS.some((entry) =>
+    // An entry ending in `/` is a prefix by design — `/r/` covers every referral
+    // code. Everything else matches whole SEGMENTS, never a bare string prefix:
+    // `startsWith('/login')` would also admit `/login-help`, and
+    // `startsWith('/register')` would admit `/register-partner`, so a route
+    // added later could become unauthenticated without anyone deciding it.
+    entry.endsWith('/')
+      ? pathname.startsWith(entry)
+      : pathname === entry || pathname.startsWith(`${entry}/`),
+  );
 }
 
 /** Decode a JWT payload without verifying it. Returns null on anything malformed. */
