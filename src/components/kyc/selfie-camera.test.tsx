@@ -42,23 +42,22 @@ beforeEach(() => {
   })) as unknown as HTMLCanvasElement['getContext'];
   HTMLCanvasElement.prototype.toDataURL = vi.fn(() => 'data:image/jpeg;base64,AAAA');
 
-  // capture() turns the data URL back into a Blob via fetch, and the ONLY thing
-  // it calls on the result is `.blob()`. So the stub provides exactly that.
+  // capture() encodes the canvas straight to a Blob with toBlob().
   //
-  // It used to resolve `new Response(new Blob(...))`, which passed on Node 24
-  // and failed all six capture tests on CI's Node 22: a jsdom Blob is not the
-  // Blob that Node's undici `Response` expects, and how leniently undici accepts
-  // it changed between the two. That is an interop detail of three libraries
-  // with nothing to do with the behaviour under test, and it made main red while
-  // every local run was green.
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(() =>
-      Promise.resolve({
-        blob: () => Promise.resolve(new Blob(['x'], { type: 'image/jpeg' })),
-      } as unknown as Response),
-    ),
-  );
+  // jsdom implements neither toDataURL nor toBlob, so both are stubbed. This
+  // replaced a much fussier fetch stub: the old code round-tripped the capture
+  // through a `data:` URL and asked undici to parse it back, which needed
+  // shimming twice — once for `new Response(new Blob(...))` and again for
+  // Node/undici/jsdom Blob interop that passed on Node 24 and failed all six
+  // capture tests on CI's Node 22. Encoding directly removes the network stack
+  // from a path that never needed it, and with it the CSP question: fetch() is
+  // governed by connect-src 'self', and a data: URL is not 'self'.
+  HTMLCanvasElement.prototype.toBlob = vi.fn(function (
+    this: HTMLCanvasElement,
+    callback: BlobCallback,
+  ) {
+    callback(new Blob(['x'], { type: 'image/jpeg' }));
+  });
 });
 
 afterEach(() => {

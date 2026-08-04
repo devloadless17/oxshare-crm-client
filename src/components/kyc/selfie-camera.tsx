@@ -11,6 +11,23 @@ export interface SelfieCameraProps {
   uploaded?: boolean;
 }
 
+/**
+ * A canvas as a JPEG blob.
+ *
+ * Promisified because `toBlob` is callback-based. A null result means the
+ * browser could not encode the canvas — rare, but it must reject rather than
+ * upload an empty file, which would reach the reviewer as a corrupt selfie and
+ * be rejected as the client's fault.
+ */
+function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Could not encode the captured image.'))),
+      'image/jpeg',
+    );
+  });
+}
+
 export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -93,8 +110,28 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
     setUploadError(null);
     setUploading(true);
     try {
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
+      /*
+       * canvas.toBlob, not fetch(dataUrl).blob().
+       *
+       * The old path round-tripped the capture through a `data:` URL and asked
+       * `fetch` to parse it back. Two problems with that:
+       *
+       *  1. CSP. `fetch()` is governed by `connect-src`, and next.config.ts sets
+       *     `connect-src 'self'` in production — a `data:` URL is not 'self'.
+       *     The three deliberate KYC exceptions in that file cover `img-src` and
+       *     `media-src`, which is DISPLAYING the capture, not converting it. So
+       *     this was liable to fail in production while working in development,
+       *     surfacing as "Could not upload your selfie. Please retake it." on the
+       *     step that gates FR-CORE-15, indistinguishable from a network fault.
+       *  2. It was awkward enough to need shimming in tests twice — first for
+       *     `new Response(new Blob(...))`, then again for Node/undici/jsdom Blob
+       *     interop across Node versions.
+       *
+       * `toBlob` is the API for this, produces the same bytes, needs no network
+       * stack and no CSP allowance. The data URL is still used for the preview,
+       * which is what `img-src data:` exists for.
+       */
+      const blob = await canvasToJpegBlob(canvas);
       const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
       await onUpload('selfie', file);
       setUploadedSuccess(true);
