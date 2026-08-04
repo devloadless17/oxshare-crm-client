@@ -77,17 +77,16 @@ export const authApi = {
   },
 
   /**
-   * NOT IMPLEMENTED BY THE BACKEND.
+   * Password reset. Both endpoints exist now (FR-CORE-09 · R-3.5).
    *
-   * There is no POST /auth/forgot-password and no POST /auth/reset-password —
-   * verified against the identity controller, which exposes only register,
-   * verify-email, resend-verification, login, refresh, logout and me. There is
-   * also no password-reset token column on `users`.
+   * This comment used to say the opposite, and said it for months: the UI was
+   * live, the email template was written, and both calls 404'd. The backend
+   * half landed with the token stored as a hash, a 30-minute single-use TTL,
+   * and every session revoked on success.
    *
-   * EmailService.sendPasswordResetEmail() exists and has zero callers, so the
-   * flow is half-built: the template is written, the UI is written, and nothing
-   * connects them. Both calls below will 404 until the endpoints land.
-   * Tracked with the other contract gaps in docs/DECISIONS.md.
+   * `forgotPassword` answers identically whether or not the account exists — so
+   * the screen must NOT branch on the response to say "no such account". That
+   * would reintroduce, in the UI, the enumeration oracle the API refuses to be.
    */
   async forgotPassword(email: string) {
     const { data } = await apiClient.post<MessageResponse>('/auth/forgot-password', { email });
