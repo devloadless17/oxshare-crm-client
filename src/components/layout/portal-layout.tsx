@@ -38,11 +38,18 @@ export interface NavItem {
 }
 
 /**
- * Four of these used to be live links to routes that do not exist.
+ * Four of these used to be live links to routes that did not exist.
  *
- * `/deposit`, `/withdraw`, `/transactions` and `/profile` have no `page.tsx`, so
+ * `/deposit`, `/withdraw`, `/transactions` and `/profile` had no `page.tsx`, so
  * every one of them was a Next 404 — in the customer-facing app, in the primary
- * navigation. Deposit and Withdraw were also the two call-to-action buttons at
+ * navigation.
+ *
+ * Three now exist. `/withdraw` and `/transactions` are real screens against real
+ * endpoints; `/deposit` is a real route that renders BackendPending, because
+ * CORE-06 is blocked on Whish/USDT credentials (§12.5) and a form with nowhere
+ * to submit would be worse than the 404 it replaces — a 404 is obviously broken,
+ * a form that accepts input and does nothing looks like it worked. `/profile`
+ * remains unbuilt and marked. Deposit and Withdraw were also the two call-to-action buttons at
  * the top of the dashboard, which is the most likely thing a funded client
  * clicks. A client who hits 404 on "Withdraw" does not conclude that a screen is
  * unfinished; they conclude the platform cannot pay them.
@@ -63,9 +70,9 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'nav.accounts', href: '/accounts', icon: LineChart },
   { label: 'nav.wallet', href: '/wallet', icon: Wallet },
-  { label: 'nav.deposit', href: '/deposit', icon: ArrowDownRight, comingSoon: true },
-  { label: 'nav.withdraw', href: '/withdraw', icon: ArrowUpRight, comingSoon: true },
-  { label: 'nav.transactions', href: '/transactions', icon: Receipt, comingSoon: true },
+  { label: 'nav.deposit', href: '/deposit', icon: ArrowDownRight },
+  { label: 'nav.withdraw', href: '/withdraw', icon: ArrowUpRight },
+  { label: 'nav.transactions', href: '/transactions', icon: Receipt },
   { label: 'nav.kyc', href: '/kyc', icon: ShieldCheck, badge: t('kyc.required') },
   { label: 'nav.profile', href: '/profile', icon: User, comingSoon: true },
 ];

@@ -47,6 +47,9 @@ const I18N_ENFORCED = [
   'src/components/kyc/selfie-camera.tsx',
   'src/components/kyc/document-uploader.tsx',
   'src/components/async-boundary.tsx',
+  'src/app/transactions/page.tsx',
+  'src/app/withdraw/page.tsx',
+  'src/app/deposit/page.tsx',
 ];
 
 /*

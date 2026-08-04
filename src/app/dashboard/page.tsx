@@ -34,34 +34,25 @@ export default function DashboardPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           {/*
-            Disabled, not linked: /deposit has no page, so this was a 404 on the
-            most prominent control in the customer-facing app. CORE-06 is
-            committed scope — the button stays, and says so.
+            Linked again. Both of these were 404s, then disabled buttons, and now
+            reach real routes — /withdraw against POST /payments/withdrawals, and
+            /deposit onto a BackendPending screen that names what CORE-06 is
+            waiting for rather than pretending to take money.
           */}
-          <button
-            type="button"
-            disabled
-            title="Deposits are coming soon"
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-muted px-4 text-xs font-semibold text-muted-foreground/70 cursor-not-allowed"
+          <Link
+            href="/deposit"
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary-hover focus-outline"
           >
             <ArrowDownRight className="h-4 w-4" />
             <span>{t('wallet.deposit')}</span>
-            <span className="rounded-full bg-background/60 px-1.5 py-0.5 text-[10px] uppercase">
-              {t('nav.comingSoon')}
-            </span>
-          </button>
-          <button
-            type="button"
-            disabled
-            title="Withdrawals are coming soon"
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-muted px-4 text-xs font-semibold text-muted-foreground/70 cursor-not-allowed"
+          </Link>
+          <Link
+            href="/withdraw"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground shadow-xs hover:bg-muted focus-outline"
           >
             <ArrowUpRight className="h-4 w-4" />
             <span>{t('wallet.withdraw')}</span>
-            <span className="rounded-full bg-background/60 px-1.5 py-0.5 text-[10px] uppercase">
-              {t('nav.comingSoon')}
-            </span>
-          </button>
+          </Link>
           <Link
             href="/accounts"
             className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground shadow-xs hover:bg-muted focus-outline"
@@ -172,10 +163,12 @@ export default function DashboardPage() {
             <h2 className="text-base font-semibold">{t('dashboard.recentTransactions')}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">{t('dashboard.recentSubtitle')}</p>
           </div>
-          {/* /transactions has no page yet; GET /payments/transactions exists. */}
-          <span className="text-xs font-semibold text-muted-foreground/60">
-            {t('dashboard.viewAllSoon')}
-          </span>
+          <Link
+            href="/transactions"
+            className="text-xs font-semibold text-link hover:underline rounded-xs focus-outline"
+          >
+            {t('dashboard.viewAll')}
+          </Link>
         </div>
         <div className="p-12 text-center">
           <ReceiptIcon className="mx-auto h-12 w-12 text-muted-foreground/40" />
@@ -184,14 +177,12 @@ export default function DashboardPage() {
             {t('dashboard.noActivityBody')}
           </p>
           <div className="mt-5">
-            <button
-              type="button"
-              disabled
-              title="Deposits are coming soon"
-              className="inline-flex h-9 items-center gap-2 rounded-lg bg-muted px-4 text-xs font-semibold text-muted-foreground/70 cursor-not-allowed"
+            <Link
+              href="/deposit"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary-hover focus-outline"
             >
-              {t('dashboard.firstDepositSoon')}
-            </button>
+              {t('dashboard.firstDeposit')}
+            </Link>
           </div>
         </div>
       </div>

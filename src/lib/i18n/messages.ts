@@ -197,6 +197,56 @@ export const messages = {
   'wallet.withdraw': 'Withdraw',
   'wallet.transfer': 'Transfer',
 
+  // ── Transactions (CORE-13) ────────────────────────────────────────────────
+  'transactions.title': 'Transactions',
+  'transactions.subtitle': 'Every deposit, withdrawal and transfer on your account',
+  'transactions.loading': 'Loading your transactions',
+  'transactions.loadFailed': 'Could not load your transactions.',
+  'transactions.empty': 'No transactions yet',
+  'transactions.emptyBody': 'Deposits and withdrawals will appear here as they happen.',
+  'transactions.colDate': 'Date',
+  'transactions.colType': 'Type',
+  'transactions.colAmount': 'Amount',
+  'transactions.colStatus': 'Status',
+  'transactions.colReference': 'Reference',
+  'transactions.deposit': 'Deposit',
+  'transactions.withdrawal': 'Withdrawal',
+  'transactions.statePending': 'Pending review',
+  'transactions.stateApproved': 'Approved',
+  'transactions.stateSuccess': 'Completed',
+  'transactions.stateRejected': 'Rejected',
+  'transactions.stateFailure': 'Failed',
+
+  // ── Withdraw (CORE-07 / CORE-08) ──────────────────────────────────────────
+  'withdraw.title': 'Withdraw',
+  'withdraw.subtitle': 'Request a withdrawal from your available balance',
+  'withdraw.loading': 'Loading your balances',
+  'withdraw.loadFailed': 'Could not load your balances.',
+  'withdraw.currency': 'Currency',
+  'withdraw.amount': 'Amount',
+  'withdraw.amountPlaceholder': '0.00',
+  'withdraw.available': 'Available: {amount}',
+  'withdraw.destination': 'Destination',
+  'withdraw.destinationPlaceholder': 'IBAN, or your USDT TRC20 address',
+  'withdraw.destinationHint':
+    'Double-check this. A withdrawal sent to the wrong destination cannot be recalled.',
+  'withdraw.submit': 'Request withdrawal',
+  'withdraw.submitting': 'Submitting…',
+  'withdraw.needAmount': 'Enter an amount to withdraw.',
+  'withdraw.needDestination': 'Enter where the funds should be sent.',
+  'withdraw.failed': 'Could not submit your withdrawal request.',
+  'withdraw.submittedTitle': 'Withdrawal requested',
+  'withdraw.submittedBody':
+    'Your request is with our team for review. The amount is held against your balance until it is approved or declined, and you will be emailed either way.',
+  'withdraw.viewTransactions': 'View your transactions',
+  'withdraw.noWallets': 'You have no funded wallet to withdraw from yet.',
+  'withdraw.reviewNote':
+    'Every withdrawal is reviewed by our team before any funds move. Nothing leaves your account automatically.',
+
+  // ── Deposit (CORE-06) ─────────────────────────────────────────────────────
+  'deposit.title': 'Deposit',
+  'deposit.subtitle': 'Add funds to your OXShare wallet',
+
   // ── Dashboard ─────────────────────────────────────────────────────────────
   'dashboard.title': 'Trading Overview',
   'dashboard.liveBadge': 'Live MT5 Sync',
@@ -204,7 +254,7 @@ export const messages = {
     'Welcome back! Monitor your live balances, trading accounts, and recent transactions.',
   'dashboard.recentTitle': 'Recent Activity',
   'dashboard.recentSubtitle': 'Latest deposits, withdrawals, and MT5 transfers',
-  'dashboard.viewAllSoon': 'View All — soon',
+  'dashboard.viewAll': 'View All',
   'dashboard.noActivityTitle': 'No Transactions Recorded Yet',
   'dashboard.newAccount': 'New Account',
   'dashboard.statTradingAccounts': 'Trading Accounts',
@@ -235,7 +285,7 @@ export const messages = {
   'kyc.resumingTitle': 'Resuming Identity Verification',
   'kyc.resumingBody': 'Fetching your progress and loading your last active step…',
   'kyc.layoutTitle': 'Identity Verification',
-  'dashboard.firstDepositSoon': 'Make Your First Deposit — soon',
+  'dashboard.firstDeposit': 'Make Your First Deposit',
 
   // ── KYC ───────────────────────────────────────────────────────────────────
   'kyc.required': 'Required',

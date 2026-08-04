@@ -52,20 +52,29 @@ describe('portal navigation', () => {
     expect(live).toContain('/accounts');
   });
 
-  it('marks the unbuilt money screens rather than linking them', () => {
+  it('links the money screens that now exist', () => {
+    const live = NAV_ITEMS.filter((i) => !i.comingSoon).map((i) => i.href);
+
+    // These were `comingSoon` while their routes did not exist. All three now
+    // do: /withdraw and /transactions are real screens against real endpoints,
+    // and /deposit is a real route rendering BackendPending — CORE-06 is blocked
+    // on Whish/USDT credentials (§12.5), and a form with nowhere to submit would
+    // be worse than the 404 it replaces.
+    expect(live).toEqual(expect.arrayContaining(['/withdraw', '/transactions', '/deposit']));
+  });
+
+  it('still marks what genuinely has no route', () => {
     const soon = NAV_ITEMS.filter((i) => i.comingSoon).map((i) => i.href);
 
-    // These are committed scope (CORE-06 deposit, CORE-07/08 withdrawal,
-    // IND-05), and the backend already serves POST /payments/withdrawals and
-    // GET /payments/transactions — so they are pending UI, not dropped features.
-    expect(soon).toEqual(
-      expect.arrayContaining(['/deposit', '/withdraw', '/transactions', '/profile']),
-    );
+    // The list is not empty by accident. /profile has no page, and marking it is
+    // what keeps this honest rather than the alternative of quietly deleting the
+    // entry and losing the reminder that it is committed scope.
+    expect(soon).toEqual(['/profile']);
   });
 
   it('sanity-checks the route probe itself', () => {
     // A probe that always returned true would make the first test vacuous.
     expect(routeExists('/dashboard')).toBe(true);
-    expect(routeExists('/deposit')).toBe(false);
+    expect(routeExists('/profile')).toBe(false);
   });
 });

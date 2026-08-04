@@ -1371,12 +1371,14 @@ export interface components {
             /** @enum {string} */
             provider?: "whish" | "usdt";
             /** @description The provider's own reference. Backs UNIQUE(provider, provider_ref), which is what makes settlement idempotent in the database (§6.3). */
-            providerRef?: Record<string, never>;
-            destination?: Record<string, never>;
-            rejectionReason?: Record<string, never>;
-            reviewedBy?: Record<string, never>;
-            reviewedAt?: Record<string, never>;
-            settledAt?: Record<string, never>;
+            providerRef?: string | null;
+            destination?: string | null;
+            rejectionReason?: string | null;
+            reviewedBy?: string | null;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            /** Format: date-time */
+            settledAt?: string | null;
             /** Format: date-time */
             createdAt: string;
         };
