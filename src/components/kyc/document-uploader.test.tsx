@@ -30,11 +30,30 @@ function apiError(message: string): Error {
   });
 }
 
+/*
+ * The image pipeline is stubbed, and tested on its own in lib/image-capture.test.ts.
+ *
+ * Two reasons. jsdom cannot decode an image, so the real function waits out its
+ * decode timeout and every test here takes 15 seconds. And what is under test is
+ * the uploader's BEHAVIOUR — choose, confirm, retake, fail — which should not
+ * change if the normalisation rules do.
+ *
+ * The stub passes the file straight through, matching what the real function
+ * does for a format it cannot handle.
+ */
+const { normaliseDocumentImage } = vi.hoisted(() => ({ normaliseDocumentImage: vi.fn() }));
+vi.mock('@/lib/image-capture', () => ({ normaliseDocumentImage }));
+
 const onUpload = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
   onUpload.mockResolvedValue(undefined);
+  // Pass-through by default, matching what the real function does for a format
+  // it cannot handle.
+  normaliseDocumentImage.mockImplementation((file: File) =>
+    Promise.resolve({ file, width: 1600, height: 1200, wasResized: false, tooSmall: false }),
+  );
 });
 
 function renderUploader(props: Partial<DocumentUploaderProps> = {}) {
@@ -112,6 +131,79 @@ describe('DocumentUploader — choosing is not sending', () => {
     // going to be refused.
     expect(await screen.findByRole('alert')).toHaveTextContent(/10/);
     expect(onUpload).not.toHaveBeenCalled();
+  });
+});
+
+describe('DocumentUploader — the image is prepared before it is sent', () => {
+  it('normalises the file, and uploads THAT rather than the original', async () => {
+    /*
+     * The wiring, asserted — a stubbed dependency would otherwise let someone
+     * delete the call and every other test here would still pass.
+     *
+     * Normalisation is what rotates a sideways ID upright, strips the GPS
+     * coordinates a phone camera writes into EXIF, and brings a 12 MB camera
+     * original under the upload limit. Sending the original instead would undo
+     * all three silently.
+     */
+    const user = userEvent.setup();
+    const original = fileOf('IMG_4821.jpg', 'image/jpeg');
+    const prepared = fileOf('IMG_4821.jpg', 'image/jpeg');
+    normaliseDocumentImage.mockResolvedValueOnce({
+      file: prepared,
+      width: 2000,
+      height: 1500,
+      wasResized: true,
+      tooSmall: false,
+    });
+    renderUploader();
+
+    await chooseAndConfirm(user, original);
+
+    expect(normaliseDocumentImage).toHaveBeenCalledWith(original);
+    expect(onUpload).toHaveBeenCalledWith('doc_front', prepared, expect.any(Function));
+  });
+
+  it('measures size AFTER normalising, not before', async () => {
+    // Normalisation is usually what brings a 12 MB camera original under the
+    // limit. Checking first would refuse photos that were about to become
+    // perfectly acceptable — which is where signup gets abandoned.
+    const user = userEvent.setup();
+    const huge = fileOf('huge.jpg', 'image/jpeg');
+    Object.defineProperty(huge, 'size', { value: 12 * 1024 * 1024 });
+    const shrunk = fileOf('huge.jpg', 'image/jpeg');
+    normaliseDocumentImage.mockResolvedValueOnce({
+      file: shrunk,
+      width: 2000,
+      height: 1500,
+      wasResized: true,
+      tooSmall: false,
+    });
+    renderUploader();
+
+    await user.upload(pickerInput(), huge);
+
+    expect(await screen.findByRole('button', { name: /use this/i })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('WARNS about a low-resolution photo without refusing it', async () => {
+    // Advisory on purpose: a legitimate small scan refused outright is a worse
+    // outcome than a marginal one a reviewer can judge for themselves.
+    const user = userEvent.setup();
+    normaliseDocumentImage.mockResolvedValueOnce({
+      file: fileOf('small.jpg', 'image/jpeg'),
+      width: 640,
+      height: 480,
+      wasResized: false,
+      tooSmall: true,
+    });
+    renderUploader();
+
+    await user.upload(pickerInput(), fileOf('small.jpg', 'image/jpeg'));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/hard to read/i);
+    // Still submittable — the warning informs, it does not block.
+    expect(screen.getByRole('button', { name: /use this/i })).toBeEnabled();
   });
 });
 

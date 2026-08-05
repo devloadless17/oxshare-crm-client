@@ -11,6 +11,7 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { normaliseDocumentImage } from '@/lib/image-capture';
 import { t } from '@/lib/i18n';
 
 export interface DocumentUploaderProps {
@@ -100,6 +101,10 @@ export function DocumentUploader({
   const [uploadError, setUploadError] = React.useState<string | null>(null);
   /** Chosen but not yet sent — the confirm/retake step. */
   const [pending, setPending] = React.useState<File | null>(null);
+  /** Rotating, shrinking and stripping metadata — before anything is shown. */
+  const [preparing, setPreparing] = React.useState(false);
+  /** The normalised image is below the readable floor. A warning, not a block. */
+  const [tooSmall, setTooSmall] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -108,27 +113,51 @@ export function DocumentUploader({
     // URL. Kept as an effect-free note so nobody "fixes" it with a revoke call.
   }, []);
 
-  /** Show it. Do not send it yet. */
-  const choose = React.useCallback((file: File) => {
+  /**
+   * Show it. Do not send it yet.
+   *
+   * The file is normalised FIRST (`lib/image-capture.ts`): rotated upright from
+   * its EXIF tag, stripped of the GPS coordinates a phone camera writes, and
+   * scaled down only if it is larger than a reviewer could use. So the preview
+   * below is what the reviewer will actually see — which is the point of having
+   * a preview at all, and was not true when the raw file was previewed and the
+   * raw file was sent.
+   *
+   * The size check runs AFTER, on the normalised file, because normalisation is
+   * usually what brings a 12 MB camera original under the limit. Checking first
+   * would refuse photos that were about to become perfectly acceptable.
+   */
+  const choose = React.useCallback(async (file: File) => {
     if (!file) return;
     setUploadError(null);
-    // Checked before anything else, so the client is told immediately instead of
-    // after uploading megabytes they were always going to be refused.
-    if (file.size > MAX_UPLOAD_BYTES) {
-      setPending(null);
-      setPreview(null);
-      setFileName(null);
-      setUploadError(tooLargeMessage(file));
-      return;
-    }
-    setPending(file);
-    setFileName(file.name);
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => setPreview(e.target?.result as string);
-      reader.readAsDataURL(file);
-    } else {
-      setPreview('pdf');
+    setTooSmall(false);
+    setPreparing(true);
+    try {
+      const normalised = await normaliseDocumentImage(file);
+
+      if (normalised.file.size > MAX_UPLOAD_BYTES) {
+        setPending(null);
+        setPreview(null);
+        setFileName(null);
+        setUploadError(tooLargeMessage(normalised.file));
+        return;
+      }
+
+      setPending(normalised.file);
+      setFileName(file.name);
+      // Advisory, not a block: a legitimate small scan refused outright is a
+      // worse outcome than a marginal one a reviewer can judge for themselves.
+      setTooSmall(normalised.tooSmall);
+
+      if (normalised.file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => setPreview(e.target?.result as string);
+        reader.readAsDataURL(normalised.file);
+      } else {
+        setPreview('pdf');
+      }
+    } finally {
+      setPreparing(false);
     }
   }, []);
 
@@ -174,7 +203,7 @@ export function DocumentUploader({
         e.preventDefault();
         setDragging(false);
         const f = e.dataTransfer.files[0];
-        if (f) choose(f);
+        if (f) void choose(f);
       }}
       aria-describedby={isErrored ? `${field}-error` : undefined}
       className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-200 min-h-[170px] w-full ${
@@ -199,7 +228,7 @@ export function DocumentUploader({
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) choose(f);
+          if (f) void choose(f);
           // Reset, so choosing the SAME file twice still fires onChange —
           // otherwise "retake, pick the same photo" silently does nothing.
           e.target.value = '';
@@ -213,12 +242,17 @@ export function DocumentUploader({
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) choose(f);
+          if (f) void choose(f);
           e.target.value = '';
         }}
       />
 
-      {loading ? (
+      {preparing ? (
+        <div className="flex flex-col items-center gap-3 py-2">
+          <Loader2 className="h-8 w-8 animate-spin text-link" />
+          <p className="text-xs font-semibold text-foreground">{t('kyc.preparingImage')}</p>
+        </div>
+      ) : loading ? (
         <div className="flex w-full flex-col items-center gap-3 py-2">
           <Loader2 className="h-8 w-8 text-link animate-spin" />
           <div className="space-y-1 w-full max-w-[220px]">
@@ -258,6 +292,11 @@ export function DocumentUploader({
           )}
           <p className="max-w-[220px] truncate text-xs text-muted-foreground">{fileName}</p>
           <p className="text-xs font-semibold text-foreground">{t('kyc.checkBeforeSending')}</p>
+          {tooSmall && (
+            <p role="status" className="max-w-[240px] text-xs font-semibold text-warning">
+              {t('kyc.lowResolutionWarning')}
+            </p>
+          )}
           {uploadError && (
             <p
               id={`${field}-error`}

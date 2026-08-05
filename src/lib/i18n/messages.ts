@@ -368,6 +368,11 @@ export const messages = {
   // ── KYC: capture and upload ───────────────────────────────────────────────
   'kyc.cameraDeniedTitle': 'Camera Access Required',
   'kyc.cameraDeniedBody': 'Please allow camera permissions in your browser to take your selfie.',
+  // Why the camera is required, and the two things that actually block it.
+  // A client in a social app's in-app browser gets no getUserMedia at all and
+  // would otherwise be stuck with no explanation.
+  'kyc.cameraDeniedHow':
+    'A live photo is required for this step, so we can tell it is really you. Allow camera access in your browser settings — or if you opened this link inside another app, open it in Safari or Chrome instead.',
   'kyc.cameraRetry': 'Retry Camera',
   'kyc.cameraHint': 'Center your face inside the circle and click snap photo.',
   'kyc.snapPhoto': 'Snap Photo',
@@ -387,6 +392,9 @@ export const messages = {
   // The confirm step. The photo is NOT on the server yet at this point, which is
   // the whole reason the step exists — a blurry shot costs nothing to redo here
   // and costs a full mobile upload once it has been sent.
+  'kyc.preparingImage': 'Preparing your photo…',
+  'kyc.lowResolutionWarning':
+    'This photo is quite small and may be hard to read. If you can, retake it closer or in better light.',
   'kyc.checkBeforeSending': 'Is the whole document visible and readable?',
   'kyc.useThisPhoto': 'Use this',
   'kyc.chooseAnother': 'Retake',

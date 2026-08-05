@@ -156,10 +156,26 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
         <div className="flex flex-col items-center space-y-4 w-full">
           <div className="relative h-72 w-72 overflow-hidden rounded-full border-4 border-primary/40 shadow-lg shadow-primary/10 bg-muted/40 flex items-center justify-center">
             {cameraError ? (
+              /*
+               * A live capture is REQUIRED for the selfie, and deliberately so:
+               * a photograph of a photograph proves nothing about who is
+               * holding the phone, which is the entire point of this step. An
+               * uploaded file is accepted for the ID and the proof of address —
+               * those are documents, and their authenticity is judged by the
+               * reviewer looking at them.
+               *
+               * So there is no file fallback here. What there IS is a way out
+               * of the dead end: the camera can be blocked by a permission the
+               * client denied earlier, or by an in-app browser (the one inside
+               * a social app) that does not grant getUserMedia at all. Without
+               * this text, that client cannot complete verification and has no
+               * idea why.
+               */
               <div className="flex flex-col items-center gap-2 p-4 text-center">
                 <VideoOff className="h-10 w-10 text-destructive" />
                 <p className="text-xs font-bold text-foreground">{t('kyc.cameraDeniedTitle')}</p>
-                <p className="text-[11px] text-muted-foreground">{t('kyc.cameraDeniedBody')}</p>
+                <p className="text-xs text-muted-foreground">{t('kyc.cameraDeniedBody')}</p>
+                <p className="text-xs text-muted-foreground">{t('kyc.cameraDeniedHow')}</p>
                 <Button size="sm" onClick={() => void startCamera()} className="mt-2 text-xs">
                   {t('kyc.cameraRetry')}
                 </Button>
