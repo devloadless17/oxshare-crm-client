@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { AuthShell } from '@/components/auth/auth-shell';
+import { Button } from '@/components/ui/button';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -64,7 +65,7 @@ function ResetPasswordForm() {
               <p className="text-xs text-muted-foreground">{t('auth.reset.successBody')}</p>
               <Link
                 href="/auth/login"
-                className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
+                className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover press focus-outline"
               >
                 {t('auth.reset.signInCta')}
               </Link>
@@ -89,7 +90,8 @@ function ResetPasswordForm() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 rounded text-muted-foreground hover:text-foreground focus-outline"
+                    aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                    className="absolute right-3 top-2.5 rounded text-muted-foreground transition-transform duration-100 active:scale-90 motion-reduce:transition-none motion-reduce:active:transform-none hover:text-foreground press focus-outline"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -114,11 +116,7 @@ function ResetPasswordForm() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
-              >
+              <Button type="submit" disabled={isLoading} size="lg" className="w-full">
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -127,7 +125,7 @@ function ResetPasswordForm() {
                 ) : (
                   <span>{t('auth.reset.submitCta')}</span>
                 )}
-              </button>
+              </Button>
             </form>
           )}
         </div>

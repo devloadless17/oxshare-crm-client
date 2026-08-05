@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { AuthShell } from '@/components/auth/auth-shell';
+import { Button } from '@/components/ui/button';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = React.useState('');
@@ -76,11 +77,7 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
-              >
+              <Button type="submit" disabled={isLoading} size="lg" className="w-full">
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -89,7 +86,7 @@ export default function ForgotPasswordPage() {
                 ) : (
                   <span>{t('auth.forgot.submitCta')}</span>
                 )}
-              </button>
+              </Button>
             </form>
           )}
         </div>

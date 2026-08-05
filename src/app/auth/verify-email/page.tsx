@@ -154,7 +154,7 @@ function VerifyEmailForm() {
 
               <Link
                 href="/auth/login"
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover press focus-outline"
               >
                 <span>{t('auth.verify.signInNow')}</span>
               </Link>
@@ -200,7 +200,7 @@ function VerifyEmailForm() {
                   placeholder={t('auth.verify.emailPlaceholder')}
                   value={resendEmail}
                   onChange={(e) => setResendEmail(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-xs text-foreground focus-outline"
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-xs text-foreground press focus-outline"
                 />
                 <button
                   type="button"
@@ -218,7 +218,7 @@ function VerifyEmailForm() {
 
                 <Link
                   href="/auth/login"
-                  className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
+                  className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover press focus-outline"
                 >
                   {t('auth.verify.backToSignIn')}
                 </Link>

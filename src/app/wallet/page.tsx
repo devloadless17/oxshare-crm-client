@@ -111,7 +111,7 @@ export default function WalletPage() {
               */}
               <Link
                 href="/deposit"
-                className="flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
+                className="flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary-hover press focus-outline"
               >
                 <ArrowDownRight className="h-4 w-4" aria-hidden="true" />{' '}
                 {code === 'USD' ? t('wallet.deposit') : t('wallet.depositUsdt')}
@@ -119,7 +119,7 @@ export default function WalletPage() {
               {code === 'USD' ? (
                 <Link
                   href="/withdraw"
-                  className="flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-input bg-card px-3 text-xs font-semibold hover:bg-muted focus-outline"
+                  className="flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-input bg-card px-3 text-xs font-semibold hover:bg-muted press focus-outline"
                 >
                   <ArrowUpRight className="h-4 w-4" aria-hidden="true" /> {t('wallet.withdraw')}
                 </Link>

@@ -11,7 +11,8 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
-  Bell,
+  Clock,
+  ShieldAlert,
   Search,
   Menu,
   X,
@@ -240,7 +241,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           <Link
             href="/dashboard"
             onClick={closeMobile}
-            className="flex items-center gap-3 overflow-hidden rounded-md focus-outline"
+            className="flex items-center gap-3 overflow-hidden rounded-md press focus-outline"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/oxshare-mark.svg" alt={t('app.name')} className="h-7 w-auto shrink-0" />
@@ -263,7 +264,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => setCollapsed(!collapsed)}
-            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-outline"
+            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground press focus-outline"
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
@@ -272,7 +273,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={closeMobile}
-            className="flex lg:hidden h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-outline"
+            className="flex lg:hidden h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground press focus-outline"
           >
             <X className="h-5 w-5" />
           </button>
@@ -379,7 +380,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="flex lg:hidden h-9 w-9 items-center justify-center rounded-md border border-border text-foreground hover:bg-muted focus-outline"
+              className="flex lg:hidden h-9 w-9 items-center justify-center rounded-md border border-border text-foreground hover:bg-muted press focus-outline"
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -398,29 +399,21 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           {/*
             Right controls.
 
-            Two things used to live here and no longer do.
+            The theme toggle used to live here — a two-button light/dark control
+            with nowhere to put "System". It is a submenu in the account menu
+            now, which is where a client looks for it.
 
-            The KYC pill: four states, one of which was a permanently pulsing
-            "⚠️ KYC Action Required" and another a permanent "Verified Account".
-            The second is a status light that never changes — it told an
-            approved client something they could not act on, on every screen.
-            The remaining KYC signal is the sidebar badge, which appears only
-            while there is work and is attached to the entry that leads to it.
+            What replaced the notification bell is the interesting part. The
+            bell was a dead control: no handler, no menu, and a permanent dot
+            implying unread items that did not exist, on a product with no
+            notifications table. A badge that always says "1" teaches people to
+            ignore badges.
 
-            The theme toggle: a two-button light/dark control with nowhere to
-            put "System". It is a submenu in the account menu now, which is
-            also where a client would look for it.
+            In its place is the one alert this product can actually raise today,
+            and it is raised from data the layout already has.
           */}
           <div className="flex items-center gap-3">
-            {/* Notifications */}
-            <button
-              type="button"
-              className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted focus-outline"
-              title={t('nav.notifications')}
-            >
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
-            </button>
+            <KycAlert kycStatus={kycStatus} verificationLevel={user?.verificationLevel} />
           </div>
         </header>
 
@@ -428,5 +421,67 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">{children}</main>
       </div>
     </div>
+  );
+}
+
+/**
+ * "Verification needed" in the header, and nothing at all once it is done.
+ *
+ * This is the notification slot, and it holds the only notification this
+ * product can honestly raise: there is no notifications table, no endpoint and
+ * nothing emitting events, so a bell with a permanent unread dot was inventing
+ * a message it did not have.
+ *
+ * KYC is different — the status is already loaded by the layout for the sidebar
+ * badge, it is genuinely actionable, and until it is done it blocks deposits,
+ * withdrawals and the payments API entirely. That makes it worth a persistent
+ * place in the chrome in a way "you have 1 unread" never was.
+ *
+ * It RENDERS NOTHING when there is no work. An empty slot is the honest state
+ * for an approved client, and it is the same rule as `kycNavBadge` returning
+ * undefined: a badge is a call to action, and someone with no action left needs
+ * no badge. Both read the same two values, so the header and the sidebar cannot
+ * disagree.
+ *
+ * A link rather than a button, because it navigates — middle-click, open in a
+ * new tab and keyboard activation all come free and are all lost on a <button>
+ * with an onClick that pushes a route.
+ */
+function KycAlert({
+  kycStatus,
+  verificationLevel,
+}: {
+  kycStatus: string | undefined;
+  verificationLevel: number | undefined;
+}) {
+  const badge = kycNavBadge(kycStatus, verificationLevel);
+  if (!badge) return null;
+
+  const inReview = badge.tone === 'info';
+
+  return (
+    <Link
+      href="/kyc"
+      className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-transform duration-100 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:transform-none focus-outline ${
+        badge.tone === 'destructive'
+          ? 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15'
+          : inReview
+            ? 'border-info/30 bg-info/10 text-info hover:bg-info/15'
+            : 'border-warning/30 bg-warning/10 text-warning hover:bg-warning/15'
+      }`}
+    >
+      {/* Under review is not a call to action, so it does not get the alarm
+          icon — the client has already done their part and is waiting on us. */}
+      {inReview ? (
+        <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
+      ) : (
+        <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
+      )}
+      <span className="hidden sm:inline">{badge.text}</span>
+      {/* The label is hidden on a narrow viewport, so the icon needs a name of
+          its own or the control becomes unlabelled exactly where it is hardest
+          to guess from context. */}
+      <span className="sr-only sm:hidden">{badge.text}</span>
+    </Link>
   );
 }

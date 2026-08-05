@@ -243,6 +243,38 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
+
+  /*
+   * The press feedback, for controls that cannot be `<Button>`.
+   *
+   * `components/ui/button.tsx` owns this for every real button. A handful of
+   * affordances legitimately are not one — the eye toggle inside a password
+   * field, the sidebar collapse chevron, the mobile drawer close — because
+   * Button's height, padding and min-width fight a 16px icon sitting inside
+   * another control's box.
+   *
+   * They still have to FEEL the same. A press effect that some controls have
+   * and others do not reads as the ones without it being broken, which is the
+   * whole reason this class exists rather than each of them being left alone.
+   *
+   * Scaled harder than Button (0.90 against 0.97) because the movement has to
+   * be perceptible on something the size of an icon; the same 3% on a 16px
+   * target is invisible.
+   */
+  .press {
+    transition: transform 100ms;
+  }
+  .press:active {
+    transform: scale(0.9);
+  }
+  /* A scale is exactly the movement `prefers-reduced-motion` exists for. */
+  @media (prefers-reduced-motion: reduce) {
+    .press,
+    .press:active {
+      transition: none;
+      transform: none;
+    }
+  }
 }
 
 /* Custom Scrollbars */

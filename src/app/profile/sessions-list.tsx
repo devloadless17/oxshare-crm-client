@@ -7,6 +7,7 @@ import { useResource } from '@/hooks/use-resource';
 import { accountApi, type Session } from '@/lib/api/account';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
+import { Button } from '@/components/ui/button';
 
 /**
  * Where this account is signed in, and a way to end any of it.
@@ -108,15 +109,17 @@ function SessionRow({ session, onRevoked }: { session: Session; onRevoked: () =>
           offering a control that is always rejected is worse than not offering
           it. Log out, in the account menu, is the operation that does both. */}
       {!session.current && (
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => void handleRevoke()}
           disabled={busy}
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-input px-3 text-xs font-semibold text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50 focus-outline cursor-pointer"
+          className="shrink-0 text-destructive hover:bg-destructive/10"
         >
           {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
           <span>{busy ? t('profile.sessionRevoking') : t('profile.sessionRevoke')}</span>
-        </button>
+        </Button>
       )}
     </li>
   );

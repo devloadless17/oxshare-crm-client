@@ -155,7 +155,7 @@ function LoginForm() {
           {t('auth.login.noAccount')}{' '}
           <Link
             href="/auth/register"
-            className="font-semibold text-link hover:underline rounded-xs focus-outline"
+            className="font-semibold text-link hover:underline rounded-xs press focus-outline"
           >
             {t('auth.login.register')}
           </Link>
@@ -235,7 +235,7 @@ function LoginForm() {
             <Label htmlFor="password">{t('auth.login.password')}</Label>
             <Link
               href="/auth/forgot-password"
-              className="text-[11px] font-medium text-link hover:underline rounded-xs focus-outline"
+              className="text-[11px] font-medium text-link hover:underline rounded-xs press focus-outline"
             >
               {t('auth.login.forgot')}
             </Link>
@@ -261,7 +261,7 @@ function LoginForm() {
               // Labelled, because the icon alone tells a screen-reader user
               // nothing and this button changes whether a password is on screen.
               aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-              className="absolute right-3 top-3 rounded text-muted-foreground hover:text-foreground focus-outline"
+              className="absolute right-3 top-3 rounded text-muted-foreground hover:text-foreground press focus-outline"
             >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" aria-hidden="true" />

@@ -5,6 +5,7 @@ import { BackendPending } from '@/components/backend-pending';
 import type { ResourceStatus } from '@/hooks/use-resource';
 import { t } from '@/lib/i18n';
 import { apiErrorRequestId } from '@/lib/api/errors';
+import { Button } from '@/components/ui/button';
 
 /**
  * The loading / not-built-yet / error / ready branch, in one place.
@@ -100,13 +101,9 @@ export function AsyncBoundary({
             {t('common.errorReference', { id: requestId })}
           </p>
         )}
-        <button
-          type="button"
-          onClick={onRetry}
-          className="h-9 px-4 rounded-lg border border-input bg-card text-xs font-semibold hover:bg-muted focus-outline"
-        >
+        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
           {t('common.retryShort')}
-        </button>
+        </Button>
       </div>
     );
   }

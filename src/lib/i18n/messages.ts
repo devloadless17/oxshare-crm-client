@@ -349,7 +349,35 @@ export const messages = {
 
   // ── Deposit (CORE-06) ─────────────────────────────────────────────────────
   'deposit.title': 'Deposit',
-  'deposit.subtitle': 'Add funds to your OXShare wallet',
+  'deposit.subtitle': 'Tell us what you are sending, then transfer it quoting the reference.',
+  'deposit.methodTitle': 'How are you sending it?',
+  'deposit.methodBank': 'Bank transfer',
+  'deposit.methodBankHint': 'Wire or local transfer in USD. Usually 1–3 business days.',
+  'deposit.methodUsdt': 'USDT (TRC20)',
+  'deposit.methodUsdtHint': 'Tether on Tron. Usually credited within the hour of confirmation.',
+  'deposit.amountLabel': 'Amount',
+  'deposit.submit': 'Get my deposit reference',
+  'deposit.submitting': 'Creating...',
+  'deposit.failed': 'Could not create your deposit request. Please try again.',
+  // Says plainly that nothing has moved. A client who reads "deposit created"
+  // and stops there will wait for a balance that is never coming.
+  'deposit.pendingTitle': 'Send your transfer now',
+  'deposit.pendingBody':
+    'Nothing has been credited yet. Send {amount} and quote the reference below, and we will credit your wallet once it arrives.',
+  'deposit.referenceLabel': 'Your reference',
+  'deposit.copyReference': 'Copy reference',
+  'deposit.referenceCopied': 'Copied',
+  'deposit.referenceWarning':
+    'Transfers without this reference take longer to match and may be returned.',
+  'deposit.instructionsTitle': 'Where to send it',
+  'deposit.newRequest': 'Start another deposit',
+  'deposit.trackIt': 'Track it on your transactions',
+  // The account details themselves are operator data and are NOT hardcoded
+  // here — see the deposit page for why the screen asks support for them
+  // rather than inventing them.
+  'deposit.instructionsPending':
+    'Your account manager will send the payment details for this reference. They are not published in the portal.',
+  'deposit.minMax': 'Between {min} and {max} per transfer.',
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
   'dashboard.title': 'Trading Overview',

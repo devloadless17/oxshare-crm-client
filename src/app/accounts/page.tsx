@@ -14,7 +14,7 @@ export default function AccountsPage() {
         </div>
         <button
           type="button"
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-hover press focus-outline"
         >
           <Plus className="h-4 w-4" />
           {t('accounts.openNew')}

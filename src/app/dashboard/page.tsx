@@ -34,10 +34,14 @@ export default function DashboardPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           {/*
-            Linked again. Both of these were 404s, then disabled buttons, and now
-            reach real routes — /withdraw against POST /payments/withdrawals, and
-            /deposit onto a BackendPending screen that names what CORE-06 is
-            waiting for rather than pretending to take money.
+            Linked again. Both were 404s, then disabled buttons, and both now
+            reach working screens — /withdraw against POST /payments/withdrawals
+            and /deposit against POST /payments/deposits.
+
+            /deposit spent a while as a BackendPending screen naming the
+            provider webhook CORE-06 was blocked on. Only the AUTOMATED flow was
+            blocked; declaring a transfer and reconciling it by reference needs
+            no third-party credential, and that is what it does now.
           */}
           <Link
             href="/deposit"

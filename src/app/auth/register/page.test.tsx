@@ -75,7 +75,16 @@ async function fillAndSubmit(over: Partial<Record<string, string>> = {}) {
   await user.type(await screen.findByLabelText(/first name/i), over.firstName ?? 'John');
   await user.type(screen.getByLabelText(/last name/i), over.lastName ?? 'Doe');
   await user.type(screen.getByLabelText(/email/i), over.email ?? 'new@oxshare.com');
-  await user.type(screen.getByLabelText(/password/i), over.password ?? 'Passw0rd!');
+  /*
+   * Anchored, because the eye toggle beside this field is now labelled too.
+   *
+   * Its accessible name has to contain "password" — "Show password" is what a
+   * screen-reader user needs to hear from a control that decides whether a
+   * password is legible on a shared screen — so /password/i matches both. The
+   * fix belongs here, not in the label: loosening an accessible name to suit a
+   * query trades a real user's experience for a test's convenience.
+   */
+  await user.type(screen.getByLabelText(/^password$/i), over.password ?? 'Passw0rd!');
   await user.click(screen.getByRole('button', { name: /complete registration/i }));
   return user;
 }

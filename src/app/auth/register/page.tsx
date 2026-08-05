@@ -9,6 +9,7 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { RedirectIfAuthenticated } from '@/components/auth/redirect-if-authenticated';
 import { AuthShell } from '@/components/auth/auth-shell';
+import { Button } from '@/components/ui/button';
 
 /**
  * Signed-out only, like the sign-in screen and for the same reason: this
@@ -162,18 +163,15 @@ function RegisterForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 rounded text-muted-foreground hover:text-foreground focus-outline"
+                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                  className="absolute right-3 top-2.5 rounded text-muted-foreground transition-transform duration-100 active:scale-90 motion-reduce:transition-none motion-reduce:active:transform-none hover:text-foreground press focus-outline"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
-            >
+            <Button type="submit" disabled={isLoading} size="lg" className="w-full">
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -182,7 +180,7 @@ function RegisterForm() {
               ) : (
                 <span>{t('auth.register.submitCta')}</span>
               )}
-            </button>
+            </Button>
           </form>
         </div>
 
@@ -190,7 +188,7 @@ function RegisterForm() {
           {t('auth.register.hasAccount')}{' '}
           <Link
             href="/auth/login"
-            className="font-semibold text-link hover:underline rounded-xs focus-outline"
+            className="font-semibold text-link hover:underline rounded-xs press focus-outline"
           >
             {t('auth.register.signIn')}
           </Link>

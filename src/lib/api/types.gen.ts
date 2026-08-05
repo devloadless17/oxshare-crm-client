@@ -517,6 +517,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payments/deposits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Declare an incoming deposit and get the reference to quote on the transfer
+         * @description Creates a PENDING deposit. No balance changes until the operator confirms the money arrived. The returned reference is what reconciles the payment to this request.
+         */
+        post: operations["PaymentsController_requestDeposit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/payments/withdrawals": {
         parameters: {
             query?: never;
@@ -564,6 +584,63 @@ export interface paths {
         /** The signed-in client's own transactions */
         get: operations["PaymentsController_myTransactions"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platforms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download links for the trading terminal
+         * @description Always returns every platform the portal offers, in presentation order. A platform the operator has not configured has a null url — which the portal renders as "not available yet" rather than as a link that goes nowhere.
+         */
+        get: operations["PlatformsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/platforms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download links for every platform, configured or not */
+        get: operations["AdminPlatformLinksController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/platforms/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set or clear one download link
+         * @description An empty url clears the link, and the portal then shows that platform as not available yet. Only https is accepted: this link is how a client obtains an executable.
+         */
+        put: operations["AdminPlatformLinksController_set"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1658,6 +1735,39 @@ export interface components {
             page: number;
             limit: number;
         };
+        RequestDepositDto: {
+            /** @example 500.00000000 */
+            amount: string;
+            /** @enum {string} */
+            currency: "USD" | "USDT";
+            /**
+             * @description How the client is sending the money. Decides which instructions they are shown.
+             * @enum {string}
+             */
+            method: "bank_transfer" | "usdt_trc20";
+        };
+        DepositRequestDto: {
+            /** @description The transaction id. Also shown on /transactions. */
+            id: string;
+            /**
+             * @description Quote this on the transfer. It is what reconciles the payment to this request.
+             * @example OX-7F3A21
+             */
+            reference: string;
+            /** @example 500.00000000 */
+            amount: string;
+            /** @enum {string} */
+            currency: "USD" | "USDT";
+            /** @enum {string} */
+            method: "bank_transfer" | "usdt_trc20";
+            /**
+             * @description Always `pending`. Nothing is credited until the operator confirms receipt.
+             * @example pending
+             */
+            state: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
         RequestWithdrawalDto: {
             /** @example 300.00000000 */
             amount: string;
@@ -1717,6 +1827,30 @@ export interface components {
             message: string;
             /** @description False when the operator has the withdrawal-OTP control switched off; the withdrawal may then be submitted without a code. */
             required: boolean;
+        };
+        PlatformLinkDto: {
+            /**
+             * @example desktop
+             * @enum {string}
+             */
+            key: "desktop" | "ios" | "android";
+            /**
+             * @description Null when the operator has not configured this platform yet.
+             * @example https://downloads.oxshare.com/OXShare-Terminal.dmg
+             */
+            url?: string | null;
+            /**
+             * Format: date-time
+             * @description When an admin last changed it. Null while unconfigured.
+             */
+            updatedAt?: string | null;
+        };
+        SetPlatformLinkDto: {
+            /**
+             * @description The https URL, or an empty string to clear it.
+             * @example https://downloads.oxshare.com/OXShare-Terminal.dmg
+             */
+            url?: string;
         };
         KycFieldConfigDto: {
             /** @example f-1 */
@@ -2970,6 +3104,32 @@ export interface operations {
             };
         };
     };
+    PaymentsController_requestDeposit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A unique value per intended deposit, reused only when retrying that same one. Without it a double-clicked button files two declarations for one transfer, and the operator reconciling the bank statement has to guess which is real (R-5.2). */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestDepositDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepositRequestDto"];
+                };
+            };
+        };
+    };
     PaymentsController_requestWithdrawal: {
         parameters: {
             query?: never;
@@ -3034,6 +3194,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TransactionDto"][];
+                };
+            };
+        };
+    };
+    PlatformsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformLinkDto"][];
+                };
+            };
+        };
+    };
+    AdminPlatformLinksController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformLinkDto"][];
+                };
+            };
+        };
+    };
+    AdminPlatformLinksController_set: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPlatformLinkDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformLinkDto"];
                 };
             };
         };
