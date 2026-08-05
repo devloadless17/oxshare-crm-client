@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, idempotent } from './client';
 import type { components } from './types.gen';
 
 /**
@@ -45,9 +45,25 @@ export const paymentsApi = {
    * an intent; it does not assert anything.
    *
    * `amount` is a decimal STRING and stays one all the way from the input field.
+   *
+   * `idempotencyKey` is REQUIRED, by the endpoint and by this signature. The
+   * API rejects a request without one (R-5.2), and it names the user's INTENT
+   * rather than the HTTP call — so the caller generates it once, when the user
+   * starts a withdrawal, and passes the same value for every attempt at that
+   * withdrawal. That is what makes a double-click, a flaky network and an
+   * anxious refresh all resolve to a single withdrawal.
+   *
+   * Taking it as a parameter rather than minting one here is the whole point:
+   * a key generated inside this function would be fresh on every call, so each
+   * duplicate would look like a new operation — precisely the bug the header
+   * exists to prevent.
    */
-  async requestWithdrawal(body: RequestWithdrawal): Promise<Transaction> {
-    const { data } = await apiClient.post<Transaction>('/payments/withdrawals', body);
+  async requestWithdrawal(body: RequestWithdrawal, idempotencyKey: string): Promise<Transaction> {
+    const { data } = await apiClient.post<Transaction>(
+      '/payments/withdrawals',
+      body,
+      idempotent(idempotencyKey),
+    );
     return data;
   },
 };

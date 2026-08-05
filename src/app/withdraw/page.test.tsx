@@ -61,10 +61,41 @@ describe('withdraw', () => {
     await waitFor(() => expect(requestWithdrawal).toHaveBeenCalledTimes(1));
     expect(requestWithdrawal).toHaveBeenCalledWith(
       expect.objectContaining({ amount: '123.45678901', currency: 'USD' }),
+      expect.any(String),
     );
     // Not a number, at any point.
     const [body] = requestWithdrawal.mock.calls[0] as [{ amount: unknown }];
     expect(typeof body.amount).toBe('string');
+  });
+
+  it('reuses one idempotency key across retries of the same withdrawal', async () => {
+    // The key names the INTENT, not the request (R-5.2). A user refused for one
+    // reason, who corrects the amount and tries again, is still making the same
+    // withdrawal — and a double-click is two attempts at it. Minting a fresh key
+    // per attempt would present each as a new operation, which is the bug the
+    // header exists to prevent.
+    requestWithdrawal.mockRejectedValueOnce({
+      response: { data: { message: 'Below the minimum withdrawal.' } },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<WithdrawPage />);
+
+    const amount = await screen.findByLabelText(/amount/i);
+    await user.type(amount, '5.00');
+    await user.type(screen.getByLabelText(/destination/i), 'IBAN-TEST-1');
+    await user.click(screen.getByRole('button', { name: /request withdrawal/i }));
+
+    expect(await screen.findByText(/Below the minimum withdrawal/i)).toBeInTheDocument();
+
+    await user.clear(amount);
+    await user.type(amount, '50.00');
+    await user.click(screen.getByRole('button', { name: /request withdrawal/i }));
+
+    await waitFor(() => expect(requestWithdrawal).toHaveBeenCalledTimes(2));
+    const [, firstKey] = requestWithdrawal.mock.calls[0] as [unknown, string];
+    const [, secondKey] = requestWithdrawal.mock.calls[1] as [unknown, string];
+    expect(firstKey).toBeTruthy();
+    expect(secondKey).toBe(firstKey);
   });
 
   it('does NOT block an amount above the available balance', async () => {

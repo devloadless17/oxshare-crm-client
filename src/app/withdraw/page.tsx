@@ -8,6 +8,7 @@ import { AsyncBoundary } from '@/components/async-boundary';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { walletApi, type Wallet } from '@/lib/api/wallet';
 import { paymentsApi } from '@/lib/api/payments';
+import { newIdempotencyKey } from '@/lib/api/client';
 import { formatMoney, isZeroMoney } from '@/lib/money';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +55,22 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
 
   const selected = wallets.find((w) => w.currency === currency);
 
+  /*
+   * One key for this withdrawal, not one per request — R-5.2.
+   *
+   * It names the user's INTENT, so every attempt at the same withdrawal carries
+   * the same value and the server collapses them into one. A fresh key per
+   * request would make each duplicate look like a new operation, which is the
+   * bug the header exists to prevent.
+   *
+   * A ref rather than state: nothing renders from it, and it must not reset on
+   * a re-render between the first click and the second. It is minted on first
+   * submit rather than at mount so no value is generated during SSR, and the
+   * form unmounts on success — so the next withdrawal is a new intent with a
+   * new key.
+   */
+  const idempotencyKey = React.useRef<string | null>(null);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -63,17 +80,22 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
     if (!amount.trim()) return setError(t('withdraw.needAmount'));
     if (!destination.trim()) return setError(t('withdraw.needDestination'));
 
+    idempotencyKey.current ??= newIdempotencyKey();
+
     setSubmitting(true);
     try {
-      await paymentsApi.requestWithdrawal({
-        amount: amount.trim(),
-        currency,
-        destination: destination.trim(),
-        // Derived from the currency rather than chosen by the client: a USDT
-        // balance cannot be paid out through the fiat rail, and offering that
-        // choice would invite a request the server must then refuse.
-        provider: currency === 'USDT' ? 'usdt' : 'whish',
-      });
+      await paymentsApi.requestWithdrawal(
+        {
+          amount: amount.trim(),
+          currency,
+          destination: destination.trim(),
+          // Derived from the currency rather than chosen by the client: a USDT
+          // balance cannot be paid out through the fiat rail, and offering that
+          // choice would invite a request the server must then refuse.
+          provider: currency === 'USDT' ? 'usdt' : 'whish',
+        },
+        idempotencyKey.current,
+      );
       onDone();
     } catch (err: unknown) {
       setError(apiErrorMessage(err, t('withdraw.failed')));
