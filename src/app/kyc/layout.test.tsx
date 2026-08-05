@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '@/test/render';
 import KycLayout, { kycShellFor } from './layout';
 
@@ -23,8 +23,9 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/kyc/step/1',
 }));
 vi.mock('@/context/UserContext', () => ({ useUser }));
+const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }));
 vi.mock('@/lib/api', () => {
-  const api = { get: vi.fn().mockResolvedValue({ data: [] }) };
+  const api = { get: apiGet };
   return { api, default: api };
 });
 
@@ -70,6 +71,34 @@ describe('KYC email-verification gate', () => {
     );
 
     await waitFor(() => expect(replace).not.toHaveBeenCalled());
+  });
+
+  it('asks the API for NOTHING while the email is unverified', async () => {
+    /*
+     * Every `/kyc/*` endpoint sits behind `EmailVerifiedGuard`, so for an
+     * unverified client these requests are guaranteed 403s. They fired anyway:
+     * the redirect is an effect, so it runs after this render, and both this
+     * layout's queries AND the children's mounted first.
+     *
+     * The visible symptom was a steady stream of `403 EMAIL_NOT_VERIFIED` in the
+     * server log — noise that buries real authorization failures. The fix is not
+     * to make the request, rather than to catch its error.
+     */
+    useUser.mockReturnValue({
+      user: { emailVerified: false, verificationLevel: 0 },
+      isLoading: false,
+    });
+
+    renderWithProviders(
+      <KycLayout>
+        <div>step content</div>
+      </KycLayout>,
+    );
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/verify-email/pending'));
+    expect(apiGet).not.toHaveBeenCalled();
+    // And the children are withheld, so they cannot fire their own either.
+    expect(screen.queryByText('step content')).not.toBeInTheDocument();
   });
 
   it('does not redirect when there is no user at all', async () => {
