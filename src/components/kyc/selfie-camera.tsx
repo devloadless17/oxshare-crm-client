@@ -215,7 +215,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
                  optimise; it would need unoptimized and add nothing. */
               <img
                 src={captured}
-                alt="Selfie preview"
+                alt={t('kyc.selfiePreviewAlt')}
                 className="h-full w-full object-cover transform -scale-x-100"
               />
             ) : (

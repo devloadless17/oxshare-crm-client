@@ -375,6 +375,9 @@ export const messages = {
    */
   'common.retryShort': 'Retry',
   'common.loading': 'Loading',
+  'kyc.selfiePreviewAlt': 'Selfie preview',
+  'nav.searchPlaceholder': 'Search accounts, deposits, trades... (⌘K)',
+  'nav.notifications': 'Notifications',
   'common.cancel': 'Cancel',
   'common.continue': 'Continue',
   'common.back': 'Back',

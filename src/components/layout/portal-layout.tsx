@@ -244,7 +244,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => void logout()}
-                title="Logout"
+                title={t('nav.logout')}
                 className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive focus-outline"
               >
                 <LogOut className="h-4 w-4" />
@@ -277,7 +277,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <input
                 type="search"
-                placeholder="Search accounts, deposits, trades... (⌘K)"
+                placeholder={t('nav.searchPlaceholder')}
                 className="h-9 w-full rounded-lg border border-input bg-muted/30 pl-9 pr-4 text-xs focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
@@ -313,7 +313,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted focus-outline"
-              title="Notifications"
+              title={t('nav.notifications')}
             >
               <Bell className="h-4 w-4" />
               <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />

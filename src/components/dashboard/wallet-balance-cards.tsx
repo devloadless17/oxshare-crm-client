@@ -58,7 +58,10 @@ export function WalletBalanceCards() {
   const display = (value: string | undefined, currency: 'USD' | 'USDT') => {
     if (wallets.status === 'loading') {
       return (
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading" />
+        <Loader2
+          className="h-5 w-5 animate-spin text-muted-foreground"
+          aria-label={t('common.loading')}
+        />
       );
     }
     if (value === undefined) return <span className="text-muted-foreground">—</span>;
