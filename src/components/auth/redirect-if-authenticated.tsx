@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/context/UserContext';
-import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/route-guard';
+import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/return-to';
 
 /**
  * Keeps a signed-in client off the screens that only exist for signed-out ones.

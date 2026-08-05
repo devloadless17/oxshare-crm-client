@@ -95,7 +95,7 @@ function KycShell({ children }: { children: React.ReactNode }) {
 
   /*
    * KYC requires a verified email — FR-CORE-15 — and that gate now lives in
-   * `RequireAuth`, driven by `EMAIL_VERIFIED_PATHS` in lib/route-guard.ts.
+   * `RequireAuth`, driven by `EMAIL_VERIFIED_PATHS` declared alongside it.
    *
    * It was here, and it was correct here, but it was only here: /deposit,
    * /withdraw and /transactions sit behind the same `EmailVerifiedGuard` on the

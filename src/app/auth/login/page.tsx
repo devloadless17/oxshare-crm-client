@@ -22,7 +22,7 @@ import { apiErrorMessage, isEmailUnverified } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { useUser } from '@/context/UserContext';
 import { RedirectIfAuthenticated } from '@/components/auth/redirect-if-authenticated';
-import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/route-guard';
+import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/return-to';
 
 /**
  * Gated in the OTHER direction — see `RedirectIfAuthenticated`.

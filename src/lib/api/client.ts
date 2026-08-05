@@ -13,7 +13,7 @@ import { API_BASE_URL } from '../env';
 import { clearKycDraft } from '../kyc-draft';
 // PER-APP, and logically part of the twin:config block below — see the note
 // there. It sits up here because an import cannot.
-import { LOGIN_PATH, loginPathFor } from '../route-guard';
+import { LOGIN_PATH, loginPathFor } from '../return-to';
 
 /**
  * A request that never finishes must eventually fail.
@@ -48,11 +48,12 @@ const REFRESH_PATH = '/auth/refresh';
 const AUTH_ENDPOINT_PATTERN = /\/(auth|identity)\/(login|register|verify-email|refresh)/;
 // `LOGIN_PATH` and `loginPathFor` are the third per-app value, and they are
 // IMPORTED (see the top of the file) rather than written here, from
-// lib/route-guard.ts. The proxy, the sign-in page and this interceptor must
-// agree on where sign-in lives and on how "where I was going" is encoded;
-// three copies of that answer is how they stop agreeing. Admin's twin has no
-// route-guard module and keeps its own literal, so this is a real divergence
-// and belongs on the list — it just cannot physically sit between the markers.
+// lib/return-to.ts. The proxy, the sign-in page and this interceptor must agree
+// on where sign-in lives and on how "where I was going" is encoded; three
+// copies of that answer is how they stop agreeing — and one of the three is an
+// open-redirect check. Admin's twin has no such module and keeps its own
+// literal, so this is a real divergence and belongs on the list; it just cannot
+// physically sit between the markers.
 // ─── twin:config:end ──────────────────────────────────────────────────────────
 
 /**

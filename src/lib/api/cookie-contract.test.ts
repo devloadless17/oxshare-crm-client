@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideRoute } from '@/lib/route-guard';
+import { decideRoute } from '@/proxy';
 import { CSRF_COOKIE_NAMES, CSRF_HEADER } from './client';
 
 /**

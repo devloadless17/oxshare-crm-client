@@ -3,8 +3,39 @@
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@/context/UserContext';
-import { VERIFY_EMAIL_PATH, loginPathFor, requiresVerifiedEmail } from '@/lib/route-guard';
+import { loginPathFor } from '@/lib/return-to';
 import { t } from '@/lib/i18n';
+
+/**
+ * Routes whose API calls the backend refuses without a verified email address.
+ *
+ * Mirrors `EmailVerifiedGuard`, which sits on the backend's `kyc.controller.ts`
+ * AND its `payments.controller.ts`. The portal only ever gated KYC, so
+ * /deposit, /withdraw and /transactions rendered a complete money-movement UI
+ * to a client whose every submission the API had already decided to refuse with
+ * `EMAIL_NOT_VERIFIED`.
+ *
+ * Deliberately NOT in `proxy.ts`, and this is the same lesson that file records
+ * twice: answering "is this address verified" requires reading a claim, the
+ * proxy is handed the refresh token, and the refresh token does not carry one.
+ * A gate that reads claims must live where the token's shape is known and the
+ * answer is authoritative — which is `/auth/me`, which is here.
+ *
+ * This is the CLIENT half of a rule the server owns. It exists to explain the
+ * refusal before the user invests effort in it, never to be the refusal itself.
+ */
+const EMAIL_VERIFIED_PATHS = ['/kyc', '/deposit', '/withdraw', '/transactions'];
+
+/** Where an unverified client is sent to finish verifying. */
+const VERIFY_EMAIL_PATH = '/verify-email/pending';
+
+function requiresVerifiedEmail(pathname: string): boolean {
+  // Whole segments, never a bare prefix — same rule as proxy.ts, same reason:
+  // `startsWith('/deposit')` would also catch a future `/deposit-history`.
+  return EMAIL_VERIFIED_PATHS.some(
+    (entry) => pathname === entry || pathname.startsWith(`${entry}/`),
+  );
+}
 
 /**
  * The authoritative half of route gating.
