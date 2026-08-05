@@ -347,6 +347,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change your password - requires the current one, and ends every OTHER session */
+        post: operations["AuthController_changePassword[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/identity/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change your password - requires the current one, and ends every OTHER session */
+        post: operations["AuthController_changePassword[1]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List your active sessions, most recently active first */
+        get: operations["AuthController_sessions[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/identity/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List your active sessions, most recently active first */
+        get: operations["AuthController_sessions[1]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Sign out one of your other sessions */
+        delete: operations["AuthController_revokeSession[0]"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/identity/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Sign out one of your other sessions */
+        delete: operations["AuthController_revokeSession[1]"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/trading/ping": {
         parameters: {
             query?: never;
@@ -1470,6 +1572,43 @@ export interface components {
             user: components["schemas"]["UserProfileDto"];
             /** @description Mirrors user.emailVerified; kept for older portal builds. */
             emailVerified: boolean;
+        };
+        ChangePasswordDto: {
+            /** @example CurrentPass123! */
+            currentPassword: string;
+            /** @example NewStrongPass123! */
+            newPassword: string;
+        };
+        SessionDto: {
+            /** @description Refresh-token family id. Pass this to DELETE /auth/sessions/:id. */
+            id: string;
+            /**
+             * Format: date-time
+             * @description When this session signed in.
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Last time this session refreshed — how "active" is measured.
+             */
+            lastActiveAt: string;
+            /**
+             * Format: date-time
+             * @description When it expires on its own if unused.
+             */
+            expiresAt: string;
+            /**
+             * @description Most recent User-Agent seen on this session. Null for sessions predating capture.
+             * @example Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
+             */
+            userAgent?: string | null;
+            /**
+             * @description Most recent client address. Null for sessions predating capture.
+             * @example 203.0.113.7
+             */
+            ip?: string | null;
+            /** @description True for the session making this request. Resolved from the refresh cookie, not the access token. */
+            current: boolean;
         };
         WalletDto: {
             id: string;
@@ -2625,6 +2764,132 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserProfileDto"];
+                };
+            };
+        };
+    };
+    "AuthController_changePassword[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_changePassword[1]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_sessions[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDto"][];
+                };
+            };
+        };
+    };
+    "AuthController_sessions[1]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDto"][];
+                };
+            };
+        };
+    };
+    "AuthController_revokeSession[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_revokeSession[1]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
                 };
             };
         };

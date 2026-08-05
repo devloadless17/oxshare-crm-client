@@ -61,7 +61,67 @@ export const messages = {
   'nav.profile': 'Profile',
   'nav.comingSoon': 'Soon',
   'nav.comingSoonTitle': '{label} — coming soon',
-  'nav.logout': 'Logout',
+  'nav.logout': 'Log out',
+  'nav.accountMenu': 'Account menu',
+
+  // ── Theme ─────────────────────────────────────────────────────────────────
+  // `system` is the default and is named rather than implied: a client whose OS
+  // is in dark mode should be told that is WHY the portal is dark, otherwise the
+  // only way to find out is to toggle the other two and guess.
+  'theme.label': 'Theme',
+  'theme.light': 'Light',
+  'theme.dark': 'Dark',
+  'theme.system': 'System',
+
+  // ── Profile ───────────────────────────────────────────────────────────────
+  'profile.title': 'Profile',
+  'profile.subtitle': 'Your account details, security and active sessions.',
+  'profile.detailsTitle': 'Account details',
+  'profile.firstName': 'First name',
+  'profile.lastName': 'Last name',
+  'profile.email': 'Email address',
+  'profile.country': 'Country',
+  'profile.phone': 'Phone',
+  'profile.accountType': 'Account type',
+  'profile.memberSince': 'Member since',
+  'profile.notProvided': 'Not provided',
+  'profile.emailVerified': 'Verified',
+  'profile.emailUnverified': 'Not verified',
+  'profile.typeIndividual': 'Individual',
+  'profile.typeCorporate': 'Corporate',
+  'profile.verificationTitle': 'Verification',
+  'profile.verificationApproved': 'Your identity is verified.',
+  'profile.verificationPending': 'Identity verification is not complete yet.',
+  'profile.verificationCta': 'Continue verification',
+  'profile.securityTitle': 'Password',
+  'profile.securitySubtitle':
+    'Changing your password signs out every other device. This one stays signed in.',
+  'profile.currentPassword': 'Current password',
+  'profile.newPassword': 'New password',
+  'profile.confirmPassword': 'Confirm new password',
+  'profile.changePasswordCta': 'Update password',
+  'profile.changingPassword': 'Updating...',
+  // Checked in the browser purely so the client is told before they submit. The
+  // API enforces the length itself, and its answer is the one that counts.
+  'profile.passwordTooShort': 'Your new password must be at least 8 characters.',
+  'profile.passwordMismatch': 'Those two passwords do not match.',
+  'profile.passwordChangeFailed': 'Could not update your password. Please try again.',
+
+  'profile.sessionsTitle': 'Active sessions',
+  'profile.sessionsSubtitle':
+    'Everywhere your account is signed in. If you do not recognise one, sign it out and change your password.',
+  'profile.sessionsLoading': 'Loading your sessions',
+  'profile.sessionsLoadFailed': 'Could not load your sessions.',
+  'profile.sessionCurrent': 'This device',
+  'profile.sessionSignedIn': 'Signed in {when}',
+  'profile.sessionLastActive': 'Last active {when}',
+  'profile.sessionUnknownDevice': 'Unknown device',
+  'profile.sessionRevoke': 'Sign out',
+  'profile.sessionRevoking': 'Signing out...',
+  'profile.sessionRevokeFailed': 'Could not sign that session out. Please try again.',
+  // Every session predating the metadata columns has no user agent. Saying so
+  // beats an empty cell, which reads as a failed load.
+  'profile.sessionNoDetails': 'No device details recorded',
   'nav.openMenu': 'Open menu',
   'nav.closeMenu': 'Close menu',
   'nav.collapse': 'Collapse sidebar',
