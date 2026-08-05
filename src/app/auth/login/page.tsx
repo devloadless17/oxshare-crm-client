@@ -18,7 +18,7 @@ import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { apiErrorMessage } from '@/lib/api/errors';
+import { apiErrorMessage, isEmailUnverified } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 
 export default function LoginPage() {
@@ -64,10 +64,13 @@ export default function LoginPage() {
       router.push('/dashboard');
       router.refresh();
     } catch (err: unknown) {
-      const formattedMsg = apiErrorMessage(err, t('auth.login.failed'));
-      setError(formattedMsg);
+      setError(apiErrorMessage(err, t('auth.login.failed')));
 
-      if (formattedMsg.toLowerCase().includes('verify your email')) {
+      // Branched on the ENGLISH TEXT of the message until the API published a
+      // code (R-2.2). That worked only while the copy stayed exactly as written
+      // and in English — so it would have silently stopped offering the resend
+      // affordance the day Arabic shipped, which FSD §10 / D-16 require.
+      if (isEmailUnverified(err)) {
         setIsUnverified(true);
       }
     } finally {

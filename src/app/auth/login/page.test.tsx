@@ -37,9 +37,9 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-function apiError(message: string, status = 401): Error {
+function apiError(message: string, status = 401, code?: string): Error {
   return Object.assign(new Error(`Request failed with status code ${status}`), {
-    response: { status, data: { message } },
+    response: { status, data: { message, ...(code ? { code } : {}) } },
   });
 }
 
@@ -100,18 +100,43 @@ describe('portal sign-in', () => {
   });
 
   it('offers to resend the link when the email is not verified', async () => {
-    // The backend's wording. This screen detects the case by matching on it, so
-    // this test doubles as a guard on that coupling.
-    login.mockRejectedValueOnce(apiError('Please verify your email before signing in.', 403));
+    /*
+     * Detected by the envelope's `code`, not by its wording.
+     *
+     * This screen used to match `message.includes('verify your email')`, and
+     * this test asserted that coupling — so it guarded the defect rather than
+     * the behaviour. The message here is deliberately NOT English: the whole
+     * point is that the decision survives translation, which FSD §10 and D-16
+     * require.
+     */
+    login.mockRejectedValueOnce(
+      apiError('يرجى التحقق من عنوان بريدك الإلكتروني', 403, 'EMAIL_NOT_VERIFIED'),
+    );
 
     await fillAndSubmit();
 
-    expect(await screen.findByText(/verify your email/i)).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /resend/i })).toBeInTheDocument();
   });
 
+  it('does NOT offer resend for an unrelated refusal', async () => {
+    // The other half of the substring match: any message that happened to
+    // contain the phrase — a suspended-account notice quoting it, a reworded
+    // 403 — offered a resend that would not help. A code cannot be matched by
+    // accident.
+    login.mockRejectedValueOnce(
+      apiError('Your account has been suspended. Please contact support.', 403, 'FORBIDDEN'),
+    );
+
+    await fillAndSubmit();
+
+    expect(await screen.findByText(/suspended/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /resend/i })).toBeNull();
+  });
+
   it('resends the verification link on request', async () => {
-    login.mockRejectedValueOnce(apiError('Please verify your email before signing in.', 403));
+    login.mockRejectedValueOnce(
+      apiError('Please verify your email before signing in.', 403, 'EMAIL_NOT_VERIFIED'),
+    );
     const user = await fillAndSubmit();
 
     await user.click(await screen.findByRole('button', { name: /resend/i }));

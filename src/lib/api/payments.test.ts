@@ -15,11 +15,11 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
  * test has to stand below that module, not above it.
  */
 
-const { post } = vi.hoisted(() => ({ post: vi.fn() }));
+const { post, get } = vi.hoisted(() => ({ post: vi.fn(), get: vi.fn() }));
 
 vi.mock('./client', async () => {
   const actual = await vi.importActual<typeof import('./client')>('./client');
-  return { ...actual, apiClient: { post } };
+  return { ...actual, apiClient: { post, get } };
 });
 
 const BODY = {
@@ -68,5 +68,25 @@ describe('requestWithdrawal', () => {
     const [, body] = post.mock.calls[0] as [string, { amount: unknown }];
     expect(typeof body.amount).toBe('string');
     expect(body.amount).toBe('123.45678901');
+  });
+});
+
+/**
+ * Email verification is a POST — R-3.9.
+ *
+ * The API used to do the work on a GET, so anything that follows a link without
+ * a person deciding to — a corporate mail gateway, a link scanner, a preview
+ * pane — verified the address silently. That is the one thing the email exists
+ * to prove.
+ */
+describe('verifyEmail', () => {
+  it('POSTs the token in a body rather than a query string', async () => {
+    const { authApi } = await import('./auth');
+    await authApi.verifyEmail('tok-123');
+
+    expect(post).toHaveBeenCalledWith('/auth/verify-email', { token: 'tok-123' });
+    // A token in the query string reaches access logs, Referer headers and
+    // browser history — none of which this app controls.
+    expect(get).not.toHaveBeenCalled();
   });
 });

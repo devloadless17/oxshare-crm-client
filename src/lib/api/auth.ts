@@ -64,10 +64,21 @@ export const authApi = {
    * a 404: email verification was broken end to end, while a second, working
    * implementation of the same screen sat unused at /verify-email.
    */
+  /**
+   * POST, not GET — R-3.9.
+   *
+   * The API used to verify on a GET, which meant anything that follows a link
+   * without a person deciding to — a corporate mail gateway, a link scanner, a
+   * preview pane — silently verified the address. That is the one thing the
+   * email exists to prove.
+   *
+   * The emailed link still lands on this app's `/auth/verify-email` page; that
+   * page makes this call. One click, as before, but the state change is now
+   * something a person triggered. The token also moves out of the query string,
+   * where it would otherwise reach access logs and Referer headers.
+   */
   async verifyEmail(token: string) {
-    const { data } = await apiClient.get<MessageResponse>('/auth/verify-email', {
-      params: { token },
-    });
+    const { data } = await apiClient.post<MessageResponse>('/auth/verify-email', { token });
     return data;
   },
 
