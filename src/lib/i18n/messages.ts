@@ -73,6 +73,27 @@ export const messages = {
   'theme.dark': 'Dark',
   'theme.system': 'System',
 
+  // ── Platforms ─────────────────────────────────────────────────────────────
+  'nav.platforms': 'Platforms',
+  'platforms.title': 'Trading platforms',
+  'platforms.subtitle': 'Download the OXShare terminal for the device you trade on.',
+  'platforms.desktop': 'Desktop terminal',
+  'platforms.desktopHint': 'Full charting, depth of market and expert advisors. Windows and macOS.',
+  'platforms.ios': 'iPhone and iPad',
+  'platforms.iosHint': 'Manage positions, fund your account and follow the market on iOS.',
+  'platforms.android': 'Android',
+  'platforms.androidHint': 'The same account and the same positions, on Android.',
+  'platforms.download': 'Download',
+  // An unconfigured platform says so. The alternative — hiding the row, or
+  // showing a dead button — is either a platform the client cannot discover or
+  // one that appears broken. See the page for why the link is never invented.
+  'platforms.unavailable': 'Not available yet',
+  'platforms.unavailableHint':
+    'This download is not published yet. Your account manager can send it to you.',
+  'platforms.loading': 'Loading the download links',
+  'platforms.loadFailed': 'Could not load the download links.',
+  'platforms.opensExternally': 'Opens the download in a new tab',
+
   // ── Profile ───────────────────────────────────────────────────────────────
   'profile.title': 'Profile',
   'profile.subtitle': 'Your account details, security and active sessions.',

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   LineChart,
+  MonitorDown,
   Wallet,
   Receipt,
   ShieldCheck,
@@ -65,6 +66,10 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'nav.accounts', href: '/accounts', icon: LineChart },
   { label: 'nav.wallet', href: '/wallet', icon: Wallet },
   { label: 'nav.transactions', href: '/transactions', icon: Receipt },
+  // Where the client downloads the terminal. A destination rather than an
+  // action — they come here to get something, not to move money — so unlike
+  // Deposit and Withdraw it belongs on the rail.
+  { label: 'nav.platforms', href: '/platforms', icon: MonitorDown },
   /*
    * KYC is here but conditional — see `visibleNavItems`.
    *
