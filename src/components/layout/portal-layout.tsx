@@ -238,6 +238,20 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
+            /*
+             * Correct only while NAV_ITEMS stays flat.
+             *
+             * Each item tests itself in isolation, so two entries would both
+             * match if one href were a prefix of another — which is exactly what
+             * happened in the admin app, where `/kyc/builder` lit up both it and
+             * `/kyc`. No portal nav entry is nested inside another today
+             * (`/kyc/step/*` and `/kyc/submitted` are routes, not nav items, and
+             * `/kyc` highlighting for them is right).
+             *
+             * Add a nested nav item and this needs admin-layout's
+             * `activeNavHref`, which resolves the longest match across the whole
+             * nav instead.
+             */
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
             // KYC is the only entry whose badge is state, not configuration.
             const badge =

@@ -2,6 +2,7 @@
 
 import { Receipt } from 'lucide-react';
 import { useResource } from '@/hooks/use-resource';
+import { useUser } from '@/context/UserContext';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { paymentsApi, type Transaction } from '@/lib/api/payments';
@@ -99,10 +100,29 @@ function Row({ tx }: { tx: Transaction }) {
 }
 
 export default function TransactionsPage() {
-  const transactions = useResource(['transactions'], (signal) =>
-    paymentsApi.getTransactions(signal),
+  /*
+   * `/payments/*` sits behind `EmailVerifiedGuard`, so for an unverified client
+   * this request is a guaranteed 403 — and it fired on every visit and on every
+   * window refocus, filling the server log with expected authorization failures
+   * that bury the unexpected ones.
+   *
+   * The UI is unchanged: `AsyncBoundary` already renders a "not permitted" state
+   * for `forbidden`, so reporting that status directly gives the client exactly
+   * the same screen without asking a question we already know the answer to.
+   *
+   * Reported as `forbidden` rather than left `loading`: a disabled query stays
+   * pending forever, which would spin indefinitely instead of explaining itself.
+   */
+  const { user } = useUser();
+  const emailUnverified = user !== null && user.emailVerified === false;
+
+  const transactions = useResource(
+    ['transactions'],
+    (signal) => paymentsApi.getTransactions(signal),
+    { enabled: !emailUnverified },
   );
 
+  const status = emailUnverified ? 'forbidden' : transactions.status;
   const rows = transactions.data ?? [];
 
   return (
@@ -113,7 +133,7 @@ export default function TransactionsPage() {
       </div>
 
       <AsyncBoundary
-        status={transactions.status}
+        status={status}
         label={t('transactions.loading')}
         endpoints={['GET /payments/transactions']}
         onRetry={() => void transactions.refetch()}
