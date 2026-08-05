@@ -15,6 +15,24 @@ export default defineConfig({
     // there was no way to test a page at all, only pure functions.
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
+    /*
+     * 20s, not vitest's default 5s — the same decision as the admin app's
+     * config, for the same reason and kept in step with it deliberately.
+     *
+     * The tests that time out are always `userEvent` ones, and none of them
+     * assert anything time-sensitive: `userEvent.setup()` advances real timers
+     * between keystrokes, each render goes through jsdom, and React Query
+     * settles on its own schedule. A form fill costing 40ms on an idle machine
+     * costs several seconds when the box is also building another app.
+     *
+     * 5s is not a deadline anybody chose for these tests; it is a default that
+     * sits just above their cost on a quiet machine and just below it on a busy
+     * one — which produces a suite that is green locally and red in CI for
+     * reasons unrelated to the code. A flaky gate is one people re-run instead
+     * of reading.
+     */
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'json-summary'],
