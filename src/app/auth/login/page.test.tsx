@@ -22,6 +22,12 @@ const { login, resendVerification } = vi.hoisted(() => ({
 
 const push = vi.fn();
 const refresh = vi.fn();
+/** True if `router.push` ran before the session was refetched — it must not. */
+let pushedBeforeRefetch = false;
+const refetchUser = vi.fn(() => {
+  pushedBeforeRefetch = push.mock.calls.length > 0;
+  return Promise.resolve();
+});
 
 // Both exports: lib/api/index.ts exposes `api` as a named export AND as default,
 // and this page uses the named one. Mocking only `default` left `api` undefined,
@@ -37,6 +43,8 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+vi.mock('@/context/UserContext', () => ({ useUser: () => ({ refetchUser }) }));
+
 function apiError(message: string, status = 401, code?: string): Error {
   return Object.assign(new Error(`Request failed with status code ${status}`), {
     response: { status, data: { message, ...(code ? { code } : {}) } },
@@ -45,8 +53,46 @@ function apiError(message: string, status = 401, code?: string): Error {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  login.mockResolvedValue({ access_token: 't', refresh_token: 'r' });
+  pushedBeforeRefetch = false;
+  // No tokens in the body — the session arrives as httpOnly cookies on this
+  // very response (R-3.2), and AuthTokensResponseDto no longer declares them.
+  login.mockResolvedValue({ user: { id: 'u1', email: 'client@oxshare.com' }, emailVerified: true });
   resendVerification.mockResolvedValue({ message: 'Verification email sent.' });
+});
+
+describe('the session is refetched before navigating', () => {
+  /*
+   * The admin twin has always done this and asserts the ordering; the portal did
+   * not, and the consequence is specific to how UserProvider is mounted.
+   *
+   * It sits in the root layout, so a client-side `router.push` does NOT remount
+   * it — and its `['user','me']` query has already settled as a 401, with
+   * `retry: false` and a five-minute `staleTime`. Without an explicit refetch the
+   * portal lands on /dashboard with `user === null`, rendering the signed-in
+   * shell with no identity in it until a window focus happens to refresh it.
+   * `router.refresh()` does not help: it re-fetches server components and never
+   * touches the React Query cache.
+   */
+  it('refetches the user, then pushes', async () => {
+    await fillAndSubmit();
+
+    expect(refetchUser).toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith('/dashboard');
+    // Ordering, not just occurrence: pushing first is what leaves the dashboard
+    // rendering an empty identity. Recorded from inside the refetch rather than
+    // compared through `invocationCallOrder`, whose entries are
+    // possibly-undefined under the build's stricter checks — and this states the
+    // property directly.
+    expect(pushedBeforeRefetch).toBe(false);
+  });
+
+  it('does not refetch or navigate when the credentials are refused', async () => {
+    login.mockRejectedValueOnce(apiError('Invalid email or password.'));
+    await fillAndSubmit();
+
+    expect(refetchUser).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+  });
 });
 
 async function fillAndSubmit(email = 'client@oxshare.com', password = 'client123') {

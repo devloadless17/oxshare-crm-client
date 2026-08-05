@@ -24,6 +24,11 @@ function VerifyEmailForm() {
   // Resend Cooldown Timer State
   const [resendCooldown, setResendCooldown] = React.useState(0);
   const [resendMessage, setResendMessage] = React.useState<string | null>(null);
+  // The address to resend to. Asked for, because a failed token gives us no
+  // session and no verified claim to read one from.
+  const [resendEmail, setResendEmail] = React.useState('');
+  const [resendError, setResendError] = React.useState<string | null>(null);
+  const [isResending, setIsResending] = React.useState(false);
 
   React.useEffect(() => {
     async function executeVerification() {
@@ -77,9 +82,41 @@ function VerifyEmailForm() {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  const handleResendLink = () => {
-    setResendCooldown(60);
-    setResendMessage('A new verification email has been dispatched. Please check your inbox.');
+  /*
+   * Actually resends the email.
+   *
+   * This function used to set a 60-second cooldown and a hardcoded English
+   * success message, and CALL NOTHING. A client whose verification email never
+   * arrived — a corporate filter, a full mailbox, a typo'd address — clicked it,
+   * was told a new one was on its way, and waited for something that was never
+   * sent. Their account stays unverified, `EmailVerifiedGuard` blocks KYC and
+   * payments, and the portal offers no other route: the only way out was to
+   * contact support and persuade a human to intervene on an identity control.
+   *
+   * The address is asked for rather than assumed, because this screen is reached
+   * from a link whose token has just FAILED — there is no session and no
+   * verified claim to read an email from. `resend-verification` answers the same
+   * whether or not the account exists (auth.service.ts), so collecting it here
+   * leaks nothing.
+   */
+  const handleResendLink = async () => {
+    if (!resendEmail) return;
+    setResendMessage(null);
+    setResendError(null);
+    setIsResending(true);
+    try {
+      await api.auth.resendVerification(resendEmail);
+      // The API's own generic wording, kept generic on purpose: it must not
+      // confirm whether an account exists for that address.
+      setResendMessage(t('auth.verify.resendSent'));
+      setResendCooldown(60);
+    } catch (err: unknown) {
+      // A failure is shown, not swallowed. Telling someone an email was sent
+      // when it was not is the defect this whole function exists to fix.
+      setResendError(apiErrorMessage(err, t('auth.verify.resendFailed')));
+    } finally {
+      setIsResending(false);
+    }
   };
 
   return (
@@ -159,14 +196,37 @@ function VerifyEmailForm() {
                 </div>
               )}
 
+              {resendError && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
+                >
+                  {resendError}
+                </div>
+              )}
+
               <div className="space-y-2 pt-2">
+                <label htmlFor="resend-email" className="sr-only">
+                  {t('auth.verify.emailPlaceholder')}
+                </label>
+                <input
+                  id="resend-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder={t('auth.verify.emailPlaceholder')}
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-xs text-foreground focus-outline"
+                />
                 <button
                   type="button"
-                  onClick={handleResendLink}
-                  disabled={resendCooldown > 0}
+                  onClick={() => void handleResendLink()}
+                  disabled={resendCooldown > 0 || isResending || !resendEmail}
                   className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
                 >
-                  <RefreshCw className={`h-4 w-4 ${resendCooldown > 0 ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 ${resendCooldown > 0 || isResending ? 'animate-spin' : ''}`}
+                  />
                   {resendCooldown > 0
                     ? `Resend Link in ${resendCooldown}s`
                     : t('auth.verify.resendCta')}

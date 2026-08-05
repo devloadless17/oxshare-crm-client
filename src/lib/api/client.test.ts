@@ -84,7 +84,7 @@ describe('refreshPortalToken', () => {
     // second and third present an already-rotated one and fail — which is a
     // logout in the middle of a working session.
     expect(mockedPost).toHaveBeenCalledTimes(1);
-    expect(results).toEqual(['refreshed', 'refreshed', 'refreshed']);
+    expect(results).toEqual([true, true, true]);
   });
 
   it('allows a new refresh after the previous one settles', async () => {
@@ -115,23 +115,25 @@ describe('refreshPortalToken', () => {
     expect(config.withCredentials).toBe(true);
   });
 
-  it('returns null rather than throwing when the refresh is refused', async () => {
+  it('returns false rather than throwing when the refresh is refused', async () => {
     const { refreshPortalToken } = await loadClient();
     mockedPost.mockRejectedValue(new Error('401'));
 
     // Callers branch on the value. A throw here would propagate out of the
     // response interceptor as an unhandled rejection instead of a clean logout.
-    await expect(refreshPortalToken()).resolves.toBeNull();
+    // `false`, not null: the call reports whether the session survived, and there
+    // is no token to hand back — the rotated cookies are httpOnly (R-3.2).
+    await expect(refreshPortalToken()).resolves.toBe(false);
   });
 
   it('does not wedge after a failure', async () => {
     const { refreshPortalToken } = await loadClient();
     mockedPost.mockRejectedValueOnce(new Error('401')).mockResolvedValueOnce({ status: 200 });
 
-    expect(await refreshPortalToken()).toBeNull();
+    expect(await refreshPortalToken()).toBe(false);
     // The `finally` that clears `inFlight` is what makes this pass. Without it a
     // single failed refresh would poison every later one for the tab's lifetime.
-    expect(await refreshPortalToken()).toBe('refreshed');
+    expect(await refreshPortalToken()).toBe(true);
   });
 });
 

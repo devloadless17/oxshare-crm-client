@@ -2,19 +2,35 @@
 
 import { useState } from 'react';
 import api from '@/lib/api';
+import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 
 export default function VerifyPendingPage() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  /*
+   * `.catch(() => {})` used to sit on this call, and then `setSent(true)` ran
+   * regardless — so a failed send showed the same confirmation as a successful
+   * one. That is the pattern CLAUDE.md bans in this repo ("Do not add
+   * `.catch(() => ({ data: [] }))`"), and here it produced the same harm as the
+   * fake resend on /auth/verify-email: a client is told an email is on its way,
+   * waits, and stays locked out of onboarding with no way to tell why.
+   */
   const resend = async () => {
     if (!email) return;
     setLoading(true);
-    await api.post('/auth/resend-verification', { email }).catch(() => {});
-    setSent(true);
-    setLoading(false);
+    setError(null);
+    try {
+      await api.post('/auth/resend-verification', { email });
+      setSent(true);
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, t('auth.verify.resendFailed')));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -24,6 +40,12 @@ export default function VerifyPendingPage() {
         <h2>{t('auth.verify.checkInbox')}</h2>
         <p>{t('auth.verify.pendingBodyLong')}</p>
         <p className="note">{t('auth.verify.spamHint')}</p>
+
+        {error && (
+          <div className="resend-error" role="alert">
+            {error}
+          </div>
+        )}
 
         {!sent ? (
           <div className="resend-form">
@@ -132,6 +154,12 @@ export default function VerifyPendingPage() {
           color: var(--success);
           font-size: 0.9rem;
           font-weight: 600;
+        }
+        .resend-error {
+          color: var(--destructive);
+          font-size: 0.85rem;
+          font-weight: 600;
+          margin-bottom: 16px;
         }
       `}</style>
     </div>

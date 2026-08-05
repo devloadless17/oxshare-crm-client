@@ -12,7 +12,7 @@ const UNVERIFIED = fakeToken({ sub: 'u1', emailVerified: false });
 
 describe('isPublicPath', () => {
   it('lets the auth screens through', () => {
-    for (const p of ['/auth/login', '/auth/register', '/login', '/reset-password', '/r/ABC123']) {
+    for (const p of ['/auth/login', '/auth/register', '/login', '/reset-password']) {
       expect(isPublicPath(p)).toBe(true);
     }
   });
@@ -81,8 +81,16 @@ describe('isPublicPath — whole segments, not string prefixes', () => {
     expect(isPublicPath('/verify-email/pending')).toBe(true);
   });
 
-  it('keeps /r/ a prefix, because referral codes are the whole point of it', () => {
-    expect(isPublicPath('/r/ABC123')).toBe(true);
+  it('does NOT treat /r/ as public — the referral route does not exist yet', () => {
+    /*
+     * `/r/` was listed as a public PREFIX with nothing in `src/app` serving it.
+     * Nothing was exposed, because nothing was routed — but the entry meant the
+     * first referral landing page anyone added would be unauthenticated by
+     * default, and nobody would think to look in the guard.
+     *
+     * It comes back in the same commit as the route, not before.
+     */
+    expect(isPublicPath('/r/ABC123')).toBe(false);
   });
 
   it('does NOT admit a route that merely starts with the same characters', () => {

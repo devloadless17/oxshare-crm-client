@@ -21,11 +21,23 @@ src/context/UserContext.tsx
 src/hooks/                                use-resource · use-hydrated
 src/lib/api/                              client · auth · errors · wallet · index · types.gen.ts
 src/lib/                                  money · countries-data · route-guard · utils
-src/proxy.ts                              route gate + JWT emailVerified check for /kyc
+src/proxy.ts                              route gate (session PRESENCE only — never reads a claim)
 ```
 
 **Never create `middleware.ts`** — it will not run. The gate is `src/proxy.ts`, which also
-base64-decodes the JWT payload to bounce unverified users off `/kyc`.
+delegates to the pure `lib/route-guard.ts`.
+
+**The gate never reads a claim.** It used to base64-decode the JWT payload to bounce unverified
+users off `/kyc`, and that check was deleted — `route-guard.ts:45-61` records why. When gating
+moved to the REFRESH cookie (rightly: the access token lives 15 minutes, so gating on it bounced
+returning clients who had a valid 30-day session), the payload changed under it. A refresh token
+is signed from `{ sub, jti }` and carries no `emailVerified`, so the check read `undefined !== true`
+for everyone and redirected every client, verified or not, away from onboarding.
+
+The lesson is narrower than "be careful": a guard that reads claims is coupled to WHICH token it
+is handed, and nothing made that coupling visible. Claims are read where the token's shape is
+known and the answer is authoritative — `/auth/me` — so the email gate lives in
+`app/kyc/layout.tsx`.
 
 **The top-level auth stubs are deliberate.** `/login`, `/register`, `/forgot-password` and
 `/reset-password` are 5-line `redirect()` files pointing at their `/auth/*` equivalents, because
@@ -92,10 +104,13 @@ exists), a `type: 'referral' | 'partner'` where the enum is `individual | corpor
 Where an alias is still impossible, hand-declare and mark it with a comment naming the gap, so it
 gets replaced rather than forgotten.
 
-Note the casing asymmetry: portal endpoints answer snake_case `access_token` / `refresh_token`,
-while the admin API answers camelCase. `lib/api/client.ts` asserts the one shape the backend
-actually sends rather than reading both — reading both is how a rename goes unnoticed until
-sessions silently stop refreshing. This divergence is known and frozen.
+The login and refresh responses carry **no tokens at all** (R-3.2) — `AuthTokensResponseDto` keeps
+the name and only returns `{ user, emailVerified }`. Nothing in this app reads a token from a
+response body, and `refreshPortalToken()` returns a **boolean**: reaching 200 IS the result,
+because the rotated cookies arrive on the response and the browser installs them.
+
+The historical snake_case/camelCase asymmetry between the two APIs still exists on other fields
+and is frozen; it no longer applies to tokens, because there are none.
 
 ### Mocking the API in a test
 
@@ -145,5 +160,6 @@ admin's.
 - The `sessionStorage` restore effect in `kyc/step/[step]/page.tsx` carries a reasoned
   `react-hooks/set-state-in-effect` exemption. Keep the comment and the disable — a lazy
   `useState` initialiser there would cause a hydration mismatch on a half-filled form.
-- `npm test` → Vitest, 28 tests. No jsdom/testing-library yet, so component tests need those first.
+- `npm test` → Vitest, 155 tests. jsdom and testing-library **are** configured, so a screen can be
+  rendered and asserted on — `auth/login/page.test.tsx` and `kyc/layout.test.tsx` are the patterns.
 - The README is create-next-app boilerplate and says port 3000 for the wrong reasons. Ignore it.

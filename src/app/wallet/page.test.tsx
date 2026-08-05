@@ -22,7 +22,6 @@ const { get } = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock('@/lib/api/client', () => ({
   apiClient: { get },
   // The page imports the module for its side effects too; keep the surface whole.
-  setSessionCookies: vi.fn(),
   clearSession: vi.fn(),
   refreshPortalToken: vi.fn(),
   startProactiveRefresh: vi.fn(),

@@ -174,6 +174,18 @@ export const messages = {
   'auth.verify.missingToken': 'Verification token is missing in URL parameters.',
   'auth.verify.invalidToken': 'The verification link is invalid or has expired.',
   'auth.verify.resendCta': 'Resend Verification Email',
+  'common.notPermittedTitle': 'Not available on your account',
+  'common.notPermittedBody':
+    'Your account does not have access to this. If you think that is wrong, contact support.',
+  // Deliberately says the session is STILL OPEN. Only the server can end it —
+  // the cookies are httpOnly — so a failed sign-out leaves the client signed in,
+  // and on a shared device that is the thing they need to know.
+  'session.logoutFailed': 'Sign-out failed — you are still signed in. Please try again.',
+  // Generic on purpose, mirroring what the API answers: it must not confirm
+  // whether an account exists for the address the caller typed.
+  'auth.verify.resendSent':
+    'If that address has an unverified account, a new link is on its way. Check your inbox and spam folder.',
+  'auth.verify.resendFailed': 'We could not send that email. Please try again in a moment.',
   'auth.verify.checkInbox': 'Check your inbox',
   'auth.verify.spamHint': "Didn't receive it? Check your spam folder, or resend below.",
   'auth.verify.emailPlaceholder': 'Your email address',

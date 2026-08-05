@@ -118,11 +118,29 @@ export const authApi = {
    * called the server without clearing cookies, leaving proxy.ts convinced the
    * session was alive. Two halves that never met.
    */
-  async logout() {
+  async logout(): Promise<void> {
+    /*
+     * REPORTS whether the session actually ended.
+     *
+     * Since R-3.2 this app cannot delete a session cookie — they are httpOnly —
+     * and `clearSession()` clears a timer and the KYC draft, nothing more. So
+     * the server call is the ONLY thing that ends a session: it revokes every
+     * refresh-token family and sends the Set-Cookie headers that remove the
+     * cookies.
+     *
+     * Swallowing its failure in `finally` therefore did not mean "logged out
+     * locally, not remotely" — it meant NOT LOGGED OUT AT ALL, while the client
+     * was shown a clean login screen. On the shared phone or family computer
+     * this portal is often used from, the next person is signed in as them, with
+     * the wallet and KYC documents that implies.
+     *
+     * One retry first, because the common cause is a transient blip.
+     */
     try {
       await apiClient.post('/auth/logout');
-    } finally {
-      clearSession();
+    } catch {
+      await apiClient.post('/auth/logout');
     }
+    clearSession();
   },
 };

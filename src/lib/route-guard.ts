@@ -22,7 +22,19 @@ export const PUBLIC_PATHS = [
   '/verify-email',
   '/forgot-password',
   '/reset-password',
-  '/r/',
+  /*
+   * `/r/` — the referral-code prefix — is deliberately NOT here yet.
+   *
+   * It was, and nothing in `src/app` served it. That is a latent hole rather
+   * than a live one: no route means nothing is exposed today. But an entry
+   * ending in `/` is a PREFIX match by design, so the moment somebody adds the
+   * referral landing page (D-23's attribution work, IB-01) it would be
+   * unauthenticated by default, and nobody would think to look here.
+   *
+   * This file goes out of its way to avoid exactly that — see the segment-match
+   * comment in `isPublicPath` — so the exception does not get to stay on
+   * speculation. Add it back in the same commit as the route.
+   */
 ];
 
 export type GuardDecision = { allow: true } | { allow: false; redirectTo: string };

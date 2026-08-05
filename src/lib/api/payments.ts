@@ -23,6 +23,7 @@ import type { components } from './types.gen';
  */
 export type Transaction = components['schemas']['TransactionDto'];
 export type RequestWithdrawal = components['schemas']['RequestWithdrawalDto'];
+export type RequestWithdrawalOtp = components['schemas']['RequestWithdrawalOtpDto'];
 
 export const paymentsApi = {
   /**
@@ -58,6 +59,24 @@ export const paymentsApi = {
    * duplicate would look like a new operation — precisely the bug the header
    * exists to prevent.
    */
+  /**
+   * Sends the confirmation code for ONE specific withdrawal — FR-CORE-08.
+   *
+   * The payload is the withdrawal itself, and that is load-bearing rather than
+   * convenient: the server binds the code to these exact fields, so a code
+   * obtained here cannot authorise a withdrawal with a different amount or a
+   * different destination. Sending anything less than the full intent would
+   * quietly give up that guarantee.
+   *
+   * Answers with a message either way — including when the operator has the OTP
+   * control switched off — so the caller's flow does not branch on whether the
+   * control is on.
+   */
+  async sendWithdrawalOtp(body: RequestWithdrawalOtp): Promise<{ message: string }> {
+    const { data } = await apiClient.post<{ message: string }>('/payments/withdrawals/otp', body);
+    return data;
+  },
+
   async requestWithdrawal(body: RequestWithdrawal, idempotencyKey: string): Promise<Transaction> {
     const { data } = await apiClient.post<Transaction>(
       '/payments/withdrawals',

@@ -80,6 +80,26 @@ export const NAV_ITEMS: NavItem[] = [
 export function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useUser();
+  const [logoutError, setLogoutError] = React.useState<string | null>(null);
+
+  /**
+   * Logout, with the failure made visible instead of swallowed.
+   *
+   * `authApi.logout` retries once and then throws, and it throws for a reason
+   * worth showing: only the server can end this session — it revokes the
+   * refresh-token family and clears the httpOnly cookies — so a failed call
+   * leaves the client fully signed in. Navigating to the sign-in screen anyway
+   * would show a logged-out page over a live session on a device that is very
+   * often shared.
+   */
+  const handleLogout = async () => {
+    setLogoutError(null);
+    try {
+      await logout();
+    } catch {
+      setLogoutError(t('session.logoutFailed'));
+    }
+  };
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
@@ -243,12 +263,17 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
             {!collapsed && (
               <button
                 type="button"
-                onClick={() => void logout()}
+                onClick={() => void handleLogout()}
                 title={t('nav.logout')}
                 className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive focus-outline"
               >
                 <LogOut className="h-4 w-4" />
               </button>
+            )}
+            {logoutError && !collapsed && (
+              <p role="alert" className="mt-2 text-[11px] text-destructive">
+                {logoutError}
+              </p>
             )}
           </div>
         </div>

@@ -20,9 +20,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { apiErrorMessage, isEmailUnverified } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
+import { useUser } from '@/context/UserContext';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refetchUser } = useUser();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
@@ -61,6 +63,22 @@ export default function LoginPage() {
 
     try {
       await api.auth.login({ email, password });
+      /*
+       * Refetch the session BEFORE navigating — the admin twin does this
+       * deliberately and asserts the ordering in its own test.
+       *
+       * `UserProvider` sits in the root layout and stays mounted across a
+       * client-side navigation, so its `['user','me']` query is not remounted by
+       * `router.push`. That query has already SETTLED — as a 401, with
+       * `retry: false` and a five-minute `staleTime` — so without this the
+       * portal lands on /dashboard with `user === null` and `isAuthenticated`
+       * false, and renders the signed-in shell with no identity in it until a
+       * window focus or the staleTime expiry happens to refetch.
+       *
+       * `router.refresh()` does not cover this: it re-fetches SERVER components
+       * and never touches the React Query cache.
+       */
+      await refetchUser();
       router.push('/dashboard');
       router.refresh();
     } catch (err: unknown) {
