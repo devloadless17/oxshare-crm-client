@@ -113,7 +113,16 @@ async function fillAndSubmit(email = 'client@oxshare.com', password = 'client123
   const user = userEvent.setup();
   renderWithProviders(<LoginPage />);
   await user.type(await screen.findByLabelText(/email address/i), email);
-  await user.type(screen.getByLabelText(/password/i), password);
+  /*
+   * Anchored, because the eye toggle beside this field is now labelled too.
+   *
+   * Its accessible name has to contain "password" — "Show password" is what a
+   * screen-reader user needs to hear from a control that decides whether a
+   * password is legible on a shared screen — so /password/i matches both. The
+   * fix belongs here rather than in the label: loosening an accessible name to
+   * suit a query is trading a real user's experience for a test's convenience.
+   */
+  await user.type(screen.getByLabelText(/^password$/i), password);
   await user.click(screen.getByRole('button', { name: /sign in/i }));
   return user;
 }

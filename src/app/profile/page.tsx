@@ -18,6 +18,22 @@ import { SessionsList } from './sessions-list';
  * menu shipped. A navigation entry that 404s is a bug this repo has already
  * fixed once, on four links at the same time.
  *
+ * ## The layout
+ *
+ * Full width, and a two-column grid above `xl`. The first version was
+ * `max-w-3xl` centred, which on a wide monitor left most of the screen empty
+ * while the session list — the widest thing on the page, and the one that
+ * benefits most from room — wrapped its device names.
+ *
+ * The split is by RHYTHM, not by importance. Identity and verification are
+ * read-once reference: short, static, scanned in a second. Password and
+ * sessions are the work: forms, buttons, rows that change. Putting reference
+ * material in a narrow rail and working material in the wide column means
+ * neither is stretched into a shape it does not want — and collapsed to one
+ * column below `xl`, the order still reads in the sequence somebody asks the
+ * questions: who am I, am I verified, how do I secure this, where am I signed
+ * in.
+ *
  * ## Everything here is live
  *
  * Account details and Verification come from `GET /auth/me`, which
@@ -42,107 +58,167 @@ export default function ProfilePage() {
   if (!user) return null;
 
   const verified = user.verificationLevel === 1;
+  const fullName = `${user.firstName} ${user.lastName}`.trim();
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <header className="flex items-center gap-4">
-        <Avatar className="h-14 w-14">
-          <AvatarImage alt="" />
-          <AvatarFallback className="text-lg">
-            {initialsOf(user.firstName, user.lastName)}
-          </AvatarFallback>
-        </Avatar>
-        <div className="min-w-0">
-          <h1 className="truncate text-xl font-bold tracking-tight text-foreground">
-            {`${user.firstName} ${user.lastName}`.trim()}
-          </h1>
-          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+    <div className="space-y-8">
+      <PageHeader
+        name={fullName}
+        email={user.email}
+        initials={initialsOf(user.firstName, user.lastName)}
+        verified={verified}
+        memberSince={user.createdAt}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] xl:items-start">
+        {/* Reference rail: short, static, read once. */}
+        <div className="space-y-6">
+          <Panel title={t('profile.detailsTitle')}>
+            <dl className="space-y-4">
+              <Field label={t('profile.firstName')} value={user.firstName} />
+              <Field label={t('profile.lastName')} value={user.lastName} />
+              <Field
+                label={t('profile.email')}
+                value={user.email}
+                // Stated beside the address rather than as a separate badge
+                // elsewhere in the chrome: it is a fact ABOUT this field, and
+                // nowhere else needs to repeat it.
+                hint={
+                  user.emailVerified ? t('profile.emailVerified') : t('profile.emailUnverified')
+                }
+                hintTone={user.emailVerified ? 'success' : 'warning'}
+              />
+              {/* `phone` and `country` are optional on UserProfileDto. An empty
+                  row reads as a failed load; "Not provided" says which it is. */}
+              <Field label={t('profile.phone')} value={user.phone} />
+              <Field label={t('profile.country')} value={user.country} />
+              <Field
+                label={t('profile.accountType')}
+                value={
+                  user.type === 'corporate'
+                    ? t('profile.typeCorporate')
+                    : t('profile.typeIndividual')
+                }
+              />
+            </dl>
+          </Panel>
+
+          <Panel title={t('profile.verificationTitle')}>
+            <div className="flex items-start gap-3">
+              {verified ? (
+                <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-success" aria-hidden="true" />
+              ) : (
+                <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
+              )}
+              <div className="min-w-0">
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {verified ? t('profile.verificationApproved') : t('profile.verificationPending')}
+                </p>
+                {/* The one permanent route into KYC. The sidebar entry
+                    disappears once approved, so an unverified client needs a
+                    way back in from somewhere that does not move. */}
+                {!verified && (
+                  <Link
+                    href="/kyc"
+                    className="mt-2 inline-block rounded-md text-xs font-semibold text-link hover:underline focus-outline"
+                  >
+                    {t('profile.verificationCta')}
+                  </Link>
+                )}
+              </div>
+            </div>
+          </Panel>
         </div>
-      </header>
 
-      <section className="rounded-xl border border-border bg-card p-6">
-        <h2 className="mb-4 text-sm font-semibold text-foreground">{t('profile.detailsTitle')}</h2>
-        <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
-          <Field label={t('profile.firstName')} value={user.firstName} />
-          <Field label={t('profile.lastName')} value={user.lastName} />
-          <Field
-            label={t('profile.email')}
-            value={user.email}
-            // The verified state is stated beside the address rather than as a
-            // separate badge somewhere else in the chrome — it is a fact ABOUT
-            // this field, and nowhere else needs to repeat it.
-            hint={user.emailVerified ? t('profile.emailVerified') : t('profile.emailUnverified')}
-            hintTone={user.emailVerified ? 'success' : 'warning'}
-          />
-          <Field
-            label={t('profile.phone')}
-            value={user.phone}
-            // `phone` and `country` are optional on UserProfileDto. Rendering an
-            // empty definition list row reads as a failed load; saying "Not
-            // provided" says which of the two it is.
-          />
-          <Field label={t('profile.country')} value={user.country} />
-          <Field
-            label={t('profile.accountType')}
-            value={
-              user.type === 'corporate' ? t('profile.typeCorporate') : t('profile.typeIndividual')
-            }
-          />
-          <Field
-            label={t('profile.memberSince')}
-            // `toLocaleDateString` with no locale argument follows the browser,
-            // which is what a client expects of their own join date. Money is
-            // the thing that must never be formatted this way — see lib/money.
-            value={new Date(user.createdAt).toLocaleDateString(undefined, {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          />
-        </dl>
-      </section>
+        {/* Working column: forms and rows that change. */}
+        <div className="space-y-6">
+          <Panel title={t('profile.securityTitle')}>
+            {/* A successful change revokes every other session, so the list
+                below is stale the instant this succeeds. Bumping the key
+                refetches it, which is what turns "3 sessions" into "1" in front
+                of the client rather than on their next visit. */}
+            <ChangePasswordForm onChanged={() => setSessionsEpoch((n) => n + 1)} />
+          </Panel>
 
-      <section className="rounded-xl border border-border bg-card p-6">
-        <h2 className="mb-3 text-sm font-semibold text-foreground">
-          {t('profile.verificationTitle')}
-        </h2>
-        <div className="flex items-center gap-3">
-          {verified ? (
-            <BadgeCheck className="h-5 w-5 shrink-0 text-success" aria-hidden="true" />
-          ) : (
-            <ShieldAlert className="h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
-          )}
-          <p className="text-xs text-muted-foreground">
-            {verified ? t('profile.verificationApproved') : t('profile.verificationPending')}
-          </p>
-          {/* The one remaining route into KYC for a client who still has work.
-              The sidebar entry disappears once they are approved, so an
-              unverified client needs a way back in from somewhere permanent. */}
-          {!verified && (
-            <Link
-              href="/kyc"
-              className="ml-auto shrink-0 rounded-md text-xs font-semibold text-link hover:underline focus-outline"
-            >
-              {t('profile.verificationCta')}
-            </Link>
-          )}
+          <Panel title={t('profile.sessionsTitle')}>
+            <SessionsList refreshToken={sessionsEpoch} />
+          </Panel>
         </div>
-      </section>
-
-      <section className="rounded-xl border border-border bg-card p-6">
-        <h2 className="mb-4 text-sm font-semibold text-foreground">{t('profile.securityTitle')}</h2>
-        {/* A successful change revokes every other session, so the list below
-            is stale the instant this succeeds. Bumping the key refetches it,
-            which is what turns "3 sessions" into "1" in front of the client
-            rather than on their next visit. */}
-        <ChangePasswordForm onChanged={() => setSessionsEpoch((n) => n + 1)} />
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">{t('profile.sessionsTitle')}</h2>
-        <SessionsList refreshToken={sessionsEpoch} />
-      </section>
+      </div>
     </div>
+  );
+}
+
+/**
+ * The identity band.
+ *
+ * Deliberately not a card: it is the page's title, and boxing a title inside
+ * the content area makes the first thing on screen look like the first item in
+ * a list.
+ */
+function PageHeader({
+  name,
+  email,
+  initials,
+  verified,
+  memberSince,
+}: {
+  name: string;
+  email: string;
+  initials: string;
+  verified: boolean;
+  memberSince: string;
+}) {
+  return (
+    <header className="flex flex-wrap items-center gap-x-5 gap-y-4 border-b border-border pb-6">
+      <Avatar className="h-16 w-16">
+        {/* No avatar field on UserProfileDto yet — see components/ui/avatar. */}
+        <AvatarImage alt="" />
+        <AvatarFallback className="text-xl">{initials}</AvatarFallback>
+      </Avatar>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <h1 className="truncate text-2xl font-bold tracking-tight text-foreground">{name}</h1>
+          {verified && (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/15 px-2.5 py-0.5 text-[11px] font-semibold text-success">
+              <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('profile.emailVerified')}
+            </span>
+          )}
+        </div>
+        <p className="mt-1 truncate text-sm text-muted-foreground">{email}</p>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        {t('profile.memberSince')}{' '}
+        <span className="font-medium text-foreground">
+          {/*
+            `toLocaleDateString` with no locale follows the browser, which is
+            what a client expects of their own join date. Money is the thing
+            that must never be formatted this way — see lib/money.ts, where
+            Intl is banned because it rounds.
+          */}
+          {new Date(memberSince).toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </span>
+      </p>
+    </header>
+  );
+}
+
+/** One titled section. The only card shape on this page, used four times. */
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-border bg-card">
+      <h2 className="border-b border-border px-6 py-4 text-sm font-semibold text-foreground">
+        {title}
+      </h2>
+      <div className="p-6">{children}</div>
+    </section>
   );
 }
 

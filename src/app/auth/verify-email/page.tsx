@@ -4,10 +4,10 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
+import { AuthShell } from '@/components/auth/auth-shell';
 
 function VerifyEmailForm() {
   const router = useRouter();
@@ -120,25 +120,9 @@ function VerifyEmailForm() {
   };
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
-
-      <div className="w-full max-w-md space-y-6">
-        <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
-            <span className="text-xl font-semibold tracking-wide text-foreground">
-              {t('app.name')}
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('auth.verify.heading')}</h1>
-          <p className="text-xs text-muted-foreground">{t('auth.verify.tagline')}</p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-6 md:p-8 text-center space-y-5">
+    <AuthShell heading={t('auth.verify.heading')} subheading={t('auth.verify.tagline')}>
+      <div className="space-y-6">
+        <div className="text-center space-y-5">
           {isLoading ? (
             <div className="py-8 space-y-4">
               <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-info/10">
@@ -243,7 +227,7 @@ function VerifyEmailForm() {
           )}
         </div>
       </div>
-    </main>
+    </AuthShell>
   );
 }
 

@@ -4,10 +4,10 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
+import { AuthShell } from '@/components/auth/auth-shell';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -47,25 +47,9 @@ function ResetPasswordForm() {
   };
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
-
-      <div className="w-full max-w-md space-y-6">
-        <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
-            <span className="text-xl font-semibold tracking-wide text-foreground">
-              {t('app.name')}
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('auth.reset.heading')}</h1>
-          <p className="text-xs text-muted-foreground">{t('auth.reset.tagline')}</p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-6 md:p-8 space-y-5">
+    <AuthShell heading={t('auth.reset.heading')} subheading={t('auth.reset.tagline')}>
+      <div className="space-y-6">
+        <div className="space-y-5">
           {error && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -148,7 +132,7 @@ function ResetPasswordForm() {
           )}
         </div>
       </div>
-    </main>
+    </AuthShell>
   );
 }
 

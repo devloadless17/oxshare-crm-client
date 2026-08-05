@@ -1,0 +1,144 @@
+import Link from 'next/link';
+import { ShieldCheck, Globe2, LineChart } from 'lucide-react';
+import { t } from '@/lib/i18n';
+
+/**
+ * The frame every auth screen sits in.
+ *
+ * Five screens — sign in, register, forgot, reset, verify — each carried their
+ * own copy of the mark, the heading block, the card and a theme toggle, and
+ * they had drifted: different paddings, different heading sizes, and a
+ * `max-w-md` on some and not others. A client moving from register to sign-in
+ * saw the page shift under them.
+ *
+ * ## Why a split
+ *
+ * The single centred card is the default because it is the easiest thing to
+ * build, not because it is right for this product. This is the first screen a
+ * prospective client sees, and it was a form floating in white space with no
+ * statement of what OXShare is or why anyone should hand it money.
+ *
+ * The left panel is that statement, and it is deliberately not decoration: on a
+ * financial product the things worth saying at the door are custody,
+ * regulation and reach. It is `hidden lg:flex`, so on the phone — where most
+ * registrations happen — the form gets the whole viewport and none of the
+ * marketing.
+ *
+ * ## No theme toggle
+ *
+ * Each of these screens had one, floating in the top-right corner. It was the
+ * only control on the page that was not part of signing in, and it drew the eye
+ * on the one screen where the eye has exactly one job. The theme now follows
+ * the operating system by default and is changed from the account menu once
+ * signed in — which is where somebody looks for it, and after the moment that
+ * matters.
+ */
+export function AuthShell({
+  heading,
+  subheading,
+  children,
+  footer,
+}: {
+  heading: string;
+  subheading?: string;
+  children: React.ReactNode;
+  /** The "no account? register" line. Optional — reset screens have no next step. */
+  footer?: React.ReactNode;
+}) {
+  return (
+    <main className="flex min-h-screen bg-background">
+      <BrandPanel />
+
+      {/* The form column. `min-w-0` so a long error message wraps instead of
+          widening the flex child and pushing the brand panel off-screen. */}
+      <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-5 py-10 sm:px-8">
+        <div className="w-full max-w-[26rem]">
+          {/* The mark, on the form side, for the viewports where the brand
+              panel is hidden. `lg:hidden` rather than duplicated markup. */}
+          <Link href="/auth/login" className="mb-8 inline-flex items-center gap-2.5 lg:hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/oxshare-mark.svg" alt="" className="h-7 w-auto" />
+            <span className="text-lg font-semibold tracking-tight text-foreground">
+              {t('app.name')}
+            </span>
+          </Link>
+
+          <header className="mb-7">
+            <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-foreground">
+              {heading}
+            </h1>
+            {subheading && (
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{subheading}</p>
+            )}
+          </header>
+
+          {children}
+
+          {footer && <div className="mt-7 text-center text-sm text-muted-foreground">{footer}</div>}
+        </div>
+      </div>
+    </main>
+  );
+}
+
+/**
+ * What the product is, for the person deciding whether to sign up.
+ *
+ * `hidden lg:flex`: below that width it would push the form below the fold, and
+ * a marketing panel that delays the form is worse than no panel.
+ */
+function BrandPanel() {
+  return (
+    <div className="relative hidden w-[46%] max-w-[36rem] flex-col justify-between overflow-hidden bg-auth-panel px-12 py-14 lg:flex">
+      {/*
+        A single soft radial wash rather than an image.
+
+        No network request, no layout shift, nothing to art-direct per breakpoint
+        — and it cannot become the reason the sign-in screen is slow, which for
+        the page every client passes through daily is the constraint that
+        outranks looking impressive.
+      */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-24 -top-24 h-[30rem] w-[30rem] rounded-full opacity-[0.14] blur-3xl"
+        style={{ background: 'radial-gradient(circle, var(--primary) 0%, transparent 70%)' }}
+      />
+
+      <Link href="/auth/login" className="relative flex items-center gap-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
+        <span className="text-xl font-semibold tracking-tight text-auth-panel-foreground">
+          {t('app.name')}
+        </span>
+      </Link>
+
+      <div className="relative">
+        <p className="text-[2rem] font-bold leading-[1.2] tracking-tight text-auth-panel-foreground">
+          {t('auth.brand.headline')}
+        </p>
+        <p className="mt-4 max-w-sm text-sm leading-relaxed text-auth-panel-foreground/70">
+          {t('auth.brand.body')}
+        </p>
+
+        <ul className="mt-10 space-y-5">
+          <BrandPoint icon={ShieldCheck} label={t('auth.brand.pointCustody')} />
+          <BrandPoint icon={LineChart} label={t('auth.brand.pointMarkets')} />
+          <BrandPoint icon={Globe2} label={t('auth.brand.pointGlobal')} />
+        </ul>
+      </div>
+
+      <p className="relative text-xs text-auth-panel-foreground/45">{t('auth.brand.footnote')}</p>
+    </div>
+  );
+}
+
+function BrandPoint({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-auth-panel-foreground/10">
+        <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
+      </span>
+      <span className="text-sm leading-relaxed text-auth-panel-foreground/80">{label}</span>
+    </li>
+  );
+}

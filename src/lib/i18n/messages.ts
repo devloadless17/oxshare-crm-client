@@ -127,6 +127,24 @@ export const messages = {
   'nav.collapse': 'Collapse sidebar',
   'nav.expand': 'Expand sidebar',
 
+  // Labels for the eye toggle beside a password field. The icon alone tells a
+  // screen-reader user nothing, and this control decides whether a password is
+  // legible on a shared screen.
+  'auth.showPassword': 'Show password',
+  'auth.hidePassword': 'Hide password',
+
+  // ── Auth: the brand panel beside every auth form ──────────────────────────
+  // Shown to somebody deciding whether to hand this platform money, so it says
+  // what the product is rather than welcoming them. Hidden below `lg`, where the
+  // form needs the whole viewport.
+  'auth.brand.headline': 'Trade global markets with a broker built for scale.',
+  'auth.brand.body':
+    'Segregated client funds, institutional execution and a platform your account manager can actually see. One login for your wallet, your accounts and your verification.',
+  'auth.brand.pointCustody': 'Client funds held separately from company funds',
+  'auth.brand.pointMarkets': 'Forex, metals, indices and crypto CFDs from one account',
+  'auth.brand.pointGlobal': 'Deposits and withdrawals in USD and USDT',
+  'auth.brand.footnote': 'Trading involves risk. You can lose more than your initial deposit.',
+
   // ── Auth: sign in ─────────────────────────────────────────────────────────
   'auth.login.title': 'Welcome back',
   'auth.login.subtitle': 'Sign in to your OXShare account',

@@ -13,7 +13,6 @@ import {
   RefreshCw,
   CheckCircle2,
 } from 'lucide-react';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +22,7 @@ import { t } from '@/lib/i18n';
 import { useUser } from '@/context/UserContext';
 import { RedirectIfAuthenticated } from '@/components/auth/redirect-if-authenticated';
 import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/return-to';
+import { AuthShell } from '@/components/auth/auth-shell';
 
 /**
  * Gated in the OTHER direction — see `RedirectIfAuthenticated`.
@@ -147,130 +147,11 @@ function LoginForm() {
   };
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
-
-      <div className="w-full max-w-md space-y-6">
-        <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
-            <span className="text-xl font-semibold tracking-wide text-foreground">
-              {t('app.name')}
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            {t('auth.login.heading')}
-          </h1>
-          <p className="text-xs text-muted-foreground">{t('auth.login.tagline')}</p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-6 md:p-8 space-y-5">
-          {error && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive space-y-3">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span className="font-medium">{error}</span>
-              </div>
-
-              {isUnverified && (
-                <div className="pt-2 border-t border-destructive/20">
-                  <button
-                    type="button"
-                    onClick={() => void handleResendEmail()}
-                    disabled={isResending || resendCooldown > 0}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-md bg-destructive px-3 text-[11px] font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
-                  >
-                    {isResending ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span>{t('auth.login.resendSending')}</span>
-                      </>
-                    ) : resendCooldown > 0 ? (
-                      <span>{t('auth.login.resendCooldown', { seconds: resendCooldown })}</span>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        <span>{t('auth.login.resendCta')}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {resendSuccess && (
-            <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-xs text-success">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <span>{resendSuccess}</span>
-            </div>
-          )}
-
-          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">{t('auth.login.emailLabel')}</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t('auth.login.emailPlaceholder')}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">{t('auth.login.password')}</Label>
-                <Link
-                  href="/auth/forgot-password"
-                  className="text-[11px] font-medium text-link hover:underline rounded-xs focus-outline"
-                >
-                  {t('auth.login.forgot')}
-                </Link>
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t('auth.login.passwordPlaceholder')}
-                  className="pl-9 pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 rounded text-muted-foreground hover:text-foreground focus-outline"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            <Button type="submit" disabled={isLoading} className="w-full">
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>{t('auth.login.submitting')}</span>
-                </>
-              ) : (
-                <span>{t('auth.login.submit')}</span>
-              )}
-            </Button>
-          </form>
-        </div>
-
-        <p className="text-center text-xs text-muted-foreground">
+    <AuthShell
+      heading={t('auth.login.heading')}
+      subheading={t('auth.login.tagline')}
+      footer={
+        <>
           {t('auth.login.noAccount')}{' '}
           <Link
             href="/auth/register"
@@ -278,8 +159,130 @@ function LoginForm() {
           >
             {t('auth.login.register')}
           </Link>
-        </p>
-      </div>
-    </main>
+        </>
+      }
+    >
+      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
+        {error && (
+          <div
+            role="alert"
+            className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive space-y-3"
+          >
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-px" aria-hidden="true" />
+              <span className="font-medium leading-relaxed">{error}</span>
+            </div>
+
+            {isUnverified && (
+              <div className="pt-2 border-t border-destructive/20">
+                <button
+                  type="button"
+                  onClick={() => void handleResendEmail()}
+                  disabled={isResending || resendCooldown > 0}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-destructive px-3 text-[11px] font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
+                >
+                  {isResending ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                      <span>{t('auth.login.resendSending')}</span>
+                    </>
+                  ) : resendCooldown > 0 ? (
+                    <span>{t('auth.login.resendCooldown', { seconds: resendCooldown })}</span>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{t('auth.login.resendCta')}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {resendSuccess && (
+          <div
+            role="status"
+            className="flex items-center gap-2 rounded-xl border border-success/30 bg-success/10 p-3 text-xs text-success"
+          >
+            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{resendSuccess}</span>
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <Label htmlFor="email">{t('auth.login.emailLabel')}</Label>
+          <div className="relative">
+            <Mail
+              className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t('auth.login.emailPlaceholder')}
+              className="h-11 pl-10"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">{t('auth.login.password')}</Label>
+            <Link
+              href="/auth/forgot-password"
+              className="text-[11px] font-medium text-link hover:underline rounded-xs focus-outline"
+            >
+              {t('auth.login.forgot')}
+            </Link>
+          </div>
+          <div className="relative">
+            <Lock
+              className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t('auth.login.passwordPlaceholder')}
+              className="h-11 pl-10 pr-11"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              // Labelled, because the icon alone tells a screen-reader user
+              // nothing and this button changes whether a password is on screen.
+              aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+              className="absolute right-3 top-3 rounded text-muted-foreground hover:text-foreground focus-outline"
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <Button type="submit" disabled={isLoading} size="lg" className="w-full">
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <span>{t('auth.login.submitting')}</span>
+            </>
+          ) : (
+            <span>{t('auth.login.submit')}</span>
+          )}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

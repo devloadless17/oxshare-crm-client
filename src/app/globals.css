@@ -53,6 +53,8 @@
   --color-ring: var(--ring);
   --color-link: var(--link);
   --color-brand: var(--brand);
+  --color-auth-panel: var(--auth-panel);
+  --color-auth-panel-foreground: var(--auth-panel-foreground);
 
   /* Crisp, dense radii — panels never go rounder than 10px */
   --radius-sm: 0.25rem;
@@ -86,6 +88,22 @@
   --link: var(--ox-amber-deep);
   --ring: var(--ox-amber-deep);
   --brand: var(--ox-orange);
+
+  /*
+   * The brand panel beside the auth forms.
+   *
+   * ITS OWN TOKEN, and dark in BOTH themes, because the obvious shortcut is
+   * wrong: `bg-foreground text-background` gives a dark panel on a light page
+   * and then INVERTS with the theme, so in dark mode the panel turns white and
+   * the premium dark rail becomes the glare panel next to a dark form.
+   *
+   * A brand surface that keeps its identity across themes is how this is done
+   * wherever it is done well. The light and dark values differ only enough to
+   * keep the seam between panel and page visible on a near-black page, where
+   * an identical value would dissolve into it.
+   */
+  --auth-panel: #16161a;
+  --auth-panel-foreground: #f4f4f6;
 
   /* supporting */
   --secondary: #f8f8f8;
@@ -126,6 +144,12 @@
   --link: var(--ox-amber); /* on dark, the amber itself clears AA as text */
   --ring: var(--ox-amber);
   --brand: var(--ox-orange);
+
+  /* Deeper than the page (#121214) rather than lighter, so the panel still
+     reads as a distinct surface without becoming the brightest thing on a
+     dark screen. */
+  --auth-panel: #08080a;
+  --auth-panel-foreground: #f4f4f6;
 
   --secondary: #26262a;
   --secondary-foreground: #f4f4f6;
