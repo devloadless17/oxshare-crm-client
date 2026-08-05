@@ -73,9 +73,52 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'nav.deposit', href: '/deposit', icon: ArrowDownRight },
   { label: 'nav.withdraw', href: '/withdraw', icon: ArrowUpRight },
   { label: 'nav.transactions', href: '/transactions', icon: Receipt },
-  { label: 'nav.kyc', href: '/kyc', icon: ShieldCheck, badge: t('kyc.required') },
+  { label: 'nav.kyc', href: '/kyc', icon: ShieldCheck },
   { label: 'nav.profile', href: '/profile', icon: User, comingSoon: true },
 ];
+
+/**
+ * The KYC badge, derived from state rather than baked into `NAV_ITEMS`.
+ *
+ * It used to be `badge: t('kyc.required')` — a module-level constant on the nav
+ * item, evaluated once at import and never again. So the sidebar told an
+ * approved client their verification was "Required" forever, while the header
+ * pill five lines away read "Verified Account" off the same two values. One
+ * layout, two contradictory answers to "am I verified".
+ *
+ * `undefined` when there is nothing to do is the point: a badge is a call to
+ * action, and an approved client has no action. Rendering "Verified" here would
+ * duplicate the header pill and re-teach the same lie in a quieter voice.
+ *
+ * Pure and exported so it can be tested without rendering the layout, and so the
+ * precedence order — verified beats rejected beats in-review — is stated once.
+ */
+export function kycNavBadge(
+  kycStatus: string | undefined,
+  verificationLevel: number | undefined,
+): { text: string; tone: 'warning' | 'info' | 'destructive' } | undefined {
+  // Either signal is enough, and that is deliberate: this badge answers "does
+  // this client still have KYC work to do", not "is the money gate open". The
+  // two can disagree for a moment — approve() writes the submission status
+  // first and the verification level second — and in that window the client has
+  // nothing left to do either way, so prompting them would be wrong.
+  //
+  // The same expression drives the header pill below. Both must read the same
+  // values or the layout contradicts itself again, which is the bug this
+  // function exists to close.
+  if (verificationLevel === 1 || kycStatus === 'approved') return undefined;
+  if (kycStatus === 'rejected') return { text: t('kyc.badgeActionRequired'), tone: 'destructive' };
+  if (kycStatus === 'submitted' || kycStatus === 'under_review') {
+    return { text: t('kyc.badgeInReview'), tone: 'info' };
+  }
+  return { text: t('kyc.required'), tone: 'warning' };
+}
+
+const BADGE_TONES: Record<'warning' | 'info' | 'destructive', string> = {
+  warning: 'bg-warning/15 text-warning',
+  info: 'bg-info/15 text-info',
+  destructive: 'bg-destructive/15 text-destructive',
+};
 
 export function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -183,6 +226,13 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+            // KYC is the only entry whose badge is state, not configuration.
+            const badge =
+              item.href === '/kyc'
+                ? kycNavBadge(kycStatus, user?.verificationLevel)
+                : item.badge
+                  ? ({ text: String(item.badge), tone: 'warning' } as const)
+                  : undefined;
 
             // Rendered as a div, not a disabled Link: an anchor with a dead href
             // is still navigable by keyboard, by middle-click and by a crawler.
@@ -227,9 +277,11 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
                   }`}
                 />
                 {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
-                {!collapsed && item.badge && (
-                  <span className="ml-auto rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-semibold text-warning">
-                    {item.badge}
+                {!collapsed && badge && (
+                  <span
+                    className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold ${BADGE_TONES[badge.tone]}`}
+                  >
+                    {badge.text}
                   </span>
                 )}
               </Link>

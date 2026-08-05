@@ -33,13 +33,20 @@ import { t } from '@/lib/i18n';
  * The server enforces KYC level 1, the available balance, and the configured
  * minimum and maximum, and answers 422 with a message this screen displays.
  *
- * ── What it is honest about ─────────────────────────────────────────────────
+ * ── The confirmation step (FR-CORE-08 / FR-IND-05) ──────────────────────────
  *
- * CORE-08 requires an email OTP on every withdrawal and it is NOT built — it
- * needs Redis for the single-use 5-minute TTL (§8.4, "never in Postgres"), which
- * arrives with the queues milestone. Until then the only control between a
- * request and a payout is admin review, and the copy says so rather than
- * implying a confirmation step that does not exist.
+ * Two steps, not one: state the withdrawal, then confirm it with a code emailed
+ * to the account address. The code the server issues is bound to the EXACT
+ * amount, currency, destination and provider sent in step one, so a code
+ * obtained for a small transfer cannot be spent on a large one — which is why
+ * this form locks those fields once a code has been sent, and returns to step
+ * one if the client wants to change anything.
+ *
+ * The operator can switch the control off (Settings → Security, master admin
+ * only) for testing and before go-live. This screen does not branch on that: it
+ * always asks the server to send a code, and the server answers "not required"
+ * when the control is off, in which case the withdrawal submits without one. So
+ * there is exactly one flow in this file, and the server decides what it means.
  */
 
 function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => void }) {
@@ -52,6 +59,17 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
   const [destination, setDestination] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [isSubmitting, setSubmitting] = React.useState(false);
+
+  /*
+   * `'details'` → `'confirm'`. The step is the ONLY thing that decides which
+   * fields are editable, so there is no way to be on the confirm step with a
+   * changed amount: leaving `confirm` is what re-enables them, and it clears the
+   * code with it.
+   */
+  const [step, setStep] = React.useState<'details' | 'confirm'>('details');
+  const [otp, setOtp] = React.useState('');
+  const [otpNotice, setOtpNotice] = React.useState<string | null>(null);
+  const [otpRequired, setOtpRequired] = React.useState(true);
 
   const selected = wallets.find((w) => w.currency === currency);
 
@@ -71,7 +89,25 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
    */
   const idempotencyKey = React.useRef<string | null>(null);
 
-  const submit = async (e: React.FormEvent) => {
+  /**
+   * The withdrawal, exactly as both the code request and the submission see it.
+   *
+   * One function, so the two calls cannot disagree about what is being
+   * authorised. If they could, the server's binding check would reject a code
+   * the client just requested and the failure would look like a bug in the OTP.
+   */
+  const intent = () => ({
+    amount: amount.trim(),
+    currency,
+    destination: destination.trim(),
+    // Derived from the currency rather than chosen by the client: a USDT
+    // balance cannot be paid out through the fiat rail, and offering that
+    // choice would invite a request the server must then refuse.
+    provider: currency === 'USDT' ? ('usdt' as const) : ('whish' as const),
+  });
+
+  /** Step one → ask the server to email a code for THIS withdrawal. */
+  const requestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -80,28 +116,64 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
     if (!amount.trim()) return setError(t('withdraw.needAmount'));
     if (!destination.trim()) return setError(t('withdraw.needDestination'));
 
+    setSubmitting(true);
+    try {
+      const { message, required } = await paymentsApi.sendWithdrawalOtp(intent());
+      // A BOOLEAN from the server, never inferred from the message: the operator
+      // can switch the OTP control off, and reading that out of prose would make
+      // a copy edit break the withdrawal flow.
+      setOtpRequired(required);
+      setOtpNotice(message);
+      setStep('confirm');
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, t('withdraw.otpSendFailed')));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /** Step two → submit, with the code when one is required. */
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (otpRequired && !/^\d{6}$/.test(otp)) return setError(t('withdraw.needOtp'));
+
     idempotencyKey.current ??= newIdempotencyKey();
 
     setSubmitting(true);
     try {
       await paymentsApi.requestWithdrawal(
-        {
-          amount: amount.trim(),
-          currency,
-          destination: destination.trim(),
-          // Derived from the currency rather than chosen by the client: a USDT
-          // balance cannot be paid out through the fiat rail, and offering that
-          // choice would invite a request the server must then refuse.
-          provider: currency === 'USDT' ? 'usdt' : 'whish',
-        },
+        { ...intent(), ...(otpRequired ? { otp } : {}) },
         idempotencyKey.current,
       );
       onDone();
     } catch (err: unknown) {
+      /*
+       * A rejected code must NOT reuse the idempotency key.
+       *
+       * The key names one intended withdrawal, and none was created — the
+       * request never reached the money path. Keeping it would mean the retry
+       * with a correct code collides with the cached failure and the client can
+       * never complete the withdrawal they are entitled to.
+       */
+      idempotencyKey.current = null;
+      setOtp('');
       setError(apiErrorMessage(err, t('withdraw.failed')));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  /** Back to step one — the only way to change a locked field. */
+  const editDetails = () => {
+    setStep('details');
+    // The code was bound to the OLD intent; keeping it on screen would invite
+    // the client to submit it against a changed withdrawal and be refused for a
+    // reason the message cannot explain well.
+    setOtp('');
+    setOtpNotice(null);
+    setError(null);
   };
 
   if (fundable.length === 0) {
@@ -114,7 +186,7 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
 
   return (
     <form
-      onSubmit={(e) => void submit(e)}
+      onSubmit={(e) => void (step === 'details' ? requestCode(e) : submit(e))}
       className="space-y-5 rounded-2xl border border-border bg-card p-6"
     >
       {error && (
@@ -133,7 +205,8 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
           id="withdraw-currency"
           value={currency}
           onChange={(e) => setCurrency(e.target.value as Currency)}
-          className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          disabled={step === 'confirm'}
+          className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
         >
           {fundable.map((w) => (
             <option key={w.currency} value={w.currency}>
@@ -155,6 +228,7 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder={t('withdraw.amountPlaceholder')}
+          disabled={step === 'confirm'}
         />
         {selected && (
           <p className="text-[11px] text-muted-foreground">
@@ -173,6 +247,7 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
           onChange={(e) => setDestination(e.target.value)}
           placeholder={t('withdraw.destinationPlaceholder')}
           autoComplete="off"
+          disabled={step === 'confirm'}
         />
         <p className="text-[11px] text-muted-foreground">{t('withdraw.destinationHint')}</p>
       </div>
@@ -182,14 +257,46 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
         <span>{t('withdraw.reviewNote')}</span>
       </div>
 
+      {step === 'confirm' && (
+        <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-3">
+          {otpNotice && <p className="text-[11px] text-muted-foreground">{otpNotice}</p>}
+
+          {otpRequired && (
+            <div className="space-y-1.5">
+              <Label htmlFor="withdraw-otp">{t('withdraw.otpLabel')}</Label>
+              <Input
+                id="withdraw-otp"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
+              />
+              <p className="text-[11px] text-muted-foreground">{t('withdraw.otpHint')}</p>
+            </div>
+          )}
+
+          {/* The only way to change a locked field. Re-entering step one clears
+              the code, because it was bound to the previous intent. */}
+          <button
+            type="button"
+            onClick={editDetails}
+            className="text-[11px] font-semibold text-link hover:underline focus-outline rounded-sm"
+          >
+            {t('withdraw.editDetails')}
+          </button>
+        </div>
+      )}
+
       <Button type="submit" disabled={isSubmitting} className="w-full">
         {isSubmitting ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            <span>{t('withdraw.submitting')}</span>
+            <span>{step === 'details' ? t('withdraw.sendingCode') : t('withdraw.submitting')}</span>
           </>
         ) : (
-          <span>{t('withdraw.submit')}</span>
+          <span>{step === 'details' ? t('withdraw.continue') : t('withdraw.submit')}</span>
         )}
       </Button>
     </form>

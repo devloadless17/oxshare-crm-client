@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { NONCE_HEADER, contentSecurityPolicy, createNonce } from '@/lib/csp';
 import { decideRoute } from '@/lib/route-guard';
 
 export function proxy(request: NextRequest) {
@@ -22,8 +23,41 @@ export function proxy(request: NextRequest) {
   );
 
   return decision.allow
-    ? NextResponse.next()
-    : NextResponse.redirect(new URL(decision.redirectTo, request.url));
+    ? withCsp(request)
+    : withCsp(request, NextResponse.redirect(new URL(decision.redirectTo, request.url)));
+}
+
+/**
+ * Attaches the per-request `script-src` nonce — see lib/csp.ts.
+ *
+ * Every return path goes through this, including the redirect: a response
+ * without the header would fall back to no `script-src` at all, and the one page
+ * an unauthenticated visitor definitely loads is the sign-in screen.
+ *
+ * The nonce is set on the REQUEST headers as well, because that is how Next's
+ * renderer learns to stamp it onto the inline bootstrap and hydration scripts it
+ * emits. Setting it only on the response would produce a strict policy and a
+ * blank page.
+ */
+function withCsp(request: NextRequest, response?: NextResponse): NextResponse {
+  const nonce = createNonce();
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(NONCE_HEADER, nonce);
+
+  const res = response ?? NextResponse.next({ request: { headers: requestHeaders } });
+  if (response) response.headers.set(NONCE_HEADER, nonce);
+
+  // The WHOLE policy, from one place. Merging with a header set in
+  // next.config.ts does not work — config headers are applied AFTER middleware
+  // and replace it — and the failure is silent: the response goes out carrying
+  // script-src alone, with no default-src, no frame-ancestors and no object-src.
+  // The policy looked stricter than before and was weaker.
+  res.headers.set(
+    'Content-Security-Policy',
+    contentSecurityPolicy(nonce, process.env.NODE_ENV === 'production'),
+  );
+  return res;
 }
 
 export const config = {

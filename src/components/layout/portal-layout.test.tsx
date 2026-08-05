@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { NAV_ITEMS } from './portal-layout';
+import { NAV_ITEMS, kycNavBadge } from './portal-layout';
 
 /**
  * Every live navigation target must be a route that exists.
@@ -76,5 +76,66 @@ describe('portal navigation', () => {
     // A probe that always returned true would make the first test vacuous.
     expect(routeExists('/dashboard')).toBe(true);
     expect(routeExists('/profile')).toBe(false);
+  });
+});
+
+/**
+ * The KYC sidebar badge follows state — which it did not.
+ *
+ * `NAV_ITEMS` carried `badge: t('kyc.required')` as a module-level constant,
+ * evaluated once at import. So an approved client was told their verification
+ * was "Required" forever, while the header pill in the same layout read
+ * "Verified Account" off the values below. The comment above the status query
+ * already claimed "the sidebar badge follows the KYC status"; nothing connected
+ * the two.
+ *
+ * These assert the connection rather than the styling, so they keep holding if
+ * the badge is restyled — and they fail immediately if anyone puts a literal
+ * back on the nav item.
+ */
+describe('kycNavBadge', () => {
+  it('shows nothing once the client is verified', () => {
+    // Not "Verified": a badge is a call to action and there is no action left.
+    // The header pill is what states verified status.
+    expect(kycNavBadge('approved', 1)).toBeUndefined();
+  });
+
+  it('stays silent while the two signals disagree, in either direction', () => {
+    // approve() writes the submission status first and the verification level
+    // second, so there is a real window where these differ. The badge asks
+    // "is there KYC work left", and in that window there is none either way —
+    // so both halves resolve to no prompt rather than a flickering one.
+    expect(kycNavBadge('under_review', 1)).toBeUndefined();
+    expect(kycNavBadge('approved', 0)).toBeUndefined();
+  });
+
+  it('calls a rejected submission out, and distinguishes it from untouched', () => {
+    const rejected = kycNavBadge('rejected', 0);
+    const notStarted = kycNavBadge('not_started', 0);
+
+    expect(rejected?.tone).toBe('destructive');
+    expect(notStarted?.tone).toBe('warning');
+    // A client who was rejected and one who never started need different
+    // prompts — the first has work to redo, the second has work to begin.
+    expect(rejected?.text).not.toBe(notStarted?.text);
+  });
+
+  it('says a submission is in review rather than required', () => {
+    // Telling a client who has already uploaded everything that KYC is
+    // "Required" is the same lie in a smaller form.
+    for (const status of ['submitted', 'under_review'] as const) {
+      expect(kycNavBadge(status, 0)?.tone).toBe('info');
+    }
+  });
+
+  it('falls back to Required when the status has not loaded', () => {
+    // undefined is the first render, before /kyc/status resolves. Prompting is
+    // the safe default; claiming verified would not be.
+    expect(kycNavBadge(undefined, undefined)?.tone).toBe('warning');
+  });
+
+  it('carries no hardcoded badge on any nav item', () => {
+    // The regression itself: a literal here is how the bug shipped.
+    expect(NAV_ITEMS.filter((i) => i.badge !== undefined)).toEqual([]);
   });
 });

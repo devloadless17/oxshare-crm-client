@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
+  KYC_DRAFT_TTL_MS,
   clearKycDraft,
   readPersonalDraft,
   readUploadsDraft,
@@ -116,5 +117,70 @@ describe('KYC draft — a dead session clears it too', () => {
     expect(sessionStorage.getItem('oxshare_kyc_personal')).toBeNull();
     expect(sessionStorage.getItem('oxshare_kyc_uploads')).toBeNull();
     expect(sessionStorage.length).toBe(0);
+  });
+});
+
+describe('the draft expires', () => {
+  /*
+   * Clearing on logout and on submission covers the two moments somebody DOES
+   * something. It does not cover the commonest one: a client fills in their date
+   * of birth, abandons the tab, and walks away. Nothing in the flow fires again,
+   * so the personal data stayed readable for as long as the tab stayed open —
+   * which on a shared machine is until the next person sits down.
+   */
+  it('returns nothing once the draft is older than the window', () => {
+    writePersonalDraft({ dateOfBirth: '1990-01-01', address: '1 Test Street' });
+    expect(readPersonalDraft()).toMatchObject({ dateOfBirth: '1990-01-01' });
+
+    // Age the stamp rather than waiting twelve hours.
+    window.sessionStorage.setItem(
+      'oxshare_kyc_draft_written_at',
+      String(Date.now() - KYC_DRAFT_TTL_MS - 1),
+    );
+
+    expect(readPersonalDraft()).toEqual({});
+  });
+
+  it('actually REMOVES the stale values, rather than just hiding them', () => {
+    // Returning `{}` while leaving the data in sessionStorage would be theatre:
+    // the leak is somebody reading the store, not the app reading it.
+    writePersonalDraft({ dateOfBirth: '1990-01-01' });
+    window.sessionStorage.setItem(
+      'oxshare_kyc_draft_written_at',
+      String(Date.now() - KYC_DRAFT_TTL_MS - 1),
+    );
+
+    readPersonalDraft();
+    expect(window.sessionStorage.getItem('oxshare_kyc_personal')).toBeNull();
+  });
+
+  it('expires the uploads draft on the same read', () => {
+    writeUploadsDraft({ passport: true });
+    window.sessionStorage.setItem(
+      'oxshare_kyc_draft_written_at',
+      String(Date.now() - KYC_DRAFT_TTL_MS - 1),
+    );
+
+    expect(readUploadsDraft()).toEqual({});
+  });
+
+  it('discards a draft with no timestamp at all', () => {
+    // Written before this existed: personal data of unknown age, which is the
+    // case to be strictest about.
+    window.sessionStorage.setItem('oxshare_kyc_personal', JSON.stringify({ name: 'Old' }));
+    expect(readPersonalDraft()).toEqual({});
+  });
+
+  it('keeps the draft alive while the client is still typing', () => {
+    // The window runs from the LAST edit. A form should never vanish underneath
+    // somebody who is actively filling it in.
+    writePersonalDraft({ name: 'Jane' });
+    window.sessionStorage.setItem(
+      'oxshare_kyc_draft_written_at',
+      String(Date.now() - KYC_DRAFT_TTL_MS + 60_000),
+    );
+    writePersonalDraft({ name: 'Jane Doe' });
+
+    expect(readPersonalDraft()).toMatchObject({ name: 'Jane Doe' });
   });
 });

@@ -174,6 +174,16 @@ export const messages = {
   'auth.verify.missingToken': 'Verification token is missing in URL parameters.',
   'auth.verify.invalidToken': 'The verification link is invalid or has expired.',
   'auth.verify.resendCta': 'Resend Verification Email',
+
+  // ── Withdrawal confirmation (FR-CORE-08 / FR-IND-05) ──────────────────────
+  'withdraw.continue': 'Continue',
+  'withdraw.sendingCode': 'Sending code…',
+  'withdraw.otpLabel': 'Confirmation code',
+  'withdraw.otpHint':
+    'The code is tied to this exact amount and destination. Change either and you will need a new one.',
+  'withdraw.needOtp': 'Enter the 6-digit code from your email.',
+  'withdraw.otpSendFailed': 'Could not send the confirmation code. Please try again.',
+  'withdraw.editDetails': 'Change amount or destination',
   'common.notPermittedTitle': 'Not available on your account',
   'common.notPermittedBody':
     'Your account does not have access to this. If you think that is wrong, contact support.',
@@ -301,6 +311,11 @@ export const messages = {
 
   // ── KYC ───────────────────────────────────────────────────────────────────
   'kyc.required': 'Required',
+  // Sidebar badge states — see kycNavBadge() in portal-layout.tsx. There is
+  // deliberately no "verified" string: a badge is a call to action, and an
+  // approved client has none.
+  'kyc.badgeInReview': 'In review',
+  'kyc.badgeActionRequired': 'Action needed',
   'kyc.submittedTitle': 'Verification Submitted',
   'kyc.approvedTitle': 'KYC Approved!',
   'kyc.rejectedTitle': 'KYC Verification Rejected',

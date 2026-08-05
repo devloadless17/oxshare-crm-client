@@ -29,30 +29,86 @@ import { parseBooleanRecord, parseStringRecord } from './json';
  * Deliberately NOT `localStorage`: `sessionStorage` is already per-tab and dies
  * with it, which is the shorter of the two lifetimes. This module makes the
  * clearing explicit rather than relying on the user closing the tab.
+ *
+ * AND IT EXPIRES. Clearing on logout and on submission covers the two moments
+ * somebody DOES something. It does not cover the commonest one: a client starts
+ * onboarding, gets as far as their date of birth, and abandons the tab. Nothing
+ * in the flow ever fires again, so the personal data sat in that tab for as long
+ * as it stayed open — which on a shared machine is however long until the next
+ * person sits down.
+ *
+ * A stored timestamp fixes that with no cost to the feature it exists for: a
+ * refresh, a back-button and a step-to-step navigation all happen in minutes, so
+ * a draft older than the window below is one nobody is coming back to. Enforced
+ * on READ rather than by a timer, because a timer does not run in a backgrounded
+ * tab and the read is the only moment the value can actually leak.
  */
 
 const PERSONAL_KEY = 'oxshare_kyc_personal';
 const UPLOADS_KEY = 'oxshare_kyc_uploads';
+const WRITTEN_AT_KEY = 'oxshare_kyc_draft_written_at';
+
+/**
+ * How long a half-filled form is worth keeping.
+ *
+ * Twelve hours rather than minutes: someone who starts onboarding on their
+ * commute and finishes it that evening should not lose their work, and the
+ * per-tab lifetime already bounds the common case. Short enough that data does
+ * not survive to the next day on a machine somebody else uses.
+ */
+const DRAFT_TTL_MS = 12 * 60 * 60 * 1000;
 
 /** SSR-safe: every helper below is a no-op on the server. */
 function storage(): Storage | null {
   return typeof window === 'undefined' ? null : window.sessionStorage;
 }
 
+/**
+ * Discards the draft if it has gone stale, and reports whether anything is left.
+ *
+ * Called from both readers, so an expired draft cannot be read even once — an
+ * expiry checked on write, or only on the first of two keys, would leave the
+ * data readable by whichever path forgot.
+ */
+function dropIfExpired(): boolean {
+  const store = storage();
+  if (!store) return false;
+
+  const writtenAt = Number(store.getItem(WRITTEN_AT_KEY) ?? '0');
+  // A draft with no timestamp predates this and is discarded rather than kept:
+  // it is personal data whose age is unknown, which is the case to be strictest
+  // about.
+  if (!writtenAt || Date.now() - writtenAt > DRAFT_TTL_MS) {
+    clearKycDraft();
+    return false;
+  }
+  return true;
+}
+
+function stamp(): void {
+  storage()?.setItem(WRITTEN_AT_KEY, String(Date.now()));
+}
+
 export function readPersonalDraft(): Record<string, string> {
+  if (!dropIfExpired()) return {};
   return parseStringRecord(storage()?.getItem(PERSONAL_KEY) ?? null);
 }
 
 export function writePersonalDraft(values: Record<string, string>): void {
   storage()?.setItem(PERSONAL_KEY, JSON.stringify(values));
+  // The window runs from the LAST edit, not the first: someone actively filling
+  // the form in should never have it vanish underneath them.
+  stamp();
 }
 
 export function readUploadsDraft(): Record<string, boolean> {
+  if (!dropIfExpired()) return {};
   return parseBooleanRecord(storage()?.getItem(UPLOADS_KEY) ?? null);
 }
 
 export function writeUploadsDraft(values: Record<string, boolean>): void {
   storage()?.setItem(UPLOADS_KEY, JSON.stringify(values));
+  stamp();
 }
 
 /**
@@ -67,4 +123,8 @@ export function clearKycDraft(): void {
   const store = storage();
   store?.removeItem(PERSONAL_KEY);
   store?.removeItem(UPLOADS_KEY);
+  store?.removeItem(WRITTEN_AT_KEY);
 }
+
+/** Exported for the spec — the window is a decision, not a magic number. */
+export const KYC_DRAFT_TTL_MS = DRAFT_TTL_MS;

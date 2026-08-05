@@ -24,6 +24,7 @@ import type { components } from './types.gen';
 export type Transaction = components['schemas']['TransactionDto'];
 export type RequestWithdrawal = components['schemas']['RequestWithdrawalDto'];
 export type RequestWithdrawalOtp = components['schemas']['RequestWithdrawalOtpDto'];
+export type WithdrawalOtpResponse = components['schemas']['WithdrawalOtpResponseDto'];
 
 export const paymentsApi = {
   /**
@@ -72,8 +73,8 @@ export const paymentsApi = {
    * control switched off — so the caller's flow does not branch on whether the
    * control is on.
    */
-  async sendWithdrawalOtp(body: RequestWithdrawalOtp): Promise<{ message: string }> {
-    const { data } = await apiClient.post<{ message: string }>('/payments/withdrawals/otp', body);
+  async sendWithdrawalOtp(body: RequestWithdrawalOtp): Promise<WithdrawalOtpResponse> {
+    const { data } = await apiClient.post<WithdrawalOtpResponse>('/payments/withdrawals/otp', body);
     return data;
   },
 

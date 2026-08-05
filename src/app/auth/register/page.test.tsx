@@ -95,13 +95,31 @@ describe('portal registration', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/auth/login'));
   });
 
-  it('surfaces a duplicate-email rejection', async () => {
-    register.mockRejectedValueOnce(apiError('An account with this email already exists.'));
+  it('treats a taken address exactly like a new one', async () => {
+    /*
+     * The API no longer answers 409 for an address that already has an account —
+     * that made registration a membership oracle, and anyone could test an
+     * address list to learn who banks here. It now returns the same message as a
+     * real signup and emails the EXISTING account holder instead.
+     *
+     * So this screen must show no difference either. A UI that said "already
+     * registered" would reintroduce, on the client, the leak the API just closed
+     * — the same mistake `forgot-password/page.tsx` is careful not to make.
+     */
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    // Note the absent `userId`: no account was created, and returning the
+    // existing one's id would hand back the fact the API is hiding.
+    register.mockResolvedValueOnce({
+      message: 'Registration successful. Please check your email to verify your account.',
+    });
 
     await fillAndSubmit();
 
-    expect(await screen.findByText(/already exists/i)).toBeInTheDocument();
-    expect(push).not.toHaveBeenCalled();
+    expect(await screen.findByText(/check your email to verify/i)).toBeInTheDocument();
+    expect(screen.queryByText(/already exists/i)).not.toBeInTheDocument();
+
+    vi.advanceTimersByTime(3000);
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/auth/login'));
   });
 
   it('surfaces a rejected password without clearing the form', async () => {
@@ -116,11 +134,11 @@ describe('portal registration', () => {
   });
 
   it('returns the button to its idle state after a failure', async () => {
-    register.mockRejectedValueOnce(apiError('An account with this email already exists.'));
+    register.mockRejectedValueOnce(apiError('password must be longer than 8 characters', 400));
 
     await fillAndSubmit();
 
-    await screen.findByText(/already exists/i);
+    await screen.findByText(/longer than 8 characters/i);
     expect(screen.getByRole('button', { name: /complete registration/i })).toBeEnabled();
   });
 

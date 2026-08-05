@@ -7,9 +7,11 @@ import api from '@/lib/api';
 import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
+import { PortalLayout } from '@/components/layout/portal-layout';
 import { t } from '@/lib/i18n';
 
 type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
+type KycStatusDto = components['schemas']['KycStatusDto'];
 
 interface StepItem {
   num: number;
@@ -24,6 +26,49 @@ const DEFAULT_STEPS: StepItem[] = [
   { num: 4, label: 'Address Proof', path: '/kyc/step/4' },
   { num: 5, label: 'Review', path: '/kyc/step/5' },
 ];
+
+/**
+ * WHICH CHROME — from the pathname alone, and that is the whole point.
+ *
+ * This decision used to read the KYC status and the verification level. Both
+ * arrive over the network, so the first paint committed to one shell and a later
+ * paint replaced it with a different one: refreshing /kyc/submitted rendered the
+ * bare wizard header, then swapped in the full portal — sidebar, topbar and all —
+ * a few hundred milliseconds later. A layout that reflows its own chrome after
+ * mount reads as a broken page, and no tuning of the condition fixes that while
+ * an input is async.
+ *
+ * The pathname already carries the answer, because the shell follows what the
+ * PAGE is for rather than who is looking at it:
+ *
+ *   'portal'  /kyc and /kyc/submitted. The client keeps the sidebar.
+ *   'wizard'  /kyc/step/* — real onboarding. The focused shell earns its place:
+ *             no sidebar, no distractions, one job.
+ *
+ * ## Why /kyc is 'portal' and not its own chrome-free state
+ *
+ * /kyc is a redirect stub: it reads the status and forwards to a step or to
+ * /kyc/submitted. Giving it NO chrome looked principled — it is not a page —
+ * and it was wrong for the same reason as the original bug, one step removed:
+ * clicking "KYC Verification" in the sidebar navigated to /kyc, the sidebar
+ * vanished for the length of one redirect, and came back on the next page.
+ *
+ * Something has to be on screen during that redirect, and the only choice that
+ * never removes chrome the client is already looking at is the chrome they
+ * arrived with. So the verified path is portal → portal → portal, with nothing
+ * moving; the unverified path is portal → wizard, which is a deliberate entry
+ * into a focused flow and reads as one.
+ *
+ * The general rule, which is what to keep: a transition may ADD focus, but it
+ * must never take the surrounding UI away and give it back.
+ *
+ * A pure function, exported, so the mapping is asserted directly rather than
+ * through a rendered tree — and so re-introducing an async input here means
+ * changing a signature that tests are written against.
+ */
+export function kycShellFor(pathname: string): 'portal' | 'wizard' {
+  return pathname.startsWith('/kyc/step') ? 'wizard' : 'portal';
+}
 
 export default function KycLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -78,8 +123,43 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
         }))
       : DEFAULT_STEPS;
 
-  const isSubmittedPage = pathname.includes('/kyc/submitted');
   const currentStep = steps.findIndex((s) => pathname.startsWith(s.path)) + 1 || 1;
+
+  // Synchronous on the first render, so the right chrome is painted once and
+  // never replaced. See kycShellFor above for why that matters.
+  const shell = kycShellFor(pathname);
+
+  /*
+   * A verified client has no step to complete, so a step URL is a dead end —
+   * `saveStep` throws for an approved submission, which would render as a form
+   * that errors on submit.
+   *
+   * Handled by REDIRECTING rather than by swapping chrome: the destination
+   * decides its own shell from its own pathname, so this cannot reintroduce the
+   * flash. The redirect goes wizard → portal, which ADDS the sidebar rather than
+   * removing it, so it stays on the right side of the rule above.
+   *
+   * Shares the ['kyc-status'] key with `/kyc` and the step pages, so react-query
+   * serves all of them from one request — same reason ['kyc-config'] is shared
+   * above.
+   *
+   * Either signal is enough, matching `kycNavBadge` in portal-layout.tsx so the
+   * sidebar badge and this cannot disagree about whether the client is done.
+   */
+  const statusQuery = useResource(
+    ['kyc-status'],
+    async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
+  );
+  const nothingLeftToDo = user?.verificationLevel === 1 || statusQuery.data?.status === 'approved';
+  const strandedOnAStep = nothingLeftToDo && shell === 'wizard';
+
+  useEffect(() => {
+    if (strandedOnAStep) router.replace('/kyc/submitted');
+  }, [strandedOnAStep, router]);
+
+  if (shell === 'portal') {
+    return <PortalLayout>{children}</PortalLayout>;
+  }
 
   return (
     <div className="kyc-shell">
@@ -93,43 +173,43 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
         <div className="kyc-header-tag">{t('kyc.layoutTitle')}</div>
       </header>
 
-      {/* Progress Bar (Hidden on Submitted Page) */}
-      {!isSubmittedPage && (
-        <div className="kyc-progress-wrap">
-          <div className="kyc-progress-bar">
-            {steps.map((step) => {
-              const done = step.num < currentStep;
-              const active = step.num === currentStep;
-              return (
-                <div
-                  key={step.num}
-                  className={`kyc-step-node ${done ? 'done' : ''} ${active ? 'active' : ''}`}
-                >
-                  <div className="kyc-step-circle">
-                    {done ? (
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path
-                          d="M2 7l3.5 3.5L12 3"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    ) : (
-                      <span>{step.num}</span>
-                    )}
-                  </div>
-                  <span className="kyc-step-label">{step.label}</span>
-                  {step.num < steps.length && (
-                    <div className={`kyc-step-line ${done ? 'done' : ''}`} />
+      {/* Progress rail. Unconditional now: shell 'none' and 'portal' both return
+          above, so everything reaching here is a step — the `!isSubmittedPage`
+          guard that used to wrap this could no longer be false. */}
+      <div className="kyc-progress-wrap">
+        <div className="kyc-progress-bar">
+          {steps.map((step) => {
+            const done = step.num < currentStep;
+            const active = step.num === currentStep;
+            return (
+              <div
+                key={step.num}
+                className={`kyc-step-node ${done ? 'done' : ''} ${active ? 'active' : ''}`}
+              >
+                <div className="kyc-step-circle">
+                  {done ? (
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path
+                        d="M2 7l3.5 3.5L12 3"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : (
+                    <span>{step.num}</span>
                   )}
                 </div>
-              );
-            })}
-          </div>
+                <span className="kyc-step-label">{step.label}</span>
+                {step.num < steps.length && (
+                  <div className={`kyc-step-line ${done ? 'done' : ''}`} />
+                )}
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
 
       {/* Content */}
       <main className="kyc-content">{children}</main>

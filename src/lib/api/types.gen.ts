@@ -1496,6 +1496,12 @@ export interface components {
             /** @enum {string} */
             provider: "whish" | "usdt";
         };
+        WithdrawalOtpResponseDto: {
+            /** @example A confirmation code has been sent to your email address. */
+            message: string;
+            /** @description False when the operator has the withdrawal-OTP control switched off; the withdrawal may then be submitted without a code. */
+            required: boolean;
+        };
         KycFieldConfigDto: {
             /** @example f-1 */
             id: string;
@@ -2598,7 +2604,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MessageResponseDto"];
+                    "application/json": components["schemas"]["WithdrawalOtpResponseDto"];
                 };
             };
         };
