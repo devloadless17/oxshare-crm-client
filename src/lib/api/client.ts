@@ -11,6 +11,9 @@ import Cookies from 'js-cookie';
 // no NEXT_PUBLIC_API_BASE_URL rather than silently falling back to localhost.
 import { API_BASE_URL } from '../env';
 import { clearKycDraft } from '../kyc-draft';
+// PER-APP, and logically part of the twin:config block below — see the note
+// there. It sits up here because an import cannot.
+import { LOGIN_PATH, loginPathFor } from '../route-guard';
 
 /**
  * A request that never finishes must eventually fail.
@@ -43,7 +46,13 @@ export const apiClient = axios.create({
 // its JWT waves the user through to a page where every request 401s.
 const REFRESH_PATH = '/auth/refresh';
 const AUTH_ENDPOINT_PATTERN = /\/(auth|identity)\/(login|register|verify-email|refresh)/;
-const LOGIN_PATH = '/auth/login';
+// `LOGIN_PATH` and `loginPathFor` are the third per-app value, and they are
+// IMPORTED (see the top of the file) rather than written here, from
+// lib/route-guard.ts. The proxy, the sign-in page and this interceptor must
+// agree on where sign-in lives and on how "where I was going" is encoded;
+// three copies of that answer is how they stop agreeing. Admin's twin has no
+// route-guard module and keeps its own literal, so this is a real divergence
+// and belongs on the list — it just cannot physically sit between the markers.
 // ─── twin:config:end ──────────────────────────────────────────────────────────
 
 /**
@@ -282,6 +291,32 @@ export function stopProactiveRefresh(): void {
  */
 type RetriableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 
+/**
+ * Ends a session the server has stopped honouring, and gets the client out.
+ *
+ * Extracted because there are two arrivals — the refresh failed, and the
+ * refresh succeeded but the retry still 401'd — and only the first of them used
+ * to do this. Two paths to "this session is over" that behaved differently is
+ * how the second one went unnoticed.
+ *
+ * The redirect carries `?next=`, so a session that dies mid-task returns the
+ * client to where they were once they sign in again rather than to the
+ * dashboard. `safeReturnTo` re-checks it on the way back out; see its comment
+ * for why a value we generated still cannot be trusted when it is read.
+ */
+function endDeadSession(): void {
+  clearSession();
+  if (typeof window === 'undefined') return;
+  if (window.location.pathname.startsWith(LOGIN_PATH)) return;
+  // A HARD navigation, deliberately, against @next/next's advice to use
+  // router.push. The session is dead: a client-side push keeps the same JS
+  // context alive, so the React Query cache, the user context and any
+  // rendered wallet data survive into the login screen. A full load is what
+  // discards them. Same reasoning in UserContext.logout.
+
+  window.location.href = loginPathFor(window.location.pathname, window.location.search);
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -289,31 +324,33 @@ apiClient.interceptors.response.use(
     const url = originalRequest?.url ?? '';
     const isAuthEndpoint = AUTH_ENDPOINT_PATTERN.test(url);
 
-    if (
-      error.response?.status === 401 &&
-      originalRequest &&
-      !originalRequest._retry &&
-      !isAuthEndpoint
-    ) {
-      originalRequest._retry = true;
-      const refreshed = await refreshPortalToken();
-      if (refreshed) {
-        // No header to re-attach: the rotated session cookie travels on its own.
-        // The CSRF header is rebuilt by the request interceptor on the retry,
-        // which matters because refresh ROTATES the token — replaying the old
-        // one would fail the binding check.
-        return apiClient(originalRequest);
+    if (error.response?.status === 401 && originalRequest && !isAuthEndpoint) {
+      if (!originalRequest._retry) {
+        originalRequest._retry = true;
+        const refreshed = await refreshPortalToken();
+        if (refreshed) {
+          // No header to re-attach: the rotated session cookie travels on its own.
+          // The CSRF header is rebuilt by the request interceptor on the retry,
+          // which matters because refresh ROTATES the token — replaying the old
+          // one would fail the binding check.
+          return apiClient(originalRequest);
+        }
       }
-      clearSession();
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith(LOGIN_PATH)) {
-        // A HARD navigation, deliberately, against @next/next's advice to use
-        // router.push. The session is dead: a client-side push keeps the same JS
-        // context alive, so the React Query cache, the user context and any
-        // rendered wallet data survive into the login screen. A full load is what
-        // discards them. Same reasoning in UserContext.logout.
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.href = LOGIN_PATH;
-      }
+      /*
+       * Reached by BOTH ways a 401 can turn out to be terminal, which it was
+       * not before: the `_retry` check used to guard the whole branch, so a
+       * request that refreshed successfully and then 401'd again fell straight
+       * through to the rethrow with no `clearSession()` and no redirect.
+       *
+       * That second 401 is not a hypothetical. It is what the API answers when
+       * the rotation succeeded but the account behind it no longer passes —
+       * deleted, suspended (`jwt.strategy.ts` rejects a suspended user on the
+       * next request, live token or not), or logged out from another device
+       * between the two calls. The client sat on a fully rendered portal with a
+       * dead session and no way to find out, because every subsequent request
+       * took the same path and stopped in the same place.
+       */
+      endDeadSession();
     }
     // Rethrow the original AxiosError, never a wrapped one: every caller reads
     // `error.response.data.message` through apiErrorMessage, and the 401 branch

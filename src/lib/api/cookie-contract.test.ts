@@ -47,10 +47,10 @@ describe('the session cookie the route gate reads', () => {
     expect(decideRoute('/wallet', 'a-refresh-token')).toEqual({ allow: true });
   });
 
-  it('redirects when there is none', () => {
+  it('redirects when there is none, remembering where they were going', () => {
     expect(decideRoute('/wallet', undefined)).toEqual({
       allow: false,
-      redirectTo: '/auth/login',
+      redirectTo: '/auth/login?next=%2Fwallet',
     });
   });
 });

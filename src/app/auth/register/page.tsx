@@ -8,8 +8,23 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
+import { RedirectIfAuthenticated } from '@/components/auth/redirect-if-authenticated';
 
+/**
+ * Signed-out only, like the sign-in screen and for the same reason: this
+ * rendered to a client who already had a session, and the account it would have
+ * created is a second one under a different address on a device already holding
+ * the first.
+ */
 export default function RegisterPage() {
+  return (
+    <RedirectIfAuthenticated>
+      <RegisterForm />
+    </RedirectIfAuthenticated>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
   const [firstName, setFirstName] = React.useState('');
   const [lastName, setLastName] = React.useState('');

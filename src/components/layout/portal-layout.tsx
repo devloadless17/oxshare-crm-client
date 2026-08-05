@@ -25,6 +25,7 @@ import { ThemeToggle } from '../theme-toggle';
 import { useUser } from '@/context/UserContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { RequireAuth } from '@/components/auth/require-auth';
 import { t, type MessageKey } from '@/lib/i18n';
 
 export interface NavItem {
@@ -120,7 +121,36 @@ const BADGE_TONES: Record<'warning' | 'info' | 'destructive', string> = {
   destructive: 'bg-destructive/15 text-destructive',
 };
 
+/**
+ * The signed-in shell, behind the gate rather than in front of it.
+ *
+ * Every private route in this app renders through here — dashboard, accounts,
+ * wallet, deposit, withdraw, transactions, and the non-wizard half of KYC — so
+ * this is the one place that gates all of them without relying on the next
+ * person to remember. A new `app/<thing>/layout.tsx` that reaches for
+ * `PortalLayout`, as all seven existing ones do, is authenticated by
+ * construction.
+ *
+ * The chrome itself is a separate component and stays UNGATED on purpose: it
+ * only ever mounts once `RequireAuth` has a confirmed profile, which is what
+ * lets it read `user` without a null-shaped fallback identity. It used to render
+ * the literal name "Client User" and the avatar letter "U" for a null user —
+ * placeholder identity for an unauthenticated visitor, on the customer-facing
+ * app — and moving the gate outward is what makes that state unreachable rather
+ * than merely unlikely.
+ *
+ * It also stops the `/kyc/status` query below from firing for a visitor who has
+ * no session, which was a guaranteed 401 on every signed-out load.
+ */
 export function PortalLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <RequireAuth>
+      <PortalChrome>{children}</PortalChrome>
+    </RequireAuth>
+  );
+}
+
+function PortalChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useUser();
   const [logoutError, setLogoutError] = React.useState<string | null>(null);

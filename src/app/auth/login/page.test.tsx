@@ -38,12 +38,25 @@ vi.mock('@/lib/api', () => {
   return { api, default: api };
 });
 
+const replace = vi.fn();
+/**
+ * `searchParams` is a `let` because two behaviours read it: the page navigates
+ * to `?next=` after a successful sign-in, and `RedirectIfAuthenticated` reads
+ * the same value when it bounces a client who already has a session.
+ */
+let searchParams = new URLSearchParams();
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push, refresh }),
-  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ push, refresh, replace }),
+  useSearchParams: () => searchParams,
 }));
 
-vi.mock('@/context/UserContext', () => ({ useUser: () => ({ refetchUser }) }));
+// `user: null, isLoading: false` is "settled, and signed out" — the state this
+// screen exists for. Omitting them made `user` undefined, which the reverse
+// gate reads as a live session and redirects.
+vi.mock('@/context/UserContext', () => ({
+  useUser: () => ({ refetchUser, user: null, isLoading: false }),
+}));
 
 function apiError(message: string, status = 401, code?: string): Error {
   return Object.assign(new Error(`Request failed with status code ${status}`), {
@@ -54,6 +67,7 @@ function apiError(message: string, status = 401, code?: string): Error {
 beforeEach(() => {
   vi.clearAllMocks();
   pushedBeforeRefetch = false;
+  searchParams = new URLSearchParams();
   // No tokens in the body — the session arrives as httpOnly cookies on this
   // very response (R-3.2), and AuthTokensResponseDto no longer declares them.
   login.mockResolvedValue({ user: { id: 'u1', email: 'client@oxshare.com' }, emailVerified: true });
@@ -114,6 +128,34 @@ describe('portal sign-in', () => {
       password: 'client123',
     });
     expect(push).toHaveBeenCalledWith('/dashboard');
+  });
+
+  it('returns the client to the page they were bounced off', async () => {
+    /*
+     * The proxy attaches `?next=` when it redirects an unauthenticated visitor;
+     * this is the other half. Without it, a client who followed a link to
+     * /wallet — or whose session expired on /kyc/step/3 — signed in and landed
+     * on the dashboard, having to find their way back by hand, mid-task.
+     */
+    searchParams = new URLSearchParams('next=%2Fkyc%2Fstep%2F3');
+    await fillAndSubmit();
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/kyc/step/3'));
+  });
+
+  it('refuses to be an open redirect, even for a link a client was sent', async () => {
+    /*
+     * `next` arrives in the URL, so anybody can mail a client
+     * `/auth/login?next=https://evil.example/login`. Following it would deliver
+     * them to a phishing page in the instant AFTER they typed their password
+     * into the real one — which is why the value is checked where it is used
+     * and not only where we generate it.
+     */
+    searchParams = new URLSearchParams('next=https://evil.example/login');
+    await fillAndSubmit();
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/dashboard'));
+    expect(push).not.toHaveBeenCalledWith(expect.stringContaining('evil.example'));
   });
 
   it('does not call the API with an incomplete form', async () => {

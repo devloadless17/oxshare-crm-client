@@ -191,6 +191,10 @@ export const messages = {
   // the cookies are httpOnly — so a failed sign-out leaves the client signed in,
   // and on a shared device that is the thing they need to know.
   'session.logoutFailed': 'Sign-out failed — you are still signed in. Please try again.',
+  // Screen-reader-only, behind the spinner `RequireAuth` paints while /auth/me
+  // is in flight. Says what is happening rather than a bare "Loading", because
+  // the outcome for some of the people who hear it is a redirect to sign in.
+  'session.checking': 'Checking your session…',
   // Generic on purpose, mirroring what the API answers: it must not confirm
   // whether an account exists for the address the caller typed.
   'auth.verify.resendSent':

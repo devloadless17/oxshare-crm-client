@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Lock,
   Mail,
@@ -21,9 +21,29 @@ import { Label } from '@/components/ui/label';
 import { apiErrorMessage, isEmailUnverified } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { useUser } from '@/context/UserContext';
+import { RedirectIfAuthenticated } from '@/components/auth/redirect-if-authenticated';
+import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/route-guard';
 
+/**
+ * Gated in the OTHER direction — see `RedirectIfAuthenticated`.
+ *
+ * This page rendered its form to a fully authenticated client, who could then
+ * submit it and mint a second thirty-day session on top of their first. The
+ * proxy now bounces them before this component runs; the wrapper is the
+ * backstop for the case the proxy cannot see, where the cookie and the session
+ * disagree.
+ */
 export default function LoginPage() {
+  return (
+    <RedirectIfAuthenticated>
+      <LoginForm />
+    </RedirectIfAuthenticated>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refetchUser } = useUser();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -79,7 +99,21 @@ export default function LoginPage() {
        * and never touches the React Query cache.
        */
       await refetchUser();
-      router.push('/dashboard');
+      /*
+       * Back to where they were going, not to a fixed landing page.
+       *
+       * Every bounced visitor used to be dropped on /dashboard, so a client who
+       * followed a link to /wallet, or whose session expired on
+       * /kyc/step/3, signed in and then had to find their way back by hand. The
+       * proxy attaches `?next=` when it redirects; this is the other half.
+       *
+       * `safeReturnTo` is not optional politeness. The parameter arrives in the
+       * URL, so anyone can mail a client a sign-in link carrying any value at
+       * all, and navigating to it unchecked would send someone to an
+       * attacker's page in the instant after they typed their password. It
+       * resolves the value and refuses anything that is not a same-origin path.
+       */
+      router.push(safeReturnTo(searchParams.get(RETURN_TO_PARAM)));
       router.refresh();
     } catch (err: unknown) {
       setError(apiErrorMessage(err, t('auth.login.failed')));

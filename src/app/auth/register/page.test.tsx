@@ -39,6 +39,26 @@ function apiError(message: string, status = 409): Error {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  /*
+   * Fake timers for EVERY test here, not just the one that advances the clock.
+   *
+   * A successful registration schedules `setTimeout(() => router.push(…), 3000)`
+   * and nothing cancels it — unmounting the tree does not. Under real timers
+   * that survives the test that created it and fires three seconds later, into
+   * the next test, calling the module-level `push` mock that `clearAllMocks`
+   * had just reset. The test that then asserted "no redirect yet" saw one.
+   *
+   * It reported itself as a behaviour change in the page, which is the
+   * expensive part: the leak is invisible in the test that causes it and only
+   * ever fails a LATER one, and which one depends on how fast the suite runs.
+   * (It surfaced when a wrapper component shifted the timing by a few hundred
+   * milliseconds; the leak had been there all along.)
+   *
+   * Faking the clock in every test makes every pending timer fake, and
+   * `useRealTimers()` in afterEach discards them. `shouldAdvanceTime` keeps
+   * userEvent's own delays working.
+   */
+  vi.useFakeTimers({ shouldAdvanceTime: true });
   register.mockResolvedValue({
     message: 'Registration successful. Please check your email to verify your account.',
     userId: 'u-new',
@@ -83,7 +103,6 @@ describe('portal registration', () => {
   });
 
   it('sends the client to sign-in after showing the message', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
     await fillAndSubmit();
 
     await waitFor(() => expect(register).toHaveBeenCalled());

@@ -20,6 +20,10 @@ export function proxy(request: NextRequest) {
      */
     request.cookies.get('__Host-oxshare_crm_portal_rt')?.value ??
       request.cookies.get('oxshare_crm_portal_rt')?.value,
+    // The query string travels with the decision so a bounced visitor is
+    // returned to the exact URL they asked for, filters and all — see
+    // `loginPathFor`. Passing only the pathname silently dropped it.
+    request.nextUrl.search,
   );
 
   return decision.allow

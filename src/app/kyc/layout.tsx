@@ -8,6 +8,7 @@ import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
 import { PortalLayout } from '@/components/layout/portal-layout';
+import { RequireAuth } from '@/components/auth/require-auth';
 import { t } from '@/lib/i18n';
 
 type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
@@ -70,34 +71,55 @@ export function kycShellFor(pathname: string): 'portal' | 'wizard' {
   return pathname.startsWith('/kyc/step') ? 'wizard' : 'portal';
 }
 
+/**
+ * KYC needs the gate in BOTH of its shells, which is why it is here as well as
+ * in `PortalLayout`.
+ *
+ * The wizard branch below does not render `PortalLayout`, so it would otherwise
+ * be the one private area of the app outside the gate — and it is the area that
+ * collects passport scans, selfies and addresses. Wrapping the whole layout
+ * covers both branches; the nested `RequireAuth` inside `PortalLayout` on the
+ * portal branch is a pass-through once the outer one has resolved.
+ */
 export default function KycLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <RequireAuth>
+      <KycShell>{children}</KycShell>
+    </RequireAuth>
+  );
+}
+
+function KycShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
   /*
-   * KYC requires a verified email — FR-CORE-15. The check belongs HERE, not in
-   * `proxy.ts`, because this is the first place that actually knows the answer.
+   * KYC requires a verified email — FR-CORE-15 — and that gate now lives in
+   * `RequireAuth`, driven by `EMAIL_VERIFIED_PATHS` in lib/route-guard.ts.
    *
-   * It used to live in the route guard, which read `emailVerified` off the JWT
-   * in the session cookie. That worked while the guard was handed the ACCESS
-   * token, whose payload carries the claim. When route gating moved to the
-   * refresh cookie — correctly, so a returning client with a valid 30-day
-   * session is not bounced to login — the claim went with it: the refresh token
-   * is signed from `{ sub, jti }` and nothing else. `emailVerified` was
-   * `undefined` for everyone, `!== true` was true for everyone, and every
-   * client who opened KYC was redirected to the verify-email page. Verified
-   * ones included. Onboarding was unreachable.
+   * It was here, and it was correct here, but it was only here: /deposit,
+   * /withdraw and /transactions sit behind the same `EmailVerifiedGuard` on the
+   * backend and had no equivalent, so an unverified client could fill in a
+   * withdrawal and have it refused on submit. One rule enforced in one place
+   * beats the same rule re-derived per route, which is how the second, third
+   * and fourth copies get forgotten.
    *
-   * `/auth/me` is the authority for this, and the user is already loaded here.
-   * The API enforces it again on every KYC endpoint, so this is a redirect for
-   * the human, not the control.
+   * Worth keeping the history, because it is the reason the check is not in the
+   * proxy: it used to read `emailVerified` off the JWT in the session cookie,
+   * which worked while the guard was handed the ACCESS token, whose payload
+   * carries the claim. When route gating moved to the refresh cookie —
+   * correctly, so a returning client with a valid 30-day session is not bounced
+   * to login — the claim went with it: the refresh token is signed from
+   * `{ sub, jti }` and nothing else. `emailVerified` was `undefined` for
+   * everyone, `!== true` was true for everyone, and every client who opened KYC
+   * was redirected to the verify-email page. Verified ones included. Onboarding
+   * was unreachable.
+   *
+   * `/auth/me` is the authority, which is why the gate reads it and nothing
+   * else. The API enforces it again on every KYC endpoint, so the redirect is
+   * for the human; the control is server-side.
    */
-  const { user, isLoading } = useUser();
-  const emailUnverified = !isLoading && user !== null && !user.emailVerified;
-
-  useEffect(() => {
-    if (emailUnverified) router.replace('/verify-email/pending');
-  }, [emailUnverified, router]);
+  const { user } = useUser();
   /*
    * Same ['kyc-config'] query key the step page uses, so react-query serves both
    * from one request. These were two independent fetches of /kyc/config on every

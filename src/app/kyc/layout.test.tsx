@@ -72,9 +72,20 @@ describe('KYC email-verification gate', () => {
     await waitFor(() => expect(replace).not.toHaveBeenCalled());
   });
 
-  it('does not redirect when there is no user at all', async () => {
-    // No session is the route guard's job, and it answers it before this
-    // renders. Acting here too would race it.
+  it('sends a visitor with NO session to sign in, rather than rendering the wizard', async () => {
+    /*
+     * This used to assert the opposite — "no session is the route guard's job,
+     * and it answers it before this renders" — which was true of a signed-out
+     * visitor and false of the case that matters: a cookie the server does not
+     * honour. `proxy.ts` gates on the PRESENCE of the refresh cookie because it
+     * has no signing key, so a forged or expired one waved the visitor through
+     * and this layout rendered the KYC wizard to them.
+     *
+     * `user === null` after the profile query settles IS that state, and it is
+     * the one place the app can tell. The KYC wizard is also the worst place to
+     * get this wrong: it is the screen that collects passport scans, selfies
+     * and home addresses.
+     */
     useUser.mockReturnValue({ user: null, isLoading: false });
     renderWithProviders(
       <KycLayout>
@@ -82,7 +93,9 @@ describe('KYC email-verification gate', () => {
       </KycLayout>,
     );
 
-    await waitFor(() => expect(replace).not.toHaveBeenCalled());
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith(expect.stringContaining('/auth/login')),
+    );
   });
 });
 
