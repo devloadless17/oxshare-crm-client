@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { NONCE_HEADER, contentSecurityPolicy, createNonce } from '@/lib/csp';
-import {
-  DEFAULT_SIGNED_IN_PATH,
-  LOGIN_PATH,
-  RETURN_TO_PARAM,
-  loginPathFor,
-  safeReturnTo,
-} from '@/lib/return-to';
+import { DEFAULT_SIGNED_IN_PATH, LOGIN_PATH, loginPathFor } from '@/lib/return-to';
 
 /**
  * Route gating for the whole portal, in one file.
@@ -33,18 +27,19 @@ import {
  */
 
 /**
- * Screens that exist ONLY for someone without a session.
+ * Screens that exist only for someone without a session.
  *
- * A signed-in client on one of these is redirected away, which is the half of
- * gating this app shipped without: `/auth/login` rendered the sign-in form to a
- * fully authenticated client, who could then submit it and mint a second
- * thirty-day session on top of their first.
+ * They are PUBLIC here and nothing more — this file does not redirect a
+ * cookie-holder away from them, and `decideRoute` explains at length why that
+ * would loop. Keeping a signed-in client off the sign-in form is the job of
+ * `components/auth/redirect-if-authenticated`, which asks `/auth/me`.
+ *
+ * The list still earns its place: `safeReturnTo` reads it to refuse a `?next=`
+ * pointing back at sign-in, which would strand a client in a loop of their own.
  *
  * The top-level entries are the 5-line `redirect()` stubs — verification and
  * reset emails already in inboxes point at those URLs, so they must keep
  * working (lib/api/auth.ts records the incident where an emailed link 404'd).
- * They are listed alongside their `/auth/*` targets so the bounce happens on
- * the first request rather than after a pointless round trip through the stub.
  */
 const AUTH_ONLY_PATHS = ['/auth/login', '/auth/register', '/login', '/register'];
 
@@ -150,31 +145,48 @@ export function decideRoute(
    * The site root is a routing decision, not a page, and it is answered here so
    * it costs one redirect instead of two.
    *
-   * `app/page.tsx` sends `/` to the sign-in screen. With the reverse gate below
-   * in place, a signed-in client asking for `/` would go to `/auth/login` and
-   * be bounced straight back out to `/dashboard` — two hops and a flash of the
-   * wrong screen, for a question the cookie already answers.
+   * `app/page.tsx` sends `/` to the sign-in screen, so without this a client
+   * with a session would land on a form and be bounced onward by the client
+   * gate — two hops and a flash of the wrong screen for a question the cookie
+   * already answers.
+   *
+   * A stale cookie sends them to /dashboard instead, where the client gate
+   * corrects it to sign-in. That terminates: /dashboard is not auth-only, so
+   * nothing sends them back here.
    */
   if (pathname === '/') {
     return { allow: false, redirectTo: hasSession ? DEFAULT_SIGNED_IN_PATH : LOGIN_PATH };
   }
 
-  if (matches(pathname, AUTH_ONLY_PATHS)) {
-    if (!hasSession) return ALLOW;
-    /*
-     * A session-holder is sent where they were going, if they said — the same
-     * `next` the redirect below attaches. Someone who followed a deep link
-     * while their tab still held a session should land on the link, not on the
-     * dashboard.
-     *
-     * `safeReturnTo` is what makes reading it here safe; see its comment.
-     */
-    return {
-      allow: false,
-      redirectTo: safeReturnTo(new URLSearchParams(search).get(RETURN_TO_PARAM)),
-    };
-  }
-
+  /*
+   * THE SIGN-IN SCREEN IS ALWAYS SERVED. This is not an oversight.
+   *
+   * It used to redirect a cookie-holder away to /dashboard, and that produced
+   * an infinite reload loop the moment a cookie outlived its session — which is
+   * the NORMAL end of a session, not an edge case. A revoked family, an expired
+   * refresh token, a password changed on another device: in every one of them
+   * the browser still holds the cookie and the server no longer honours it.
+   *
+   *   /dashboard  → cookie present → allowed → /auth/me 401 → refresh fails
+   *               → client navigates to /auth/login
+   *   /auth/login → cookie present → redirected to /dashboard
+   *               → and round again, forever.
+   *
+   * The asymmetry is the lesson, and it is the same one this file records twice
+   * about reading claims. Gating a PRIVATE route on cookie presence fails safe:
+   * the worst case is a rendered shell where every request 401s, and the client
+   * gate corrects it. Gating an AUTH-ONLY route on cookie presence fails
+   * CLOSED-AND-LOOPING: the worst case is a client who cannot reach the one
+   * page that would fix their problem.
+   *
+   * So the reverse gate lives entirely in `components/auth/redirect-if-authenticated`,
+   * which asks `/auth/me`. That answer is authoritative — a dead session
+   * resolves to "no user" and the form renders, which is exactly right.
+   *
+   * `AUTH_ONLY_PATHS` still exists and is still used: `safeReturnTo` reads it to
+   * refuse a `?next=` that would send a freshly signed-in client back to the
+   * sign-in page.
+   */
   if (matches(pathname, PUBLIC_PATHS)) return ALLOW;
 
   if (!hasSession) return { allow: false, redirectTo: loginPathFor(pathname, search) };

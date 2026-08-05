@@ -41,12 +41,6 @@ describe('no session', () => {
     }
   });
 
-  it('serves the auth screens', () => {
-    for (const path of AUTH_ONLY) {
-      expect(decideRoute(path, undefined), path).toEqual({ allow: true });
-    }
-  });
-
   it('remembers the whole URL, query string included', () => {
     // Dropping the search meant a client bounced off a filtered transactions
     // view came back to an unfiltered one, mid-task.
@@ -89,48 +83,57 @@ describe('a live session', () => {
 });
 
 /**
- * The half of gating this app shipped without.
+ * THE SIGN-IN SCREEN IS ALWAYS SERVED, and these are the regression.
  *
- * `/auth/login` served its form to a client holding a live session — confirmed
- * against the running backend, not inferred. Submitting it mints a SECOND
- * thirty-day refresh-token family over the first, and on the shared devices
- * this portal is often used from it puts a credential prompt in front of
- * whoever is already signed in.
+ * `decideRoute` briefly redirected a cookie-holder off `/auth/login` to
+ * `/dashboard`. That looked like the missing half of gating — the sign-in form
+ * really was being served to authenticated clients — and it produced an
+ * infinite reload loop in the browser within the hour:
+ *
+ *   /dashboard  → cookie present → allowed → /auth/me 401 → refresh fails
+ *               → client navigates to /auth/login
+ *   /auth/login → cookie present → redirected to /dashboard
+ *               → and round again, forever.
+ *
+ * A cookie outliving its session is the NORMAL end of a session, not an edge
+ * case: a revoked family, an expired refresh token, a password changed on
+ * another device. In every one the browser still holds the cookie.
+ *
+ * The asymmetry is the thing to keep. Gating a PRIVATE route on cookie presence
+ * fails safe — worst case a rendered shell where everything 401s, which the
+ * client gate corrects. Gating an AUTH-ONLY route on presence fails
+ * closed-and-looping: the client cannot reach the one page that would fix it.
  */
-describe('a live session on a signed-out-only screen', () => {
-  it('bounces a session-holder off every auth-only screen', () => {
+describe('the sign-in screen is unconditionally reachable', () => {
+  it('serves the auth screens with no session', () => {
     for (const path of AUTH_ONLY) {
-      expect(decideRoute(path, SESSION), path).toEqual({
-        allow: false,
-        redirectTo: '/dashboard',
-      });
+      expect(decideRoute(path, undefined), path).toEqual({ allow: true });
     }
   });
 
-  it('honours where they were going, rather than always the dashboard', () => {
-    expect(decideRoute('/auth/login', SESSION, '?next=%2Fwallet')).toEqual({
-      allow: false,
-      redirectTo: '/wallet',
-    });
+  it('serves them WITH a session cookie too — this is the loop fix', () => {
+    // The proxy cannot tell a live cookie from a dead one. Only /auth/me can,
+    // and `RedirectIfAuthenticated` asks it.
+    for (const path of AUTH_ONLY) {
+      expect(decideRoute(path, SESSION), path).toEqual({ allow: true });
+    }
   });
 
-  it('refuses to be an open redirect', () => {
-    // The `next` is attacker-supplied: anyone can mail a client this link.
-    expect(decideRoute('/auth/login', SESSION, '?next=https://evil.example')).toEqual({
-      allow: false,
-      redirectTo: '/dashboard',
-    });
+  it('does not loop for the exact sequence that broke the browser', () => {
+    // A stale cookie: present, and no longer honoured by the API.
+    const stale = 'a-cookie-the-server-no-longer-honours';
+
+    // The client gate sends a dead session here...
+    expect(decideRoute('/auth/login', stale, '?next=%2Fdashboard')).toEqual({ allow: true });
+    // ...and nothing sends it back out. That is the whole property.
   });
 
   /*
-   * These are the entries that make ALWAYS_PUBLIC_PATHS a separate list rather
-   * than a flag on one. Every one of them is reached by somebody who HAS a
-   * cookie and still needs the page.
+   * These stay reachable for their own reasons, and always did.
    */
   it('leaves account recovery reachable with a stale session in the jar', () => {
     // The device someone is locked out on is exactly the device still holding
-    // their old cookie. Bouncing them to a dashboard they cannot load would
-    // leave no way to recover except clearing cookies by hand.
+    // their old cookie.
     for (const path of ['/auth/forgot-password', '/auth/reset-password', '/reset-password']) {
       expect(decideRoute(path, SESSION), path).toEqual({ allow: true });
     }
@@ -138,8 +141,6 @@ describe('a live session on a signed-out-only screen', () => {
 
   it('leaves email verification reachable — the client is signed in AND unverified', () => {
     // A client who has just registered has a session and no verified address.
-    // /verify-email is the one page that tells them what to do; sending them to
-    // the dashboard sends them to a portal they cannot use.
     for (const path of ['/verify-email', '/verify-email/pending', '/auth/verify-email']) {
       expect(decideRoute(path, SESSION), path).toEqual({ allow: true });
     }
@@ -156,6 +157,15 @@ describe('the site root', () => {
   it('routes by session rather than through the sign-in screen', () => {
     expect(decideRoute('/', SESSION)).toEqual({ allow: false, redirectTo: '/dashboard' });
     expect(decideRoute('/', undefined)).toEqual({ allow: false, redirectTo: '/auth/login' });
+  });
+
+  it('terminates even when the cookie is stale', () => {
+    // `/` sends a cookie-holder to /dashboard. /dashboard is not auth-only, so
+    // the client gate can move them on to sign-in and nothing sends them back.
+    // One hop each way, no cycle.
+    expect(decideRoute('/', 'stale')).toEqual({ allow: false, redirectTo: '/dashboard' });
+    expect(decideRoute('/dashboard', 'stale')).toEqual({ allow: true });
+    expect(decideRoute('/auth/login', 'stale')).toEqual({ allow: true });
   });
 });
 
