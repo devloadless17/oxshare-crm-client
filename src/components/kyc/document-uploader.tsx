@@ -208,7 +208,7 @@ export function DocumentUploader({
       aria-describedby={isErrored ? `${field}-error` : undefined}
       className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-200 min-h-[170px] w-full ${
         dragging
-          ? 'border-ring bg-primary/10 shadow-sm'
+          ? 'border-ring bg-primary/10'
           : isErrored
             ? // A rejected document must look rejected. The parent has passed
               // this flag since the resubmission flow was built; the component

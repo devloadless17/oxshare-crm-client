@@ -138,7 +138,7 @@ function VerifyEmailForm() {
           <p className="text-xs text-muted-foreground">{t('auth.verify.tagline')}</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm text-center space-y-5">
+        <div className="rounded-xl border border-border bg-card p-6 md:p-8 text-center space-y-5">
           {isLoading ? (
             <div className="py-8 space-y-4">
               <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-info/10">
@@ -153,7 +153,7 @@ function VerifyEmailForm() {
             </div>
           ) : isSuccess ? (
             <div className="py-4 space-y-5">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/10 border border-success/20 text-success shadow-sm">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/10 border border-success/20 text-success">
                 <CheckCircle2 className="h-8 w-8" />
               </div>
 
@@ -170,7 +170,7 @@ function VerifyEmailForm() {
 
               <Link
                 href="/auth/login"
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-primary-foreground shadow-md hover:bg-primary-hover focus-outline"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
               >
                 <span>{t('auth.verify.signInNow')}</span>
               </Link>

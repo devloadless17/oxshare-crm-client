@@ -154,7 +154,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
       {/* Live Camera View */}
       {!captured && !uploadedSuccess && (
         <div className="flex flex-col items-center space-y-4 w-full">
-          <div className="relative h-72 w-72 overflow-hidden rounded-full border-4 border-primary/40 shadow-lg shadow-primary/10 bg-muted/40 flex items-center justify-center">
+          <div className="relative h-72 w-72 overflow-hidden rounded-full border-4 border-primary/40 bg-muted/40 flex items-center justify-center">
             {cameraError ? (
               /*
                * A live capture is REQUIRED for the selfie, and deliberately so:
@@ -203,7 +203,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
               type="button"
               onClick={() => void capture()}
               disabled={uploading}
-              className="gap-2 rounded-full px-6 py-5 shadow-sm shadow-primary/20 text-sm font-bold cursor-pointer"
+              className="gap-2 rounded-full px-6 py-5 text-sm font-bold cursor-pointer"
             >
               {uploading ? (
                 <>
@@ -224,7 +224,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
       {/* Captured or Previously Uploaded Photo Preview */}
       {(captured || uploadedSuccess) && (
         <div className="flex flex-col items-center space-y-4 w-full">
-          <div className="relative h-72 w-72 overflow-hidden rounded-full border-4 border-success/50 shadow-lg shadow-success/10 bg-muted flex items-center justify-center">
+          <div className="relative h-72 w-72 overflow-hidden rounded-full border-4 border-success/50 bg-muted flex items-center justify-center">
             {captured ? (
               /* eslint-disable-next-line @next/next/no-img-element -- `captured` is
                  a data: URI from canvas.toDataURL(), which next/image cannot

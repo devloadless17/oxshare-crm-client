@@ -28,7 +28,7 @@ function Tile({
   accent?: React.ReactNode;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-ring/50">
+    <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:border-ring/50">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-muted-foreground">{label}</span>
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-link">

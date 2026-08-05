@@ -1,23 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { NAV_ITEMS, kycNavBadge } from './portal-layout';
+import { NAV_ITEMS, kycNavBadge, visibleNavItems } from './portal-layout';
 
 /**
  * Every live navigation target must be a route that exists.
  *
- * Four of the eight sidebar entries pointed at pages that were never built —
- * `/deposit`, `/withdraw`, `/transactions` and `/profile` — and rendered as
+ * Four of the eight sidebar entries once pointed at pages that were never built
+ * — `/deposit`, `/withdraw`, `/transactions` and `/profile` — and rendered as
  * ordinary enabled links. Two of them were also the primary call-to-action
  * buttons at the top of the dashboard. In the customer-facing app, a funded
  * client clicking "Withdraw" got a Next 404, which does not read as "screen not
  * finished" so much as "this platform cannot pay me".
  *
- * The fix marks them `comingSoon`, matching the admin app's existing pattern.
+ * All four exist now, and the rail has been cut to the four DESTINATIONS —
+ * dashboard, accounts, wallet, transactions — plus KYC while it is unfinished.
+ * Deposit and Withdraw became actions on /wallet; Profile moved into the
+ * account menu. The routes stayed.
+ *
  * This test is what stops the next unbuilt entry from shipping as a live link:
  * it reads the real filesystem, so it cannot drift from what actually exists,
  * and it fails the moment someone adds a nav item ahead of its page or deletes
- * a page from under one.
+ * a page from under one. The de-listed routes are asserted to still EXIST for
+ * the same reason — dropping a link is a navigation decision, dropping a route
+ * breaks every bookmark and every link already e-mailed to a client.
  *
  * It deliberately does NOT assert that `comingSoon` entries have no route — the
  * correct end state is that each gets built and the flag comes off, and a test
@@ -32,9 +38,14 @@ function routeExists(href: string): boolean {
   return existsSync(join(APP_DIR, ...segments, 'page.tsx'));
 }
 
+/** Every href the rail can ever show, in either KYC state. */
+const ALL_HREFS = [
+  ...new Set([...visibleNavItems('approved', 1), ...visibleNavItems(undefined, 0)]),
+];
+
 describe('portal navigation', () => {
   it('every enabled nav item points at a page that exists', () => {
-    const broken = NAV_ITEMS.filter((item) => !item.comingSoon && !routeExists(item.href)).map(
+    const broken = ALL_HREFS.filter((item) => !item.comingSoon && !routeExists(item.href)).map(
       (item) => `${item.label} → ${item.href}`,
     );
 
@@ -44,38 +55,90 @@ describe('portal navigation', () => {
   it('still offers the built sections', () => {
     const live = NAV_ITEMS.filter((i) => !i.comingSoon).map((i) => i.href);
 
-    // A regression guard in the other direction: marking everything "soon" would
-    // satisfy the test above while making the portal useless.
+    // A regression guard in the other direction: pruning the rail down to
+    // nothing would satisfy the test above while making the portal useless.
     expect(live).toContain('/dashboard');
     expect(live).toContain('/wallet');
-    expect(live).toContain('/kyc');
     expect(live).toContain('/accounts');
+    expect(live).toContain('/transactions');
   });
 
-  it('links the money screens that now exist', () => {
-    const live = NAV_ITEMS.filter((i) => !i.comingSoon).map((i) => i.href);
+  /**
+   * Deposit and Withdraw left the rail, and this is the assertion that says so
+   * out loud.
+   *
+   * They are ACTIONS on a balance, not destinations — two top-level slots for
+   * one idea, neither showing the number the client is deciding against. They
+   * are buttons on /wallet now.
+   *
+   * The routes are deliberately NOT deleted, and the second half asserts that:
+   * removing a link is a navigation decision, removing a route breaks every
+   * bookmark and every link already sent to a client by e-mail.
+   */
+  it('keeps the money ACTIONS off the rail while keeping their routes alive', () => {
+    const hrefs = ALL_HREFS.map((i) => i.href);
+    expect(hrefs).not.toContain('/deposit');
+    expect(hrefs).not.toContain('/withdraw');
 
-    // These were `comingSoon` while their routes did not exist. All three now
-    // do: /withdraw and /transactions are real screens against real endpoints,
-    // and /deposit is a real route rendering BackendPending — CORE-06 is blocked
-    // on Whish/USDT credentials (§12.5), and a form with nowhere to submit would
-    // be worse than the 404 it replaces.
-    expect(live).toEqual(expect.arrayContaining(['/withdraw', '/transactions', '/deposit']));
+    expect(routeExists('/deposit')).toBe(true);
+    expect(routeExists('/withdraw')).toBe(true);
   });
 
-  it('still marks what genuinely has no route', () => {
-    const soon = NAV_ITEMS.filter((i) => i.comingSoon).map((i) => i.href);
-
-    // The list is not empty by accident. /profile has no page, and marking it is
-    // what keeps this honest rather than the alternative of quietly deleting the
-    // entry and losing the reminder that it is committed scope.
-    expect(soon).toEqual(['/profile']);
+  it('moved Profile into the account menu rather than deleting it', () => {
+    // It was a `comingSoon` rail entry for months because the route did not
+    // exist. It exists now, and it belongs in the account menu at the foot of
+    // the sidebar, not in a rail of money screens.
+    expect(ALL_HREFS.map((i) => i.href)).not.toContain('/profile');
+    expect(routeExists('/profile')).toBe(true);
   });
 
   it('sanity-checks the route probe itself', () => {
     // A probe that always returned true would make the first test vacuous.
     expect(routeExists('/dashboard')).toBe(true);
-    expect(routeExists('/profile')).toBe(false);
+    expect(routeExists('/not-a-real-route')).toBe(false);
+  });
+});
+
+/**
+ * KYC disappears from the rail once there is nothing left to do there.
+ *
+ * Not "turns into a tick" — onboarding is a task, and a completed task is not a
+ * destination. `saveStep` throws for an approved submission, so the link led an
+ * approved client to a page whose entire content was "you are done".
+ */
+describe('visibleNavItems', () => {
+  it('offers KYC while it is unfinished', () => {
+    expect(visibleNavItems('not_started', 0).map((i) => i.href)).toContain('/kyc');
+    expect(visibleNavItems('rejected', 0).map((i) => i.href)).toContain('/kyc');
+    expect(visibleNavItems('under_review', 0).map((i) => i.href)).toContain('/kyc');
+  });
+
+  it('drops it once the client is verified', () => {
+    expect(visibleNavItems('approved', 1).map((i) => i.href)).not.toContain('/kyc');
+  });
+
+  it('drops it on EITHER signal, matching kycNavBadge', () => {
+    // approve() writes the submission status first and the verification level
+    // second, so there is a real window where these differ. The rail and the
+    // badge must agree in that window or the sidebar contradicts itself —
+    // which is the exact bug the badge function was written to close.
+    expect(visibleNavItems('under_review', 1).map((i) => i.href)).not.toContain('/kyc');
+    expect(visibleNavItems('approved', 0).map((i) => i.href)).not.toContain('/kyc');
+
+    for (const [status, level] of [
+      ['under_review', 1],
+      ['approved', 0],
+      ['approved', 1],
+    ] as const) {
+      const shown = visibleNavItems(status, level).some((i) => i.href === '/kyc');
+      expect(shown, `${status}/${level}`).toBe(kycNavBadge(status, level) !== undefined);
+    }
+  });
+
+  it('shows it while the status has not loaded', () => {
+    // undefined is the first render, before /kyc/status resolves. Prompting is
+    // the safe default; hiding onboarding from someone who needs it is not.
+    expect(visibleNavItems(undefined, undefined).map((i) => i.href)).toContain('/kyc');
   });
 });
 
@@ -96,7 +159,9 @@ describe('portal navigation', () => {
 describe('kycNavBadge', () => {
   it('shows nothing once the client is verified', () => {
     // Not "Verified": a badge is a call to action and there is no action left.
-    // The header pill is what states verified status.
+    // The header pill that used to state verified status has been removed —
+    // a status light that never changes is not information. The nav ENTRY
+    // disappears with the badge; see visibleNavItems above.
     expect(kycNavBadge('approved', 1)).toBeUndefined();
   });
 

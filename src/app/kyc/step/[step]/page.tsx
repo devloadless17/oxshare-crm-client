@@ -278,7 +278,7 @@ export default function KycStepPage() {
         role="alert"
         className="flex flex-col items-center justify-center min-h-[45vh] p-6 text-center space-y-4"
       >
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 shadow-sm">
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20">
           <AlertCircle className="h-7 w-7" />
         </div>
         <div className="space-y-1">
@@ -302,7 +302,7 @@ export default function KycStepPage() {
   if (fetchingInitialData) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[45vh] p-6 text-center space-y-4">
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-link border border-primary/20 shadow-sm">
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-link border border-primary/20">
           <Loader2 className="h-7 w-7 animate-spin text-link" />
         </div>
         <div className="space-y-1">

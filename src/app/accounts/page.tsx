@@ -14,14 +14,14 @@ export default function AccountsPage() {
         </div>
         <button
           type="button"
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary-hover focus-outline"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
         >
           <Plus className="h-4 w-4" />
           {t('accounts.openNew')}
         </button>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-12 shadow-xs text-center">
+      <div className="rounded-xl border border-border bg-card p-12 text-center">
         <LineChart className="mx-auto h-12 w-12 text-muted-foreground/40" />
         <h3 className="mt-4 text-sm font-semibold">{t('accounts.empty')}</h3>
         <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">

@@ -20,7 +20,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Top Banner / Welcome */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-border bg-card p-6 lg:p-8 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-border bg-card p-6 lg:p-8">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
@@ -41,21 +41,21 @@ export default function DashboardPage() {
           */}
           <Link
             href="/deposit"
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary-hover focus-outline"
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
           >
             <ArrowDownRight className="h-4 w-4" />
             <span>{t('wallet.deposit')}</span>
           </Link>
           <Link
             href="/withdraw"
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground shadow-xs hover:bg-muted focus-outline"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground hover:bg-muted focus-outline"
           >
             <ArrowUpRight className="h-4 w-4" />
             <span>{t('wallet.withdraw')}</span>
           </Link>
           <Link
             href="/accounts"
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground shadow-xs hover:bg-muted focus-outline"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground hover:bg-muted focus-outline"
           >
             <Plus className="h-4 w-4" />
             <span>{t('dashboard.newAccount')}</span>
@@ -75,7 +75,7 @@ export default function DashboardPage() {
             hardcoded count next to a live balance any longer than necessary. */}
 
         {/* Trading Accounts */}
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-ring/50">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:border-ring/50">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">
               {t('dashboard.statTradingAccounts')}
@@ -97,7 +97,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Pending Transactions */}
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-xs transition-all hover:border-warning/50">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:border-warning/50">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">
               {t('dashboard.statPendingTx')}
@@ -121,7 +121,7 @@ export default function DashboardPage() {
 
       {/* Quick Action Grid & Security Banner */}
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-xs flex items-center gap-4">
+        <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-4">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-link">
             <ArrowDownRight className="h-5 w-5" />
           </div>
@@ -133,7 +133,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-5 shadow-xs flex items-center gap-4">
+        <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-4">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-link">
             <ArrowRightLeft className="h-5 w-5" />
           </div>
@@ -145,7 +145,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-5 shadow-xs flex items-center gap-4">
+        <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-4">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-success/10 text-success">
             <ShieldCheck className="h-5 w-5" />
           </div>
@@ -157,7 +157,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Transactions Table */}
-      <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="flex items-center justify-between border-b border-border p-6">
           <div>
             <h2 className="text-base font-semibold">{t('dashboard.recentTransactions')}</h2>
@@ -179,7 +179,7 @@ export default function DashboardPage() {
           <div className="mt-5">
             <Link
               href="/deposit"
-              className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary-hover focus-outline"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
             >
               {t('dashboard.firstDeposit')}
             </Link>

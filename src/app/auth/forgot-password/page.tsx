@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
           <p className="text-xs text-muted-foreground">{t('auth.forgot.tagline')}</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5">
+        <div className="rounded-xl border border-border bg-card p-6 md:p-8 space-y-5">
           {error && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -95,7 +95,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
               >
                 {isLoading ? (
                   <>

@@ -7,25 +7,20 @@ import {
   LayoutDashboard,
   LineChart,
   Wallet,
-  ArrowDownRight,
-  ArrowUpRight,
   Receipt,
   ShieldCheck,
-  User,
-  LogOut,
   ChevronLeft,
   ChevronRight,
   Bell,
   Search,
   Menu,
   X,
-  CheckCircle2,
 } from 'lucide-react';
-import { ThemeToggle } from '../theme-toggle';
 import { useUser } from '@/context/UserContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { RequireAuth } from '@/components/auth/require-auth';
+import { UserMenu } from './user-menu';
 import { t, type MessageKey } from '@/lib/i18n';
 
 export interface NavItem {
@@ -39,44 +34,72 @@ export interface NavItem {
 }
 
 /**
- * Four of these used to be live links to routes that did not exist.
+ * The primary rail: four destinations, each a place a client goes to LOOK at
+ * something.
  *
- * `/deposit`, `/withdraw`, `/transactions` and `/profile` had no `page.tsx`, so
- * every one of them was a Next 404 — in the customer-facing app, in the primary
- * navigation.
+ * It held eight, and the four that left did not leave because they were
+ * unfinished — every one of them is a working route today.
  *
- * Three now exist. `/withdraw` and `/transactions` are real screens against real
- * endpoints; `/deposit` is a real route that renders BackendPending, because
- * CORE-06 is blocked on Whish/USDT credentials (§12.5) and a form with nowhere
- * to submit would be worse than the 404 it replaces — a 404 is obviously broken,
- * a form that accepts input and does nothing looks like it worked. `/profile`
- * remains unbuilt and marked. Deposit and Withdraw were also the two call-to-action buttons at
- * the top of the dashboard, which is the most likely thing a funded client
- * clicks. A client who hits 404 on "Withdraw" does not conclude that a screen is
- * unfinished; they conclude the platform cannot pay them.
+ * `/deposit` and `/withdraw` are ACTIONS on a balance, not destinations. Giving
+ * each a permanent rail entry split one idea — "move money" — across two
+ * top-level slots, neither of which shows the number the client is deciding
+ * against. They are buttons on /wallet now, beside the balance. The routes are
+ * untouched and still directly linkable.
  *
- * The admin app already solved this exact problem and the root CLAUDE.md records
- * its `comingSoon` treatment as the house pattern ("Unbuilt sidebar entries
- * render as disabled 'Soon' items ... they are committed scope, don't delete the
- * links"). This is that pattern, ported.
+ * `/profile` moved into the account menu at the foot of the sidebar, where a
+ * client would look for it and where it stops competing with the money screens.
+ * It was marked `comingSoon` here for months while the route genuinely did not
+ * exist; it exists now.
  *
- * They stay in the list rather than being deleted because they ARE committed
- * scope — CORE-06 deposit, CORE-07/08 withdrawal + OTP, IND-05 — and the backend
- * is already ahead of the UI here: POST /payments/withdrawals and
- * GET /payments/transactions both exist and are called from nowhere. Marking
- * them is an honest statement of what is not wired yet; deleting them would lose
- * the reminder that it needs to be.
+ * `/kyc` is conditional rather than absent — see `visibleNavItems`.
+ *
+ * The `comingSoon` treatment stays in the type and in the renderer below. It is
+ * the house pattern the root CLAUDE.md records ("Unbuilt sidebar entries render
+ * as disabled 'Soon' items ... they are committed scope, don't delete the
+ * links"), and the next unbuilt route will want it. Nothing uses it at present,
+ * which is the correct state: every entry here leads somewhere real.
  */
 export const NAV_ITEMS: NavItem[] = [
   { label: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'nav.accounts', href: '/accounts', icon: LineChart },
   { label: 'nav.wallet', href: '/wallet', icon: Wallet },
-  { label: 'nav.deposit', href: '/deposit', icon: ArrowDownRight },
-  { label: 'nav.withdraw', href: '/withdraw', icon: ArrowUpRight },
   { label: 'nav.transactions', href: '/transactions', icon: Receipt },
-  { label: 'nav.kyc', href: '/kyc', icon: ShieldCheck },
-  { label: 'nav.profile', href: '/profile', icon: User, comingSoon: true },
+  /*
+   * KYC is here but conditional — see `visibleNavItems`.
+   *
+   * Deposit and Withdraw are NOT here any more. They were two top-level
+   * destinations for one idea, "move money", which is a thing a client thinks
+   * about while looking at a balance. They now live as actions on /wallet,
+   * beside the number they act on. The ROUTES are untouched: /deposit and
+   * /withdraw still exist, still work, and are still linked — from the wallet
+   * rather than from the rail.
+   *
+   * Profile is no longer a rail entry either. It moved into the account menu at
+   * the foot of the sidebar, which is where every other product puts it and
+   * where it stops competing with the money screens for attention.
+   */
 ];
+
+/**
+ * The rail, minus what this particular client has no use for.
+ *
+ * Pure and exported so "does an approved client still see a KYC link" is one
+ * assertion rather than something you find out by logging in as one.
+ *
+ * KYC is the only conditional entry, and it disappears rather than turning into
+ * a tick: onboarding is a task, and a completed task is not a destination. An
+ * approved client has nothing to do there — `saveStep` throws for an approved
+ * submission — so the link led to a page whose only content was "you are done".
+ */
+export function visibleNavItems(
+  kycStatus: string | undefined,
+  verificationLevel: number | undefined,
+): NavItem[] {
+  const kycDone = verificationLevel === 1 || kycStatus === 'approved';
+  return kycDone
+    ? NAV_ITEMS
+    : [...NAV_ITEMS, { label: 'nav.kyc', href: '/kyc', icon: ShieldCheck }];
+}
 
 /**
  * The KYC badge, derived from state rather than baked into `NAV_ITEMS`.
@@ -88,8 +111,16 @@ export const NAV_ITEMS: NavItem[] = [
  * layout, two contradictory answers to "am I verified".
  *
  * `undefined` when there is nothing to do is the point: a badge is a call to
- * action, and an approved client has no action. Rendering "Verified" here would
- * duplicate the header pill and re-teach the same lie in a quieter voice.
+ * action, and an approved client has no action.
+ *
+ * It is now the ONLY KYC indicator in the chrome. There used to be a second —
+ * a pill in the header reading "Verified Account" / "KYC Under Review" /
+ * "⚠️ KYC Action Required", the last of which was `animate-pulse` — and it has
+ * been removed outright. A permanent "Verified Account" badge is a status
+ * light that never changes: it tells an approved client something they cannot
+ * act on, on every screen, forever. What remains is a badge that appears only
+ * while there is work, on the entry that leads to the work, and disappears
+ * with it.
  *
  * Pure and exported so it can be tested without rendering the layout, and so the
  * precedence order — verified beats rejected beats in-review — is stated once.
@@ -152,27 +183,10 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
 
 function PortalChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, logout } = useUser();
-  const [logoutError, setLogoutError] = React.useState<string | null>(null);
-
-  /**
-   * Logout, with the failure made visible instead of swallowed.
-   *
-   * `authApi.logout` retries once and then throws, and it throws for a reason
-   * worth showing: only the server can end this session — it revokes the
-   * refresh-token family and clears the httpOnly cookies — so a failed call
-   * leaves the client fully signed in. Navigating to the sign-in screen anyway
-   * would show a logged-out page over a live session on a device that is very
-   * often shared.
-   */
-  const handleLogout = async () => {
-    setLogoutError(null);
-    try {
-      await logout();
-    } catch {
-      setLogoutError(t('session.logoutFailed'));
-    }
-  };
+  const { user } = useUser();
+  // Sign-out, the theme switcher and the account identity all moved into
+  // `UserMenu` at the foot of the sidebar, which is why none of that state
+  // lives here any more.
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
@@ -253,7 +267,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
 
         {/* Sidebar Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems(kycStatus, user?.verificationLevel).map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
             // KYC is the only entry whose badge is state, not configuration.
@@ -295,7 +309,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
                 title={collapsed ? t(item.label) : undefined}
                 className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium focus-outline ${
                   isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20 font-semibold'
+                    ? 'bg-primary text-primary-foreground font-semibold'
                     : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                 } ${collapsed ? 'justify-center px-0' : ''}`}
               >
@@ -319,46 +333,10 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* Sidebar User Footer */}
-        <div className="border-t border-border p-3">
-          <div
-            className={`flex items-center gap-3 rounded-lg bg-muted p-2.5 ${
-              collapsed ? 'justify-center p-2' : ''
-            }`}
-          >
-            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-sm">
-              {user?.firstName ? user.firstName.charAt(0).toUpperCase() : 'U'}
-              <span
-                className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-card ${user?.verificationLevel === 1 ? 'bg-success' : 'bg-warning'}`}
-              />
-            </div>
-
-            {!collapsed && (
-              <div className="flex-1 overflow-hidden">
-                <p className="truncate text-xs font-semibold text-foreground">
-                  {user ? `${user.firstName} ${user.lastName}` : 'Client User'}
-                </p>
-                <p className="truncate text-[11px] text-muted-foreground">{user?.email || ''}</p>
-              </div>
-            )}
-
-            {!collapsed && (
-              <button
-                type="button"
-                onClick={() => void handleLogout()}
-                title={t('nav.logout')}
-                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/15 hover:text-destructive focus-outline"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            )}
-            {logoutError && !collapsed && (
-              <p role="alert" className="mt-2 text-[11px] text-destructive">
-                {logoutError}
-              </p>
-            )}
-          </div>
-        </div>
+        {/* Account menu — identity, profile, theme and sign-out, behind one
+            trigger. The block that used to be here showed all of it at once,
+            including a green "online" dot that measured nothing. */}
+        <UserMenu collapsed={collapsed} />
       </aside>
 
       {/* Main Content Area */}
@@ -390,32 +368,23 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* Right Controls */}
-          <div className="flex items-center gap-3">
-            {/* Account Status Badge */}
-            <div
-              className={`hidden sm:flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium ${
-                user?.verificationLevel === 1 || kycStatus === 'approved'
-                  ? 'border-success/30 bg-success/10 text-success'
-                  : kycStatus === 'rejected'
-                    ? 'border-destructive/30 bg-destructive/10 text-destructive font-bold animate-pulse'
-                    : kycStatus === 'submitted' || kycStatus === 'under_review'
-                      ? 'border-info/30 bg-info/10 text-info'
-                      : 'border-warning/30 bg-warning/10 text-warning'
-              }`}
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>
-                {user?.verificationLevel === 1 || kycStatus === 'approved'
-                  ? 'Verified Account'
-                  : kycStatus === 'rejected'
-                    ? '⚠️ KYC Action Required'
-                    : kycStatus === 'submitted' || kycStatus === 'under_review'
-                      ? 'KYC Under Review'
-                      : 'KYC Pending'}
-              </span>
-            </div>
+          {/*
+            Right controls.
 
+            Two things used to live here and no longer do.
+
+            The KYC pill: four states, one of which was a permanently pulsing
+            "⚠️ KYC Action Required" and another a permanent "Verified Account".
+            The second is a status light that never changes — it told an
+            approved client something they could not act on, on every screen.
+            The remaining KYC signal is the sidebar badge, which appears only
+            while there is work and is attached to the entry that leads to it.
+
+            The theme toggle: a two-button light/dark control with nowhere to
+            put "System". It is a submenu in the account menu now, which is
+            also where a client would look for it.
+          */}
+          <div className="flex items-center gap-3">
             {/* Notifications */}
             <button
               type="button"
@@ -425,9 +394,6 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
               <Bell className="h-4 w-4" />
               <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
             </button>
-
-            {/* Theme Toggle (next-themes) */}
-            <ThemeToggle />
           </div>
         </header>
 

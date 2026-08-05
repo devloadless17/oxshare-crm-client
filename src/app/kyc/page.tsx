@@ -64,7 +64,7 @@ export default function KycPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center space-y-4">
-      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-link border border-primary/20 shadow-sm">
+      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-link border border-primary/20">
         <ShieldCheck className="h-8 w-8 text-link" />
         <Loader2 className="absolute h-14 w-14 animate-spin text-primary/40" />
       </div>

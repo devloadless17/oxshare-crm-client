@@ -166,7 +166,7 @@ export function DynamicStepRenderer({
                 onClick={() => onDocTypeChange(dt.value)}
                 className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center focus-outline cursor-pointer ${
                   isSelected
-                    ? 'border-ring bg-primary/10 text-link font-bold shadow-sm'
+                    ? 'border-ring bg-primary/10 text-link font-bold'
                     : 'border-border bg-card/40 text-muted-foreground hover:bg-accent hover:text-foreground'
                 }`}
               >
@@ -193,7 +193,7 @@ export function DynamicStepRenderer({
                 onClick={() => onAddressDocTypeChange(dt.value)}
                 className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center focus-outline cursor-pointer ${
                   isSelected
-                    ? 'border-ring bg-primary/10 text-link font-bold shadow-sm'
+                    ? 'border-ring bg-primary/10 text-link font-bold'
                     : 'border-border bg-card/40 text-muted-foreground hover:bg-accent hover:text-foreground'
                 }`}
               >

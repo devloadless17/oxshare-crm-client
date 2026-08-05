@@ -10,7 +10,7 @@ import { t } from '@/lib/i18n';
 
 export function CountryFlagIcon({
   code,
-  className = 'w-5 h-3.5 rounded-2xs object-cover inline-block shadow-2xs',
+  className = 'w-5 h-3.5 rounded-2xs object-cover inline-block',
 }: {
   code: string;
   className?: string;

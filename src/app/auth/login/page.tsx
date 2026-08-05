@@ -167,7 +167,7 @@ function LoginForm() {
           <p className="text-xs text-muted-foreground">{t('auth.login.tagline')}</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm space-y-5">
+        <div className="rounded-xl border border-border bg-card p-6 md:p-8 space-y-5">
           {error && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive space-y-3">
               <div className="flex items-center gap-2">
@@ -181,7 +181,7 @@ function LoginForm() {
                     type="button"
                     onClick={() => void handleResendEmail()}
                     disabled={isResending || resendCooldown > 0}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-md bg-destructive px-3 text-[11px] font-semibold text-destructive-foreground shadow-xs hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-md bg-destructive px-3 text-[11px] font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
                   >
                     {isResending ? (
                       <>
