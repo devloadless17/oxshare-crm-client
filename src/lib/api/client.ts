@@ -10,6 +10,7 @@ import Cookies from 'js-cookie';
 // Resolved and validated in `lib/env.ts`, which refuses a production build with
 // no NEXT_PUBLIC_API_BASE_URL rather than silently falling back to localhost.
 import { API_BASE_URL } from '../env';
+import { clearKycDraft } from '../kyc-draft';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -144,6 +145,22 @@ export function idempotent(key: string) {
  */
 export function clearSession(): void {
   stopProactiveRefresh();
+  /*
+   * The half-filled KYC form holds the client's full name, date of birth and
+   * address, and `sessionStorage` survives the hard navigation to the login
+   * screen that follows a dead session.
+   *
+   * `UserContext.logout` already cleared it, so a client who signs out
+   * deliberately was covered. A session that DIES — a revoked token, a 30-day
+   * refresh finally expiring, a password change elsewhere — takes the 401 path
+   * instead, and left the previous client's identity documents readable in the
+   * next person's tab. On a shared machine that is the case that matters, and
+   * it is the one nobody chooses.
+   *
+   * Here rather than at the call site, so "this session is over" means the same
+   * thing however it ended.
+   */
+  clearKycDraft();
 }
 
 /**

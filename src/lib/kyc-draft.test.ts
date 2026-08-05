@@ -88,3 +88,33 @@ describe('KYC draft — clearing is what makes it safe', () => {
     expect(sessionStorage.length).toBe(0);
   });
 });
+
+/**
+ * The draft must not outlive the SESSION, however the session ends.
+ *
+ * `UserContext.logout` cleared it, so a client who signs out deliberately was
+ * covered. A session that DIES does not go through logout — a revoked token, a
+ * 30-day refresh finally expiring, a password changed on another device all
+ * take the 401 path in the axios interceptor, which called `clearSession()`.
+ * That function only stopped the proactive refresh timer.
+ *
+ * So the previous client's full name, date of birth and address stayed readable
+ * in `sessionStorage` across the hard navigation to the login screen — into the
+ * next person's tab, on the shared machine that is the whole reason this data
+ * is in `sessionStorage` rather than `localStorage`. Signing out was safe; being
+ * signed out was not, and that is the case nobody chooses.
+ */
+describe('KYC draft — a dead session clears it too', () => {
+  it('is cleared by clearSession, not only by an explicit logout', async () => {
+    const { clearSession } = await import('./api/client');
+
+    writePersonalDraft(PERSONAL);
+    writeUploadsDraft(UPLOADS);
+
+    clearSession();
+
+    expect(sessionStorage.getItem('oxshare_kyc_personal')).toBeNull();
+    expect(sessionStorage.getItem('oxshare_kyc_uploads')).toBeNull();
+    expect(sessionStorage.length).toBe(0);
+  });
+});
