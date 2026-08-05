@@ -195,14 +195,27 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
   // every navigation just to flip a boolean.
   const closeMobile = () => setMobileOpen(false);
 
-  // The sidebar badge follows the KYC status, refetched per route so it cannot
-  // show 'submitted' after the user has just been approved on another tab.
+  /*
+   * The sidebar badge follows the KYC status, refetched per route so it cannot
+   * show 'submitted' after the user has just been approved on another tab.
+   *
+   * NOT fetched until the email is verified. `/kyc/*` sits behind
+   * `EmailVerifiedGuard`, so for an unverified client this request is a
+   * guaranteed 403 — and because `pathname` is in the key, it fired again on
+   * every single navigation. One client browsing the portal produced a steady
+   * stream of `403 EMAIL_NOT_VERIFIED` in the server log, which is noise that
+   * buries real authorization failures.
+   *
+   * `enabled` rather than swallowing the error: the request was never
+   * meaningful, so the right fix is not to make it.
+   */
   const { data: kycStatus = 'not_started' } = useQuery({
     queryKey: ['kyc', 'status', pathname],
     queryFn: async () => {
       const res = await apiClient.get<{ status?: string }>('/kyc/status');
       return res.data?.status ?? 'not_started';
     },
+    enabled: user?.emailVerified === true,
     retry: false,
   });
 
@@ -269,6 +282,20 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
           {visibleNavItems(kycStatus, user?.verificationLevel).map((item) => {
             const Icon = item.icon;
+            /*
+             * Correct only while NAV_ITEMS stays flat.
+             *
+             * Each item tests itself in isolation, so two entries would both
+             * match if one href were a prefix of another — which is exactly what
+             * happened in the admin app, where `/kyc/builder` lit up both it and
+             * `/kyc`. No portal nav entry is nested inside another today
+             * (`/kyc/step/*` and `/kyc/submitted` are routes, not nav items, and
+             * `/kyc` highlighting for them is right).
+             *
+             * Add a nested nav item and this needs admin-layout's
+             * `activeNavHref`, which resolves the longest match across the whole
+             * nav instead.
+             */
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
             // KYC is the only entry whose badge is state, not configuration.
             const badge =

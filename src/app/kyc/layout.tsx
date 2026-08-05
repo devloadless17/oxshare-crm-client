@@ -131,9 +131,20 @@ function KycShell({ children }: { children: React.ReactNode }) {
    * the error is better than a blank sidebar. The step page owns telling the user
    * something went wrong.
    */
+  /*
+   * Both queries below are gated on the email being verified.
+   *
+   * Every `/kyc/*` endpoint sits behind `EmailVerifiedGuard`, so for an
+   * unverified client these are guaranteed 403s — fired on arrival, before the
+   * redirect above has a chance to move them. Not fetching is the fix; catching
+   * the error would just hide a request that should never have been made.
+   */
+  const kycReadable = user?.emailVerified === true;
+
   const config = useResource(
     ['kyc-config'],
     async (signal) => (await api.get<KycStepConfigDto[]>('/kyc/config', { signal })).data,
+    { enabled: kycReadable },
   );
 
   const steps: StepItem[] =
@@ -171,6 +182,7 @@ function KycShell({ children }: { children: React.ReactNode }) {
   const statusQuery = useResource(
     ['kyc-status'],
     async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
+    { enabled: kycReadable },
   );
   const nothingLeftToDo = user?.verificationLevel === 1 || statusQuery.data?.status === 'approved';
   const strandedOnAStep = nothingLeftToDo && shell === 'wizard';
@@ -178,6 +190,25 @@ function KycShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (strandedOnAStep) router.replace('/kyc/submitted');
   }, [strandedOnAStep, router]);
+
+  /*
+   * Render NOTHING while bouncing an unverified client to the verify page.
+   *
+   * The redirect above is an effect, so it runs after this render — and the
+   * children mount in the meantime and fire their own `/kyc/config` and
+   * `/kyc/status` requests, each a guaranteed 403. Withholding the children is
+   * what actually stops them, and it costs nothing: this render is replaced by
+   * a navigation a moment later.
+   */
+  // Written from `user` rather than the `emailUnverified` const that used to
+  // sit above: that const was removed when the gate moved to `RequireAuth`,
+  // and the merge left this line referring to it. `user` is undefined while
+  // the profile loads, and `undefined && ...` is correctly falsy - nothing is
+  // withheld on an unanswered question, which is the bug this file has had
+  // twice. `RequireAuth` redirects and withholds too, so this is now belt to
+  // its braces; it stays because the reasoning above still holds and it costs
+  // one comparison.
+  if (user && !user.emailVerified) return null;
 
   if (shell === 'portal') {
     return <PortalLayout>{children}</PortalLayout>;

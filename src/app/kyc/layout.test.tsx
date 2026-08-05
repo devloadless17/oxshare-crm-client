@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '@/test/render';
 import KycLayout, { kycShellFor } from './layout';
 
@@ -23,8 +23,9 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/kyc/step/1',
 }));
 vi.mock('@/context/UserContext', () => ({ useUser }));
+const { apiGet } = vi.hoisted(() => ({ apiGet: vi.fn() }));
 vi.mock('@/lib/api', () => {
-  const api = { get: vi.fn().mockResolvedValue({ data: [] }) };
+  const api = { get: apiGet };
   return { api, default: api };
 });
 
@@ -72,19 +73,48 @@ describe('KYC email-verification gate', () => {
     await waitFor(() => expect(replace).not.toHaveBeenCalled());
   });
 
+  it('asks the API for NOTHING while the email is unverified', async () => {
+    /*
+     * Every `/kyc/*` endpoint sits behind `EmailVerifiedGuard`, so for an
+     * unverified client these requests are guaranteed 403s. They fired anyway:
+     * the redirect is an effect, so it runs after this render, and both this
+     * layout's queries AND the children's mounted first.
+     *
+     * The visible symptom was a steady stream of `403 EMAIL_NOT_VERIFIED` in the
+     * server log — noise that buries real authorization failures. The fix is not
+     * to make the request, rather than to catch its error.
+     */
+    useUser.mockReturnValue({
+      user: { emailVerified: false, verificationLevel: 0 },
+      isLoading: false,
+    });
+
+    renderWithProviders(
+      <KycLayout>
+        <div>step content</div>
+      </KycLayout>,
+    );
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/verify-email/pending'));
+    expect(apiGet).not.toHaveBeenCalled();
+    // And the children are withheld, so they cannot fire their own either.
+    expect(screen.queryByText('step content')).not.toBeInTheDocument();
+  });
+
   it('sends a visitor with NO session to sign in, rather than rendering the wizard', async () => {
     /*
-     * This used to assert the opposite — "no session is the route guard's job,
-     * and it answers it before this renders" — which was true of a signed-out
-     * visitor and false of the case that matters: a cookie the server does not
-     * honour. `proxy.ts` gates on the PRESENCE of the refresh cookie because it
-     * has no signing key, so a forged or expired one waved the visitor through
-     * and this layout rendered the KYC wizard to them.
+     * This replaces a test that asserted the OPPOSITE — "no session is the
+     * route guard's job, and it answers it before this renders". That was true
+     * of a signed-out visitor and false of the case that matters: a cookie the
+     * server does not honour.
      *
-     * `user === null` after the profile query settles IS that state, and it is
-     * the one place the app can tell. The KYC wizard is also the worst place to
-     * get this wrong: it is the screen that collects passport scans, selfies
-     * and home addresses.
+     * `proxy.ts` gates on the PRESENCE of the refresh cookie, because it has no
+     * signing key. A forged or expired one waves the visitor through, and this
+     * layout rendered the KYC wizard to them — the screen that collects passport
+     * scans, selfies and home addresses.
+     *
+     * `user === null` after the profile query settles IS that state, and
+     * `RequireAuth` is the one place in the app that can tell.
      */
     useUser.mockReturnValue({ user: null, isLoading: false });
     renderWithProviders(
