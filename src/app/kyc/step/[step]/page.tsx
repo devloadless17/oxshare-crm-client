@@ -354,7 +354,7 @@ export default function KycStepPage() {
       )}
 
       {/* Navigation Footer Controls */}
-      <div className="flex items-center justify-between pt-6 border-t border-border">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
         {stepNumber > 1 ? (
           <Button
             type="button"

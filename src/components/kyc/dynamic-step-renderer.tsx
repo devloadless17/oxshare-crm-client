@@ -152,7 +152,7 @@ export function DynamicStepRenderer({
 
       {/* Built-in Document Selector Cards for Document Step */}
       {slug === 'document' && (
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[
             { value: 'passport', label: 'Passport' },
             { value: 'national_id', label: t('kyc.docNationalId') },
@@ -179,7 +179,7 @@ export function DynamicStepRenderer({
 
       {/* Built-in Document Selector Cards for Address Step */}
       {slug === 'address' && (
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[
             { value: 'utility_bill', label: t('kyc.docUtilityBill') },
             { value: 'bank_statement', label: t('kyc.docBankStatement') },

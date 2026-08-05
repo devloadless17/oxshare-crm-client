@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import * as React from 'react';
 import { BadgeCheck, ShieldAlert } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage, initialsOf } from '@/components/ui/avatar';
 import { useUser } from '@/context/UserContext';
 import { t } from '@/lib/i18n';
+import { AvatarUploader } from './avatar-uploader';
 import { ChangePasswordForm } from './change-password-form';
 import { SessionsList } from './sessions-list';
 
@@ -49,7 +49,7 @@ import { SessionsList } from './sessions-list';
  * said "a session exists, it expires in 29 days".
  */
 export default function ProfilePage() {
-  const { user } = useUser();
+  const { user, refetchUser } = useUser();
   const [sessionsEpoch, setSessionsEpoch] = React.useState(0);
 
   // `RequireAuth` in PortalLayout does not render this until the profile has
@@ -65,9 +65,15 @@ export default function ProfilePage() {
       <PageHeader
         name={fullName}
         email={user.email}
-        initials={initialsOf(user.firstName, user.lastName)}
+        avatarUrl={user.avatarUrl}
+        firstName={user.firstName}
+        lastName={user.lastName}
         verified={verified}
         memberSince={user.createdAt}
+        // Refetching the PROFILE rather than swapping a local URL: the avatar
+        // appears in the sidebar and the account menu too, and those read the
+        // same context. One refetch updates every one of them.
+        onAvatarChanged={() => void refetchUser()}
       />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] xl:items-start">
@@ -159,23 +165,30 @@ export default function ProfilePage() {
 function PageHeader({
   name,
   email,
-  initials,
+  avatarUrl,
+  firstName,
+  lastName,
   verified,
   memberSince,
+  onAvatarChanged,
 }: {
   name: string;
   email: string;
-  initials: string;
+  avatarUrl: string | null | undefined;
+  firstName: string;
+  lastName: string;
   verified: boolean;
   memberSince: string;
+  onAvatarChanged: () => void;
 }) {
   return (
-    <header className="flex flex-wrap items-center gap-x-5 gap-y-4 border-b border-border pb-6">
-      <Avatar className="h-16 w-16">
-        {/* No avatar field on UserProfileDto yet — see components/ui/avatar. */}
-        <AvatarImage alt="" />
-        <AvatarFallback className="text-xl">{initials}</AvatarFallback>
-      </Avatar>
+    <header className="flex flex-col gap-5 border-b border-border pb-6 lg:flex-row lg:items-center lg:gap-6">
+      <AvatarUploader
+        avatarUrl={avatarUrl}
+        firstName={firstName}
+        lastName={lastName}
+        onChanged={onAvatarChanged}
+      />
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -214,10 +227,10 @@ function PageHeader({
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-xl border border-border bg-card">
-      <h2 className="border-b border-border px-6 py-4 text-sm font-semibold text-foreground">
+      <h2 className="border-b border-border px-4 py-3.5 text-sm font-semibold text-foreground sm:px-6 sm:py-4">
         {title}
       </h2>
-      <div className="p-6">{children}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </section>
   );
 }

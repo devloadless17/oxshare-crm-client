@@ -89,7 +89,7 @@ function Row({ tx }: { tx: Transaction }) {
       <td className="py-3 pr-4">
         <StateBadge state={tx.state} />
         {tx.rejectionReason && (
-          <div className="mt-1 text-[11px] text-muted-foreground max-w-[240px]">
+          <div className="mt-1 max-w-[16rem] text-[11px] text-muted-foreground sm:max-w-[240px]">
             {tx.rejectionReason}
           </div>
         )}

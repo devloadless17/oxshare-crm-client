@@ -108,7 +108,7 @@ export default function DepositPage() {
       ) : (
         <form
           onSubmit={(e) => void handleSubmit(e)}
-          className="space-y-6 rounded-xl border border-border bg-card p-6"
+          className="space-y-6 rounded-xl border border-border bg-card p-4 sm:p-6"
         >
           {error && (
             <div
@@ -257,7 +257,7 @@ function DepositReference({
         </p>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6">
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           {t('deposit.referenceLabel')}
         </p>
@@ -279,7 +279,7 @@ function DepositReference({
         </p>
       </div>
 
-      <div className="rounded-xl border border-dashed border-border bg-muted/20 p-6">
+      <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 sm:p-6">
         <h3 className="text-sm font-semibold text-foreground">{t('deposit.instructionsTitle')}</h3>
         {/*
           The account details are NOT hardcoded here — see the note at the top

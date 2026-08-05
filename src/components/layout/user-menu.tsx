@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUser } from '@/context/UserContext';
+import { API_BASE_URL } from '@/lib/env';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { t } from '@/lib/i18n';
 
@@ -41,12 +42,32 @@ import { t } from '@/lib/i18n';
  * Now the whole block is one trigger, and the menu is where account-level
  * actions accumulate.
  */
-export function UserMenu({ collapsed }: { collapsed: boolean }) {
+export function UserMenu({
+  collapsed,
+  variant = 'sidebar',
+}: {
+  collapsed: boolean;
+  /**
+   * `header` is the mobile placement: the trigger is the avatar alone, with no
+   * surrounding panel, because the header is 56px tall and a name plus e-mail
+   * does not fit beside a hamburger and a KYC alert. The MENU is identical —
+   * it already repeats the identity inside, which is what makes an
+   * avatar-only trigger safe to use on a shared phone.
+   */
+  variant?: 'sidebar' | 'header';
+}) {
   const { user, logout } = useUser();
   const [logoutError, setLogoutError] = React.useState<string | null>(null);
 
   const name = user ? `${user.firstName} ${user.lastName}`.trim() : '';
   const initials = initialsOf(user?.firstName, user?.lastName);
+  /*
+   * `avatarUrl` is a path on the API (`/uploads/avatars/<uuid>.png`), not on
+   * this app, so it needs the base in front of it or Next answers 404. Going
+   * through the rewrite also keeps the session cookie attached, which the route
+   * serving the bytes requires.
+   */
+  const photo = user?.avatarUrl ? `${API_BASE_URL}${user.avatarUrl}` : undefined;
 
   /**
    * Log out, with the failure made visible instead of swallowed.
@@ -67,22 +88,25 @@ export function UserMenu({ collapsed }: { collapsed: boolean }) {
     }
   };
 
+  const compact = variant === 'header' || collapsed;
+
   return (
-    <div className="border-t border-border p-3">
+    <div className={variant === 'header' ? '' : 'border-t border-border p-3'}>
       <DropdownMenu>
         <DropdownMenuTrigger
-          className={`flex w-full items-center gap-3 rounded-lg bg-muted p-2.5 text-left hover:bg-accent focus-outline cursor-pointer ${
-            collapsed ? 'justify-center p-2' : ''
+          className={`flex items-center gap-3 rounded-lg text-left transition-transform duration-100 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:transform-none focus-outline cursor-pointer ${
+            variant === 'header'
+              ? 'shrink-0 rounded-full'
+              : `w-full bg-muted p-2.5 hover:bg-accent ${collapsed ? 'justify-center p-2' : ''}`
           }`}
           aria-label={t('nav.accountMenu')}
         >
           <Avatar>
-            {/* No avatar field on UserProfileDto yet — see components/ui/avatar. */}
-            <AvatarImage alt="" />
+            <AvatarImage src={photo} alt="" />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
 
-          {!collapsed && (
+          {!compact && (
             <>
               <span className="flex-1 overflow-hidden">
                 <span className="block truncate text-xs font-semibold text-foreground">
@@ -107,7 +131,7 @@ export function UserMenu({ collapsed }: { collapsed: boolean }) {
               used from. */}
           <div className="flex items-center gap-2.5 px-2 py-2">
             <Avatar className="h-8 w-8">
-              <AvatarImage alt="" />
+              <AvatarImage src={photo} alt="" />
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
             <div className="overflow-hidden">
@@ -139,7 +163,7 @@ export function UserMenu({ collapsed }: { collapsed: boolean }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {logoutError && !collapsed && (
+      {logoutError && !compact && (
         <p role="alert" className="mt-2 text-[11px] text-destructive">
           {logoutError}
         </p>

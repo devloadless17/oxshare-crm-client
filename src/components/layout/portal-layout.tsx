@@ -379,7 +379,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
         }`}
       >
         {/* Top Header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur-md px-4 lg:px-8">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-md sm:h-16 lg:px-8">
           {/* Left Controls */}
           <div className="flex items-center gap-3">
             <button
@@ -391,7 +391,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             </button>
 
             {/* Quick Search */}
-            <div className="relative hidden sm:block w-64 md:w-80">
+            <div className="relative hidden min-w-0 sm:block sm:w-48 md:w-72 lg:w-80">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <input
                 type="search"
@@ -417,13 +417,30 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             In its place is the one alert this product can actually raise today,
             and it is raised from data the layout already has.
           */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <KycAlert kycStatus={kycStatus} verificationLevel={user?.verificationLevel} />
+            {/*
+              The account menu, in the header, on mobile only.
+
+              Below `lg` the sidebar is a drawer, so the menu at its foot is two
+              interactions away — open the drawer, scroll to the bottom — for
+              sign-out and the theme, which are the two things people reach for
+              most on a phone. In the header it is one tap, and the avatar is
+              also the only place the client sees their own photo on a small
+              screen.
+
+              `lg:hidden` because on desktop the sidebar footer already has it,
+              and two account menus on one screen is a question about which is
+              which.
+            */}
+            <div className="lg:hidden">
+              <UserMenu collapsed variant="header" />
+            </div>
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

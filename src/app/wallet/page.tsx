@@ -33,7 +33,7 @@ function BalanceCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+    <div className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-muted-foreground uppercase">{label}</span>
         <Wallet className="h-5 w-5 text-link" aria-hidden="true" />

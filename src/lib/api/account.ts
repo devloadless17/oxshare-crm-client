@@ -25,6 +25,35 @@ export type MessageResponse = components['schemas']['MessageResponseDto'];
 
 export const accountApi = {
   /**
+   * Upload or replace the profile photo.
+   *
+   * `FormData` with NO explicit Content-Type: the browser has to set it
+   * itself, because a multipart body needs a boundary parameter that only the
+   * browser knows. Setting `multipart/form-data` by hand produces a header with
+   * no boundary and a body the server cannot parse — and axios's default JSON
+   * content type would do exactly that, which is why it is deleted here rather
+   * than left to chance.
+   *
+   * The API decides the accepted types from the file's own magic bytes, not
+   * from what the browser labels it, so there is nothing to validate here that
+   * would not be a guess.
+   */
+  async uploadAvatar(file: File): Promise<{ avatarUrl: string | null }> {
+    const form = new FormData();
+    form.append('file', file);
+    const { data } = await apiClient.post<{ avatarUrl: string | null }>('/auth/me/avatar', form, {
+      headers: { 'Content-Type': undefined },
+    });
+    return data;
+  },
+
+  /** Remove it. The portal falls back to initials, never a placeholder image. */
+  async removeAvatar(): Promise<{ avatarUrl: string | null }> {
+    const { data } = await apiClient.delete<{ avatarUrl: string | null }>('/auth/me/avatar');
+    return data;
+  },
+
+  /**
    * Change the password from inside a live session.
    *
    * The API requires the CURRENT password and ends every OTHER session on

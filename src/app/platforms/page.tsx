@@ -95,7 +95,7 @@ function PlatformCard({ platform }: { platform: PlatformLink }) {
   const available = Boolean(platform.url);
 
   return (
-    <article className="flex flex-col rounded-xl border border-border bg-card p-6">
+    <article className="flex flex-col rounded-xl border border-border bg-card p-5 sm:p-6">
       <span
         className={`flex h-11 w-11 items-center justify-center rounded-lg ${
           available ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'

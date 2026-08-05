@@ -97,6 +97,13 @@ export const messages = {
   // ── Profile ───────────────────────────────────────────────────────────────
   'profile.title': 'Profile',
   'profile.subtitle': 'Your account details, security and active sessions.',
+  'profile.photoChange': 'Change photo',
+  'profile.photoUpload': 'Upload a photo',
+  'profile.photoRemove': 'Remove',
+  'profile.photoUploading': 'Uploading...',
+  'profile.photoHint': 'JPEG, PNG or WebP. Up to 2MB.',
+  'profile.photoFailed': 'Could not update your photo. Please try again.',
+  'profile.photoTooLarge': 'That image is larger than 2MB. Please choose a smaller one.',
   'profile.detailsTitle': 'Account details',
   'profile.firstName': 'First name',
   'profile.lastName': 'Last name',
