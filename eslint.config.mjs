@@ -252,14 +252,16 @@ export default defineConfig([
     // these numbers as the files are split; never raise one.
     files: ['src/app/**/*.tsx', 'src/components/**/*.tsx'],
     rules: {
-      'max-lines': ['error', { max: 400, skipBlankLines: true, skipComments: true }],
+      'max-lines': ['error', { max: 340, skipBlankLines: true, skipComments: true }],
     },
   },
   {
-    // Pinned at their current size — see the note above.
+    // Pinned at its current size — the number only ever goes DOWN. Lowered
+    // 450 -> 340 when the per-field renderer moved to step-field.tsx and the
+    // helpers to field-hints.ts; lower it again after the next split.
     files: ['src/components/kyc/dynamic-step-renderer.tsx'],
     rules: {
-      'max-lines': ['error', { max: 450, skipBlankLines: true, skipComments: true }],
+      'max-lines': ['error', { max: 340, skipBlankLines: true, skipComments: true }],
     },
   },
 
@@ -332,13 +334,13 @@ export default defineConfig([
           selector:
             'JSXAttribute[name.name=/^(placeholder|title|aria-label|alt)$/] > Literal[value=/[A-Za-z]{2}/]',
           message:
-            'This attribute is user-visible copy. Use t(\'key\') from lib/i18n so it can be translated (FSD §10, D-16).',
+            "This attribute is user-visible copy. Use t('key') from lib/i18n so it can be translated (FSD §10, D-16).",
         },
         {
           selector:
             'JSXAttribute[name.name=/^(placeholder|title|aria-label|alt)$/] > JSXExpressionContainer > Literal[value=/[A-Za-z]{2}/]',
           message:
-            'This attribute is user-visible copy. Use t(\'key\') from lib/i18n so it can be translated (FSD §10, D-16).',
+            "This attribute is user-visible copy. Use t('key') from lib/i18n so it can be translated (FSD §10, D-16).",
         },
       ],
     },

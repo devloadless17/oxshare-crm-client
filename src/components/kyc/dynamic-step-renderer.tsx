@@ -1,22 +1,10 @@
 'use client';
 
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { DatePicker } from '@/components/ui/date-picker';
-import { PhoneInput, CountryFlagIcon } from '@/components/ui/phone-input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { ALL_COUNTRIES, ALL_NATIONALITIES } from '@/lib/countries-data';
 import { DocumentUploader } from './document-uploader';
-import { SelfieCamera } from './selfie-camera';
 import { CheckCircle2, User, FileText } from 'lucide-react';
 import type { components } from '@/lib/api/types.gen';
 import { t } from '@/lib/i18n';
+import { StepField } from './step-field';
 
 /**
  * Aliased from the schema generated out of the backend's Swagger, so this
@@ -41,67 +29,6 @@ interface DynamicStepRendererProps {
   onAddressDocTypeChange: (type: string) => void;
   onChange: (key: string, value: string) => void;
   onUpload: (field: string, file: File) => Promise<void>;
-}
-
-/**
- * FR-CORE-15: applicants must be 18+, so the date-of-birth picker stops there.
- *
- * Evaluated once when the module loads, not during render. Date.now() in a
- * render body (or in a useMemo, which React may re-run at any time) makes the
- * component impure: two renders a millisecond apart can disagree. The value is
- * fresh per page load, and the real check is server-side anyway.
- */
-const MAX_DATE_OF_BIRTH = new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000)
-  .toISOString()
-  .split('T')[0];
-
-/**
- * Browser hints for a free-text profile field, keyed on the field's machine name.
- *
- * Not decoration. This form is filled in once, on a phone, with a keyboard
- * covering half the screen — and it carried NO `autoComplete` attribute
- * anywhere, so a saved address was never offered and every character of it was
- * typed by hand. `autoCapitalize` matters for the same reason in the other
- * direction: name fields were not capitalising and address fields were.
- *
- * Keyed on `name` rather than on `type` because the field set is
- * admin-configurable (D-29) and the names are the contract the portal already
- * submits by — the same ids the reviewer flags for correction. An unknown custom
- * field gets sensible text defaults rather than nothing.
- */
-function textInputHints(name: string): {
-  autoComplete: string;
-  autoCapitalize?: string;
-  inputMode?: 'text' | 'tel' | 'email';
-  type?: string;
-} {
-  switch (name) {
-    case 'firstName':
-      return { autoComplete: 'given-name', autoCapitalize: 'words' };
-    case 'lastName':
-      return { autoComplete: 'family-name', autoCapitalize: 'words' };
-    case 'address':
-      return { autoComplete: 'street-address', autoCapitalize: 'words' };
-    case 'city':
-      return { autoComplete: 'address-level2', autoCapitalize: 'words' };
-    case 'postalCode':
-    case 'postcode':
-      // `inputMode` rather than `type="number"`: postcodes are not numbers —
-      // they have letters and leading zeros, and a number input would eat both.
-      return { autoComplete: 'postal-code', autoCapitalize: 'characters', inputMode: 'text' };
-    case 'phone':
-      return { autoComplete: 'tel', inputMode: 'tel', type: 'tel' };
-    case 'email':
-      return { autoComplete: 'email', inputMode: 'email', type: 'email', autoCapitalize: 'none' };
-    case 'nationality':
-    case 'country':
-      return { autoComplete: 'country-name', autoCapitalize: 'words' };
-    default:
-      // `off` rather than omitted: an unrecognised custom field is more likely to
-      // be document-specific (an ID number, a tax reference) than something the
-      // browser has a saved value for, and a wrong autofill is worse than none.
-      return { autoComplete: 'off', autoCapitalize: 'sentences' };
-  }
 }
 
 export function DynamicStepRenderer({
@@ -292,220 +219,19 @@ export function DynamicStepRenderer({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {fields
             .filter((field) => field.name !== 'docType')
-            .map((field) => {
-              const val = formData[field.name] || '';
-
-              // Selfie Live Camera Component
-              if (field.name === 'selfie' || field.type === 'camera' || slug === 'selfie') {
-                return (
-                  <div key={field.id} className="md:col-span-2">
-                    <SelfieCamera onUpload={onUpload} uploaded={selfieUploaded} />
-                  </div>
-                );
-              }
-
-              const isErrored = rejectedFields.includes(field.name);
-
-              // Document Uploader Component
-              if (field.type === 'file') {
-                return (
-                  <div
-                    key={field.id}
-                    className={`space-y-1.5 ${
-                      field.name === 'doc_front' ||
-                      field.name === 'doc_back' ||
-                      field.name === 'address_proof' ||
-                      field.name === 'address_proof_2'
-                        ? 'md:col-span-1'
-                        : 'md:col-span-2'
-                    }`}
-                  >
-                    {isErrored && (
-                      <div className="text-[11px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2.5 py-1 rounded-md mb-1 inline-flex items-center gap-1">
-                        {t('kyc.documentReturned')}
-                      </div>
-                    )}
-                    <DocumentUploader
-                      label={field.label}
-                      field={field.name}
-                      hint={field.hint}
-                      uploaded={uploadsState[field.name]}
-                      isErrored={isErrored}
-                      onUpload={onUpload}
-                    />
-                  </div>
-                );
-              }
-
-              // Phone Input Component
-              if (field.type === 'phone') {
-                return (
-                  <div key={field.id} className="space-y-1.5">
-                    <Label className="flex items-center justify-between">
-                      <span>
-                        {field.label}{' '}
-                        {field.required && <span className="text-destructive">*</span>}
-                      </span>
-                      {isErrored && (
-                        <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
-                          {t('kyc.correctField')}
-                        </span>
-                      )}
-                    </Label>
-                    <div
-                      className={
-                        isErrored
-                          ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5'
-                          : ''
-                      }
-                    >
-                      <PhoneInput
-                        value={val}
-                        onChange={(phoneVal) => onChange(field.name, phoneVal)}
-                      />
-                    </div>
-                  </div>
-                );
-              }
-
-              // Date Picker Component
-              if (field.type === 'date') {
-                return (
-                  <div key={field.id} className="space-y-1.5">
-                    <Label className="flex items-center justify-between">
-                      <span>
-                        {field.label}{' '}
-                        {field.required && <span className="text-destructive">*</span>}
-                      </span>
-                      {isErrored && (
-                        <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
-                          {t('kyc.correctField')}
-                        </span>
-                      )}
-                    </Label>
-                    <div
-                      className={
-                        isErrored
-                          ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5'
-                          : ''
-                      }
-                    >
-                      <DatePicker
-                        value={val}
-                        onChange={(dateVal) => onChange(field.name, dateVal)}
-                        maxDate={field.name === 'dateOfBirth' ? MAX_DATE_OF_BIRTH : undefined}
-                      />
-                    </div>
-                  </div>
-                );
-              }
-
-              // Select Dropdown Component
-              if (field.type === 'select') {
-                let optionsList: { label: string; value: string; flagCode?: string }[] = [];
-
-                if (field.name === 'nationality') {
-                  optionsList = ALL_NATIONALITIES.map((n) => ({ label: n, value: n }));
-                } else if (field.name === 'country') {
-                  optionsList = ALL_COUNTRIES.map((c) => ({
-                    label: c.name,
-                    value: c.name,
-                    flagCode: c.code,
-                  }));
-                } else if (field.options && field.options.length > 0) {
-                  optionsList = field.options.map((opt) => ({ label: opt, value: opt }));
-                }
-
-                return (
-                  <div key={field.id} className="space-y-1.5">
-                    <Label className="flex items-center justify-between">
-                      <span>
-                        {field.label}{' '}
-                        {field.required && <span className="text-destructive">*</span>}
-                      </span>
-                      {isErrored && (
-                        <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
-                          {t('kyc.correctField')}
-                        </span>
-                      )}
-                    </Label>
-                    <div
-                      className={
-                        isErrored
-                          ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5'
-                          : ''
-                      }
-                    >
-                      <Select
-                        value={val}
-                        onValueChange={(selected) => onChange(field.name, selected)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={t('kyc.selectField', { label: field.label.toLowerCase() })}
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {optionsList.map((opt) => (
-                            <SelectItem key={`${opt.value}-${opt.label}`} value={opt.value}>
-                              <span className="flex items-center gap-2">
-                                {opt.flagCode && <CountryFlagIcon code={opt.flagCode} />}
-                                <span>{opt.label}</span>
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                );
-              }
-
-              // Checkbox Component
-              if (field.type === 'checkbox') {
-                return (
-                  <div key={field.id} className="flex items-center gap-2 md:col-span-2 pt-2">
-                    <input
-                      type="checkbox"
-                      id={field.id}
-                      checked={val === 'true'}
-                      onChange={(e) => onChange(field.name, e.target.checked ? 'true' : 'false')}
-                      className="rounded border-input accent-primary focus:ring-ring h-4 w-4"
-                    />
-                    <Label htmlFor={field.id} className="text-xs cursor-pointer">
-                      {field.label} {field.required && <span className="text-destructive">*</span>}
-                    </Label>
-                  </div>
-                );
-              }
-
-              // Text Input Component
-              return (
-                <div key={field.id} className="space-y-1.5">
-                  <Label className="flex items-center justify-between">
-                    <span>
-                      {field.label} {field.required && <span className="text-destructive">*</span>}
-                    </span>
-                    {isErrored && (
-                      <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
-                        {t('kyc.correctField')}
-                      </span>
-                    )}
-                  </Label>
-                  <Input
-                    placeholder={field.hint || t('kyc.enterField', { label: field.label })}
-                    value={val}
-                    onChange={(e) => onChange(field.name, e.target.value)}
-                    {...textInputHints(field.name)}
-                    className={
-                      isErrored
-                        ? 'border-destructive focus-visible:ring-destructive bg-destructive/5'
-                        : ''
-                    }
-                  />
-                </div>
-              );
-            })}
+            .map((field) => (
+              <StepField
+                key={field.id}
+                field={field}
+                slug={slug}
+                val={formData[field.name] || ''}
+                isErrored={rejectedFields.includes(field.name)}
+                selfieUploaded={selfieUploaded}
+                uploadsState={uploadsState}
+                onChange={onChange}
+                onUpload={onUpload}
+              />
+            ))}
         </div>
       )}
     </div>
