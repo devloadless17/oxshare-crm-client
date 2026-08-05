@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { LOCALE_STORAGE_KEY, currentLocale, direction, messages, storeLocale, t } from './index';
 import type { MessageKey } from './messages';
 
@@ -64,6 +66,82 @@ describe('the catalogue itself', () => {
     // between languages — the exact failure this module exists to avoid.
     const positional = entries.filter(([, value]) => /\{\d+\}/.test(value)).map(([key]) => key);
     expect(positional).toEqual([]);
+  });
+});
+
+describe('call sites — every placeholder message is actually interpolated', () => {
+  /*
+   * The catalogue tests above check the MESSAGES. Nothing checked the CALLS, and
+   * that is where this shipped from — in the ADMIN app, where
+   * `cursor-pagination.tsx` rendered `{t('pagination.page')} {pageNumber}`: the
+   * key without its interpolation object, with the number concatenated beside
+   * it. Every paginated screen there read "Page {number} 1" in its footer.
+   *
+   * It is invisible to every other gate. It type-checks (the second argument is
+   * optional), it lints, and it renders — `t()` deliberately returns the template
+   * verbatim so a missing value is visible rather than "undefined", which is the
+   * right behaviour and precisely why the failure is silent to a machine.
+   *
+   * The portal is clean today. The guard is here because the mechanism is a twin
+   * of the admin app's and the mistake is one keystroke, and because this app is
+   * the one FSD §10's Arabic requirement is actually about — a placeholder left
+   * in a sentence is worse when the sentence is being translated.
+   */
+  const withPlaceholders = new Set(
+    (Object.entries(messages) as [MessageKey, string][])
+      .filter(([, value]) => /\{[a-zA-Z_][a-zA-Z0-9_]*\}/.test(value))
+      .map(([key]) => key),
+  );
+
+  /** Comments are stripped: a note ABOUT the bug must not read as the bug. */
+  const stripComments = (source: string) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  const sourceFiles = (): string[] => {
+    const root = join(__dirname, '..', '..');
+    const out: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+        } else if (
+          /\.tsx?$/.test(entry.name) &&
+          !/\.test\.tsx?$/.test(entry.name) &&
+          entry.name !== 'messages.ts' &&
+          entry.name !== 'types.gen.ts'
+        ) {
+          out.push(full);
+        }
+      }
+    };
+    walk(root);
+    return out;
+  };
+
+  it('finds no t(key) call that drops a required value', () => {
+    const offenders: string[] = [];
+
+    for (const file of sourceFiles()) {
+      const source = stripComments(readFileSync(file, 'utf8'));
+      source.split('\n').forEach((line, index) => {
+        for (const match of line.matchAll(/\bt\(\s*'([a-zA-Z0-9._]+)'\s*\)/g)) {
+          const key = match[1] as MessageKey;
+          if (withPlaceholders.has(key)) {
+            offenders.push(`${file.split('/src/')[1]}:${index + 1} — t('${key}')`);
+          }
+        }
+      });
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('scans a meaningful number of files, so it cannot pass vacuously', () => {
+    // A walker that silently matched nothing would make the test above green
+    // forever — a gate that gates nothing is worse than no gate at all.
+    expect(sourceFiles().length).toBeGreaterThan(20);
+    expect(withPlaceholders.size).toBeGreaterThan(5);
   });
 });
 
