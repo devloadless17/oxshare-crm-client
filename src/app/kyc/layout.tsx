@@ -1,10 +1,12 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/lib/api';
 import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
+import { useUser } from '@/context/UserContext';
 import { t } from '@/lib/i18n';
 
 type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
@@ -25,6 +27,32 @@ const DEFAULT_STEPS: StepItem[] = [
 
 export default function KycLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  /*
+   * KYC requires a verified email — FR-CORE-15. The check belongs HERE, not in
+   * `proxy.ts`, because this is the first place that actually knows the answer.
+   *
+   * It used to live in the route guard, which read `emailVerified` off the JWT
+   * in the session cookie. That worked while the guard was handed the ACCESS
+   * token, whose payload carries the claim. When route gating moved to the
+   * refresh cookie — correctly, so a returning client with a valid 30-day
+   * session is not bounced to login — the claim went with it: the refresh token
+   * is signed from `{ sub, jti }` and nothing else. `emailVerified` was
+   * `undefined` for everyone, `!== true` was true for everyone, and every
+   * client who opened KYC was redirected to the verify-email page. Verified
+   * ones included. Onboarding was unreachable.
+   *
+   * `/auth/me` is the authority for this, and the user is already loaded here.
+   * The API enforces it again on every KYC endpoint, so this is a redirect for
+   * the human, not the control.
+   */
+  const { user, isLoading } = useUser();
+  const emailUnverified = !isLoading && user !== null && !user.emailVerified;
+
+  useEffect(() => {
+    if (emailUnverified) router.replace('/verify-email/pending');
+  }, [emailUnverified, router]);
   /*
    * Same ['kyc-config'] query key the step page uses, so react-query serves both
    * from one request. These were two independent fetches of /kyc/config on every

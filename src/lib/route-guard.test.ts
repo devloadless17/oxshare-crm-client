@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideRoute, decodeJwtPayload, isPublicPath } from './route-guard';
+import { decideRoute, isPublicPath } from './route-guard';
 
 /** A signature-less JWT — the guard never verifies one, so this is enough. */
 function fakeToken(payload: Record<string, unknown>): string {
@@ -40,56 +40,36 @@ describe('decideRoute', () => {
     expect(decideRoute('/dashboard', VERIFIED)).toEqual({ allow: true });
   });
 
-  it('holds an unverified client out of KYC', () => {
-    expect(decideRoute('/kyc/step/personal', UNVERIFIED)).toEqual({
-      allow: false,
-      redirectTo: '/verify-email/pending',
-    });
-  });
-
-  it('lets a verified client into KYC', () => {
+  /*
+   * The guard decides SESSION PRESENCE and nothing else, so none of these may
+   * depend on what the token contains.
+   *
+   * It used to gate `/kyc` on an `emailVerified` claim, which worked only while
+   * proxy.ts handed it the access token. Gating moved to the refresh cookie —
+   * correctly — and the refresh token carries `{ sub, jti }` and nothing else,
+   * so the claim was `undefined` for everyone and every client was redirected
+   * off onboarding. The email gate lives in the KYC layout now, reading
+   * `/auth/me`, which is the only authoritative answer.
+   */
+  it('lets any signed-in client into KYC, whatever the token contains', () => {
     expect(decideRoute('/kyc/step/personal', VERIFIED)).toEqual({ allow: true });
+    expect(decideRoute('/kyc/step/personal', UNVERIFIED)).toEqual({ allow: true });
+    expect(decideRoute('/kyc', fakeToken({ sub: 'u1' }))).toEqual({ allow: true });
   });
 
-  it('treats a missing emailVerified claim as unverified, not as verified', () => {
-    // Fail closed: a token shape we do not recognise must not open the gate.
-    expect(decideRoute('/kyc', fakeToken({ sub: 'u1' }))).toEqual({
-      allow: false,
-      redirectTo: '/verify-email/pending',
-    });
+  it('does not read the token at all — an opaque one is still a session', () => {
+    // The refresh cookie is what this is handed, and its payload is not the
+    // access token's. Anything that parses a claim here is a bug waiting for
+    // the next token-shape change.
+    expect(decideRoute('/kyc', 'not-a-jwt')).toEqual({ allow: true });
+    expect(decideRoute('/dashboard', 'opaque-token')).toEqual({ allow: true });
   });
 
-  it('rejects a truthy-but-not-true emailVerified claim', () => {
-    expect(decideRoute('/kyc', fakeToken({ emailVerified: 'yes' }))).toEqual({
-      allow: false,
-      redirectTo: '/verify-email/pending',
-    });
-  });
-
-  it('sends a malformed token back to login rather than crashing', () => {
-    expect(decideRoute('/kyc', 'not-a-jwt')).toEqual({
+  it('still sends a client with NO session to login', () => {
+    expect(decideRoute('/kyc', undefined)).toEqual({
       allow: false,
       redirectTo: '/auth/login',
     });
-  });
-
-  it('does not gate non-KYC private routes on email verification', () => {
-    // Only /kyc requires a verified email; the dashboard is reachable while
-    // verification is pending, which is where the resend prompt lives.
-    expect(decideRoute('/dashboard', UNVERIFIED)).toEqual({ allow: true });
-  });
-});
-
-describe('decodeJwtPayload', () => {
-  it('returns null for anything that is not a JWT', () => {
-    for (const bad of ['', 'a', 'a.b', 'a.!!!.c']) {
-      expect(decodeJwtPayload(bad)).toBeNull();
-    }
-  });
-
-  it('returns null when the payload is not an object', () => {
-    const b64 = Buffer.from(JSON.stringify('a string')).toString('base64url');
-    expect(decodeJwtPayload(`h.${b64}.s`)).toBeNull();
   });
 });
 
