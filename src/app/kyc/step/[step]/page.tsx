@@ -140,24 +140,42 @@ export default function KycStepPage() {
     writeUploadsDraft(uploads);
   }, [statusQuery.data]);
 
-  /* Upload handler */
-  const handleUpload = useCallback(async (field: string, file: File) => {
-    setError('');
-    const form = new FormData();
-    form.append('file', file);
-    form.append('field', field);
-    await api.post<{ message?: string }>('/kyc/upload', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  /*
+   * Upload handler.
+   *
+   * `onProgress` is threaded down so the uploader can show a determinate bar.
+   * A spinner reading "please wait" is indistinguishable from a hung request,
+   * and on mobile data a 4 MB document is 30+ seconds of exactly that — which
+   * is where people close the tab.
+   */
+  const handleUpload = useCallback(
+    async (field: string, file: File, onProgress?: (percent: number) => void) => {
+      setError('');
+      const form = new FormData();
+      form.append('file', file);
+      form.append('field', field);
+      await api.post<{ message?: string }>('/kyc/upload', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          // `total` is absent on some proxies and in some browsers; without it a
+          // percentage would be a guess, so leave the bar where it is rather
+          // than inventing movement.
+          if (onProgress && e.total) {
+            onProgress(Math.min(100, Math.round((e.loaded / e.total) * 100)));
+          }
+        },
+      });
 
-    setUploadsState((p) => {
-      const updated = { ...p, [field]: true };
-      writeUploadsDraft(updated);
-      return updated;
-    });
+      setUploadsState((p) => {
+        const updated = { ...p, [field]: true };
+        writeUploadsDraft(updated);
+        return updated;
+      });
 
-    if (field === 'selfie') setSelfieUploaded(true);
-  }, []);
+      if (field === 'selfie') setSelfieUploaded(true);
+    },
+    [],
+  );
 
   const currentStepConfig =
     stepConfigs.find((s) => s.stepNumber === stepNumber) || stepConfigs[stepNumber - 1];
@@ -200,8 +218,12 @@ export default function KycStepPage() {
           return;
         }
         if (docType !== 'passport' && !uploadsState['doc_back']) {
-          const docName = docType === 'national_id' ? 'National ID' : 'Driving License';
-          setError(`Please upload the back side of your ${docName}.`);
+          setError(
+            t('kyc.needDocBack', {
+              document:
+                docType === 'national_id' ? t('kyc.docNationalId') : t('kyc.docDrivingLicense'),
+            }),
+          );
           setLoading(false);
           return;
         }

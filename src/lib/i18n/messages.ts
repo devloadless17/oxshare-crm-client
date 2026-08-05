@@ -377,9 +377,24 @@ export const messages = {
   'kyc.encodeFailed': 'Could not encode the captured image.',
   'kyc.uploadingFile': 'Uploading File…',
   'kyc.uploadWait': 'Please wait a moment',
-  'kyc.replaceHint': 'Click or drag to replace',
+  'kyc.replaceHint': 'Replace',
   'kyc.uploadFormats': 'PNG, JPG, PDF · Max {limit}MB',
-  'kyc.dropHint': 'Drag & drop your file here, or click to browse',
+  // Device-neutral: most clients are on a phone, which has neither a drag nor a
+  // drop. The two buttons beside this say what to actually do.
+  'kyc.dropHint': 'Take a photo of the document, or choose a file you already have',
+  'kyc.takePhoto': 'Take photo',
+  'kyc.chooseFile': 'Choose file',
+  // The confirm step. The photo is NOT on the server yet at this point, which is
+  // the whole reason the step exists — a blurry shot costs nothing to redo here
+  // and costs a full mobile upload once it has been sent.
+  'kyc.checkBeforeSending': 'Is the whole document visible and readable?',
+  'kyc.useThisPhoto': 'Use this',
+  'kyc.chooseAnother': 'Retake',
+  'kyc.passportLabel': 'Passport bio page (required)',
+  'kyc.passportHint': 'The main photo and signature page of your passport',
+  'kyc.needDocBack': 'Please upload the back side of your {document}.',
+  'kyc.enterField': 'Enter {label}',
+  'kyc.selectField': 'Select {label}',
   'kyc.uploadedSuffix': '{label} Uploaded',
 
   // ── Country / phone picker ────────────────────────────────────────────────

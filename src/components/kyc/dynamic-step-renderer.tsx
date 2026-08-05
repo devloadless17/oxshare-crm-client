@@ -55,6 +55,55 @@ const MAX_DATE_OF_BIRTH = new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 100
   .toISOString()
   .split('T')[0];
 
+/**
+ * Browser hints for a free-text profile field, keyed on the field's machine name.
+ *
+ * Not decoration. This form is filled in once, on a phone, with a keyboard
+ * covering half the screen — and it carried NO `autoComplete` attribute
+ * anywhere, so a saved address was never offered and every character of it was
+ * typed by hand. `autoCapitalize` matters for the same reason in the other
+ * direction: name fields were not capitalising and address fields were.
+ *
+ * Keyed on `name` rather than on `type` because the field set is
+ * admin-configurable (D-29) and the names are the contract the portal already
+ * submits by — the same ids the reviewer flags for correction. An unknown custom
+ * field gets sensible text defaults rather than nothing.
+ */
+function textInputHints(name: string): {
+  autoComplete: string;
+  autoCapitalize?: string;
+  inputMode?: 'text' | 'tel' | 'email';
+  type?: string;
+} {
+  switch (name) {
+    case 'firstName':
+      return { autoComplete: 'given-name', autoCapitalize: 'words' };
+    case 'lastName':
+      return { autoComplete: 'family-name', autoCapitalize: 'words' };
+    case 'address':
+      return { autoComplete: 'street-address', autoCapitalize: 'words' };
+    case 'city':
+      return { autoComplete: 'address-level2', autoCapitalize: 'words' };
+    case 'postalCode':
+    case 'postcode':
+      // `inputMode` rather than `type="number"`: postcodes are not numbers —
+      // they have letters and leading zeros, and a number input would eat both.
+      return { autoComplete: 'postal-code', autoCapitalize: 'characters', inputMode: 'text' };
+    case 'phone':
+      return { autoComplete: 'tel', inputMode: 'tel', type: 'tel' };
+    case 'email':
+      return { autoComplete: 'email', inputMode: 'email', type: 'email', autoCapitalize: 'none' };
+    case 'nationality':
+    case 'country':
+      return { autoComplete: 'country-name', autoCapitalize: 'words' };
+    default:
+      // `off` rather than omitted: an unrecognised custom field is more likely to
+      // be document-specific (an ID number, a tax reference) than something the
+      // browser has a saved value for, and a wrong autofill is worse than none.
+      return { autoComplete: 'off', autoCapitalize: 'sentences' };
+  }
+}
+
 export function DynamicStepRenderer({
   currentStepConfig,
   formData,
@@ -232,9 +281,9 @@ export function DynamicStepRenderer({
       {slug === 'document' && docType === 'passport' ? (
         <div className="w-full my-4">
           <DocumentUploader
-            label="Passport Bio Page (Required)"
+            label={t('kyc.passportLabel')}
             field="doc_front"
-            hint="Upload the main photo & signature page of your passport"
+            hint={t('kyc.passportHint')}
             uploaded={uploadsState['doc_front']}
             onUpload={onUpload}
           />
@@ -392,7 +441,9 @@ export function DynamicStepRenderer({
                         onValueChange={(selected) => onChange(field.name, selected)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                          <SelectValue
+                            placeholder={t('kyc.selectField', { label: field.label.toLowerCase() })}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {optionsList.map((opt) => (
@@ -442,9 +493,10 @@ export function DynamicStepRenderer({
                     )}
                   </Label>
                   <Input
-                    placeholder={field.hint || `Enter ${field.label.toLowerCase()}`}
+                    placeholder={field.hint || t('kyc.enterField', { label: field.label })}
                     value={val}
                     onChange={(e) => onChange(field.name, e.target.value)}
+                    {...textInputHints(field.name)}
                     className={
                       isErrored
                         ? 'border-destructive focus-visible:ring-destructive bg-destructive/5'

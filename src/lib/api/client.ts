@@ -12,9 +12,24 @@ import Cookies from 'js-cookie';
 import { API_BASE_URL } from '../env';
 import { clearKycDraft } from '../kyc-draft';
 
+/**
+ * A request that never finishes must eventually fail.
+ *
+ * axios defaults `timeout` to 0, which means NO timeout: on a dying mobile
+ * connection a request hangs until the browser or OS gives up, which can be
+ * minutes. The KYC upload is where that hurts most — a stalled upload sat behind
+ * a spinner reading "please wait" with no way to tell it from a slow one and no
+ * cancel button.
+ *
+ * 60s rather than something tight: this ceiling has to clear the slowest
+ * LEGITIMATE request, and that is a multi-megabyte document upload over mobile
+ * data. A shorter timeout would start failing real uploads, which is worse than
+ * the problem it solves. It is a backstop against hanging, not a latency budget.
+ */
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
+  timeout: 60_000,
   headers: { 'Content-Type': 'application/json' },
 });
 
