@@ -184,6 +184,54 @@ test.describe('every control can be announced', () => {
   }
 });
 
+test.describe('Arabic reads right-to-left, and still fits', () => {
+  /*
+   * RTL, actually looked at.
+   *
+   * FSD §10 lists Arabic with RTL as a requirement and D-16 tracks it. The
+   * machinery was built — `direction()`, `LocaleDirection`, `dir` on <html>,
+   * `rtl:` variants — and every bit of it was verified by unit tests asserting
+   * that a function returns 'rtl'. NOTHING had ever rendered a page in Arabic
+   * and looked at the result, which is the only way to catch the failure that
+   * actually happens: a layout that mirrors its text and not its boxes, or that
+   * overflows once direction flips.
+   *
+   * Mobile width on purpose. RTL and 393px are where two independent sources of
+   * layout pressure meet, and nearly every client is on a phone.
+   */
+  test.use({ viewport: { width: 393, height: 851 } });
+
+  const RTL_PAGES = ['/dashboard', '/wallet', '/profile', '/auth/login'];
+
+  for (const path of RTL_PAGES) {
+    test(`${path} in Arabic`, async ({ page }) => {
+      // Set before the app boots, so the first paint is already RTL rather than
+      // flipping after hydration.
+      await page.addInitScript(() => {
+        window.localStorage.setItem('oxshare-portal-locale', 'ar');
+      });
+      await page.goto(path);
+      await page.waitForLoadState('networkidle');
+
+      await expect(page.locator('html'), `${path} did not flip to RTL`).toHaveAttribute(
+        'dir',
+        'rtl',
+      );
+
+      // The failure RTL actually produces: a container that was pinned left now
+      // pushes off the right edge, and the page scrolls sideways.
+      const overflow = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }));
+      expect(
+        overflow.scrollWidth,
+        `${path} in Arabic is ${overflow.scrollWidth - overflow.clientWidth}px wider than the screen`,
+      ).toBeLessThanOrEqual(overflow.clientWidth + 1);
+    });
+  }
+});
+
 test.describe('no standalone screen is a dead end', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
