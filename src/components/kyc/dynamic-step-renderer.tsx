@@ -52,7 +52,7 @@ export function DynamicStepRenderer({
   if (slug === 'review') {
     return (
       <div className="space-y-6">
-        <div className="step-header">
+        <div>
           <h2 className="text-xl font-extrabold text-foreground">{title}</h2>
           <p className="text-xs text-muted-foreground mt-1">{description}</p>
         </div>
@@ -145,7 +145,7 @@ export function DynamicStepRenderer({
   // 100% Dynamic Step Field Component Layout Engine
   return (
     <div className="space-y-6">
-      <div className="step-header">
+      <div>
         <h2 className="text-xl font-extrabold text-foreground">{title}</h2>
         <p className="text-xs text-muted-foreground mt-1">{description}</p>
       </div>

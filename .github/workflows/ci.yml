@@ -58,6 +58,25 @@ jobs:
           # satisfy the guard while compiling, and is never served.
           NEXT_PUBLIC_API_BASE_URL: https://ci-build-placeholder.invalid
 
+      # PLATFORM-CONVENTIONS R-1.5. Runs AFTER the build, because it reads that
+      # build's CSS output.
+      #
+      # Tailwind emits only the utilities it finds in the source and globals.css
+      # supplies the rest, so the compiled bundle is the complete set of classes
+      # that resolve — one used in source but absent from it resolves to nothing.
+      # Classes styled by a same-file `<style jsx>` block are exempt: styled-jsx
+      # compiles into the JS bundle and those DO work, as long as the component
+      # rendering the markup is the one holding the block.
+      #
+      # That distinction is the bug this exists for. In the admin app a scoped
+      # block kept styling a page after its markup moved into child components,
+      # so the classes silently stopped matching and the KYC review screen
+      # rendered "CountryUAE" run together. Nothing else could see it: a
+      # className is a string, an unmatched CSS rule is not an error, and
+      # component tests assert on text and roles rather than layout.
+      - name: CSS classes resolve
+        run: npm run check:css
+
       # PLATFORM-CONVENTIONS R-1.3 — the real drift guard.
       #
       # This step existed and had never once run. The script exited 0 when the

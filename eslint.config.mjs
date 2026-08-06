@@ -99,6 +99,9 @@ export default defineConfig([
     // Linting it would report on the generator's output, and any fix would be
     // erased by the next regeneration.
     'src/lib/api/types.gen.ts',
+    // Build tooling, not application code — outside the TypeScript project
+    // the type-checked rules need, so linting it reports a parsing error.
+    'scripts/**',
     // Playwright's own output. These are gitignored, but flat config does not
     // read .gitignore — so a local `npx playwright test` run drops a bundled,
     // minified trace viewer here and the type-aware rules fail on every file in
