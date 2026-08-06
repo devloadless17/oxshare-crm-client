@@ -311,6 +311,9 @@ export const messages = {
   'auth.verify.emailPlaceholder': 'Your email address',
   'auth.verify.sending': 'Sending…',
   'auth.verify.resendLink': 'Resend link',
+  'auth.verify.alreadyVerified': 'Already verified? Sign in',
+  'auth.verify.signedInAs': 'Waiting on {email}',
+  'auth.verify.wrongAddress': 'Wrong address? Sign out and start again.',
 
   'common.loadingEllipsis': 'Loading…',
 
