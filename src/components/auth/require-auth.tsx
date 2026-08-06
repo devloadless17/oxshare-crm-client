@@ -2,10 +2,7 @@
 
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@/context/UserContext';
-import { apiClient } from '@/lib/api/client';
-import { isKycApproved, requiresApprovedKyc } from '@/lib/kyc-access';
 import { loginPathFor } from '@/lib/return-to';
 import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/loader';
@@ -33,9 +30,6 @@ const EMAIL_VERIFIED_PATHS = ['/kyc', '/deposit', '/withdraw', '/transactions'];
 
 /** Where an unverified client is sent to finish verifying. */
 const VERIFY_EMAIL_PATH = '/verify-email/pending';
-
-/** Where a client who has not passed KYC is sent from a money route. */
-const KYC_PATH = '/kyc';
 
 function requiresVerifiedEmail(pathname: string): boolean {
   // Whole segments, never a bare prefix — same rule as proxy.ts, same reason:
@@ -136,59 +130,24 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     !isLoading && user !== null && !user.emailVerified && requiresVerifiedEmail(pathname);
 
   /*
-   * The KYC gate on the money routes.
+   * The KYC-approval gate on the money routes lived here and is gone with them.
    *
-   * The buttons that reach /deposit and /withdraw already refuse to navigate an
-   * unverified client and explain why (see `KycGateDialog` on /wallet), but a
-   * dialog in front of a link is a courtesy, not a gate: the URLs are typed,
-   * bookmarked and shared, and the routes rendered a complete money-movement
-   * form to a client every submission of which the payments API had already
-   * decided to refuse. So the same rule is enforced on arrival, in the same
-   * place as the email rule and for the same stated reason.
+   * It read `/kyc/status` and bounced an unapproved client off /deposit,
+   * /withdraw and /transfer, because a dialog in front of a link is a courtesy
+   * and not a gate — those URLs get typed, bookmarked and shared.
    *
-   * `/kyc/status` needs a verified email, hence the `enabled` — an unverified
-   * client is already being redirected by the branch above, and firing a
-   * guaranteed 403 on the way out is the noise `PortalChrome`'s query comment
-   * records. The key matches that query exactly so react-query serves both from
-   * one request rather than doubling every gated page load.
-   *
-   * `verificationLevel` alone would answer this without any request at all, and
-   * it is deliberately not trusted alone: see `lib/kyc-access.ts` on why either
-   * signal is sufficient but neither is required.
+   * REBUILD IT with the money screens. Two details are worth carrying over: the
+   * query key matched `PortalChrome`'s exactly so react-query served both from
+   * one request, and the gate refused to act while the status was still in
+   * flight — redirecting on an unanswered question is the bug that made
+   * onboarding unreachable here twice.
    */
-  const kycGated = requiresApprovedKyc(pathname);
-  const { data: kycStatus, isPending: kycPending } = useQuery({
-    queryKey: ['kyc', 'status', pathname],
-    queryFn: async () => {
-      const res = await apiClient.get<{ status?: string }>('/kyc/status');
-      return res.data?.status ?? 'not_started';
-    },
-    enabled: kycGated && user?.emailVerified === true,
-    retry: false,
-  });
-
-  /*
-   * `kycPending` keeps the redirect off an unanswered question — the same trap
-   * that made onboarding unreachable when the email gate read a claim that was
-   * not there. While the status is in flight the client is neither admitted nor
-   * bounced; `SessionCheck` holds the paint, exactly as it does for the profile.
-   */
-  const kycUnresolved = kycGated && user?.emailVerified === true && kycPending;
-  const needsKyc =
-    !isLoading &&
-    user !== null &&
-    user.emailVerified &&
-    kycGated &&
-    !kycPending &&
-    !isKycApproved(user.verificationLevel, kycStatus);
 
   const redirectTo = signedOut
     ? loginPathFor(pathname, typeof window === 'undefined' ? '' : window.location.search)
     : needsVerification
       ? VERIFY_EMAIL_PATH
-      : needsKyc
-        ? KYC_PATH
-        : null;
+      : null;
 
   React.useEffect(() => {
     if (redirectTo) router.replace(redirectTo);
@@ -213,7 +172,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   // route the KYC answer is as load-bearing as the profile itself, and rendering
   // the withdrawal form to someone about to be bounced off it is the same bug
   // this component was written to fix, one gate further in.
-  if (isLoading || redirectTo || kycUnresolved) return <SessionCheck />;
+  if (isLoading || redirectTo) return <SessionCheck />;
 
   return <>{children}</>;
 }

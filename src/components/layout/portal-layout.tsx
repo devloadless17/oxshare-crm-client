@@ -5,10 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
-  LineChart,
   MonitorDown,
-  Wallet,
-  Receipt,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
@@ -36,54 +33,33 @@ export interface NavItem {
 }
 
 /**
- * The primary rail: four destinations, each a place a client goes to LOOK at
- * something.
+ * The primary rail: the places a client goes to LOOK at something.
  *
- * It held eight, and the four that left did not leave because they were
- * unfinished — every one of them is a working route today.
+ * `/accounts`, `/wallet` and `/transactions` left with the money teardown, and
+ * `/deposit` and `/withdraw` went before them — those two were never rail items
+ * anyway, because they are ACTIONS on a balance rather than destinations, and
+ * they lived as buttons beside the number the client was deciding against.
  *
- * `/deposit` and `/withdraw` are ACTIONS on a balance, not destinations. Giving
- * each a permanent rail entry split one idea — "move money" — across two
- * top-level slots, neither of which shows the number the client is deciding
- * against. They are buttons on /wallet now, beside the balance. The routes are
- * untouched and still directly linkable.
+ * All of it returns with the money rebuild. Put the destinations back here and
+ * the actions back beside a balance; do not give deposit and withdraw permanent
+ * rail slots, which is the arrangement that split one idea across two entries
+ * neither of which showed a number.
  *
- * `/profile` moved into the account menu at the foot of the sidebar, where a
- * client would look for it and where it stops competing with the money screens.
- * It was marked `comingSoon` here for months while the route genuinely did not
- * exist; it exists now.
- *
- * `/kyc` is conditional rather than absent — see `visibleNavItems`.
+ * `/profile` is in the account menu at the foot of the sidebar, where a client
+ * would look for it. `/kyc` is conditional — see `visibleNavItems`.
  *
  * The `comingSoon` treatment stays in the type and in the renderer below. It is
  * the house pattern the root CLAUDE.md records ("Unbuilt sidebar entries render
  * as disabled 'Soon' items ... they are committed scope, don't delete the
- * links"), and the next unbuilt route will want it. Nothing uses it at present,
- * which is the correct state: every entry here leads somewhere real.
+ * links"), and the money rebuild will want it.
  */
 export const NAV_ITEMS: NavItem[] = [
   { label: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'nav.accounts', href: '/accounts', icon: LineChart },
-  { label: 'nav.wallet', href: '/wallet', icon: Wallet },
-  { label: 'nav.transactions', href: '/transactions', icon: Receipt },
   // Where the client downloads the terminal. A destination rather than an
   // action — they come here to get something, not to move money — so unlike
   // Deposit and Withdraw it belongs on the rail.
   { label: 'nav.platforms', href: '/platforms', icon: MonitorDown },
-  /*
-   * KYC is here but conditional — see `visibleNavItems`.
-   *
-   * Deposit and Withdraw are NOT here any more. They were two top-level
-   * destinations for one idea, "move money", which is a thing a client thinks
-   * about while looking at a balance. They now live as actions on /wallet,
-   * beside the number they act on. The ROUTES are untouched: /deposit and
-   * /withdraw still exist, still work, and are still linked — from the wallet
-   * rather than from the rail.
-   *
-   * Profile is no longer a rail entry either. It moved into the account menu at
-   * the foot of the sidebar, which is where every other product puts it and
-   * where it stops competing with the money screens for attention.
-   */
+  // KYC is here but conditional — see `visibleNavItems`.
 ];
 
 /**
@@ -161,12 +137,11 @@ const BADGE_TONES: Record<'warning' | 'info' | 'destructive', string> = {
 /**
  * The signed-in shell, behind the gate rather than in front of it.
  *
- * Every private route in this app renders through here — dashboard, accounts,
- * wallet, deposit, withdraw, transactions, and the non-wizard half of KYC — so
- * this is the one place that gates all of them without relying on the next
- * person to remember. A new `app/<thing>/layout.tsx` that reaches for
- * `PortalLayout`, as all seven existing ones do, is authenticated by
- * construction.
+ * Every private route in this app renders through here — dashboard, platforms,
+ * profile and the non-wizard half of KYC — so this is the one place that gates
+ * all of them without relying on the next person to remember. A new
+ * `app/<thing>/layout.tsx` that reaches for `PortalLayout`, as every existing
+ * one does, is authenticated by construction.
  *
  * The chrome itself is a separate component and stays UNGATED on purpose: it
  * only ever mounts once `RequireAuth` has a confirmed profile, which is what
