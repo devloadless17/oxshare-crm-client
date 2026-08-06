@@ -75,6 +75,7 @@ export const messages = {
 
   // ── Platforms ─────────────────────────────────────────────────────────────
   'nav.platforms': 'Platforms',
+  'nav.partner': 'Partner Programme',
   'platforms.title': 'Trading platforms',
   'platforms.subtitle': 'Download the OXShare terminal for the device you trade on.',
   'platforms.desktop': 'Desktop terminal',
@@ -695,6 +696,58 @@ export const messages = {
   'notifications.samplePlatformBody':
     'Download the desktop or mobile terminal from the Platforms page.',
   'notifications.sampleWhen': 'Sample',
+  // ── Partner programme ─────────────────────────────────────────────────────
+  'partner.title': 'Partner Programme',
+  'partner.subtitle': 'Introduce clients to OxShare and earn from their activity.',
+
+  // The pitch, shown only to somebody who is not yet a partner.
+  'partner.pitchHeading': 'How the programme works',
+  'partner.pitchOne': 'Share your referral link with people you introduce.',
+  'partner.pitchTwo': 'Clients who register through your link are attributed to you permanently.',
+  'partner.pitchThree': 'You earn from their trading activity, at the rate set for your level.',
+
+  // Applying.
+  'partner.applyHeading': 'Become a partner',
+  'partner.applyIntro':
+    'Earn from the clients you introduce to OxShare. Your account is already verified, so there is nothing to fill in — send the request and we will review it.',
+  'partner.applyFootnote': 'We review every request and email you the decision.',
+  'partner.submit': 'Request to become a partner',
+  'partner.submitting': 'Submitting…',
+  'partner.submitFailed': 'Your application could not be submitted. Please try again.',
+
+  // Awaiting a decision.
+  'partner.pendingHeading': 'Your application is under review',
+  'partner.pendingBody':
+    'We will email you as soon as a decision is made. There is nothing else to do for now.',
+  'partner.pendingSubmitted': 'Submitted {date}',
+
+  // Turned down.
+  'partner.rejectedHeading': 'Your application was not approved',
+  'partner.rejectedReasonLabel': 'Reason given',
+  'partner.rejectedReapply':
+    'You can apply again. If anything in the reason above has changed, say so in your new application.',
+  'partner.reapply': 'Apply again',
+
+  // Approved — the partner dashboard.
+  'partner.approvedHeading': 'You are a partner',
+  'partner.approvedSince': 'Partner since {date}',
+  'partner.levelLabel': 'Your level',
+  'partner.referralCodeLabel': 'Your referral code',
+  'partner.referralLinkLabel': 'Your referral link',
+  'partner.copy': 'Copy',
+  'partner.copied': 'Copied',
+  'partner.copyFailed': 'Could not copy. Select the link and copy it manually.',
+  'partner.suspendedNotice':
+    'Your partner account is currently suspended. Your referral link still works, but you are not earning. Contact support for details.',
+  'partner.earningsPending':
+    'Earnings reporting is not available yet. Your introductions are being recorded.',
+
+  // Not eligible yet.
+  'partner.ineligibleHeading': 'Verify your identity first',
+  'partner.verifyNow': 'Verify my identity',
+
+  'partner.loadFailed': 'Could not load your partner status.',
+  'partner.loading': 'Loading your partner status…',
 } as const;
 
 /** Every valid key. A typo is a compile error, never a string rendered as itself. */

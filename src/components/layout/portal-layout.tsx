@@ -4,6 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  Handshake,
   LayoutDashboard,
   MonitorDown,
   ShieldCheck,
@@ -59,6 +60,14 @@ export const NAV_ITEMS: NavItem[] = [
   // action — they come here to get something, not to move money — so unlike
   // Deposit and Withdraw it belongs on the rail.
   { label: 'nav.platforms', href: '/platforms', icon: MonitorDown },
+  /*
+   * The partner programme. A destination, and permanent: unlike KYC it does not
+   * disappear once dealt with, because an approved partner comes back to it for
+   * their referral link. The page renders all five states behind this one href
+   * — applied, pending, rejected, approved, not-yet-eligible — so the rail does
+   * not need to know which.
+   */
+  { label: 'nav.partner', href: '/partner', icon: Handshake },
   // KYC is here but conditional — see `visibleNavItems`.
 ];
 

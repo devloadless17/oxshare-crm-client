@@ -607,6 +607,154 @@ export interface paths {
         patch: operations["AdminCurrenciesController_update"];
         trace?: never;
     };
+    "/v1/ib/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Where this client stands with the partner programme
+         * @description Returns the partner account if they have one AND their most recent application if they have made one. Both, because "never applied" and "rejected, here is why" are different states and a client shown a blank form after a refusal has been told nothing.
+         */
+        get: operations["IbController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ib/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply to become a partner
+         * @description Requires a verified identity (KYC level 1). Refuses a second application while one is still awaiting review, and refuses outright if the client is already a partner.
+         */
+        post: operations["IbController_apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ib/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The partner application queue
+         * @description Paginated, newest first, with per-status counts for the tab labels. Both the rows and the counts respect the reviewing admin’s client scope.
+         */
+        get: operations["AdminIbController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ib/applications/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Approve an application and create the partner account
+         * @description One transaction: the application moves out of pending and the account is created together, so there is no state where a client has been told they were accepted and has no referral code. Refuses if another reviewer already decided it.
+         */
+        patch: operations["AdminIbController_approve"];
+        trace?: never;
+    };
+    "/v1/admin/ib/applications/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Reject an application, with a reason
+         * @description The reason is required and composed server-side from a configured label plus an optional note. It is stored already composed, because that is the sentence the client is shown.
+         */
+        patch: operations["AdminIbController_reject"];
+        trace?: never;
+    };
+    "/v1/admin/ib-levels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The payout ladder, shallowest level first
+         * @description Includes disabled levels — managing them is the point of the screen. The number of ENABLED levels is the depth of the payout chain.
+         */
+        get: operations["AdminIbLevelsController_list"];
+        put?: never;
+        /**
+         * Add a level to the ladder
+         * @description The level number is chosen, not auto-assigned. Under revenue_share the enabled levels must total at most 100% — the refusal names the current total and the room left.
+         */
+        post: operations["AdminIbLevelsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ib-levels/{level}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a level
+         * @description Refuses to empty the ladder: a platform with no levels can approve no partners. Once partner records exist this will also refuse a level anybody is placed at.
+         */
+        delete: operations["AdminIbLevelsController_remove"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a level
+         * @description PATCH, and `level` itself is not editable: it is the primary key and partner records reference it, so renumbering is a data migration rather than an edit.
+         */
+        patch: operations["AdminIbLevelsController_update"];
+        trace?: never;
+    };
     "/v1/kyc/config": {
         parameters: {
             query?: never;
@@ -1813,6 +1961,111 @@ export interface components {
             enabled?: boolean;
             sortOrder?: number;
             isDefault?: boolean;
+        };
+        IbAccountDto: {
+            userId: string;
+            level: number;
+            parentIbUserId: string | null;
+            /** @description What a client types at registration to be attributed here. */
+            referralCode: string;
+            active: boolean;
+            /** Format: date-time */
+            approvedAt: string;
+        };
+        IbApplicationDto: {
+            id: string;
+            userId: string;
+            motivation: string | null;
+            expectedVolume: string | null;
+            website: string | null;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected";
+            /** @description Already composed — this is the sentence the client is shown. */
+            rejectionReason: string | null;
+            reviewedBy: string | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            /** Format: date-time */
+            submittedAt: string;
+        };
+        IbStatusDto: {
+            account: components["schemas"]["IbAccountDto"] | null;
+            application: components["schemas"]["IbApplicationDto"] | null;
+            eligible: boolean;
+            ineligibleReason: string | null;
+        };
+        CreateIbApplicationDto: {
+            /** @description Why the client wants to introduce business. Shown to the reviewer verbatim. */
+            motivation?: string;
+            /** @description Self-reported and unverified. Labelled as such on the review screen. */
+            expectedVolume?: string;
+            website?: string;
+        };
+        ApproveIbApplicationDto: {
+            /** @description Which rung to place them on. Omitted, the service derives it: the shallowest enabled level with no parent, one below the parent otherwise. */
+            level?: number;
+            /** @description The partner who introduced them. Omitted or null means they deal direct. */
+            parentIbUserId?: string | null;
+        };
+        RejectIbApplicationDto: {
+            /** @description A configured label from the `partner` rejection context. */
+            reason?: string;
+            /** @description The reviewer's own words, appended to the label. */
+            note?: string;
+        };
+        IbLevelDto: {
+            /**
+             * @description 1 is closest to the broker; higher sits further down.
+             * @example 1
+             */
+            level: number;
+            /** @example Master Partner */
+            name: string;
+            /** @enum {string} */
+            payoutModel: "revenue_share" | "per_lot";
+            /**
+             * @description A percentage of the pool under revenue_share, an amount per lot under per_lot. A decimal string, never a number (§6.1).
+             * @example 70.0000
+             */
+            rateValue: string;
+            /**
+             * @description How many partners this level may recruit directly. Null means unlimited.
+             * @example null
+             */
+            maxDirectPartners: number | null;
+            /** @description A disabled level takes no share and accepts no new partners. */
+            enabled: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateIbLevelDto: {
+            /** @example 3 */
+            level: number;
+            /** @example Sub Partner */
+            name: string;
+            /**
+             * @default revenue_share
+             * @enum {string}
+             */
+            payoutModel: "revenue_share" | "per_lot";
+            /** @example 30.0000 */
+            rateValue: string;
+            /** @description Omit or send null for unlimited. */
+            maxDirectPartners?: number | null;
+            /** @default true */
+            enabled: boolean;
+        };
+        UpdateIbLevelDto: {
+            /** @example Sub Partner */
+            name?: string;
+            /** @enum {string} */
+            payoutModel?: "revenue_share" | "per_lot";
+            /** @example 30.0000 */
+            rateValue?: string;
+            maxDirectPartners?: number | null;
+            enabled?: boolean;
         };
         KycFieldConfigDto: {
             /** @example f-1 */
@@ -3369,6 +3622,205 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurrencyDto"];
+                };
+            };
+        };
+    };
+    IbController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbStatusDto"];
+                };
+            };
+        };
+    };
+    IbController_apply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateIbApplicationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbApplicationDto"];
+                };
+            };
+        };
+    };
+    AdminIbController_list: {
+        parameters: {
+            query: {
+                status: string;
+                page: string;
+                limit: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminIbController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveIbApplicationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbAccountDto"];
+                };
+            };
+        };
+    };
+    AdminIbController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectIbApplicationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbApplicationDto"];
+                };
+            };
+        };
+    };
+    AdminIbLevelsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbLevelDto"][];
+                };
+            };
+        };
+    };
+    AdminIbLevelsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateIbLevelDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbLevelDto"];
+                };
+            };
+        };
+    };
+    AdminIbLevelsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                level: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminIbLevelsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                level: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateIbLevelDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbLevelDto"];
                 };
             };
         };
