@@ -82,42 +82,14 @@ test.describe('an authenticated session', () => {
   });
 
   /*
-   * FIXME: needs rewriting against the redesigned account menu.
+   * Logout lives in `session-lifecycle.spec.ts` now, and is no longer `fixme`.
    *
-   * Logout moved out of the sidebar into an ARIA menu whose items only exist
-   * while it is open, and driving that reliably needs a selector written
-   * against the finished markup rather than guessed at while it is still
-   * changing. The BEHAVIOUR is covered from the other side — "no session at
-   * all" proves the server stops honouring a cookie — so what is missing here
-   * is the click path, not the guarantee.
-   *
-   * Marked rather than deleted, and rather than left red: a failing suite
-   * teaches people to ignore it, and a deleted spec is a hole nobody sees.
+   * It sits there rather than here because driving a real sign-out REVOKES the
+   * refresh-token family, and every spec in this file replays the one session
+   * cached in STORAGE_STATE. A logout run against that session would kill it
+   * for everything scheduled afterwards — so the rewritten test opens a context
+   * with no stored state and signs in for itself.
    */
-  test.fixme('signs out, and a signed-out session cannot walk back in', async ({ page }) => {
-    await page.goto('/dashboard');
-
-    // The account menu holds logout; open it if this layout nests it.
-    // `.first()`: the layout renders the trigger twice (desktop and drawer), and
-    // a bare getByRole matches both, which is a strict-mode violation that a
-    // `.catch(() => false)` swallows into "no menu" — so the logout control was
-    // never reached and the failure read as "logout is missing".
-    const menu = page.getByRole('button', { name: /account menu/i }).first();
-    if (await menu.isVisible().catch(() => false)) await menu.click();
-    // `menuitem`, not `button`: the account menu is a real ARIA menu, and a
-    // getByRole('button') never matches its items.
-    await page
-      .getByRole('menuitem', { name: /log ?out/i })
-      .first()
-      .click();
-
-    await page.waitForURL(/\/auth\/login/, { timeout: 20_000 });
-
-    // Back-button, then a deep link: only the server can end a session, so the
-    // check that matters is whether the SERVER still honours the cookie.
-    await page.goto('/dashboard');
-    await expect(page).toHaveURL(/\/auth\/login/);
-  });
 });
 
 test.describe('no session at all', () => {

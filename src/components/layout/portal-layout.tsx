@@ -299,6 +299,15 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={closeMobile}
+            /* Icon-only, so it needs a name — the same reason the collapse
+               button above carries one, and it matters more here: this is the
+               only way out of the drawer on a phone, which is this portal's
+               primary device. Without it a screen reader announces "button". */
+            aria-label={t('nav.closeMenu')}
+            // `press` is gone from the class list, not dropped by accident: the
+            // utility no longer exists in globals.css, so keeping it would be a
+            // class that resolves to nothing — which `npm run check:css` fails
+            // on. Press feedback in this app is colour only.
             className="flex lg:hidden h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
           >
             <X className="h-5 w-5" />

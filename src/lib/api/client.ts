@@ -460,12 +460,6 @@ function endDeadSession(): void {
    * wrong signal for the right question.
    */
   clearSession();
-  /*
-   * Tell the other tabs. Whichever tab notices first is the one that knows; the
-   * rest are sitting on a rendered portal with a dead session behind it and
-   * would only find out when somebody clicked something.
-   */
-  announceSessionEvent('signed-out');
   if (typeof window === 'undefined') return;
   /*
    * Nothing to evict anyone from: these pages are meant to work signed out.
@@ -483,6 +477,20 @@ function endDeadSession(): void {
    */
   if (isPublicPath(window.location.pathname)) return;
   if (window.location.pathname.startsWith(LOGIN_PATH)) return;
+
+  /*
+   * Tell the other tabs — but only now that we know this is a real eviction.
+   *
+   * Announcing ABOVE, before the public-path check, is what produced an
+   * infinite reload after signing out: every load of /auth/login answers 401 on
+   * `/auth/me`, which reaches this function, which announced — and the same
+   * document's own listener heard it and reloaded. `session-channel.ts` now
+   * ignores self-sent messages, and this ordering means a public page does not
+   * broadcast at all. Either alone would fix the loop; both are correct
+   * independently, and a broadcast from a page where nobody was signed in was
+   * never meaningful.
+   */
+  announceSessionEvent('signed-out');
   // A HARD navigation, deliberately, against @next/next's advice to use
   // router.push. The session is dead: a client-side push keeps the same JS
   // context alive, so the React Query cache, the user context and any
@@ -508,6 +516,41 @@ apiClient.interceptors.response.use(
        * transport failure took the dead-session path and cleared the draft.
        */
       let outcome: RefreshOutcome = 'dead';
+
+      /*
+       * On a public page there is nothing to renew, so do not ask.
+       *
+       * `UserContext` asks `/auth/me` on mount everywhere, including
+       * `/auth/login`, `/auth/register` and `/verify-email/pending`, and a
+       * signed-out visitor's 401 there is the correct answer to "is anyone
+       * here". Answering it with a real `POST /auth/refresh` meant TWO
+       * guaranteed-to-fail requests on every cold load of the most-visited pages
+       * in the portal — visible in the API log as a `/auth/me 401` immediately
+       * followed by a `/auth/refresh 401 SESSION_REVOKED`, over and over.
+       *
+       * It is not only noise: that route is throttled at 20/min, and a shared
+       * office or mobile-carrier IP reaches that on ordinary traffic.
+       *
+       * THE CSRF COOKIE IS PART OF THE CONDITION, and leaving it out was a
+       * regression I nearly shipped. A signed-in client whose access token has
+       * lapsed — the ordinary state of anyone returning after fifteen minutes —
+       * may well land on `/auth/login` from a bookmark. Skipping the renewal
+       * there resolves their profile to null, so `RedirectIfAuthenticated` never
+       * fires and they are shown a sign-in form over a live session: exactly the
+       * defect the reverse gate exists to prevent.
+       *
+       * The cookie is a sound signal HERE, unlike in `endDeadSession`, because
+       * this is an optimisation rather than a correctness decision. A false
+       * negative costs one wasted request — the old behaviour. A false positive
+       * costs one renewal attempt, which is what should happen anyway.
+       */
+      if (
+        typeof window !== 'undefined' &&
+        isPublicPath(window.location.pathname) &&
+        readCsrfCookie() === undefined
+      ) {
+        return Promise.reject(error);
+      }
 
       if (!originalRequest._retry) {
         originalRequest._retry = true;

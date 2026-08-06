@@ -112,7 +112,21 @@ export default defineConfig({
        * question about viewport width. What mobile is FOR — the drawer, the KYC
        * capture flow, a 393px layout — still runs here in full.
        */
-      testIgnore: /(auth-session|account-security|emailed-links)\.spec\.ts/,
+      /*
+       * `session-lifecycle` joins the list, for the reason already written above
+       * it: auth MECHANICS run once, on chromium.
+       *
+       * It was missing, so every sign-in and every forced expiry in that spec
+       * ran TWICE per full run. Login is capped at five per minute per IP and
+       * registration at ten per hour, both correctly — so a full run exhausted
+       * the caps and failed four tests that each pass on their own, two of them
+       * in specs that had nothing to do with the ones spending the budget.
+       *
+       * That is the exact failure this comment predicted, reproduced by adding a
+       * spec and not the line. Whether a session survives a refresh is not a
+       * question about viewport width; what mobile is FOR still runs in full.
+       */
+      testIgnore: /(auth-session|account-security|emailed-links|session-lifecycle)\.spec\.ts/,
     },
   ],
 
