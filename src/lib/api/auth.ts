@@ -6,12 +6,15 @@ export interface LoginDto {
   password: string;
 }
 
-export interface RegisterDto {
-  email: string;
-  password: string;
-  firstName?: string;
-  lastName?: string;
-}
+/**
+ * Aliased, like `AuthResponse` below and for the reason its comment gives.
+ *
+ * The hand-written version declared `firstName`/`lastName` OPTIONAL while the
+ * API requires both, and it had no `country`, `phone` or `referralCode` at all
+ * — so the one field that carries a partner's attribution could not be sent
+ * without a type error, on a type whose whole job is to describe this request.
+ */
+export type RegisterDto = components['schemas']['RegisterDto'];
 
 /**
  * Aliased from the generated schema. The hand-written version declared

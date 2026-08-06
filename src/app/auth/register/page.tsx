@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Lock, Mail, User, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Lock, Mail, User, Eye, EyeOff, AlertCircle, CheckCircle2, Handshake } from 'lucide-react';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
@@ -42,6 +42,18 @@ export default function RegisterPage() {
 
 function RegisterForm() {
   const router = useRouter();
+  /*
+   * `?ref=CODE` — the partner's referral link.
+   *
+   * Read here rather than stored, because attribution is decided once by the
+   * API at registration and nothing about it needs to survive a reload. Safe
+   * inside the `<Suspense>` this page already has for
+   * `RedirectIfAuthenticated`.
+   *
+   * Uppercased on the way in only for DISPLAY: the API trims and uppercases it
+   * too, so the two agree about what the client is being shown.
+   */
+  const referralCode = useSearchParams().get('ref')?.trim().toUpperCase() || undefined;
   const [firstName, setFirstName] = React.useState('');
   const [lastName, setLastName] = React.useState('');
   const [email, setEmail] = React.useState('');
@@ -86,6 +98,9 @@ function RegisterForm() {
         password,
         firstName,
         lastName,
+        // Omitted rather than sent empty when there is no `?ref=`. An empty
+        // string is a value the API would have to interpret; absence is not.
+        ...(referralCode ? { referralCode } : {}),
       });
 
       setSuccessMessage(
@@ -115,6 +130,32 @@ function RegisterForm() {
     <AuthShell heading={t('auth.register.heading')} subheading={t('auth.register.tagline')}>
       <div className="space-y-6">
         <div className="space-y-5">
+          {/*
+            Shown, not hidden in a query string.
+
+            Attribution is permanent — this decides which partner is paid on
+            this client's activity for the life of the account — so the client
+            should be able to see it before they sign up rather than discover it
+            afterwards. It is deliberately not an editable field: a code is
+            something you arrive with, not something to guess at.
+
+            An unrecognised code still shows here and the API still registers
+            them, unattributed. Verifying it first would mean a request before
+            the form is even filled in, to tell a client something they can do
+            nothing about.
+          */}
+          {referralCode && (
+            <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs">
+              <Handshake className="h-4 w-4 shrink-0 text-link" aria-hidden="true" />
+              <span className="text-muted-foreground">
+                {t('auth.register.referredBy')}{' '}
+                <span className="font-mono font-semibold tracking-wide text-foreground">
+                  {referralCode}
+                </span>
+              </span>
+            </div>
+          )}
+
           {error && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />

@@ -211,6 +211,7 @@ export const messages = {
   'auth.register.phone': 'Phone number',
   'auth.register.submit': 'Create account',
   'auth.register.submitting': 'Creating your account…',
+  'auth.register.referredBy': 'Referred by partner',
   'auth.register.hasAccount': 'Already have an account?',
   'auth.register.signIn': 'Sign in',
   'auth.register.failed': 'Registration failed. Please try again.',

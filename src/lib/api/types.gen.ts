@@ -707,6 +707,86 @@ export interface paths {
         patch: operations["AdminIbController_reject"];
         trace?: never;
     };
+    "/v1/admin/ib/partners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The partner list
+         * @description Joined to the person and their level, newest approval first.
+         */
+        get: operations["AdminIbController_listPartners"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/ib/partners/{userId}/level": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Move a partner to a different level
+         * @description The target level must be ENABLED — a disabled one takes no share, so placing somebody on it stops their earnings silently rather than demoting them visibly.
+         */
+        patch: operations["AdminIbController_changeLevel"];
+        trace?: never;
+    };
+    "/v1/admin/ib/partners/{userId}/parent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Reassign a partner’s parent
+         * @description Refuses a change that would put a partner beneath their own descendant. A self-FK cannot catch that — Postgres accepts A→B→A — and the payout walk climbs parents until it runs out, so a loop is a walk that never does.
+         */
+        patch: operations["AdminIbController_reassignParent"];
+        trace?: never;
+    };
+    "/v1/admin/ib/partners/{userId}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Suspend or reactivate a partner
+         * @description Suspension keeps the referral code and the tree and stops the earning. There is no delete: removing the row would orphan every client and partner attributed beneath them.
+         */
+        patch: operations["AdminIbController_setActive"];
+        trace?: never;
+    };
     "/v1/admin/ib-levels": {
         parameters: {
             query?: never;
@@ -728,7 +808,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Renumber the ladder
+         * @description Takes every existing level exactly once, in the order they should appear, and renumbers them 1..n. Partner placements are remapped in the same transaction, so a partner keeps the rung they were placed on.
+         */
+        patch: operations["AdminIbLevelsController_reorder"];
         trace?: never;
     };
     "/v1/admin/ib-levels/{level}": {
@@ -1768,6 +1852,8 @@ export interface components {
             country?: string;
             /** @example +1234567890 */
             phone?: string;
+            /** @example K7M2PQR9 */
+            referralCode?: string;
         };
         RegistrationResponseDto: {
             /** @example Registration successful. Please check your email to verify your account. */
@@ -2013,6 +2099,18 @@ export interface components {
             /** @description The reviewer's own words, appended to the label. */
             note?: string;
         };
+        ChangeIbLevelDto: {
+            /** @description Must be an ENABLED level. */
+            level: number;
+        };
+        ReassignIbParentDto: {
+            /** @description The new parent partner, or null to make them a direct partner. */
+            parentIbUserId: string | null;
+        };
+        SetIbActiveDto: {
+            /** @description False suspends: the referral code and the tree are kept, the earning stops. There is no delete — removing the row would orphan every partner beneath them. */
+            active: boolean;
+        };
         IbLevelDto: {
             /**
              * @description 1 is closest to the broker; higher sits further down.
@@ -2066,6 +2164,16 @@ export interface components {
             rateValue?: string;
             maxDirectPartners?: number | null;
             enabled?: boolean;
+        };
+        ReorderIbLevelsDto: {
+            /**
+             * @description Current level numbers, in the order they should now appear.
+             * @example [
+             *       2,
+             *       1
+             *     ]
+             */
+            order: number[];
         };
         KycFieldConfigDto: {
             /** @example f-1 */
@@ -2565,7 +2673,7 @@ export interface components {
         RejectionReasonResponseDto: {
             id: string;
             /** @enum {string} */
-            context: "kyc" | "withdrawal";
+            context: "kyc" | "withdrawal" | "partner";
             label: string;
             /** Format: date-time */
             createdAt: string;
@@ -3739,6 +3847,101 @@ export interface operations {
             };
         };
     };
+    AdminIbController_listPartners: {
+        parameters: {
+            query: {
+                page: string;
+                limit: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminIbController_changeLevel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeIbLevelDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbAccountDto"];
+                };
+            };
+        };
+    };
+    AdminIbController_reassignParent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReassignIbParentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbAccountDto"];
+                };
+            };
+        };
+    };
+    AdminIbController_setActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetIbActiveDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbAccountDto"];
+                };
+            };
+        };
+    };
     AdminIbLevelsController_list: {
         parameters: {
             query?: never;
@@ -3777,6 +3980,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IbLevelDto"];
+                };
+            };
+        };
+    };
+    AdminIbLevelsController_reorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderIbLevelsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbLevelDto"][];
                 };
             };
         };
