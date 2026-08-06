@@ -202,21 +202,37 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
   const closeMobile = () => setMobileOpen(false);
 
   /*
-   * The sidebar badge follows the KYC status, refetched per route so it cannot
-   * show 'submitted' after the user has just been approved on another tab.
+   * The sidebar badge follows the KYC status.
    *
    * NOT fetched until the email is verified. `/kyc/*` sits behind
    * `EmailVerifiedGuard`, so for an unverified client this request is a
-   * guaranteed 403 — and because `pathname` is in the key, it fired again on
-   * every single navigation. One client browsing the portal produced a steady
+   * guaranteed 403 — and while the pathname sat in the query key it fired again
+   * on every single navigation. One client browsing the portal produced a steady
    * stream of `403 EMAIL_NOT_VERIFIED` in the server log, which is noise that
    * buries real authorization failures.
    *
    * `enabled` rather than swallowing the error: the request was never
    * meaningful, so the right fix is not to make it.
    */
+  /*
+   * `['kyc-status']` — the SAME key the wizard uses, and no pathname in it.
+   *
+   * This read `['kyc', 'status', pathname]`, which made two problems out of one
+   * endpoint. The cache held a separate entry per URL, so the sidebar re-fetched
+   * on every navigation and could disagree with `/kyc` about the same answer:
+   * approve a submission and the wizard updated while the sidebar badge kept
+   * yesterday's status until the client happened to visit a URL it had not
+   * cached.
+   *
+   * The pathname was a remnant of the 403 flood described above — but the fix
+   * for that was the `enabled` guard alone. Keying on the path did not stop the
+   * request; it multiplied it.
+   *
+   * Sharing the key with `/kyc`, `/kyc/step/[step]` and `/kyc/submitted` also
+   * means one invalidation updates all four.
+   */
   const { data: kycStatus = 'not_started' } = useQuery({
-    queryKey: ['kyc', 'status', pathname],
+    queryKey: ['kyc-status'],
     queryFn: async () => {
       const res = await apiClient.get<{ status?: string }>('/kyc/status');
       return res.data?.status ?? 'not_started';

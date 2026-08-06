@@ -11,6 +11,7 @@ import Cookies from 'js-cookie';
 // no NEXT_PUBLIC_API_BASE_URL rather than silently falling back to localhost.
 import { API_BASE_URL } from '../env';
 import { clearKycDraft } from '../kyc-draft';
+import { clearWithdrawIntent } from '../withdraw-intent';
 // PER-APP, and logically part of the twin:config block below — see the note
 // there. It sits up here because an import cannot.
 import { LOGIN_PATH, loginPathFor } from '../return-to';
@@ -244,8 +245,14 @@ export function clearSession(): void {
    *
    * Here rather than at the call site, so "this session is over" means the same
    * thing however it ended.
+   *
+   * The withdrawal intent goes with it, for the same reason and one more: it
+   * carries an amount and a payout destination, which on a shared device is
+   * financial detail about the previous person, and a restored intent belonging
+   * to somebody else is not a form the next client should ever see.
    */
   clearKycDraft();
+  clearWithdrawIntent();
 }
 
 /**

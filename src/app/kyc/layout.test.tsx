@@ -32,6 +32,9 @@ vi.mock('@/lib/api', () => {
 const asUser = (emailVerified: boolean) => ({
   user: { id: 'u1', emailVerified },
   isLoading: false,
+  // `RequireAuth` reads this rather than `user === null`, so that an unreachable
+  // API is no longer indistinguishable from a dead session — see SessionState.
+  sessionState: 'signed-in' as const,
 });
 
 beforeEach(() => vi.clearAllMocks());
@@ -63,7 +66,7 @@ describe('KYC email-verification gate', () => {
   it('waits for the profile rather than redirecting on an unanswered question', async () => {
     // Redirecting while `/auth/me` is still in flight would bounce a verified
     // client on every cold load — the same visible bug by a different route.
-    useUser.mockReturnValue({ user: null, isLoading: true });
+    useUser.mockReturnValue({ user: null, isLoading: true, sessionState: 'loading' });
     renderWithProviders(
       <KycLayout>
         <div>step content</div>
@@ -116,7 +119,7 @@ describe('KYC email-verification gate', () => {
      * `user === null` after the profile query settles IS that state, and
      * `RequireAuth` is the one place in the app that can tell.
      */
-    useUser.mockReturnValue({ user: null, isLoading: false });
+    useUser.mockReturnValue({ user: null, isLoading: false, sessionState: 'signed-out' });
     renderWithProviders(
       <KycLayout>
         <div>step content</div>

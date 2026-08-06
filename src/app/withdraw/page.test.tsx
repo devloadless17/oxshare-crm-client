@@ -54,6 +54,15 @@ const WALLETS = [
 ];
 
 beforeEach(() => {
+  /*
+   * A part-finished withdrawal now survives in `sessionStorage` so a refresh on
+   * the confirm step does not strand the client with a code the server can no
+   * longer accept (lib/withdraw-intent.ts). jsdom shares one storage across the
+   * whole file, so without this a test that reaches `confirm` hands the NEXT
+   * test a form already on step two — which fails as "no Continue button" and
+   * reads like a broken render rather than leaked state.
+   */
+  window.sessionStorage.clear();
   vi.clearAllMocks();
   getWallets.mockResolvedValue(WALLETS);
   requestWithdrawal.mockResolvedValue({ id: 'tx1', state: 'pending' });

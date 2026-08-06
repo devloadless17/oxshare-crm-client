@@ -33,11 +33,34 @@ import { AuthShell } from '@/components/auth/auth-shell';
  * backstop for the case the proxy cannot see, where the cookie and the session
  * disagree.
  */
+/**
+ * The `<Suspense>` is required, not stylistic.
+ *
+ * `useSearchParams()` opts a component into client-side rendering, and Next
+ * fails `next build` on a page that calls it outside a Suspense boundary
+ * ("missing-suspense-with-csr-bailout"). This page builds today only because
+ * `app/layout.tsx` is `async` and reads `headers()` for the CSP nonce, which
+ * makes the whole tree dynamic and suppresses the check — so moving the nonce
+ * anywhere else would break the build on the two busiest pages in the portal,
+ * and the error would point at the layout rather than at either of them.
+ *
+ * `reset-password` and `verify-email` already wrap theirs; this brings the pair
+ * that did not into line. `RedirectIfAuthenticated` calls `useSearchParams()`
+ * too, so the boundary has to sit outside it rather than around `LoginForm`.
+ */
 export default function LoginPage() {
   return (
-    <RedirectIfAuthenticated>
-      <LoginForm />
-    </RedirectIfAuthenticated>
+    <React.Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">
+          {t('common.loadingEllipsis')}
+        </div>
+      }
+    >
+      <RedirectIfAuthenticated>
+        <LoginForm />
+      </RedirectIfAuthenticated>
+    </React.Suspense>
   );
 }
 
@@ -113,8 +136,18 @@ function LoginForm() {
        * attacker's page in the instant after they typed their password. It
        * resolves the value and refuses anything that is not a same-origin path.
        */
+      /*
+       * `router.refresh()` used to follow this line and has been removed.
+       *
+       * It re-fetches SERVER components for the CURRENT route while a navigation
+       * to a different one is already in flight — two renders racing, with the
+       * loser's work discarded. It was there to make the freshly signed-in
+       * session visible, and it never could: it does not touch the React Query
+       * cache, which is where the session lives. `refetchUser()` above is what
+       * actually does that job, which is why it is awaited before this line
+       * rather than fired alongside it.
+       */
       router.push(safeReturnTo(searchParams.get(RETURN_TO_PARAM)));
-      router.refresh();
     } catch (err: unknown) {
       setError(apiErrorMessage(err, t('auth.login.failed')));
 

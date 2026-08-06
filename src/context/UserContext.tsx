@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, startProactiveRefresh } from '@/lib/api/client';
 import { authApi } from '@/lib/api/auth';
 import { clearKycDraft } from '@/lib/kyc-draft';
+import { clearWithdrawIntent } from '@/lib/withdraw-intent';
 import { announceSessionEvent, onSessionEvent } from '@/lib/session-channel';
 
 import type { components } from '@/lib/api/types.gen';
@@ -137,6 +138,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (event !== 'signed-out') return;
       queryClient.clear();
       clearKycDraft();
+      clearWithdrawIntent();
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       if (typeof window !== 'undefined') window.location.href = '/auth/login';
     });
   }, [queryClient]);
@@ -150,6 +153,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     // "no KYC data survives the logout" guarantee this function claims was not
     // true of the one place that data actually sat. See lib/kyc-draft.ts.
     clearKycDraft();
+    // Same reasoning: it holds an amount and a payout destination.
+    clearWithdrawIntent();
     // Every other tab, before this one navigates away and stops being able to.
     announceSessionEvent('signed-out');
     // A HARD navigation, deliberately. `queryClient.clear()` drops the cache but

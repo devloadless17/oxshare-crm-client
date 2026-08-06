@@ -18,10 +18,25 @@ import { Button } from '@/components/ui/button';
  * the first.
  */
 export default function RegisterPage() {
+  /*
+   * The `<Suspense>` is required by `RedirectIfAuthenticated`, which calls
+   * `useSearchParams()`. Next fails `next build` on that outside a boundary; this
+   * page only builds today because `app/layout.tsx` reads `headers()` and makes
+   * the tree dynamic, so the requirement is suppressed rather than met. See the
+   * longer note on `app/auth/login/page.tsx`.
+   */
   return (
-    <RedirectIfAuthenticated>
-      <RegisterForm />
-    </RedirectIfAuthenticated>
+    <React.Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">
+          {t('common.loadingEllipsis')}
+        </div>
+      }
+    >
+      <RedirectIfAuthenticated>
+        <RegisterForm />
+      </RedirectIfAuthenticated>
+    </React.Suspense>
   );
 }
 
@@ -35,6 +50,23 @@ function RegisterForm() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
+
+  /*
+   * The post-registration redirect, held so unmounting cancels it.
+   *
+   * A `setTimeout` that calls `router.push` outlives the component that started
+   * it. Registering and then navigating anywhere within three seconds — to sign
+   * in, to the home mark, via the back button — dropped the client back on
+   * /auth/login from wherever they had reached, with nothing on screen
+   * explaining it. React never warns about this; the navigation simply happens.
+   */
+  const redirectTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +92,16 @@ function RegisterForm() {
         res.message || 'Registration successful! Please check your email to verify your account.',
       );
 
-      setTimeout(() => {
+      /*
+       * Tracked so it can be cancelled — see the cleanup effect below.
+       *
+       * Unreferenced, this fired three seconds later wherever the client had got
+       * to: click "sign in" or the OxShare mark within that window and you were
+       * yanked back to /auth/login from the page you had just opened. The three
+       * seconds exist to let somebody read the "check your email" message, not
+       * to seize the navigation afterwards.
+       */
+      redirectTimer.current = setTimeout(() => {
         router.push('/auth/login');
       }, 3000);
     } catch (err: unknown) {

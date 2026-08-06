@@ -290,6 +290,12 @@ export const messages = {
   'withdraw.otpHint':
     'The code is tied to this exact amount and destination. Change either and you will need a new one.',
   'withdraw.needOtp': 'Enter the 6-digit code from your email.',
+  // Shown when a refresh is resumed rather than restarted. Says the code still
+  // works, because the previous behaviour taught clients the opposite: the form
+  // reset, the emailed code stopped being accepted, and nothing connected the
+  // two.
+  'withdraw.restoredNotice':
+    'We kept this withdrawal from before you reloaded, so the code already in your email still works.',
   'withdraw.otpSendFailed': 'Could not send the confirmation code. Please try again.',
   'withdraw.editDetails': 'Change amount or destination',
   'common.notPermittedTitle': 'Not available on your account',
@@ -311,6 +317,18 @@ export const messages = {
   'session.unreachableBody':
     'Your session is still active — we could not contact the server. Check your connection and try again.',
   'session.retry': 'Try again',
+  // ── The framework's error surfaces (app/error.tsx, app/not-found.tsx) ──────
+  // This portal had none, so any render throw or mistyped URL landed on Next's
+  // unbranded default — no chrome, no navigation, no way back — at exactly the
+  // moment somebody is moving money or verifying their identity.
+  'error.title': 'Something went wrong',
+  'error.body':
+    'This screen failed to load. Trying again often clears it; if it does not, quote the reference below to support.',
+  // Says the money is fine, because that is the first thing a client wonders
+  // when a broker's portal shows them an error.
+  'error.backToDashboard': 'Back to dashboard',
+  'notFound.title': 'Page not found',
+  'notFound.body': 'That address does not match anything in the portal.',
   // Generic on purpose, mirroring what the API answers: it must not confirm
   // whether an account exists for the address the caller typed.
   'auth.verify.resendSent':

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/render';
 import { RequireAuth } from './require-auth';
 
@@ -43,7 +44,11 @@ function renderGate() {
 
 describe('RequireAuth', () => {
   it('renders the private tree for a confirmed session', () => {
-    useUser.mockReturnValue({ user: { id: 'u1', emailVerified: true }, isLoading: false });
+    useUser.mockReturnValue({
+      user: { id: 'u1', emailVerified: true },
+      isLoading: false,
+      sessionState: 'signed-in',
+    });
     renderGate();
 
     expect(screen.getByText(PRIVATE)).toBeInTheDocument();
@@ -53,7 +58,7 @@ describe('RequireAuth', () => {
   it('renders NOTHING private for a cookie the server does not honour', async () => {
     // The reported bug, stated as an assertion. `user === null` after the query
     // settles is what a forged, expired or revoked cookie looks like from here.
-    useUser.mockReturnValue({ user: null, isLoading: false });
+    useUser.mockReturnValue({ user: null, isLoading: false, sessionState: 'signed-out' });
     renderGate();
 
     expect(screen.queryByText(PRIVATE)).not.toBeInTheDocument();
@@ -70,7 +75,7 @@ describe('RequireAuth', () => {
      *
      * So: neither. Wait.
      */
-    useUser.mockReturnValue({ user: null, isLoading: true });
+    useUser.mockReturnValue({ user: null, isLoading: true, sessionState: 'loading' });
     renderGate();
 
     expect(screen.queryByText(PRIVATE)).not.toBeInTheDocument();
@@ -78,7 +83,7 @@ describe('RequireAuth', () => {
   });
 
   it('says what it is doing, for a screen reader too', () => {
-    useUser.mockReturnValue({ user: null, isLoading: true });
+    useUser.mockReturnValue({ user: null, isLoading: true, sessionState: 'loading' });
     renderGate();
 
     // A bare spinner tells someone using a screen reader nothing, and the
@@ -89,7 +94,7 @@ describe('RequireAuth', () => {
   it('remembers where the visitor was going', async () => {
     // Landing every bounced client on /dashboard threw away their intent. A
     // session that expires mid-task should resume it, not restart it.
-    useUser.mockReturnValue({ user: null, isLoading: false });
+    useUser.mockReturnValue({ user: null, isLoading: false, sessionState: 'signed-out' });
     renderGate();
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith(expect.stringContaining('next=')));
@@ -136,12 +141,75 @@ describe('RequireAuth — the verified-email routes', () => {
 
   it('lets a verified client through a gated route', async () => {
     usePathname.mockReturnValue('/withdraw');
-    useUser.mockReturnValue({ user: { id: 'u1', emailVerified: true }, isLoading: false });
+    useUser.mockReturnValue({
+      user: { id: 'u1', emailVerified: true },
+      isLoading: false,
+      sessionState: 'signed-in',
+    });
     renderGate();
 
     // The regression this whole family of gates keeps re-learning: redirecting
     // the people who ARE allowed. It has happened once already, on /kyc.
     expect(screen.getByText(PRIVATE)).toBeInTheDocument();
     await waitFor(() => expect(replace).not.toHaveBeenCalled());
+  });
+});
+
+/**
+ * An API that did not answer is not a client who is signed out.
+ *
+ * This gate read `!isLoading && user === null`, and a 500, a timeout or one
+ * dropped request produced exactly that — so an offline moment on the FIRST
+ * `/auth/me` of a page load redirected a signed-in client to the sign-in
+ * screen. It is reachable mid-KYC, where the same code path also used to wipe
+ * the half-filled form.
+ *
+ * The distinction has to be asserted from BOTH sides, because a fix that simply
+ * stopped redirecting would be worse than the bug: it would paint the private
+ * tree over a profile the portal does not have.
+ */
+describe('RequireAuth — an unreachable API', () => {
+  const unreachable = { user: null, isLoading: false, sessionState: 'unreachable' as const };
+
+  it('does NOT send the client to sign in', async () => {
+    useUser.mockReturnValue({ ...unreachable, refetchUser: vi.fn() });
+    renderGate();
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    // The load-bearing assertion. Redirecting here is the defect.
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('does NOT render the private tree either', async () => {
+    useUser.mockReturnValue({ ...unreachable, refetchUser: vi.fn() });
+    renderGate();
+
+    await screen.findByRole('alert');
+    expect(screen.queryByText(PRIVATE)).not.toBeInTheDocument();
+  });
+
+  it('says the session is intact, and offers a retry that re-asks', async () => {
+    const refetchUser = vi.fn();
+    useUser.mockReturnValue({ ...unreachable, refetchUser });
+    renderGate();
+
+    // Telling the client their session is FINE is the half that stops them
+    // trying to sign in again — which on the same bad connection fails too, and
+    // then meets the login rate limit.
+    await userEvent.click(await screen.findByRole('button', { name: /try again/i }));
+    expect(refetchUser).toHaveBeenCalledTimes(1);
+  });
+
+  it('still redirects when the API actually SAID no', async () => {
+    useUser.mockReturnValue({
+      user: null,
+      isLoading: false,
+      sessionState: 'signed-out',
+      refetchUser: vi.fn(),
+    });
+    renderGate();
+
+    await waitFor(() => expect(replace).toHaveBeenCalled());
+    expect(String(replace.mock.calls[0]?.[0])).toContain('/auth/login');
   });
 });

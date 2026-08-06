@@ -9,6 +9,7 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { walletApi, type Wallet } from '@/lib/api/wallet';
 import { paymentsApi } from '@/lib/api/payments';
 import { newIdempotencyKey } from '@/lib/api/client';
+import { clearWithdrawIntent, readWithdrawIntent, saveWithdrawIntent } from '@/lib/withdraw-intent';
 import { formatMoney, isZeroMoney } from '@/lib/money';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,6 +90,60 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
    */
   const idempotencyKey = React.useRef<string | null>(null);
 
+  /*
+   * Restore a withdrawal the client was part-way through — see lib/withdraw-intent.ts.
+   *
+   * A refresh on the confirm step used to drop back to `details` with every
+   * field cleared, which sounds like lost typing and is worse: the code already
+   * in their inbox is bound by HMAC to the intent it was issued for, so
+   * re-entering the same amount mints a NEW intent and the emailed code can
+   * never be accepted. They type the six digits they were sent, are told they
+   * are wrong, and nothing explains it.
+   *
+   * Restoring the intent makes that code valid again. Restoring the idempotency
+   * key with it is the money-path half: without it a client who submitted, lost
+   * the response, and reloaded would submit again under a new key, and the
+   * server would correctly treat that as a SECOND withdrawal.
+   *
+   * In an effect rather than a lazy `useState` initialiser, because
+   * `sessionStorage` does not exist during the server render and reading it in
+   * an initialiser is a hydration mismatch — the same reasoning, and the same
+   * exemption, as the KYC draft restore: this IS the case the rule's own docs
+   * allow — synchronising React state with an external system that the server
+   * render cannot read.
+   */
+  React.useEffect(() => {
+    const saved = readWithdrawIntent();
+    if (!saved) return;
+
+    /*
+     * The stored currency has to still be one this client can withdraw. It came
+     * from `sessionStorage`, so it is not trustworthy input, and a wallet can
+     * empty between the two visits. Restoring a currency absent from `fundable`
+     * would put the select on a value it does not offer — and on the confirm
+     * step, where the field is locked and cannot be corrected.
+     */
+    const currencyStillFundable = fundable.find((w) => w.currency === saved.currency);
+    if (!currencyStillFundable) {
+      clearWithdrawIntent();
+      return;
+    }
+
+    /* eslint-disable react-hooks/set-state-in-effect -- see note above */
+    setCurrency(currencyStillFundable.currency);
+    setAmount(saved.amount);
+    setDestination(saved.destination);
+    setOtpRequired(saved.otpRequired);
+    idempotencyKey.current = saved.idempotencyKey;
+    setStep('confirm');
+    setOtpNotice(t('withdraw.restoredNotice'));
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // `fundable` is derived from props and stable for the life of this form;
+    // this restore must run once, on mount, and never re-run over what the
+    // client has since typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /**
    * The withdrawal, exactly as both the code request and the submission see it.
    *
@@ -125,6 +180,18 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
       setOtpRequired(required);
       setOtpNotice(message);
       setStep('confirm');
+      /*
+       * The intent begins HERE, not at submit — the server has just bound a code
+       * to it. Minting the idempotency key at the same moment is what lets it be
+       * persisted alongside, so a client who submits and loses the response can
+       * reload and retry as the SAME withdrawal rather than a second one.
+       */
+      idempotencyKey.current ??= newIdempotencyKey();
+      saveWithdrawIntent({
+        ...intent(),
+        idempotencyKey: idempotencyKey.current,
+        otpRequired: required,
+      });
     } catch (err: unknown) {
       setError(apiErrorMessage(err, t('withdraw.otpSendFailed')));
     } finally {
@@ -147,6 +214,8 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
         { ...intent(), ...(otpRequired ? { otp } : {}) },
         idempotencyKey.current,
       );
+      // The withdrawal exists now; nothing left to resume.
+      clearWithdrawIntent();
       onDone();
     } catch (err: unknown) {
       /*
@@ -158,6 +227,17 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
        * never complete the withdrawal they are entitled to.
        */
       idempotencyKey.current = null;
+      /*
+       * And drop the PERSISTED copy with it, for the same reason.
+       *
+       * Restoring a key the server has already answered under would collide the
+       * corrected retry with the cached failure, and the client could never
+       * complete a withdrawal they are entitled to. Losing the restore on a
+       * refused code is the safe side of that trade: the form is still on
+       * screen, and a refresh from here starts cleanly rather than resuming into
+       * a poisoned key.
+       */
+      clearWithdrawIntent();
       setOtp('');
       setError(apiErrorMessage(err, t('withdraw.failed')));
     } finally {
@@ -168,6 +248,10 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
   /** Back to step one — the only way to change a locked field. */
   const editDetails = () => {
     setStep('details');
+    // Leaving the confirm step abandons the intent the code was bound to, so the
+    // stored copy would restore a withdrawal the client has just chosen to
+    // change.
+    clearWithdrawIntent();
     // The code was bound to the OLD intent; keeping it on screen would invite
     // the client to submit it against a changed withdrawal and be refused for a
     // reason the message cannot explain well.

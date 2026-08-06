@@ -172,7 +172,21 @@ export default function KycStepPage() {
       form.append('file', file);
       form.append('field', field);
       await api.post<{ message?: string }>('/kyc/upload', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        /*
+         * `undefined`, never `'multipart/form-data'` — the exact thing
+         * `lib/api/account.ts` records as a mistake, made here anyway.
+         *
+         * A multipart body needs a `boundary` parameter that only the browser
+         * knows. Naming the type by hand emits the header WITHOUT one, and the
+         * server cannot parse the body. Deleting the header lets the browser
+         * write both halves; the axios instance's default JSON content type is
+         * what has to be got out of the way.
+         *
+         * This is the identity-document upload, so the failure it produces is a
+         * client who cannot complete KYC — and the request looks correct in the
+         * network tab, which is why it survived.
+         */
+        headers: { 'Content-Type': undefined },
         onUploadProgress: (e) => {
           // `total` is absent on some proxies and in some browsers; without it a
           // percentage would be a guess, so leave the bar where it is rather
