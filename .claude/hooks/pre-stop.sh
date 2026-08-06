@@ -68,13 +68,20 @@ run_gate type-check
 run_gate lint
 run_gate format:check
 
-# Unit tests only where they are seconds rather than minutes. The backend suite is
-# Testcontainers with fileParallelism:false and takes minutes BY DESIGN — the money
-# tests must observe each other's concurrency. That belongs in CI, not in the path
-# of every "done".
-if [ "$is_backend" -ne 1 ]; then
-  run_gate test
-fi
+# NO TEST GATE IN THIS REPO.
+#
+# The portal's test suite was removed deliberately — every *.test.tsx, the e2e/
+# folder, and the vitest and playwright configs — so `npm run test` no longer
+# exists here and running it fails the hook with "Missing script: test" on every
+# stop, which reads as a broken gate rather than an absent one.
+#
+# This is a per-repo difference and not a template drift: the sibling copies in
+# `admin/` and `backend/` still run their suites and must keep doing so. Restore
+# the branch below if tests ever come back to the portal.
+#
+# What remains is the whole of this repo's automated protection: typecheck, lint
+# and format above, plus `npm run build`, `check:css` and `check:twins` run by
+# hand. Worth knowing when changing anything on the money screens.
 
 [ "$fail" -eq 0 ] && exit 0
 

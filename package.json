@@ -10,17 +10,11 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "type-check": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
     "gen:api-types": "openapi-typescript http://localhost:3001/api/docs-json -o src/lib/api/types.gen.ts",
+    "gen:api-types:contract": "openapi-typescript ../backend/openapi.json -o src/lib/api/types.gen.ts",
     "prepare": "husky",
     "check:twins": "./scripts/check-twins.sh",
-    "test:coverage": "vitest run --coverage",
-    "gen:api-types:contract": "openapi-typescript ../oxshare-crm-backend/openapi.json -o src/lib/api/types.gen.ts",
     "check:api-types": "./scripts/check-api-types.sh",
-    "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui",
-    "e2e:report": "playwright show-report",
     "check:css": "node scripts/check-css-classes.mjs"
   },
   "dependencies": {
@@ -45,28 +39,20 @@
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
-    "@testing-library/jest-dom": "^7.0.0",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.3",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^6.0.5",
-    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "husky": "^9.1.7",
-    "jsdom": "^30.0.1",
     "lint-staged": "^17.3.0",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.6",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "typescript-eslint": "^8.66.0",
-    "vitest": "^4.1.10"
+    "typescript-eslint": "^8.66.0"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

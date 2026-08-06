@@ -12,7 +12,6 @@ app: registration, email verification, KYC onboarding, wallet.
 
 ```
 src/app/auth/{login,register,forgot-password,reset-password,verify-email}/page.tsx
-src/app/{login,register,forgot-password,reset-password}/page.tsx   5-line redirect() stubs — KEEP
 src/app/kyc/{page,step/[step],submitted}/ · dashboard/ · wallet/ · accounts/
 src/components/kyc/                       DocumentUploader · DynamicStepRenderer · SelfieCamera
 src/components/                           async-boundary · backend-pending · query-provider ·
@@ -39,10 +38,17 @@ is handed, and nothing made that coupling visible. Claims are read where the tok
 known and the answer is authoritative — `/auth/me` — so the email gate lives in
 `app/kyc/layout.tsx`.
 
-**The top-level auth stubs are deliberate.** `/login`, `/register`, `/forgot-password` and
-`/reset-password` are 5-line `redirect()` files pointing at their `/auth/*` equivalents, because
-verification and reset emails already in inboxes contain those URLs. `lib/api/auth.ts` records
-the incident where an emailed link 404'd. Don't delete them.
+**The top-level auth stubs are GONE, and this is the known cost.** `/login`, `/register`,
+`/forgot-password` and `/reset-password` were 5-line `redirect()` files pointing at their
+`/auth/*` equivalents, and they existed because verification and reset emails already in inboxes
+contain those URLs — `lib/api/auth.ts` records the incident where an emailed link 404'd. They were
+removed on an explicit instruction to clean the folder structure, with that consequence stated
+first. So: **any verification or reset link sent before this change now 404s.** If support reports
+one, the fix is to restore the four files from git history, not to redirect at the edge.
+
+The `?next=` forwarding went with `/login`. Nothing else reads that parameter at the root, so a
+restored stub needs it back — `proxy.ts` writes it when it bounces a visitor, and dropping it
+downgrades "sign in and carry on" to "sign in and land on the dashboard".
 
 File naming is mixed and should converge on **kebab-case** (`components/kyc/*` is still
 PascalCase). `src/context/*Context.tsx` stays PascalCase, matching admin.
@@ -112,30 +118,13 @@ because the rotated cookies arrive on the response and the browser installs them
 The historical snake_case/camelCase asymmetry between the two APIs still exists on other fields
 and is frozen; it no longer applies to tokens, because there are none.
 
-### Mocking the API in a test
+### `api` is exported twice
 
-`src/lib/api/index.ts` exports `api` **both** as a named export and as the default,
-and pages use whichever the author reached for. So a `vi.mock` must supply both:
-
-```ts
-vi.mock('@/lib/api', () => {
-  const api = { get, post, admin: { getRoles } };
-  return { api, default: api };
-});
-```
-
-Mocking only `default` leaves the named `api` undefined. The page then throws on
-first use, its own `catch` swallows the TypeError, and you get a generic "failed to
-load" state — which reads as a broken query rather than a broken mock. That has cost
-real time twice.
-
-Two other traps worth knowing before writing a screen test:
-
-- **Await something the query renders**, not a header control. Headers usually render
-  during `loading`, so awaiting a header button asserts against an empty list.
-- **`required` inputs mean native validation blocks submit**, so a page's own
-  "please fill in everything" branch is unreachable through the UI. Assert "no
-  request was made" rather than a specific message.
+`src/lib/api/index.ts` exports `api` **both** as a named export and as the default, and pages use
+whichever the author reached for. Keep both. Anything that stubs or wraps the module has to supply
+both too — supplying only `default` leaves the named `api` undefined, the page throws on first
+use, its own `catch` swallows the TypeError, and what you see is a generic "failed to load" that
+reads as a broken query rather than a broken stub. That cost real time twice.
 
 ## Twin files
 
@@ -160,8 +149,19 @@ admin's.
 - The `sessionStorage` restore effect in `kyc/step/[step]/page.tsx` carries a reasoned
   `react-hooks/set-state-in-effect` exemption. Keep the comment and the disable — a lazy
   `useState` initialiser there would cause a hydration mismatch on a half-filled form.
-- `npm test` → Vitest, 155 tests. jsdom and testing-library **are** configured, so a screen can be
-  rendered and asserted on — `auth/login/page.test.tsx` and `kyc/layout.test.tsx` are the patterns.
+- **THIS REPO HAS NO TESTS, and that is deliberate.** All 291 of them were deleted on an explicit
+  instruction, along with `e2e/`, `src/test/`, `vitest.config.mts`, `playwright.config.ts` and
+  every test dependency. There is no `npm test` here. Do not add one back, or write a `*.test.tsx`,
+  without asking — a lone test file with no runner is worse than none.
+
+  What is left is the whole of the automated protection on a customer-facing money app:
+  `npm run type-check`, `npm run lint`, `npm run format:check` (the three the pre-stop hook runs),
+  plus `npm run build`, `check:css` and `check:twins` by hand. So a change to `/wallet`,
+  `/deposit`, `/withdraw` or the KYC gate is verified by reading and by running the app, and
+  nothing else. Weigh that before changing a balance path.
+
+  `admin/` and `backend/` are unaffected and still run their suites — 444 and 1001 tests. The
+  backend is where the money rules are actually enforced, and that is still covered.
 - The README is create-next-app boilerplate and says port 3000 for the wrong reasons. Ignore it.
 
 <!-- BEGIN:nextjs-agent-rules -->

@@ -72,21 +72,27 @@ fi
 # the client reading it and publishes the API surface to anyone who opens an
 # unfinished page. Admin's readers are the people who own those endpoints, so
 # the chips still earn their place there. Same props, same four call sites.
+# src/components/theme-toggle.tsx is delisted too, and deleted from this repo:
+# the account menu grew its own theme submenu (see layout/user-menu.tsx) and
+# the standalone toggle had no importer left. admin/ still uses and keeps its
+# copy — this is a portal-only removal, not shared drift.
+#
+# The three *.test.ts twins are gone from this list, not from the siblings.
+# The portal has no test suite any more, so those files do not exist HERE —
+# the loop below skips a missing file silently, which would have quietly
+# shrunk the comparison from 17 files to 14 with nothing saying so. Removed
+# explicitly instead. admin/ still has its copies and still compares them.
 TWINS=(
   src/lib/env.ts
-  src/lib/env.test.ts
   src/lib/api/errors.ts
-  src/lib/api/errors.test.ts
   src/hooks/use-resource.ts
   src/components/query-provider.tsx
   src/components/theme-provider.tsx
-  src/components/theme-toggle.tsx
   src/lib/utils.ts
   src/lib/money.ts
   src/lib/i18n/index.ts
   src/lib/i18n/locale-storage.ts
   src/components/locale-direction.tsx
-  src/lib/money.test.ts
   src/components/ui/input.tsx
   src/components/ui/label.tsx
   src/components/ui/select.tsx
