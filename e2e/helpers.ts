@@ -63,7 +63,41 @@ export async function signIn(
   await page.goto('/auth/login');
   await page.getByPlaceholder('you@example.com').fill(credentials.email);
   await page.locator('input[type="password"]').fill(credentials.password);
-  await page.getByRole('button', { name: /sign in/i }).click();
+
+  /*
+   * Watch the login response, not just the URL.
+   *
+   * `POST /auth/login` is capped at five per minute, which is correct and which
+   * a suite that signs in more than once WILL hit — especially while someone is
+   * iterating on a spec and re-running it. Waiting only on the URL turns that
+   * into a bare "Timeout 30000ms exceeded", which reads as "login is broken" and
+   * sends whoever sees it looking in the wrong place. It cost real time once
+   * already.
+   *
+   * So the status is captured and reported. A 429 is a fact about the harness,
+   * not about the product, and the message says so.
+   */
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (res) => res.url().includes('/api/auth/login') && res.request().method() === 'POST',
+      { timeout: 30_000 },
+    ),
+    page.getByRole('button', { name: /sign in/i }).click(),
+  ]);
+
+  if (response.status() === 429) {
+    throw new Error(
+      `Rate limited signing in as ${credentials.email}: POST /auth/login answered 429. ` +
+        'The cap is five per minute and it is not the thing under test — wait a minute and ' +
+        're-run, or reduce how many times this suite signs in.',
+    );
+  }
+  if (!response.ok()) {
+    throw new Error(
+      `Could not sign in as ${credentials.email}: POST /auth/login answered ${response.status()}.`,
+    );
+  }
+
   await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
 }
 

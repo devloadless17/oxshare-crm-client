@@ -97,6 +97,22 @@ export default defineConfig({
       name: 'mobile',
       use: { ...devices['Pixel 7'], storageState: STORAGE_STATE },
       dependencies: ['setup'],
+      /*
+       * Layout and KYC only. Auth MECHANICS run once, on chromium.
+       *
+       * Not a coverage decision — a rate-limit one, and the suite was losing to
+       * it. Login is capped at five per minute and registration at ten per hour
+       * PER IP, both correctly. Running the auth specs under two projects
+       * doubled every login and every registration, so a full run exhausted the
+       * caps and failed nine tests that each pass on their own. A suite that
+       * only goes green in isolation is one people stop believing.
+       *
+       * What is lost is small and deliberate: whether a session survives a
+       * refresh, or whether registration lands on verify-email, is not a
+       * question about viewport width. What mobile is FOR — the drawer, the KYC
+       * capture flow, a 393px layout — still runs here in full.
+       */
+      testIgnore: /(auth-session|account-security|emailed-links)\.spec\.ts/,
     },
   ],
 
