@@ -517,6 +517,25 @@ apiClient.interceptors.response.use(
        */
       let outcome: RefreshOutcome = 'dead';
 
+      /*
+       * On a public page there is nothing to renew, so do not ask.
+       *
+       * `UserContext` asks `/auth/me` on mount everywhere, including
+       * `/auth/login`, `/auth/register` and `/verify-email/pending`, and a
+       * signed-out visitor's 401 there is the correct answer to "is anyone
+       * here". Answering it with a real `POST /auth/refresh` meant TWO
+       * guaranteed-to-fail requests on every cold load of the most-visited pages
+       * in the portal — visible in the API log as a `/auth/me 401` immediately
+       * followed by a `/auth/refresh 401 SESSION_REVOKED`, over and over.
+       *
+       * It is not only noise: that route is throttled at 20/min, and a shared
+       * office or mobile-carrier IP reaches that on ordinary traffic. The admin
+       * console already skips it this way.
+       */
+      if (typeof window !== 'undefined' && isPublicPath(window.location.pathname)) {
+        return Promise.reject(error);
+      }
+
       if (!originalRequest._retry) {
         originalRequest._retry = true;
         outcome = await refreshPortalSession();
