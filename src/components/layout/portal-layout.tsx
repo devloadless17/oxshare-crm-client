@@ -252,8 +252,22 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Sidebar */}
+      {/*
+        `transition-[width,transform]`, not `transition-all`.
+
+        Two properties actually move here: the WIDTH on desktop collapse, and
+        the TRANSFORM on the mobile drawer. `transition-all` animated those and
+        also every colour on the panel — so switching theme with the sidebar on
+        screen faded the background over 300ms while the rest of the page
+        changed instantly, and every hover inside it was competing with a
+        300ms transition it did not ask for.
+
+        `motion-slide` keeps the slide alive under `prefers-reduced-motion` —
+        see the note in globals.css. Snapping between 16rem and 5rem does not
+        read as the same panel getting narrower; it reads as a replacement.
+      */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col border-r border-border bg-card text-card-foreground transition-all duration-300 ${
+        className={`motion-slide fixed top-0 bottom-0 left-0 z-50 flex flex-col border-r border-border bg-card text-card-foreground transition-[width,transform] duration-300 ease-in-out ${
           collapsed ? 'w-20' : 'w-64'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
@@ -428,7 +442,14 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
          * beneath the client's name measured 394px inside a 361px space, with
          * `truncate` applied and doing nothing.
          */
-        className={`flex min-w-0 flex-1 flex-col transition-all duration-300 ${
+        /*
+         * The content pane's left inset tracks the sidebar's width, so the two
+         * must animate over the SAME duration and easing or the content visibly
+         * lags behind the panel it is supposed to be attached to. Only
+         * `padding` moves here — `transition-all` was also animating the
+         * background on a theme switch.
+         */
+        className={`motion-slide flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-in-out ${
           collapsed ? 'lg:pl-20' : 'lg:pl-64'
         }`}
       >

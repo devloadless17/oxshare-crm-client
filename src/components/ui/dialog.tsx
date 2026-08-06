@@ -6,11 +6,11 @@
  * money actions — that has no admin equivalent. If admin grows one, copy this
  * and add the path to scripts/check-twins.sh; never import across repos.
  *
- * Only ENTER animations are used. `globals.css` hand-defines the small
- * `animate-in` set this product needs rather than pulling in
- * `tailwindcss-animate`, and it has no `animate-out` counterpart — so an exit
- * class here would be a className that resolves to nothing, which is exactly
- * what `npm run check:css` exists to catch.
+ * `globals.css` hand-defines the small `animate-in` / `animate-out` sets this
+ * product needs rather than pulling in `tailwindcss-animate`. For a while only
+ * the enter half existed, so an exit class here would have been a className
+ * resolving to nothing — which `npm run check:css` catches. The exit half is
+ * there now; check that file before adding a modifier this one does not define.
  */
 
 import * as React from 'react';
@@ -31,7 +31,11 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/60 backdrop-blur-xs animate-in fade-in-0',
+      'fixed inset-0 z-50 bg-black/60 backdrop-blur-xs',
+      // Exit as well as enter. Radix holds the node mounted until the
+      // animation ends, so the scrim fades out with the panel instead of
+      // snapping and leaving the page looking like it flashed.
+      'animate-in fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
       className,
     )}
     {...props}
@@ -50,7 +54,13 @@ const DialogContent = React.forwardRef<
       className={cn(
         'fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2',
         'rounded-xl border border-border bg-card p-6 text-card-foreground shadow-lg',
-        'focus:outline-none animate-in fade-in-0 zoom-in-95',
+        'focus:outline-none',
+        // A dialog leaves the way it arrived — fading and shrinking back
+        // toward the point it grew from. Entering with a zoom and then
+        // vanishing reads as the dialog being dismissed by the app rather
+        // than closed by the person who clicked.
+        'animate-in fade-in-0 zoom-in-95',
+        'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
         className,
       )}
       {...props}

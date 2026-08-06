@@ -7,8 +7,10 @@
  *
  * NOT a twin file; see the note in ./dialog.tsx.
  *
- * Enter animation only, for the reason ./dialog.tsx records: `globals.css`
- * hand-defines the `animate-in` set this product uses and has no `animate-out`.
+ * It animates in AND out. The exit half arrived late — `globals.css` defined
+ * only an `animate-in` set — and the panel slid in and then vanished, which
+ * reads as breaking rather than closing. A one-way animation is worse than
+ * none: the first half sets an expectation the second half denies.
  */
 
 import * as React from 'react';
@@ -22,9 +24,22 @@ const SheetTrigger = DialogPrimitive.Trigger;
 const SheetClose = DialogPrimitive.Close;
 const SheetPortal = DialogPrimitive.Portal;
 
+/*
+ * Enter AND exit per side.
+ *
+ * The exit half was missing, and its absence was not neutral: the panel slid in
+ * and then vanished on close, which reads as the sheet breaking rather than
+ * closing. It also threw away the one thing the animation is for — showing that
+ * the panel went back to the edge it came from, rather than the page beneath it
+ * being replaced.
+ *
+ * Radix keeps the element mounted until the exit animation ends, so
+ * `data-[state=closed]` is all this needs.
+ */
 const SIDES = {
-  right: 'inset-y-0 right-0 h-full w-full max-w-sm border-l slide-in-from-right-full',
-  left: 'inset-y-0 left-0 h-full w-full max-w-sm border-r slide-in-from-left-full',
+  right:
+    'inset-y-0 right-0 h-full w-full max-w-sm border-l slide-in-from-right-full data-[state=closed]:slide-out-to-right-full',
+  left: 'inset-y-0 left-0 h-full w-full max-w-sm border-r slide-in-from-left-full data-[state=closed]:slide-out-to-left-full',
 } as const;
 
 const SheetOverlay = React.forwardRef<
@@ -34,7 +49,11 @@ const SheetOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/60 backdrop-blur-xs animate-in fade-in-0',
+      'fixed inset-0 z-50 bg-black/60 backdrop-blur-xs',
+      // Exit as well as enter. Radix holds the node mounted until the
+      // animation ends, so the scrim fades out with the panel instead of
+      // snapping and leaving the page looking like it flashed.
+      'animate-in fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
       className,
     )}
     {...props}
@@ -54,7 +73,10 @@ const SheetContent = React.forwardRef<
       ref={ref}
       className={cn(
         'fixed z-50 flex flex-col border-border bg-card text-card-foreground shadow-lg',
-        'focus:outline-none animate-in',
+        // `animate-out` is unconditional here and the DIRECTION is per side, in
+        // SIDES below — `data-[state=closed]:animate-out` alone would run the
+        // exit keyframe with no translate set, fading the panel in place.
+        'focus:outline-none animate-in data-[state=closed]:animate-out',
         SIDES[side],
         className,
       )}
