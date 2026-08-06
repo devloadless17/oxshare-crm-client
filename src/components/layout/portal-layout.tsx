@@ -382,9 +382,18 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-md sm:h-16 lg:px-8">
           {/* Left Controls */}
           <div className="flex items-center gap-3">
+            {/*
+              Labelled, because its only content is an icon.
+              A button whose child is an SVG has no accessible name at all: a
+              screen reader announces "button", and on a phone — where this is
+              the ONLY way to reach navigation — that leaves the whole portal
+              unreachable. `aria-expanded` says which way it will go.
+            */}
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
+              aria-label={t('nav.openMenu')}
+              aria-expanded={mobileOpen}
               className="flex lg:hidden h-9 w-9 items-center justify-center rounded-md border border-border text-foreground hover:bg-muted press focus-outline"
             >
               <Menu className="h-5 w-5" />
