@@ -151,6 +151,8 @@ export const messages = {
   // beats an empty cell, which reads as a failed load.
   'profile.sessionNoDetails': 'No device details recorded',
   'nav.openMenu': 'Open menu',
+  'nav.collapseSidebar': 'Collapse the sidebar',
+  'nav.expandSidebar': 'Expand the sidebar',
   'nav.closeMenu': 'Close menu',
   'nav.collapse': 'Collapse sidebar',
   'nav.expand': 'Expand sidebar',

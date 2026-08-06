@@ -269,6 +269,11 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => setCollapsed(!collapsed)}
+            /* Icon-only, so it needs a name: without one a screen reader
+               announces "button" and the control that widens the whole
+               navigation is unreachable to anyone not looking at it. */
+            aria-label={collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
+            aria-expanded={!collapsed}
             className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground press focus-outline"
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -384,7 +389,21 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
 
       {/* Main Content Area */}
       <div
-        className={`flex flex-1 flex-col transition-all duration-300 ${
+        /*
+         * `min-w-0` is load-bearing, not tidiness.
+         *
+         * A flex item's default `min-width: auto` means it refuses to shrink
+         * below its content — so one long unbreakable string anywhere inside
+         * (an email address, a wallet reference, a device name) widens this
+         * whole column past the viewport and the entire page scrolls sideways.
+         * It also silently disables every `truncate` further down, because
+         * truncation needs a bounded parent to truncate against.
+         *
+         * Found on /profile at 393px: the column measured 426px and the email
+         * beneath the client's name measured 394px inside a 361px space, with
+         * `truncate` applied and doing nothing.
+         */
+        className={`flex min-w-0 flex-1 flex-col transition-all duration-300 ${
           collapsed ? 'lg:pl-20' : 'lg:pl-64'
         }`}
       >
