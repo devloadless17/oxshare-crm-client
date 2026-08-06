@@ -36,6 +36,23 @@ export default function KycStepPage() {
   const [docType, setDocType] = useState('passport');
   const [addressDocType, setAddressDocType] = useState('utility_bill');
   const [uploadsState, setUploadsState] = useState<Record<string, boolean>>({});
+
+  /*
+   * Files chosen but not yet confirmed.
+   *
+   * Kept apart from `uploadsState`, which only records what actually reached
+   * the server. The two together are what let this step say something true: a
+   * client looking at their own photo was told "please upload your proof of
+   * address", because from here a pending preview and an empty tile are the
+   * same thing — and working out that "Use this" was the missing step cost
+   * real time.
+   */
+  const [pendingUploads, setPendingUploads] = useState<Record<string, boolean>>({});
+  const handlePendingChange = useCallback((field: string, hasPending: boolean) => {
+    setPendingUploads((prev) =>
+      prev[field] === hasPending ? prev : { ...prev, [field]: hasPending },
+    );
+  }, []);
   const [selfieUploaded, setSelfieUploaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -213,7 +230,10 @@ export default function KycStepPage() {
         await api.post<{ message?: string }>('/kyc/step', { step: 'personal', data: formData });
       } else if (slug === 'document') {
         if (!uploadsState['doc_front']) {
-          setError(t('kyc.needDocFront'));
+          // "Confirm it" when a photo is sitting there, "upload one" when none is.
+          setError(
+            pendingUploads['doc_front'] ? t('kyc.confirmChosenPhoto') : t('kyc.needDocFront'),
+          );
           setLoading(false);
           return;
         }
@@ -237,7 +257,12 @@ export default function KycStepPage() {
         await api.post<{ message?: string }>('/kyc/step', { step: 'selfie', data: {} });
       } else if (slug === 'address') {
         if (!uploadsState['address_proof']) {
-          setError(t('kyc.needAddressProof'));
+          // "Confirm it" when a photo is sitting there, "upload one" when none is.
+          setError(
+            pendingUploads['address_proof']
+              ? t('kyc.confirmChosenPhoto')
+              : t('kyc.needAddressProof'),
+          );
           setLoading(false);
           return;
         }
@@ -344,6 +369,7 @@ export default function KycStepPage() {
         onAddressDocTypeChange={setAddressDocType}
         onChange={set}
         onUpload={handleUpload}
+        onPendingChange={handlePendingChange}
       />
 
       {/* Global Error Banner */}

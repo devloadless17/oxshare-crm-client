@@ -21,6 +21,17 @@ export interface DocumentUploaderProps {
   hint?: string;
   uploaded?: boolean;
   onUpload: (field: string, file: File, onProgress?: (percent: number) => void) => Promise<void>;
+  /**
+   * Told when a file is chosen but NOT yet sent.
+   *
+   * The step needs this to tell two situations apart that look identical to it:
+   * nothing chosen at all, and a photo sitting right there waiting for one
+   * click. Both leave `uploadsState[field]` false, so without this the step's
+   * only honest message is "please upload" — which is what a client saw while
+   * looking at their own photo, and it cost them real time working out that
+   * "Use this" was the missing step.
+   */
+  onPendingChange?: (field: string, hasPending: boolean) => void;
   className?: string;
   /** The admin rejected this specific field — show it, don't just track it. */
   isErrored?: boolean;
@@ -89,6 +100,7 @@ export function DocumentUploader({
   hint,
   uploaded = false,
   onUpload,
+  onPendingChange,
   className,
   isErrored = false,
   capture = 'environment',
@@ -187,6 +199,18 @@ export function DocumentUploader({
     setFileName(null);
     setUploadError(null);
   }, []);
+
+  /*
+   * Report the pending transition from ONE place.
+   *
+   * `setPending` is called at four sites (chosen, cleared, uploaded, retaken)
+   * and threading the callback through each is how one of them gets missed —
+   * leaving the step convinced a file is still waiting when it is not, which is
+   * a worse failure than the one this fixes.
+   */
+  React.useEffect(() => {
+    onPendingChange?.(field, pending !== null);
+  }, [field, pending, onPendingChange]);
 
   const isUploaded = !!((preview || uploaded) && !pending);
   const openFilePicker = () => fileInputRef.current?.click();
@@ -290,6 +314,15 @@ export function DocumentUploader({
               <FileText className="h-6 w-6" />
             </div>
           )}
+          {/*
+            The LABEL stays visible while confirming, and that is the point.
+            This state used to show the filename and the quality question and
+            nothing else — so on a step with two tiles ("Primary Page (Page 1)"
+            and "Page 2 / Supporting Document") both previews looked identical,
+            and there was no way to tell which one you were about to confirm.
+            A camera filename like 8683608071553.jpg identifies nothing.
+          */}
+          <p className="text-xs font-bold text-foreground">{label}</p>
           <p className="max-w-[220px] truncate text-xs text-muted-foreground">{fileName}</p>
           <p className="text-xs font-semibold text-foreground">{t('kyc.checkBeforeSending')}</p>
           {tooSmall && (

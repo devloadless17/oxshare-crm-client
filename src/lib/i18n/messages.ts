@@ -507,6 +507,10 @@ export const messages = {
   'kyc.needDocFront': 'Please upload the front of your document.',
   'kyc.needSelfie': 'Please take or upload your selfie.',
   'kyc.needAddressProof': 'Please upload your proof of address.',
+  // Said when a photo is CHOSEN but not confirmed. "Please upload" is true of
+  // the system and useless to the person, who is looking at their own photo
+  // with the button that sends it a few pixels away.
+  'kyc.confirmChosenPhoto': 'Almost there — tap "Use this" under your photo to send it.',
 
   // ── KYC: capture and upload ───────────────────────────────────────────────
   'kyc.cameraDeniedTitle': 'Camera Access Required',

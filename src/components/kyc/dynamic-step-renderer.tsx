@@ -29,6 +29,8 @@ interface DynamicStepRendererProps {
   onAddressDocTypeChange: (type: string) => void;
   onChange: (key: string, value: string) => void;
   onUpload: (field: string, file: File) => Promise<void>;
+  /** Threaded to the uploader so the step can tell 'nothing chosen' from 'chosen, not confirmed'. */
+  onPendingChange?: (field: string, hasPending: boolean) => void;
 }
 
 export function DynamicStepRenderer({
@@ -43,6 +45,7 @@ export function DynamicStepRenderer({
   onAddressDocTypeChange,
   onChange,
   onUpload,
+  onPendingChange,
 }: DynamicStepRendererProps) {
   if (!currentStepConfig) return null;
 
@@ -213,6 +216,7 @@ export function DynamicStepRenderer({
             hint={t('kyc.passportHint')}
             uploaded={uploadsState['doc_front']}
             onUpload={onUpload}
+            onPendingChange={onPendingChange}
           />
         </div>
       ) : (
@@ -230,6 +234,7 @@ export function DynamicStepRenderer({
                 uploadsState={uploadsState}
                 onChange={onChange}
                 onUpload={onUpload}
+                onPendingChange={onPendingChange}
               />
             ))}
         </div>

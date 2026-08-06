@@ -197,3 +197,62 @@ test.describe('the KYC wizard', () => {
     expect(overflows).toBe(false);
   });
 });
+
+test.describe('choosing a document but not confirming it', () => {
+  test('says "confirm it", not "please upload"', async ({ page }) => {
+    /*
+     * Reported from the running app: "I'm getting please upload while I already
+     * uploaded." The client was looking at their own photo, with the button
+     * that sends it a few pixels away, being told to upload one.
+     *
+     * The step only knows what reached the SERVER, and a preview has not. So a
+     * pending file and an empty tile were indistinguishable from here, and the
+     * only message available was the one that was wrong. `onPendingChange`
+     * closes that gap.
+     */
+    await page.goto('/kyc/step/2');
+    await resetUploader(page);
+
+    await page.locator('input[type="file"]:not([capture])').first().setInputFiles({
+      name: 'passport.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG,
+    });
+    // Chosen, previewed, deliberately NOT confirmed.
+    await expect(page.getByRole('button', { name: /use this/i })).toBeVisible();
+
+    await page.getByRole('button', { name: /continue/i }).click();
+
+    await expect(page.getByText(/use this/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/please upload the front/i),
+      'told to upload a document that is already on screen',
+    ).toHaveCount(0);
+  });
+
+  test('keeps the field label visible while confirming', async ({ page }) => {
+    /*
+     * The address step has TWO tiles — "Primary Page (Page 1)" and "Page 2 /
+     * Supporting Document" — and the preview state dropped the label, leaving
+     * two identical cards showing a camera filename like 8683608071553.jpg.
+     * That is what made one upload look like a duplicate of the other.
+     */
+    await page.goto('/kyc/step/4');
+    await page.waitForLoadState('networkidle');
+
+    const tiles = page.locator('input[type="file"]:not([capture])');
+    if ((await tiles.count()) === 0) test.skip();
+
+    await tiles.first().setInputFiles({
+      name: 'bill.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG,
+    });
+
+    await expect(page.getByRole('button', { name: /use this/i }).first()).toBeVisible();
+    await expect(
+      page.getByText(/primary page/i).first(),
+      'the tile stopped saying which document it is for',
+    ).toBeVisible();
+  });
+});

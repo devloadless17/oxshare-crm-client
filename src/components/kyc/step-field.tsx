@@ -43,6 +43,7 @@ export function StepField({
   uploadsState,
   onChange,
   onUpload,
+  onPendingChange,
 }: {
   field: KycFieldConfig;
   slug: string;
@@ -52,6 +53,8 @@ export function StepField({
   uploadsState: Record<string, boolean>;
   onChange: (key: string, value: string) => void;
   onUpload: (field: string, file: File, onProgress?: (percent: number) => void) => Promise<void>;
+  /** Threaded to the uploader so the step can tell 'nothing chosen' from 'chosen, not confirmed'. */
+  onPendingChange?: (field: string, hasPending: boolean) => void;
 }) {
   // Selfie Live Camera Component
   if (field.name === 'selfie' || field.type === 'camera' || slug === 'selfie') {
@@ -88,6 +91,7 @@ export function StepField({
           uploaded={uploadsState[field.name]}
           isErrored={isErrored}
           onUpload={onUpload}
+          onPendingChange={onPendingChange}
         />
       </div>
     );
