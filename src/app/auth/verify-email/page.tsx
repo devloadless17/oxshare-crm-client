@@ -30,6 +30,26 @@ function VerifyEmailForm() {
   const [resendError, setResendError] = React.useState<string | null>(null);
   const [isResending, setIsResending] = React.useState(false);
 
+  /*
+   * One attempt per token, ever.
+   *
+   * The token is SINGLE-USE, and this effect had no guard — so React's
+   * development StrictMode, which mounts every component twice on purpose, ran
+   * it twice: the first call verified the account and consumed the token, the
+   * second found it already spent, got a 400, and overwrote the success with
+   * "verification failed". The client was verified and told they were not, which
+   * sends them back to request another link they do not need.
+   *
+   * A ref rather than state: it must not itself trigger a render, and it must
+   * survive the re-render that `setIsLoading` causes before the request returns.
+   * Keyed on the token so a genuinely different link still gets its own attempt.
+   *
+   * This is not only a development concern. Anything that loads the URL twice
+   * hits the same wall — a refresh, a restored tab, or a corporate mail scanner
+   * prefetching the link before the human clicks it.
+   */
+  const attempted = React.useRef<string | null>(null);
+
   React.useEffect(() => {
     async function executeVerification() {
       if (!token) {
@@ -50,6 +70,8 @@ function VerifyEmailForm() {
       }
     }
 
+    if (attempted.current === token) return;
+    attempted.current = token;
     void executeVerification();
   }, [token]);
 

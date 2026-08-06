@@ -91,3 +91,40 @@ test.describe('the verify-email waiting screen', () => {
     await expect(page.getByRole('button', { name: /resend/i })).toBeDisabled();
   });
 });
+
+test.describe('following a verification link', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test('verifies ONCE, even though the page mounts twice in development', async ({ page }) => {
+    /*
+     * The bug this catches was reported from the running app: "I got
+     * verification failed, but then I logged in and I was verified."
+     *
+     * The token is single-use and the effect had no guard, so React's
+     * StrictMode — which mounts every component twice on purpose — ran it
+     * twice. The first call verified the account and spent the token; the second
+     * found it spent, took a 400, and overwrote the success with "verification
+     * failed". The client was verified and told they were not, which sends them
+     * off to request a link they do not need.
+     *
+     * Asserted by COUNTING the requests rather than by reading the screen,
+     * because the screen is downstream of the defect: the page could be made to
+     * show success while still burning two tokens, and that would pass a
+     * text-based check while leaving the real problem in place.
+     */
+    const attempts: string[] = [];
+    page.on('request', (r) => {
+      // `/api/` matters: without it this also counts the page navigation to
+      // /auth/verify-email itself, so the document request looked like a second
+      // submission and the test failed on its own filter.
+      if (r.url().includes('/api/auth/verify-email')) attempts.push(r.method());
+    });
+
+    await page.goto('/auth/verify-email?token=e2e-single-use-check');
+    await page.waitForLoadState('networkidle');
+
+    expect(attempts.length, `the token was submitted ${attempts.length} times`).toBeLessThanOrEqual(
+      1,
+    );
+  });
+});
