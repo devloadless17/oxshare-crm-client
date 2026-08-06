@@ -32,12 +32,28 @@ export const depositsApi = {
    */
   async request(
     amount: string,
-    currency: 'USD' | 'USDT',
+    currency: string,
     method: DepositMethod,
+    /**
+     * Fund a live trading account instead of leaving the money in the wallet.
+     *
+     * The money still LANDS in the wallet either way — that is the CRM's ledger
+     * — and the API chains a transfer onto the named account when the operator
+     * confirms the payment. Omit for an ordinary wallet deposit.
+     */
+    destinationTradingAccountId?: string,
   ): Promise<DepositRequest> {
     const { data } = await apiClient.post<DepositRequest>(
       '/payments/deposits',
-      { amount, currency, method },
+      {
+        amount,
+        currency,
+        method,
+        // Omitted rather than sent as null when the client is funding the
+        // wallet: the field is optional on the API and an explicit null would
+        // rely on the validator treating the two the same.
+        ...(destinationTradingAccountId ? { destinationTradingAccountId } : {}),
+      },
       idempotent(newIdempotencyKey()),
     );
     return data;
