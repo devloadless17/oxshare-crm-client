@@ -460,12 +460,6 @@ function endDeadSession(): void {
    * wrong signal for the right question.
    */
   clearSession();
-  /*
-   * Tell the other tabs. Whichever tab notices first is the one that knows; the
-   * rest are sitting on a rendered portal with a dead session behind it and
-   * would only find out when somebody clicked something.
-   */
-  announceSessionEvent('signed-out');
   if (typeof window === 'undefined') return;
   /*
    * Nothing to evict anyone from: these pages are meant to work signed out.
@@ -483,6 +477,20 @@ function endDeadSession(): void {
    */
   if (isPublicPath(window.location.pathname)) return;
   if (window.location.pathname.startsWith(LOGIN_PATH)) return;
+
+  /*
+   * Tell the other tabs — but only now that we know this is a real eviction.
+   *
+   * Announcing ABOVE, before the public-path check, is what produced an
+   * infinite reload after signing out: every load of /auth/login answers 401 on
+   * `/auth/me`, which reaches this function, which announced — and the same
+   * document's own listener heard it and reloaded. `session-channel.ts` now
+   * ignores self-sent messages, and this ordering means a public page does not
+   * broadcast at all. Either alone would fix the loop; both are correct
+   * independently, and a broadcast from a page where nobody was signed in was
+   * never meaningful.
+   */
+  announceSessionEvent('signed-out');
   // A HARD navigation, deliberately, against @next/next's advice to use
   // router.push. The session is dead: a client-side push keeps the same JS
   // context alive, so the React Query cache, the user context and any

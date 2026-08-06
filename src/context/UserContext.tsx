@@ -7,6 +7,7 @@ import { authApi } from '@/lib/api/auth';
 import { clearKycDraft } from '@/lib/kyc-draft';
 import { clearWithdrawIntent } from '@/lib/withdraw-intent';
 import { announceSessionEvent, onSessionEvent } from '@/lib/session-channel';
+import { isPublicPath } from '@/lib/public-paths';
 
 import type { components } from '@/lib/api/types.gen';
 
@@ -81,7 +82,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       startProactiveRefresh();
       return res.data;
     },
-    retry: false,
+    /*
+     * A 401 is final; a transport failure gets two more goes.
+     *
+     * `retry: false` was right while the only outcomes were "signed in" and
+     * "signed out" — retrying a 401 just delays the redirect. Now that a
+     * transport failure has its own screen, retrying matters: without it a
+     * SINGLE dropped request paints "Cannot reach OxShare" over a working
+     * portal, and a request aborted by an ordinary navigation looks exactly
+     * like one.
+     *
+     * The 401 case must keep failing fast, or every signed-out visitor waits
+     * through two pointless retries before the sign-in form appears.
+     */
+    retry: (failureCount, error) => !isUnauthenticated(error) && failureCount < 2,
     staleTime: 5 * 60_000,
     /*
      * Re-ask when the client comes back to the tab.
@@ -139,8 +153,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       queryClient.clear();
       clearKycDraft();
       clearWithdrawIntent();
+      if (typeof window === 'undefined') return;
+      /*
+       * Already somewhere a signed-out visitor belongs — there is nothing to
+       * evict them from, and navigating would be a reload for no reason.
+       *
+       * The belt to `session-channel.ts`'s braces: that file drops a document's
+       * own announcements, which is what actually broke the reload loop. This
+       * makes the handler correct on its own terms too, so a future caller that
+       * broadcasts from a public page cannot resurrect it.
+       */
+      if (isPublicPath(window.location.pathname)) return;
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      if (typeof window !== 'undefined') window.location.href = '/auth/login';
+      window.location.href = '/auth/login';
     });
   }, [queryClient]);
 

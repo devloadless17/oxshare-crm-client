@@ -33,6 +33,23 @@ export const E2E_KYC_CLIENT = {
   password: 'client123',
 } as const;
 
+/**
+ * The client whose only job is to be SIGNED OUT.
+ *
+ * `logout` revokes every family for a user, not just the session presenting a
+ * token (R-3.3 — signing out on one device must not leave the others live). So
+ * a spec that drives a real sign-out on `E2E_CLIENT` destroys the session every
+ * later spec replays from `STORAGE_STATE`, and the run reports one logout
+ * failure followed by a dozen unrelated-looking auth failures.
+ *
+ * That is why the logout spec sat `fixme`d. It has its own identity now, and
+ * nothing else may sign in as this one.
+ */
+export const E2E_LOGOUT_CLIENT = {
+  email: 'e2e-logout@oxshare.com',
+  password: 'client123',
+} as const;
+
 /** Where each signed-in session is cached between specs. See `auth.setup.ts`. */
 export const STORAGE_STATE = 'e2e/.auth/client.json';
 export const KYC_STORAGE_STATE = 'e2e/.auth/kyc-client.json';

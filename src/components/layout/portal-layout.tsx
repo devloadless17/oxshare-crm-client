@@ -299,6 +299,11 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={closeMobile}
+            /* Icon-only, so it needs a name — the same reason the collapse
+               button above carries one, and it matters more here: this is the
+               only way out of the drawer on a phone, which is this portal's
+               primary device. Without it a screen reader announces "button". */
+            aria-label={t('nav.closeMenu')}
             className="flex lg:hidden h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground press focus-outline"
           >
             <X className="h-5 w-5" />
