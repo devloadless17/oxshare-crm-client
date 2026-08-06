@@ -1,8 +1,9 @@
 'use client';
 
-import Link from 'next/link';
-import { Wallet, ArrowDownRight, ArrowUpRight, ArrowRightLeft } from 'lucide-react';
+import { Wallet, ArrowRightLeft } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
+import { MoneyAction } from '@/components/kyc/money-action';
+import { useKycAccess } from '@/hooks/use-kyc-access';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { walletApi, type Wallet as WalletRecord } from '@/lib/api/wallet';
@@ -70,6 +71,7 @@ function BalanceCard({
 
 export default function WalletPage() {
   const wallets = useResource(['wallets'], (signal) => walletApi.getWallets(signal));
+  const kyc = useKycAccess();
 
   const byCurrency = new Map((wallets.data ?? []).map((w) => [w.currency, w]));
 
@@ -98,41 +100,53 @@ export default function WalletPage() {
               wallet={byCurrency.get(code)}
             >
               {/*
-                These are now the ONLY way into /deposit and /withdraw, which is
+                These are the ONLY way into /deposit and /withdraw, which is
                 deliberate: moving money is something a client decides while
                 looking at a balance, so the action belongs beside the number
                 rather than in a navigation rail two slots apart from it.
-
-                They were `<button>` elements with no `onClick` — a deposit
-                control on a wallet screen that did nothing at all when pressed.
-                `<Link>` is also the right element on its own terms: these
-                navigate, so they must be middle-clickable, keyboard-navigable
-                and openable in a new tab.
               */}
-              <Link
+              <MoneyAction
                 href="/deposit"
-                className="flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary-hover press focus-outline"
-              >
-                <ArrowDownRight className="h-4 w-4" aria-hidden="true" />{' '}
-                {code === 'USD' ? t('wallet.deposit') : t('wallet.depositUsdt')}
-              </Link>
+                icon="deposit"
+                label={code === 'USD' ? t('wallet.deposit') : t('wallet.depositUsdt')}
+                size="sm"
+                className="flex-1"
+              />
               {code === 'USD' ? (
-                <Link
+                <MoneyAction
                   href="/withdraw"
-                  className="flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-input bg-card px-3 text-xs font-semibold hover:bg-muted press focus-outline"
-                >
-                  <ArrowUpRight className="h-4 w-4" aria-hidden="true" /> {t('wallet.withdraw')}
-                </Link>
+                  icon="withdraw"
+                  label={t('wallet.withdraw')}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                />
+              ) : !kyc.approved ? (
+                /*
+                  Transfer has no route yet, but for a client who is not verified
+                  that is not the FIRST thing standing in their way — and telling
+                  them "coming soon" when the actual answer is "verify first"
+                  sends them away from the one thing they can act on. So while
+                  they are blocked, all three controls say the same thing.
+                */
+                <MoneyAction
+                  href="/transfer"
+                  icon="transfer"
+                  label={t('wallet.transfer')}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                />
               ) : (
-                // Transfer has no route and no endpoint. Rendered disabled and
-                // labelled rather than as a live-looking button, for the same
-                // reason the sidebar marks unbuilt entries: a control that
-                // accepts a click and does nothing reads as a broken product,
-                // not an unfinished one.
+                // Verified, and there is genuinely nothing behind this yet.
+                // Rendered disabled and labelled rather than as a live-looking
+                // button, for the same reason the sidebar marks unbuilt entries:
+                // a control that accepts a click and does nothing reads as a
+                // broken product, not an unfinished one.
                 <span
                   aria-disabled="true"
                   title={t('nav.comingSoonTitle', { label: t('wallet.transfer') })}
-                  className="flex-1 inline-flex h-9 cursor-not-allowed select-none items-center justify-center gap-1.5 rounded-lg border border-input bg-muted/40 px-3 text-xs font-semibold text-muted-foreground/70"
+                  className="flex-1 inline-flex h-8 cursor-not-allowed select-none items-center justify-center gap-1.5 rounded-md border border-input bg-muted/40 px-3 text-xs font-semibold text-muted-foreground/70"
                 >
                   <ArrowRightLeft className="h-4 w-4" aria-hidden="true" /> {t('wallet.transfer')}
                 </span>

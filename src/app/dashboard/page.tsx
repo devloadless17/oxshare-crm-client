@@ -1,15 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import {
-  LineChart,
-  Clock,
-  ArrowDownRight,
-  ArrowUpRight,
-  Plus,
-  ArrowRightLeft,
-  ShieldCheck,
-} from 'lucide-react';
+import { LineChart, Clock, ArrowDownRight, Plus, ArrowRightLeft, ShieldCheck } from 'lucide-react';
 import { WalletBalanceCards } from '@/components/dashboard/wallet-balance-cards';
+import { MoneyAction } from '@/components/kyc/money-action';
+import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 
 export const metadata: Metadata = {
@@ -42,28 +36,28 @@ export default function DashboardPage() {
             provider webhook CORE-06 was blocked on. Only the AUTOMATED flow was
             blocked; declaring a transfer and reconciling it by reference needs
             no third-party credential, and that is what it does now.
+
+            Through `MoneyAction` rather than as bare links, so these two make
+            the same verification decision as the pair on /wallet. They were
+            hand-styled anchors that navigated an unverified client straight to
+            a form the API had already decided to refuse.
           */}
-          <Link
-            href="/deposit"
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
-          >
-            <ArrowDownRight className="h-4 w-4" />
-            <span>{t('wallet.deposit')}</span>
-          </Link>
-          <Link
+          <MoneyAction href="/deposit" icon="deposit" label={t('wallet.deposit')} size="sm" />
+          <MoneyAction
             href="/withdraw"
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground hover:bg-muted focus-outline"
-          >
-            <ArrowUpRight className="h-4 w-4" />
-            <span>{t('wallet.withdraw')}</span>
-          </Link>
-          <Link
-            href="/accounts"
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-card px-4 text-xs font-semibold text-foreground hover:bg-muted focus-outline"
-          >
-            <Plus className="h-4 w-4" />
-            <span>{t('dashboard.newAccount')}</span>
-          </Link>
+            icon="withdraw"
+            label={t('wallet.withdraw')}
+            variant="outline"
+            size="sm"
+          />
+          {/* Not a money action — opening an account is not gated, so this is a
+              plain link wearing the button. */}
+          <Button asChild variant="outline" size="sm">
+            <Link href="/accounts">
+              <Plus className="h-4 w-4" />
+              <span>{t('dashboard.newAccount')}</span>
+            </Link>
+          </Button>
         </div>
       </div>
 
@@ -181,12 +175,12 @@ export default function DashboardPage() {
             {t('dashboard.noActivityBody')}
           </p>
           <div className="mt-5">
-            <Link
+            <MoneyAction
               href="/deposit"
-              className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-hover focus-outline"
-            >
-              {t('dashboard.firstDeposit')}
-            </Link>
+              icon="deposit"
+              label={t('dashboard.firstDeposit')}
+              size="sm"
+            />
           </div>
         </div>
       </div>

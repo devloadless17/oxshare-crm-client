@@ -58,6 +58,20 @@ fi
 # across both apps) and the token casing (the admin API answers accessToken, the
 # portal answers access_token — a frozen backend divergence). Listing it here
 # would make this check assert something untrue, so it is reviewed by hand.
+# NOT a twin any more, deliberately: src/components/ui/button.tsx.
+# It was one, and the portal has since removed the scale-on-press feedback from
+# the base class — press feedback in the client portal is colour only, decided
+# for the customer-facing app alone. Admin keeps its press effect. Listing it
+# here would report that divergence as drift on every run, which trains the
+# reader to ignore this check's output; the SHAPE of the file (variants, sizes,
+# asChild, the props interface) is still meant to match and is reviewed by hand.
+#
+# NOT a twin any more, deliberately: src/components/backend-pending.tsx.
+# It stopped rendering the endpoint names it is handed. `GET /platforms` is
+# internal vocabulary, and this is the CUSTOMER-facing app: it means nothing to
+# the client reading it and publishes the API surface to anyone who opens an
+# unfinished page. Admin's readers are the people who own those endpoints, so
+# the chips still earn their place there. Same props, same four call sites.
 TWINS=(
   src/lib/env.ts
   src/lib/env.test.ts
@@ -65,7 +79,6 @@ TWINS=(
   src/lib/api/errors.test.ts
   src/hooks/use-resource.ts
   src/components/query-provider.tsx
-  src/components/backend-pending.tsx
   src/components/theme-provider.tsx
   src/components/theme-toggle.tsx
   src/lib/utils.ts
@@ -74,7 +87,6 @@ TWINS=(
   src/lib/i18n/locale-storage.ts
   src/components/locale-direction.tsx
   src/lib/money.test.ts
-  src/components/ui/button.tsx
   src/components/ui/input.tsx
   src/components/ui/label.tsx
   src/components/ui/select.tsx

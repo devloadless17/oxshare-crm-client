@@ -199,7 +199,14 @@
 
   /* Every interactive element eases its color changes — hover, focus and
      theme switches feel soft by default, without per-component wiring.
-     Layout properties are deliberately excluded: only paint transitions. */
+     Layout properties are deliberately excluded: only paint transitions.
+
+     `transform` is NOT in this list, and that is load-bearing rather than an
+     omission. A `button:active { transform: scale(...) }` rule used to sit
+     directly below, and being a BASE rule it applied to every button in the
+     product — including ones whose own class list said nothing about a press
+     effect, which made it invisible when reading a component and impossible to
+     opt a single button out of. It is gone; press feedback is colour only. */
   a,
   button,
   input,
@@ -213,14 +220,7 @@
       background-color 150ms ease,
       border-color 150ms ease,
       box-shadow 150ms ease,
-      opacity 150ms ease,
-      transform 150ms ease;
-  }
-
-  /* Soft pressed feedback on real buttons */
-  button:active:not(:disabled),
-  [role='button']:active:not([aria-disabled='true']) {
-    transform: scale(0.985);
+      opacity 150ms ease;
   }
 
   /* Smooth page-level scrolling and anchor jumps */
@@ -245,36 +245,17 @@
   }
 
   /*
-   * The press feedback, for controls that cannot be `<Button>`.
+   * There was a `.press` utility here — a scale-on-press for controls that
+   * could not be `<Button>` — and it is gone deliberately.
    *
-   * `components/ui/button.tsx` owns this for every real button. A handful of
-   * affordances legitimately are not one — the eye toggle inside a password
-   * field, the sidebar collapse chevron, the mobile drawer close — because
-   * Button's height, padding and min-width fight a 16px icon sitting inside
-   * another control's box.
-   *
-   * They still have to FEEL the same. A press effect that some controls have
-   * and others do not reads as the ones without it being broken, which is the
-   * whole reason this class exists rather than each of them being left alone.
-   *
-   * Scaled harder than Button (0.90 against 0.97) because the movement has to
-   * be perceptible on something the size of an icon; the same 3% on a 16px
-   * target is invisible.
+   * It scaled by 0.90 while `components/ui/button.tsx` scaled by 0.97, so the
+   * same gesture moved two controls sitting next to each other by different
+   * amounts, and the class had drifted onto things that are not controls at all
+   * (an `<input>` on /auth/verify-email, plain text links). Press feedback in
+   * this product is now colour only, from `<Button>`'s own variants, and the
+   * few genuine non-Button affordances left — the password eye, the sidebar
+   * chevron, the drawer close — carry a hover colour and `focus-outline`.
    */
-  .press {
-    transition: transform 100ms;
-  }
-  .press:active {
-    transform: scale(0.9);
-  }
-  /* A scale is exactly the movement `prefers-reduced-motion` exists for. */
-  @media (prefers-reduced-motion: reduce) {
-    .press,
-    .press:active {
-      transition: none;
-      transform: none;
-    }
-  }
 }
 
 /* Custom Scrollbars */
@@ -363,6 +344,14 @@
   }
   .slide-in-from-right-2 {
     --tw-enter-translate-x: 0.5rem;
+  }
+  /* Edge panels (components/ui/sheet.tsx) travel their own width rather than a
+     fixed nudge, so the sheet starts fully off-screen at any breakpoint. */
+  .slide-in-from-left-full {
+    --tw-enter-translate-x: -100%;
+  }
+  .slide-in-from-right-full {
+    --tw-enter-translate-x: 100%;
   }
 }
 

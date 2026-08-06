@@ -363,13 +363,15 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
 
           {/* The only way to change a locked field. Re-entering step one clears
               the code, because it was bound to the previous intent. */}
-          <button
+          <Button
             type="button"
+            variant="link"
+            size="sm"
             onClick={editDetails}
-            className="text-[11px] font-semibold text-link hover:underline focus-outline rounded-sm"
+            className="h-auto justify-start p-0 text-[11px]"
           >
             {t('withdraw.editDetails')}
-          </button>
+          </Button>
         </div>
       )}
 

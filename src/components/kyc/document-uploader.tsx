@@ -13,6 +13,7 @@ import {
 import { apiErrorMessage } from '@/lib/api/errors';
 import { normaliseDocumentImage } from '@/lib/image-capture';
 import { t } from '@/lib/i18n';
+import { Button } from '@/components/ui/button';
 
 export interface DocumentUploaderProps {
   label: string;
@@ -340,21 +341,13 @@ export function DocumentUploader({
             </p>
           )}
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => void confirm()}
-              className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground focus-outline cursor-pointer"
-            >
+            <Button type="button" size="sm" onClick={() => void confirm()}>
               {t('kyc.useThisPhoto')}
-            </button>
-            <button
-              type="button"
-              onClick={retake}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-2 text-xs font-semibold text-foreground focus-outline cursor-pointer"
-            >
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={retake}>
               <RefreshCw className="h-3.5 w-3.5" />
               {t('kyc.chooseAnother')}
-            </button>
+            </Button>
           </div>
         </div>
       ) : isUploaded ? (
@@ -382,14 +375,10 @@ export function DocumentUploader({
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={retake}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-background/80 px-3 py-1.5 text-xs font-semibold text-foreground focus-outline cursor-pointer"
-          >
+          <Button type="button" variant="outline" size="sm" onClick={retake}>
             <RefreshCw className="h-3 w-3 text-muted-foreground" />
             <span>{t('kyc.replaceHint')}</span>
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3">
@@ -418,22 +407,14 @@ export function DocumentUploader({
               camera the only option; no `capture` at all buries it in a file
               browser. Neither alone satisfies the requirement. */}
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={openCamera}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground focus-outline cursor-pointer"
-            >
+            <Button type="button" size="sm" onClick={openCamera}>
               <Camera className="h-4 w-4" />
               {t('kyc.takePhoto')}
-            </button>
-            <button
-              type="button"
-              onClick={openFilePicker}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-input px-4 py-2 text-xs font-semibold text-foreground focus-outline cursor-pointer"
-            >
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={openFilePicker}>
               <FolderOpen className="h-4 w-4" />
               {t('kyc.chooseFile')}
-            </button>
+            </Button>
           </div>
 
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

@@ -63,12 +63,9 @@ function ResetPasswordForm() {
               <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
               <h2 className="text-base font-bold text-success">{t('auth.reset.successTitle')}</h2>
               <p className="text-xs text-muted-foreground">{t('auth.reset.successBody')}</p>
-              <Link
-                href="/auth/login"
-                className="inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover press focus-outline"
-              >
-                {t('auth.reset.signInCta')}
-              </Link>
+              <Button asChild size="lg" className="w-full">
+                <Link href="/auth/login">{t('auth.reset.signInCta')}</Link>
+              </Button>
             </div>
           ) : (
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
@@ -91,7 +88,7 @@ function ResetPasswordForm() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                    className="absolute right-3 top-2.5 rounded text-muted-foreground transition-transform duration-100 active:scale-90 motion-reduce:transition-none motion-reduce:active:transform-none hover:text-foreground press focus-outline"
+                    className="absolute right-3 top-2.5 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>

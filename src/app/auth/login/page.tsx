@@ -188,7 +188,7 @@ function LoginForm() {
           {t('auth.login.noAccount')}{' '}
           <Link
             href="/auth/register"
-            className="font-semibold text-link hover:underline rounded-xs press focus-outline"
+            className="font-semibold text-link hover:underline rounded-xs focus-outline"
           >
             {t('auth.login.register')}
           </Link>
@@ -208,11 +208,12 @@ function LoginForm() {
 
             {isUnverified && (
               <div className="pt-2 border-t border-destructive/20">
-                <button
+                <Button
                   type="button"
+                  variant="destructive"
+                  size="sm"
                   onClick={() => void handleResendEmail()}
                   disabled={isResending || resendCooldown > 0}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-destructive px-3 text-[11px] font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
                 >
                   {isResending ? (
                     <>
@@ -227,7 +228,7 @@ function LoginForm() {
                       <span>{t('auth.login.resendCta')}</span>
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -268,7 +269,7 @@ function LoginForm() {
             <Label htmlFor="password">{t('auth.login.password')}</Label>
             <Link
               href="/auth/forgot-password"
-              className="text-[11px] font-medium text-link hover:underline rounded-xs press focus-outline"
+              className="text-[11px] font-medium text-link hover:underline rounded-xs focus-outline"
             >
               {t('auth.login.forgot')}
             </Link>
@@ -294,7 +295,7 @@ function LoginForm() {
               // Labelled, because the icon alone tells a screen-reader user
               // nothing and this button changes whether a password is on screen.
               aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-              className="absolute right-3 top-3 rounded text-muted-foreground hover:text-foreground press focus-outline"
+              className="absolute right-3 top-3 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
             >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" aria-hidden="true" />

@@ -18,20 +18,27 @@ import { RequireAuth } from './require-auth';
  * waits for it and paints nothing private before it arrives.
  */
 
-const { replace, useUser, usePathname } = vi.hoisted(() => ({
+const { replace, useUser, usePathname, get } = vi.hoisted(() => ({
   replace: vi.fn(),
   useUser: vi.fn(),
   usePathname: vi.fn(),
+  get: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace }), usePathname }));
 vi.mock('@/context/UserContext', () => ({ useUser }));
+// `/kyc/status` feeds the KYC gate on the money routes. Mocked at the client
+// rather than at `@/lib/api`, because that is what `require-auth.tsx` imports —
+// mocking the wrong one of the two leaves the real module in place, and its own
+// failure then reads as a broken gate rather than a broken mock.
+vi.mock('@/lib/api/client', () => ({ apiClient: { get } }));
 
 const PRIVATE = 'account balance';
 
 beforeEach(() => {
   vi.clearAllMocks();
   usePathname.mockReturnValue('/dashboard');
+  get.mockResolvedValue({ data: { status: 'approved' } });
 });
 
 function renderGate() {
@@ -142,7 +149,7 @@ describe('RequireAuth — the verified-email routes', () => {
   it('lets a verified client through a gated route', async () => {
     usePathname.mockReturnValue('/withdraw');
     useUser.mockReturnValue({
-      user: { id: 'u1', emailVerified: true },
+      user: { id: 'u1', emailVerified: true, verificationLevel: 1 },
       isLoading: false,
       sessionState: 'signed-in',
     });
@@ -150,6 +157,123 @@ describe('RequireAuth — the verified-email routes', () => {
 
     // The regression this whole family of gates keeps re-learning: redirecting
     // the people who ARE allowed. It has happened once already, on /kyc.
+    //
+    // `verificationLevel: 1` is in the fixture because /withdraw now carries a
+    // SECOND gate — see the KYC block below. Email-verified alone is no longer
+    // the whole answer on a money route, and a fixture that says otherwise
+    // would assert the old rule while passing.
+    await waitFor(() => expect(screen.getByText(PRIVATE)).toBeInTheDocument());
+    expect(replace).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The KYC gate on the money routes.
+ *
+ * The buttons that reach /deposit and /withdraw already refuse to navigate an
+ * unapproved client and say why. That is a courtesy in front of a link, and a
+ * link is not a gate: these URLs are typed, bookmarked and shared, and the
+ * routes behind them rendered a complete money-movement form to someone the
+ * payments API had already decided to refuse.
+ *
+ * `lib/kyc-access.test.ts` owns the RULE. These own the wiring: which routes,
+ * and what happens while the answer is still in flight.
+ */
+describe('RequireAuth — the KYC-gated money routes', () => {
+  it('sends an unapproved client off /deposit', async () => {
+    usePathname.mockReturnValue('/deposit');
+    get.mockResolvedValue({ data: { status: 'not_started' } });
+    useUser.mockReturnValue({
+      user: { id: 'u1', emailVerified: true },
+      isLoading: false,
+      sessionState: 'signed-in',
+    });
+    renderGate();
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/kyc'));
+    expect(screen.queryByText(PRIVATE)).not.toBeInTheDocument();
+  });
+
+  it('sends one off /withdraw while the application is still under review', async () => {
+    // Submitted is not approved. The money screens open on the APPROVAL, not on
+    // the client having done their part — the API draws the line in the same
+    // place, and a form that submits into a refusal is worse than a wait.
+    usePathname.mockReturnValue('/withdraw');
+    get.mockResolvedValue({ data: { status: 'submitted' } });
+    useUser.mockReturnValue({
+      user: { id: 'u1', emailVerified: true },
+      isLoading: false,
+      sessionState: 'signed-in',
+    });
+    renderGate();
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/kyc'));
+  });
+
+  it('lets an approved client through', async () => {
+    usePathname.mockReturnValue('/deposit');
+    get.mockResolvedValue({ data: { status: 'approved' } });
+    useUser.mockReturnValue({
+      user: { id: 'u1', emailVerified: true },
+      isLoading: false,
+      sessionState: 'signed-in',
+    });
+    renderGate();
+
+    await waitFor(() => expect(screen.getByText(PRIVATE)).toBeInTheDocument());
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('accepts the profile signal when the KYC record disagrees', async () => {
+    // `verificationLevel` and `status` are written by different backend paths.
+    // Requiring both to agree locks a client whose approval has landed on one
+    // and not yet the other out of their own money — see lib/kyc-access.ts.
+    usePathname.mockReturnValue('/deposit');
+    get.mockResolvedValue({ data: { status: 'not_started' } });
+    useUser.mockReturnValue({
+      user: { id: 'u1', emailVerified: true, verificationLevel: 1 },
+      isLoading: false,
+      sessionState: 'signed-in',
+    });
+    renderGate();
+
+    await waitFor(() => expect(screen.getByText(PRIVATE)).toBeInTheDocument());
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('neither admits nor bounces while the status is in flight', () => {
+    /*
+     * The trap this codebase has fallen into twice: acting on an unanswered
+     * question. Redirecting here would bounce approved clients on every cold
+     * load; rendering would flash the withdrawal form at people about to be
+     * sent away. So: neither, exactly as for the profile itself.
+     */
+    usePathname.mockReturnValue('/withdraw');
+    get.mockReturnValue(new Promise(() => {}));
+    useUser.mockReturnValue({
+      user: { id: 'u1', emailVerified: true },
+      isLoading: false,
+      sessionState: 'signed-in',
+    });
+    renderGate();
+
+    expect(screen.queryByText(PRIVATE)).not.toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('does NOT gate the reading screens', async () => {
+    // /wallet and /transactions show a client their own money. Gating those on
+    // KYC would hide the balance from the person it belongs to, which is the
+    // mirror of the bug the gate exists to fix.
+    usePathname.mockReturnValue('/wallet');
+    get.mockResolvedValue({ data: { status: 'not_started' } });
+    useUser.mockReturnValue({
+      user: { id: 'u1', emailVerified: true },
+      isLoading: false,
+      sessionState: 'signed-in',
+    });
+    renderGate();
+
     expect(screen.getByText(PRIVATE)).toBeInTheDocument();
     await waitFor(() => expect(replace).not.toHaveBeenCalled());
   });

@@ -205,7 +205,7 @@ function RegisterForm() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                  className="absolute right-3 top-2.5 rounded text-muted-foreground transition-transform duration-100 active:scale-90 motion-reduce:transition-none motion-reduce:active:transform-none hover:text-foreground press focus-outline"
+                  className="absolute right-3 top-2.5 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -229,7 +229,7 @@ function RegisterForm() {
           {t('auth.register.hasAccount')}{' '}
           <Link
             href="/auth/login"
-            className="font-semibold text-link hover:underline rounded-xs press focus-outline"
+            className="font-semibold text-link hover:underline rounded-xs focus-outline"
           >
             {t('auth.register.signIn')}
           </Link>

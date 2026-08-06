@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { AuthShell } from '@/components/auth/auth-shell';
+import { Button } from '@/components/ui/button';
 
 function VerifyEmailForm() {
   const router = useRouter();
@@ -174,12 +175,11 @@ function VerifyEmailForm() {
                 {t('auth.verify.redirecting', { seconds: countdown })}
               </div>
 
-              <Link
-                href="/auth/login"
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover press focus-outline"
-              >
-                <span>{t('auth.verify.signInNow')}</span>
-              </Link>
+              <Button asChild className="w-full">
+                <Link href="/auth/login">
+                  <span>{t('auth.verify.signInNow')}</span>
+                </Link>
+              </Button>
             </div>
           ) : (
             <div className="py-4 space-y-5">
@@ -222,13 +222,14 @@ function VerifyEmailForm() {
                   placeholder={t('auth.verify.emailPlaceholder')}
                   value={resendEmail}
                   onChange={(e) => setResendEmail(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-xs text-foreground press focus-outline"
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-xs text-foreground focus-outline"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => void handleResendLink()}
                   disabled={resendCooldown > 0 || isResending || !resendEmail}
-                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed focus-outline cursor-pointer"
+                  className="w-full"
                 >
                   <RefreshCw
                     className={`h-4 w-4 ${resendCooldown > 0 || isResending ? 'animate-spin' : ''}`}
@@ -236,14 +237,11 @@ function VerifyEmailForm() {
                   {resendCooldown > 0
                     ? `Resend Link in ${resendCooldown}s`
                     : t('auth.verify.resendCta')}
-                </button>
+                </Button>
 
-                <Link
-                  href="/auth/login"
-                  className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary-hover press focus-outline"
-                >
-                  {t('auth.verify.backToSignIn')}
-                </Link>
+                <Button asChild className="w-full">
+                  <Link href="/auth/login">{t('auth.verify.backToSignIn')}</Link>
+                </Button>
               </div>
             </div>
           )}

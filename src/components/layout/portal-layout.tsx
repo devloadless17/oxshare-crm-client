@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Clock,
   ShieldAlert,
-  Search,
   Menu,
   X,
 } from 'lucide-react';
@@ -23,6 +22,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { UserMenu } from './user-menu';
+import { NotificationsSheet } from './notifications-sheet';
 import { t, type MessageKey } from '@/lib/i18n';
 
 export interface NavItem {
@@ -262,7 +262,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           <Link
             href="/dashboard"
             onClick={closeMobile}
-            className="flex items-center gap-3 overflow-hidden rounded-md press focus-outline"
+            className="flex items-center gap-3 overflow-hidden rounded-md focus-outline"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/oxshare-mark.svg" alt={t('app.name')} className="h-7 w-auto shrink-0" />
@@ -290,7 +290,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
                navigation is unreachable to anyone not looking at it. */
             aria-label={collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
             aria-expanded={!collapsed}
-            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground press focus-outline"
+            className="hidden lg:flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
@@ -299,7 +299,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={closeMobile}
-            className="flex lg:hidden h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground press focus-outline"
+            className="flex lg:hidden h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
           >
             <X className="h-5 w-5" />
           </button>
@@ -439,20 +439,20 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
               onClick={() => setMobileOpen(true)}
               aria-label={t('nav.openMenu')}
               aria-expanded={mobileOpen}
-              className="flex lg:hidden h-9 w-9 items-center justify-center rounded-md border border-border text-foreground hover:bg-muted press focus-outline"
+              className="flex lg:hidden h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-muted focus-outline"
             >
               <Menu className="h-5 w-5" />
             </button>
 
-            {/* Quick Search */}
-            <div className="relative hidden min-w-0 sm:block sm:w-48 md:w-72 lg:w-80">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <input
-                type="search"
-                placeholder={t('nav.searchPlaceholder')}
-                className="h-9 w-full rounded-lg border border-input bg-muted/30 pl-9 pr-4 text-xs focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
+            {/*
+              The quick-search box was here, and it is gone rather than
+              disabled. It was an `<input>` with no handler, no results surface
+              and no endpoint behind it — its placeholder offered to search
+              "accounts, deposits, trades... (⌘K)", a keyboard shortcut that was
+              never bound, and typing into it did nothing at all. A control that
+              accepts input and discards it is worse than no control: it is the
+              only one on the page a client can be certain they used correctly.
+            */}
           </div>
 
           {/*
@@ -470,9 +470,14 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
 
             In its place is the one alert this product can actually raise today,
             and it is raised from data the layout already has.
+
+            The bell is back beside it — see `NotificationsSheet` for what it
+            does and does not claim. What did not come back is the permanent
+            unread dot.
           */}
           <div className="flex items-center gap-2 sm:gap-3">
             <KycAlert kycStatus={kycStatus} verificationLevel={user?.verificationLevel} />
+            <NotificationsSheet />
             {/*
               The account menu, in the header, on mobile only.
 
@@ -538,7 +543,7 @@ function KycAlert({
   return (
     <Link
       href="/kyc"
-      className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-transform duration-100 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:transform-none focus-outline ${
+      className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors focus-outline ${
         badge.tone === 'destructive'
           ? 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15'
           : inReview

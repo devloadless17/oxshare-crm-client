@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { useUser } from '@/context/UserContext';
+import { Button } from '@/components/ui/button';
 
 /**
  * "We have emailed you a link" — the screen a client sits on after registering.
@@ -119,14 +120,14 @@ export default function VerifyPendingPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-            <button
+            <Button
               type="button"
-              className="rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60 focus-outline"
+              size="lg"
               onClick={() => void resend()}
               disabled={loading || !email}
             >
               {loading ? t('auth.verify.sending') : t('auth.verify.resendLink')}
-            </button>
+            </Button>
           </div>
         ) : (
           <div
@@ -149,13 +150,15 @@ export default function VerifyPendingPage() {
             {t('auth.verify.alreadyVerified')}
           </Link>
           {user?.email && (
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="sm"
               onClick={() => void logout()}
-              className="mt-3 block w-full text-xs text-muted-foreground hover:underline focus-outline"
+              className="mt-3 w-full text-xs text-muted-foreground"
             >
               {t('auth.verify.wrongAddress')}
-            </button>
+            </Button>
           )}
         </div>
       </div>

@@ -473,6 +473,32 @@ export const messages = {
   'accounts.openNew': 'Open New Account',
   'accounts.empty': 'No Active Trading Accounts',
 
+  // ── Live / demo, from GET /trading/accounts ───────────────────────────────
+  //
+  // "Live" rather than "Real", matching the `trading_environment` enum and the
+  // MT5 vocabulary the client already sees in the terminal. One word for one
+  // thing across the whole product: a portal that says "Real" beside a terminal
+  // that says "Live" makes people ask whether they are the same account.
+  'accounts.loading': 'Loading your trading accounts',
+  'accounts.loadFailed': 'We could not load your trading accounts.',
+  'accounts.liveHeading': 'Live accounts',
+  'accounts.liveNote': 'Real funds. Trades on these accounts move your balance.',
+  'accounts.demoHeading': 'Demo accounts',
+  'accounts.demoNote': 'Practice money. Nothing here affects your wallet.',
+  'accounts.liveTag': 'Live',
+  'accounts.demoTag': 'Demo',
+  'accounts.loginLabel': 'MT5 login',
+  'accounts.groupLabel': 'Group',
+  'accounts.tierLabel': 'Type',
+  'accounts.leverageLabel': 'Leverage',
+  'accounts.openedLabel': 'Opened',
+  'accounts.leverageValue': '1:{ratio}',
+  // Shown where the CRM genuinely holds no value for a field. An em dash rather
+  // than a zero or a guess — the same rule the wallet follows for a currency
+  // that has not been opened.
+  'accounts.unknownValue': '—',
+  'accounts.noneOfKind': 'None yet.',
+
   'kyc.resumingTitle': 'Resuming Identity Verification',
   'kyc.resumingBody': 'Fetching your progress and loading your last active step…',
   'kyc.layoutTitle': 'Identity Verification',
@@ -583,8 +609,17 @@ export const messages = {
   'country.searchPlaceholder': 'Search country or code…',
 
   // ── Shared / generic ──────────────────────────────────────────────────────
+  /*
+   * Written for a CLIENT, not for the API owner.
+   *
+   * It used to end "...once these endpoints exist:" and was followed by a row of
+   * `GET /platforms`-style chips. Both are gone: the person reading this is
+   * waiting to trade, not to deploy, and route names told them nothing while
+   * telling everyone the shape of the API.
+   */
+  'backendPending.title': 'Not available yet',
   'backendPending.body':
-    "This page's UI is ready, but the API it needs is not implemented yet. It will light up automatically once these endpoints exist:",
+    'This part of the portal is still being built. It will appear here automatically as soon as it is ready.',
 
   'common.retry': 'Try again',
   /*
@@ -599,8 +634,10 @@ export const messages = {
   'common.retryShort': 'Retry',
   'common.loading': 'Loading',
   'kyc.selfiePreviewAlt': 'Selfie preview',
-  'nav.searchPlaceholder': 'Search accounts, deposits, trades... (⌘K)',
-  'nav.notifications': 'Notifications',
+  // `nav.searchPlaceholder` was removed with the header search box it belonged
+  // to: an input with no handler, no results surface and no endpoint, offering
+  // a ⌘K shortcut that was never bound. Notification copy now lives under
+  // `notifications.*` at the foot of this file.
   'common.cancel': 'Cancel',
   'common.continue': 'Continue',
   'common.back': 'Back',
@@ -617,6 +654,47 @@ export const messages = {
   'common.errorReference': 'Reference: {id}',
   'common.genericError': 'Something went wrong. Please try again.',
   'common.requestId': 'Reference: {id}',
+  'common.close': 'Close',
+
+  // ── The verification gate in front of the money actions ───────────────────
+  //
+  // One dialog, three entry points (deposit, withdraw, transfer), and it says
+  // something different depending on whether the client has work to do or is
+  // waiting on us. "Under review" is not a call to action, so it does not get
+  // the same button — sending someone back into a wizard they have already
+  // finished is how a product loses trust.
+  'kycGate.title': 'Verify your identity first',
+  'kycGate.body':
+    'Deposits, withdrawals and transfers open once your identity check is approved. It takes a few minutes.',
+  'kycGate.reviewTitle': 'Your verification is being reviewed',
+  'kycGate.reviewBody':
+    'We are checking the documents you sent. Deposits, withdrawals and transfers open as soon as that is approved.',
+  'kycGate.rejectedTitle': 'Your verification needs attention',
+  'kycGate.rejectedBody':
+    'Something in your submission could not be accepted. Open verification to see what to correct.',
+  'kycGate.verifyCta': 'Verify my account',
+  'kycGate.statusCta': 'View verification',
+  'kycGate.dismiss': 'Not now',
+
+  // ── Notifications ─────────────────────────────────────────────────────────
+  //
+  // There is no notifications table, no endpoint and nothing emitting events.
+  // The panel is a PREVIEW of the surface, and it says so at the top in plain
+  // words rather than presenting placeholder rows as account history — a fake
+  // "deposit approved" on a money product is not a harmless placeholder.
+  'notifications.title': 'Notifications',
+  'notifications.open': 'Open notifications',
+  'notifications.previewNotice':
+    'Preview — notifications are not live yet, so nothing here is real.',
+  'notifications.sampleWelcomeTitle': 'Welcome to OXShare',
+  'notifications.sampleWelcomeBody':
+    'Your client portal is ready. Complete verification to start trading.',
+  'notifications.sampleKycTitle': 'Verification reminder',
+  'notifications.sampleKycBody': 'Finish your identity check to unlock deposits and withdrawals.',
+  'notifications.samplePlatformTitle': 'Trading terminal available',
+  'notifications.samplePlatformBody':
+    'Download the desktop or mobile terminal from the Platforms page.',
+  'notifications.sampleWhen': 'Sample',
 } as const;
 
 /** Every valid key. A typo is a compile error, never a string rendered as itself. */

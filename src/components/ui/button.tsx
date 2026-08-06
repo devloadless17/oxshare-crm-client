@@ -11,21 +11,19 @@ import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
   /*
-   * `active:scale-[0.97]` is the press feedback, and it lives HERE rather than
-   * on individual buttons for the reason every design system eventually learns:
-   * a press effect on some buttons and not others reads as the ones without it
-   * being broken.
+   * There is NO press transform here, and there must not be one added back to a
+   * single button either. A scale-on-press used to live on this base class and
+   * on a handful of hand-rolled controls that were not `<Button>`; the two never
+   * agreed on how far to scale, so the same gesture moved different controls by
+   * different amounts on the same screen. Every control in this product now
+   * responds to press by colour alone.
    *
-   * `transition-transform` with a short duration, and NOT `transition-all`:
-   * animating colour alongside the transform makes hover feel laggy, and
-   * animating layout properties on a control that is pressed constantly is the
-   * cheapest way to make an interface feel slow on a mid-range phone.
-   *
-   * `motion-reduce:transform-none` because a scale is exactly the kind of
-   * movement `prefers-reduced-motion` exists for. Without it the one setting a
-   * vestibular-sensitive user has is ignored by every button in the product.
+   * `transition-colors` and NOT `transition-all`: hover here only ever changes a
+   * background, and animating layout properties on a control that is pressed
+   * constantly is the cheapest way to make an interface feel slow on a
+   * mid-range phone.
    */
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-transform duration-100 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer',
   {
     variants: {
       variant: {

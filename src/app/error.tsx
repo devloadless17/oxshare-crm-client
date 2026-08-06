@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 
 /**
@@ -44,20 +45,20 @@ export default function PortalError({
       {error.digest && (
         <p className="font-mono text-[11px] text-muted-foreground">{error.digest}</p>
       )}
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={reset}
-          className="rounded-sm text-sm font-semibold text-primary hover:underline"
-        >
+      {/*
+        Both through `<Button>`, so the recovery controls on the worst screen in
+        the product look like every other control in it. They were two
+        hand-written class strings that happened to match each other and nothing
+        else — and this is the one screen where a client is already wondering
+        whether the site is broken.
+      */}
+      <div className="flex items-center gap-2">
+        <Button type="button" onClick={reset}>
           {t('session.retry')}
-        </button>
-        <Link
-          href="/dashboard"
-          className="rounded-sm text-sm font-semibold text-primary hover:underline"
-        >
-          {t('error.backToDashboard')}
-        </Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/dashboard">{t('error.backToDashboard')}</Link>
+        </Button>
       </div>
     </div>
   );

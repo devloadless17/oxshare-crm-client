@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Loader2, Pencil, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage, initialsOf } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { accountApi } from '@/lib/api/account';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { API_BASE_URL } from '@/lib/env';
@@ -120,10 +121,8 @@ export function AvatarUploader({
         */}
         <label
           title={avatarUrl ? t('profile.photoChange') : t('profile.photoUpload')}
-          className={`absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background ring-2 ring-card transition-transform duration-100 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--ring)] motion-reduce:transition-none ${
-            busy
-              ? 'cursor-not-allowed opacity-60'
-              : 'cursor-pointer hover:opacity-90 active:scale-90 motion-reduce:active:transform-none'
+          className={`absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background ring-2 ring-card transition-opacity focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--ring)] ${
+            busy ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:opacity-90'
           }`}
         >
           <input
@@ -153,14 +152,16 @@ export function AvatarUploader({
           a 20px radius are a mis-tap waiting to happen, and this one is
           destructive. It appears only when there is something to remove. */}
       {avatarUrl && !busy && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => void handleRemove()}
-          className="mt-2 inline-flex cursor-pointer items-center gap-1 rounded-md px-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-destructive focus-outline"
+          className="mt-2 h-7 gap-1 px-2 text-[11px] text-muted-foreground hover:bg-transparent hover:text-destructive"
         >
           <Trash2 className="h-3 w-3" aria-hidden="true" />
           <span>{t('profile.photoRemove')}</span>
-        </button>
+        </Button>
       )}
 
       {error && (

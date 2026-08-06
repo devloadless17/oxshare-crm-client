@@ -94,7 +94,7 @@ export function UserMenu({
     <div className={variant === 'header' ? '' : 'border-t border-border p-3'}>
       <DropdownMenu>
         <DropdownMenuTrigger
-          className={`flex items-center gap-3 rounded-lg text-left transition-transform duration-100 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:transform-none focus-outline cursor-pointer ${
+          className={`flex items-center gap-3 rounded-lg text-left transition-colors focus-outline cursor-pointer ${
             variant === 'header'
               ? 'shrink-0 rounded-full'
               : `w-full bg-muted p-2.5 hover:bg-accent ${collapsed ? 'justify-center p-2' : ''}`

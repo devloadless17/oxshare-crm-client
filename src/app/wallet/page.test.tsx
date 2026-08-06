@@ -100,13 +100,25 @@ describe('wallet page', () => {
     expect(screen.queryByText('$0.00')).not.toBeInTheDocument();
   });
 
-  it('names the missing endpoint when the API is not built yet (404)', async () => {
+  it('says the screen is not built yet when the API 404s, without apologising', async () => {
     get.mockRejectedValue({ response: { status: 404 } });
 
     renderWithProviders(<WalletPage />);
 
-    // 404 is "not implemented yet", which is a to-do for the API owner rather
-    // than a failure to apologise for.
-    expect(await screen.findByText(/GET \/wallet/)).toBeInTheDocument();
+    /*
+     * 404 is "not implemented yet", which is a different state from a failed
+     * request — no error styling, no retry, nothing to apologise for.
+     *
+     * This asserted on the literal text `GET /wallet`, because `BackendPending`
+     * used to print the endpoint names it was handed. It no longer does: route
+     * names are internal vocabulary and this is the customer-facing app. The
+     * PROP is still passed and is still the to-do; what changed is that the
+     * client is not shown it. Asserting on the client-facing sentence is also
+     * the more honest test — it checks what the user reads.
+     */
+    expect(await screen.findByText(/not available yet/i)).toBeInTheDocument();
+    expect(screen.queryByText(/GET \/wallet/)).not.toBeInTheDocument();
+    // Still not an error: a to-do state must not offer a retry that cannot help.
+    expect(screen.queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
   });
 });
