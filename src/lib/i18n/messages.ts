@@ -303,6 +303,14 @@ export const messages = {
   // is in flight. Says what is happening rather than a bare "Loading", because
   // the outcome for some of the people who hear it is a redirect to sign in.
   'session.checking': 'Checking your session…',
+  // The state that used to render as a silent redirect to the sign-in screen.
+  // Saying "your session is fine" is the load-bearing half: a client who thinks
+  // the portal logged them out will try to sign in again, which on the same bad
+  // connection fails too and then meets the login rate limit.
+  'session.unreachableTitle': 'Cannot reach OxShare',
+  'session.unreachableBody':
+    'Your session is still active — we could not contact the server. Check your connection and try again.',
+  'session.retry': 'Try again',
   // Generic on purpose, mirroring what the API answers: it must not confirm
   // whether an account exists for the address the caller typed.
   'auth.verify.resendSent':

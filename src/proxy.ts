@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { NONCE_HEADER, contentSecurityPolicy, createNonce } from '@/lib/csp';
 import { DEFAULT_SIGNED_IN_PATH, LOGIN_PATH, loginPathFor } from '@/lib/return-to';
+// The single definition of which paths are reachable without a session, shared
+// with lib/api/client.ts so the two cannot disagree — see lib/public-paths.ts.
+import { PUBLIC_PATHS, matches } from '@/lib/public-paths';
 
 /**
  * Route gating for the whole portal, in one file.
@@ -25,90 +28,6 @@ import { DEFAULT_SIGNED_IN_PATH, LOGIN_PATH, loginPathFor } from '@/lib/return-t
  * the signed-in shell until it arrives. Cheap-and-early here, correct-and-final
  * there.
  */
-
-/**
- * Screens that exist only for someone without a session.
- *
- * They are PUBLIC here and nothing more — this file does not redirect a
- * cookie-holder away from them, and `decideRoute` explains at length why that
- * would loop. Keeping a signed-in client off the sign-in form is the job of
- * `components/auth/redirect-if-authenticated`, which asks `/auth/me`.
- *
- * The list still earns its place: `safeReturnTo` reads it to refuse a `?next=`
- * pointing back at sign-in, which would strand a client in a loop of their own.
- *
- * The top-level entries are the 5-line `redirect()` stubs — verification and
- * reset emails already in inboxes point at those URLs, so they must keep
- * working (lib/api/auth.ts records the incident where an emailed link 404'd).
- */
-const AUTH_ONLY_PATHS = ['/auth/login', '/auth/register', '/login', '/register'];
-
-/**
- * Screens that must work with OR without a session, and are therefore never
- * redirected in either direction.
- *
- * Each entry is here for a concrete reason, and "it is an auth page" is not one:
- *
- *  - `/verify-email` (and `/verify-email/pending`) — a client who has just
- *    registered IS signed in and is NOT verified. Bouncing them to /dashboard
- *    sends them to a portal they cannot use, away from the one page that tells
- *    them what to do next.
- *
- *  - `/forgot-password` and `/reset-password` — account recovery has to work
- *    from a browser that still holds a stale session cookie, which is the
- *    normal state of the device someone is locked out on. Treating these as
- *    auth-only would redirect a client holding a valid reset link to a
- *    dashboard they cannot reach, with no way back except clearing cookies by
- *    hand.
- *
- * That last case is why there are two lists rather than one: "public" and "for
- * signed-out people only" are different properties, and collapsing them locks
- * users out of recovery.
- */
-const ALWAYS_PUBLIC_PATHS = [
-  '/auth/forgot-password',
-  '/auth/reset-password',
-  '/auth/verify-email',
-  '/forgot-password',
-  '/reset-password',
-  '/verify-email',
-  /*
-   * `/r/` — the referral-code prefix — is deliberately NOT here yet.
-   *
-   * It was, and nothing in `src/app` served it. That is a latent hole rather
-   * than a live one: no route means nothing is exposed today. But an entry
-   * ending in `/` is a PREFIX match by design, so the moment somebody adds the
-   * referral landing page (D-23's attribution work, IB-01) it would be
-   * unauthenticated by default, and nobody would think to look here.
-   *
-   * This file goes out of its way to avoid exactly that — see the segment-match
-   * comment in `matches` — so the exception does not get to stay on
-   * speculation. Add it back in the same commit as the route.
-   */
-];
-
-/**
- * Every path reachable without a session.
- *
- * Enumerated, never a blanket `/auth` prefix. It used to be the latter, which
- * meant any page added under `/auth/` in future would be unauthenticated by
- * default and nobody would have decided that. Fail-closed is the only default
- * that survives a route being added by someone who has not read this file.
- */
-const PUBLIC_PATHS = [...AUTH_ONLY_PATHS, ...ALWAYS_PUBLIC_PATHS];
-
-function matches(pathname: string, entries: readonly string[]): boolean {
-  return entries.some((entry) =>
-    // An entry ending in `/` is a prefix by design — `/r/` would cover every
-    // referral code. Everything else matches whole SEGMENTS, never a bare string
-    // prefix: `startsWith('/login')` would also admit `/login-help`, and
-    // `startsWith('/register')` would admit `/register-partner`, so a route
-    // added later could become unauthenticated without anyone deciding it.
-    entry.endsWith('/')
-      ? pathname.startsWith(entry)
-      : pathname === entry || pathname.startsWith(`${entry}/`),
-  );
-}
 
 export type GuardDecision = { allow: true } | { allow: false; redirectTo: string };
 

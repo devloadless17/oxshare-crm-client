@@ -976,6 +976,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/users/{id}/password-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email another administrator a single-use password reset link */
+        post: operations["AdminAuthController_initiatePasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/password-reset/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Spend a reset link and set a new password */
+        post: operations["AdminAuthController_completePasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/clients": {
         parameters: {
             query?: never;
@@ -983,8 +1017,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Paginated, filterable client list */
+        /** Paginated, filterable, sortable client list */
         get: operations["AdminClientsController_listClients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/clients/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A client's full profile — KYC, documents, trading accounts, referrals (FR-ADM-01)
+         * @description Each section is gated on its own permission and is ABSENT when the caller lacks it — which is deliberately different from present-and-empty, so a screen can distinguish "hidden from you" from "this client has none".
+         */
+        get: operations["AdminClientsController_getClientProfile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1008,6 +1062,77 @@ export interface paths {
         head?: never;
         /** Suspend or reactivate a client account (requires users.suspend) */
         patch: operations["AdminClientsController_setClientStatus"];
+        trace?: never;
+    };
+    "/v1/admin/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Client tags, with how many clients carry each */
+        get: operations["AdminTagsController_list"];
+        put?: never;
+        /** Create a client tag */
+        post: operations["AdminTagsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/tags/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a client tag and every assignment of it */
+        delete: operations["AdminTagsController_remove"];
+        options?: never;
+        head?: never;
+        /** Rename or restyle a client tag (the slug is fixed) */
+        patch: operations["AdminTagsController_update"];
+        trace?: never;
+    };
+    "/v1/admin/clients/{id}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A client's tags */
+        get: operations["AdminTagsController_forClient"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/clients/{id}/tags/{tagId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Attach a tag to a client */
+        post: operations["AdminTagsController_assign"];
+        /** Detach a tag from a client */
+        delete: operations["AdminTagsController_unassign"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/admin/kyc": {
@@ -1395,6 +1520,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/client-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Maskable client fields, grouped (requires roles.view or users.view) */
+        get: operations["AdminRbacController_listClientFields"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/roles": {
         parameters: {
             query?: never;
@@ -1483,6 +1625,23 @@ export interface paths {
          * @description Suspension takes effect on the target’s NEXT request — AdminGuard re-reads status on every call — and blocks login. Refused on your own account and on the master admin.
          */
         patch: operations["AdminRbacController_setAdminStatus"];
+        trace?: never;
+    };
+    "/v1/admin/audit-log/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every action the log can record (master admin only) */
+        get: operations["AdminAuditController_listAuditActions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/admin/audit-log": {
@@ -1707,6 +1866,9 @@ export interface components {
             user: components["schemas"]["UserProfileDto"];
             /** @description Mirrors user.emailVerified; kept for older portal builds. */
             emailVerified: boolean;
+        };
+        RefreshResponseDto: {
+            user: components["schemas"]["UserProfileDto"];
         };
         ChangePasswordDto: {
             /** @example CurrentPass123! */
@@ -2014,6 +2176,11 @@ export interface components {
             /** @example admin123 */
             password: string;
         };
+        AdminScopeTagDto: {
+            tagId: string;
+            slug: string;
+            label: string;
+        };
         AdminProfileDto: {
             id: string;
             email: string;
@@ -2024,6 +2191,9 @@ export interface components {
             roleId?: string;
             /** @enum {string} */
             status: "active" | "suspended";
+            maskedFields: string[];
+            maskedFieldsOverride?: string[] | null;
+            scopedTags: components["schemas"]["AdminScopeTagDto"][];
             /** Format: date-time */
             createdAt: string;
         };
@@ -2039,6 +2209,10 @@ export interface components {
             roleId?: string;
             /** @description Explicit permission keys, when not assigning a role. */
             permissions?: string[];
+            /** @description Client fields this admin may not see. Omit to inherit the role’s mask; [] means no mask. */
+            maskedFields?: string[];
+            /** @description Client tags this admin is scoped to. Omit or [] means UNRESTRICTED — every client. */
+            scopedTagIds?: string[];
         };
         InviteResponseDto: {
             message: string;
@@ -2081,11 +2255,26 @@ export interface components {
             message: string;
             admin: components["schemas"]["AdminProfileDto"];
         };
+        CompleteAdminResetDto: {
+            /** @description Single-use token from the password reset email. */
+            token: string;
+            password: string;
+        };
+        ClientTagDto: {
+            id: string;
+            /** @description Stable machine name. Filter with ?tag=<slug>; a rename does not change it. */
+            slug: string;
+            label: string;
+            color?: string;
+            description?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
         ClientRowDto: {
             id: string;
-            email: string;
-            firstName: string;
-            lastName: string;
+            email?: string;
+            firstName?: string;
+            lastName?: string;
             /** @enum {string} */
             type: "individual" | "referral" | "partner";
             /** @enum {string} */
@@ -2094,15 +2283,89 @@ export interface components {
             verificationLevel: 0 | 1;
             country?: string;
             /** Format: date-time */
-            createdAt: string;
+            createdAt?: string;
+            tags?: components["schemas"]["ClientTagDto"][];
         };
         ClientListResponseDto: {
             items: components["schemas"]["ClientRowDto"][];
+            maskedFields: string[];
             nextCursor: string | null;
             /** @description Only when ?withTotal=true. Counting 219,000 rows is a full scan. */
             total?: number;
             page: number;
             limit: number;
+        };
+        ProfileKycDto: {
+            /** @enum {string} */
+            status: "none" | "pending" | "in_review" | "approved" | "rejected";
+            /** Format: date-time */
+            submittedAt?: string;
+            /** Format: date-time */
+            reviewedAt?: string;
+            rejectionReason?: string;
+            /** @description How many documents the submission carries. */
+            documentCount: number;
+        };
+        ProfileTradingAccountDto: {
+            id: string;
+            mt5Login: string;
+            mt5Group?: string;
+            /** @enum {string} */
+            environment: "live" | "demo";
+            tier?: string;
+            leverage?: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ProfileReferrerDto: {
+            ibUserId: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+            /** @description False when the attribution was switched off. */
+            active: boolean;
+            /** Format: date-time */
+            since: string;
+        };
+        ProfileReferredClientDto: {
+            clientUserId: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+            active: boolean;
+            /** Format: date-time */
+            since: string;
+        };
+        ClientProfileDto: {
+            id: string;
+            email?: string;
+            firstName?: string;
+            lastName?: string;
+            /** @enum {string} */
+            type: "individual" | "referral" | "partner";
+            /** @enum {string} */
+            status: "active" | "pending" | "suspended";
+            /** @enum {number} */
+            verificationLevel: 0 | 1;
+            emailVerified: boolean;
+            country?: string;
+            phone?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            tags: components["schemas"]["ClientTagDto"][];
+            /** @description Absent without kyc.view. */
+            kyc?: components["schemas"]["ProfileKycDto"];
+            /** @description Document filenames. Absent without kyc.documents.view. */
+            documents?: string[];
+            /** @description Absent without trading.view. */
+            tradingAccounts?: components["schemas"]["ProfileTradingAccountDto"][];
+            /** @description Absent without partners.view. */
+            referrer?: components["schemas"]["ProfileReferrerDto"];
+            /** @description Capped — see referredTotal. Absent without partners.view. */
+            referredClients?: components["schemas"]["ProfileReferredClientDto"][];
+            /** @description How many referredClients were returned; the list is capped for one screen. */
+            referredShown?: number;
+            maskedFields: string[];
         };
         ClientStatusDto: {
             /**
@@ -2110,6 +2373,31 @@ export interface components {
              * @enum {string}
              */
             status: "active" | "suspended";
+        };
+        ClientTagWithCountDto: {
+            id: string;
+            /** @description Stable machine name. Filter with ?tag=<slug>; a rename does not change it. */
+            slug: string;
+            label: string;
+            color?: string;
+            description?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description How many clients carry this tag. */
+            clientCount: number;
+        };
+        CreateClientTagDto: {
+            /** @example High risk */
+            label: string;
+            /** @example #b45309 */
+            color?: string;
+            description?: string;
+        };
+        UpdateClientTagDto: {
+            label?: string;
+            /** @example #b45309 */
+            color?: string;
+            description?: string;
         };
         KycDocumentDto: {
             docType?: string;
@@ -2375,11 +2663,26 @@ export interface components {
             description: string;
             permissions: components["schemas"]["PermissionItemDto"][];
         };
+        ClientFieldDto: {
+            /** @description Path-qualified, e.g. client.email or kyc.personalInfo.phone. */
+            key: string;
+            label: string;
+            /** @description False for fields the admin screens structurally need. */
+            maskable: boolean;
+            /** @description Why an unmaskable field cannot be hidden. */
+            reason?: string;
+        };
+        ClientFieldGroupDto: {
+            groupName: string;
+            description: string;
+            fields: components["schemas"]["ClientFieldDto"][];
+        };
         RoleResponseDto: {
             id: string;
             name: string;
             description?: string;
             permissions: string[];
+            maskedFields: string[];
             isSystem: boolean;
             /** Format: date-time */
             createdAt: string;
@@ -2396,11 +2699,21 @@ export interface components {
              *     ]
              */
             permissions: string[];
+            /**
+             * @description Field keys from GET /admin/client-fields. Empty means nothing is hidden.
+             * @example [
+             *       "client.phone",
+             *       "client.email"
+             *     ]
+             */
+            maskedFields?: string[];
         };
         UpdateRoleDto: {
             name?: string;
             description?: string;
             permissions?: string[];
+            /** @description Field keys from GET /admin/client-fields. Empty means nothing is hidden. */
+            maskedFields?: string[];
         };
         UpdateAdminDto: {
             name?: string;
@@ -2408,15 +2721,32 @@ export interface components {
             roleId?: string;
             /** @description Direct permission grants. */
             permissions?: string[];
+            /** @description Client fields this administrator may not see. null clears the override and inherits the role; [] explicitly masks nothing. */
+            maskedFields?: string[] | null;
+            /** @description Client tag ids. An EMPTY ARRAY means unrestricted (every client), not none — see D-10. */
+            scopedTagIds?: string[];
         };
         AdminStatusDto: {
             /** @enum {string} */
             status: "active" | "suspended";
         };
+        AuditActionDto: {
+            action: string;
+            label: string;
+            /** @description Groups the filter, so 30+ entries stay readable. */
+            group: string;
+        };
         AuditEntryDto: {
             id: string;
             actorId: string;
             actorEmail: string;
+            /**
+             * @description A background job records as `system`, with a named identity — never anonymously.
+             * @enum {string}
+             */
+            actorKind: "admin" | "client" | "system" | "provider";
+            /** @description The address the action came from. Null for an action with no request context, such as a scheduled job. */
+            ipAddress?: string | null;
             action: string;
             subjectType: string;
             subjectId: string;
@@ -2867,7 +3197,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuthTokensResponseDto"];
+                    "application/json": components["schemas"]["RefreshResponseDto"];
                 };
             };
         };
@@ -2886,7 +3216,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuthTokensResponseDto"];
+                    "application/json": components["schemas"]["RefreshResponseDto"];
                 };
             };
         };
@@ -3746,17 +4076,71 @@ export interface operations {
             };
         };
     };
+    AdminAuthController_initiatePasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    AdminAuthController_completePasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteAdminResetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
     AdminClientsController_listClients: {
         parameters: {
-            query: {
-                page: string;
-                limit: string;
-                cursor: string;
-                withTotal: string;
-                q: string;
-                type: string;
-                status: string;
-                level: string;
+            query?: {
+                /** @description Legacy offset paging. Prefer cursor. */
+                page?: string;
+                limit?: string;
+                /** @description Opaque keyset cursor (R-2.4). */
+                cursor?: string;
+                /** @description Counting is a full scan. */
+                withTotal?: string;
+                /** @description Search email and name. */
+                q?: string;
+                type?: "individual" | "referral" | "partner";
+                status?: "active" | "pending" | "suspended";
+                level?: 0 | 1;
+                /** @description Exact match on the country tag. */
+                country?: string;
+                /** @description Tag SLUG, not id (ADM-14). */
+                tag?: string;
+                sort?: "createdAt" | "email" | "firstName" | "status" | "type" | "verificationLevel" | "country";
+                order?: "asc" | "desc";
             };
             header?: never;
             path?: never;
@@ -3770,6 +4154,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClientListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminClientsController_getClientProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientProfileDto"];
                 };
             };
         };
@@ -3794,6 +4199,157 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminTagsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientTagWithCountDto"][];
+                };
+            };
+        };
+    };
+    AdminTagsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateClientTagDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientTagDto"];
+                };
+            };
+        };
+    };
+    AdminTagsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTagsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateClientTagDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientTagDto"];
+                };
+            };
+        };
+    };
+    AdminTagsController_forClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientTagDto"][];
+                };
+            };
+        };
+    };
+    AdminTagsController_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientTagDto"][];
+                };
+            };
+        };
+    };
+    AdminTagsController_unassign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientTagDto"][];
+                };
             };
         };
     };
@@ -4394,6 +4950,27 @@ export interface operations {
             };
         };
     };
+    AdminRbacController_listClientFields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: components["schemas"]["ClientFieldGroupDto"];
+                    };
+                };
+            };
+        };
+    };
     AdminRbacController_listRoles: {
         parameters: {
             query?: never;
@@ -4547,6 +5124,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminProfileDto"];
+                };
+            };
+        };
+    };
+    AdminAuditController_listAuditActions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditActionDto"][];
                 };
             };
         };

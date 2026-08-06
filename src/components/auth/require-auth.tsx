@@ -92,11 +92,22 @@ function requiresVerifiedEmail(pathname: string): boolean {
  * history entry to press Back into.
  */
 export function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useUser();
+  const { user, isLoading, sessionState, refetchUser } = useUser();
   const pathname = usePathname();
   const router = useRouter();
 
-  const signedOut = !isLoading && user === null;
+  /*
+   * `signedOut` is now the API's answer, not the absence of one.
+   *
+   * It used to be `!isLoading && user === null`, which is also what a 500, a
+   * timeout or one dropped request produced — so an offline moment on the FIRST
+   * `/auth/me` of a page load redirected a signed-in client to the sign-in
+   * screen. Reachable mid-KYC, where it also used to destroy the typed form.
+   *
+   * An unreachable API is rendered as what it is (below) and the session is left
+   * alone. See `SessionState` in UserContext.
+   */
+  const signedOut = sessionState === 'signed-out';
 
   /*
    * A verified email is required by `EmailVerifiedGuard` on the backend's KYC
@@ -126,9 +137,47 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     if (redirectTo) router.replace(redirectTo);
   }, [redirectTo, router]);
 
+  /*
+   * The API could not be reached, which is NOT "you are signed out".
+   *
+   * Rendered before the redirect check on purpose: `redirectTo` is null in this
+   * state, but leaving it to fall through to `children` would paint the portal
+   * shell over a profile we do not have.
+   */
+  if (sessionState === 'unreachable') {
+    return <SessionUnreachable onRetry={() => void refetchUser()} />;
+  }
+
   if (isLoading || redirectTo) return <SessionCheck />;
 
   return <>{children}</>;
+}
+
+/**
+ * The API did not answer, and the client is told so rather than signed out.
+ *
+ * Deliberately says the session is intact. The failure mode this replaces —
+ * silently landing on the sign-in screen — teaches a client that the portal logs
+ * them out at random, and the natural response to that is to sign in again,
+ * which on a flaky connection fails too and then meets the login rate limit.
+ */
+function SessionUnreachable({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div
+      role="alert"
+      className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center"
+    >
+      <h1 className="text-lg font-semibold text-foreground">{t('session.unreachableTitle')}</h1>
+      <p className="max-w-sm text-sm text-muted-foreground">{t('session.unreachableBody')}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+      >
+        {t('session.retry')}
+      </button>
+    </div>
+  );
 }
 
 /**

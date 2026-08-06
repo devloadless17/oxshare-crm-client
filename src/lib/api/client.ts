@@ -14,6 +14,9 @@ import { clearKycDraft } from '../kyc-draft';
 // PER-APP, and logically part of the twin:config block below — see the note
 // there. It sits up here because an import cannot.
 import { LOGIN_PATH, loginPathFor } from '../return-to';
+// The single definition of "reachable without a session", shared with proxy.ts.
+import { isPublicPath } from '../public-paths';
+import { announceSessionEvent, withSessionLock } from '../session-channel';
 
 /**
  * A request that never finishes must eventually fail.
@@ -41,11 +44,40 @@ export const apiClient = axios.create({
 // end marker must stay identical in both apps; scripts/check-twins.sh enforces
 // that by excluding this block and comparing the rest.
 //
-// Cookie lifetimes must match the tokens inside them: proxy.ts gates private
-// routes on the mere PRESENCE of the access cookie, so a cookie that outlives
-// its JWT waves the user through to a page where every request 401s.
+// `proxy.ts` gates private routes on the presence of the REFRESH cookie — not
+// the access cookie, which lives fifteen minutes and would bounce a returning
+// client whose thirty-day session is perfectly valid. (This comment said
+// "access cookie" long after that changed, which is the stale-literal class
+// that has disarmed a check in this system three times.)
 const REFRESH_PATH = '/auth/refresh';
-const AUTH_ENDPOINT_PATTERN = /\/(auth|identity)\/(login|register|verify-email|refresh)/;
+/*
+ * Endpoints where a 401 is the ANSWER, not an expired access token.
+ *
+ * Refresh-then-replay is right for an authenticated endpoint whose token has
+ * merely aged out. It is wrong for these, where 401 means "those credentials are
+ * no good" — and getting it wrong is not cosmetic: a refused sign-in triggered a
+ * doomed refresh and then the dead-session redirect, so a typo'd password could
+ * navigate the client away from the form they were typing into.
+ *
+ * `logout`, `forgot-password` and `reset-password` are the additions. Recovery
+ * runs from a browser that still holds a stale session cookie — that is the
+ * normal state of the device somebody is locked out on — so a 401 there says the
+ * emailed token is bad, and renewing a session changes nothing about that.
+ *
+ * `me` is deliberately NOT here, against the review's suggestion. It is the one
+ * request that MUST refresh-and-replay: a client returning after fifteen minutes
+ * has an expired access token and a valid thirty-day session, and `/auth/me` is
+ * the first call of the page. Excluding it would resolve their profile to null
+ * and `RequireAuth` would send a perfectly signed-in client to the login screen.
+ * The cost the review names — one doomed refresh per anonymous page load — is
+ * real and is the correct trade against that.
+ *
+ * `change-password`, `sessions` and `resend-verification` are likewise absent on
+ * purpose: they are authenticated, so a 401 from them is an aged token and
+ * renewal is exactly right.
+ */
+const AUTH_ENDPOINT_PATTERN =
+  /\/(auth|identity)\/(login|register|verify-email|refresh|logout|forgot-password|reset-password)/;
 // `LOGIN_PATH` and `loginPathFor` are the third per-app value, and they are
 // IMPORTED (see the top of the file) rather than written here, from
 // lib/return-to.ts. The proxy, the sign-in page and this interceptor must agree
@@ -184,6 +216,21 @@ export function idempotent(key: string) {
 export function clearSession(): void {
   stopProactiveRefresh();
   /*
+   * This still wipes the draft, and that is still right — because the only
+   * callers left are a session that ENDED.
+   *
+   * It used to also run when a refresh failed for a TRANSPORT reason — flaky
+   * wifi mid-KYC, which on a phone is the ordinary way this fails. The client
+   * was signed out, returned to the right step afterwards, and every field was
+   * empty, with nothing anywhere explaining why. A five-minute form lost to a
+   * one-second blip.
+   *
+   * The fix is upstream rather than a flag here: the interceptor no longer treats
+   * an unanswered refresh as a dead session at all, so it never reaches this
+   * function. "This session is over" therefore means one thing again, and a
+   * caller cannot half-mean it.
+   */
+  /*
    * The half-filled KYC form holds the client's full name, date of birth and
    * address, and `sessionStorage` survives the hard navigation to the login
    * screen that follows a dead session.
@@ -209,52 +256,136 @@ export function clearSession(): void {
  * and dumped the user on the login screen mid-session. Every caller now awaits
  * the one in-flight promise.
  */
-let inFlight: Promise<boolean> | null = null;
+let inFlight: Promise<RefreshOutcome> | null = null;
 
-export function refreshPortalToken(): Promise<boolean> {
+/**
+ * A refused refresh versus one that never got an answer.
+ *
+ * 401 is the API saying no. Anything else — no response at all, a 5xx, a
+ * timeout — is us being unable to ask, which is a different fact and must not be
+ * rendered, or acted on, as though the session had ended.
+ */
+function outcomeOf(error: unknown): 'dead' | 'unreachable' {
+  const status = (error as { response?: { status?: number } })?.response?.status;
+  if (status === undefined) return 'unreachable';
+  return status >= 500 ? 'unreachable' : 'dead';
+}
+
+/**
+ * Did the API say this refresh merely LOST A RACE?
+ *
+ * `SESSION_SUPERSEDED` is the one 401 on this path that does not mean the
+ * session is over — see the backend's domain-errors.ts. Branching on the machine
+ * code rather than the message, because the message is prose that changes and
+ * will be translated (D-16).
+ */
+function supersededCode(error: unknown): boolean {
+  const code = (error as { response?: { data?: { code?: string } } })?.response?.data?.code;
+  return code === 'SESSION_SUPERSEDED';
+}
+
+/**
+ * Why a refresh did not renew the session.
+ *
+ * `dead` — the API refused the refresh token: revoked, expired, replayed. The
+ * session is genuinely over and everything tied to it should go.
+ *
+ * `unreachable` — nothing answered, or it answered 5xx. We do NOT know that the
+ * session is over, and treating it as though we did is what destroyed a
+ * half-filled KYC form on a dropped connection.
+ */
+export type RefreshOutcome = 'renewed' | 'dead' | 'unreachable';
+
+/**
+ * The real refresh. `refreshPortalToken` is the boolean face of it, kept because
+ * that is what the rest of the app and its tests already call.
+ */
+export function refreshPortalSession(): Promise<RefreshOutcome> {
   if (inFlight) return inFlight;
   inFlight = (async () => {
-    try {
-      /*
-       * No body: the refresh token is an httpOnly cookie the browser attaches,
-       * and the API accepts it from nowhere else (R-3.1 — two credential
-       * channels for one session means two threat models). Nothing to read,
-       * nothing to send, nothing to leak.
-       *
-       * Deliberately NOT through `apiClient`, so a 401 here cannot recurse into
-       * the response interceptor that called it. The cost of stepping outside is
-       * that the request interceptor does not run, so the correlation id has to
-       * be attached by hand — R-6.1. It was not, and this is the single request
-       * you most want to trace when a session dies for no visible reason.
-       *
-       * No CSRF header, and that is correct: the API marks this route `@NoCsrf`
-       * precisely because the anti-forgery token expires alongside the access
-       * token, and demanding one here would lock out the returning client this
-       * call exists to renew.
-       */
-      await axios.post(
-        `${API_BASE_URL}${REFRESH_PATH}`,
-        {},
-        { withCredentials: true, headers: { 'X-Request-Id': newCorrelationId() } },
-      );
-      /*
-       * A boolean, because there is nothing else to return.
-       *
-       * This used to resolve the literal string `'refreshed'` — a placeholder
-       * shaped like the access token that used to come back in the body. The
-       * token is gone (R-3.2): the rotated cookies arrive on the response and
-       * the browser installs them, so reaching 200 IS the result. A `string |
-       * null` signature invites the next reader to put a credential back into
-       * JavaScript, which is exactly what this migration removed.
-       */
-      return true;
-    } catch {
-      return false;
-    } finally {
-      inFlight = null;
-    }
-  })();
+    let retrying = false;
+    /*
+     * Single-flight ACROSS TABS as well as within one.
+     *
+     * `inFlight` above is module scope, which is per tab, and each tab runs its
+     * own ten-minute timer — so a phone waking with several tabs open fires
+     * several refreshes at one rotating token. The lock serialises them; see
+     * lib/session-channel.ts for why it waits rather than short-circuiting.
+     */
+    return withSessionLock(async () => {
+      try {
+        /*
+         * No body: the refresh token is an httpOnly cookie the browser attaches,
+         * and the API accepts it from nowhere else (R-3.1 — two credential
+         * channels for one session means two threat models). Nothing to read,
+         * nothing to send, nothing to leak.
+         *
+         * Deliberately NOT through `apiClient`, so a 401 here cannot recurse into
+         * the response interceptor that called it. The cost of stepping outside is
+         * that the request interceptor does not run, so the correlation id has to
+         * be attached by hand — R-6.1. It was not, and this is the single request
+         * you most want to trace when a session dies for no visible reason.
+         *
+         * No CSRF header, and that is correct: the API marks this route `@NoCsrf`
+         * precisely because the anti-forgery token expires alongside the access
+         * token, and demanding one here would lock out the returning client this
+         * call exists to renew.
+         */
+        await axios.post(
+          `${API_BASE_URL}${REFRESH_PATH}`,
+          {},
+          { withCredentials: true, headers: { 'X-Request-Id': newCorrelationId() } },
+        );
+        /*
+         * A boolean, because there is nothing else to return.
+         *
+         * This used to resolve the literal string `'refreshed'` — a placeholder
+         * shaped like the access token that used to come back in the body. The
+         * token is gone (R-3.2): the rotated cookies arrive on the response and
+         * the browser installs them, so reaching 200 IS the result. A `string |
+         * null` signature invites the next reader to put a credential back into
+         * JavaScript, which is exactly what this migration removed.
+         */
+        return 'renewed' as const;
+      } catch (error) {
+        /*
+         * `SESSION_SUPERSEDED` means the session is ALIVE — retry, do not sign
+         * out. Another request rotated the same token first, so the winner's
+         * cookies are already in this browser's jar and a second attempt
+         * succeeds against them.
+         *
+         * The lock serialises but does not eliminate the race: a request already
+         * in flight when the winner committed cannot be recalled. Without this
+         * retry the losing tab treats a live session as dead — and, since
+         * `endDeadSession` now tells the other tabs, takes them with it.
+         */
+        if (supersededCode(error) && !retrying) {
+          retrying = true;
+          try {
+            await axios.post(
+              `${API_BASE_URL}${REFRESH_PATH}`,
+              {},
+              { withCredentials: true, headers: { 'X-Request-Id': newCorrelationId() } },
+            );
+            return 'renewed' as const;
+          } catch (retryError) {
+            return outcomeOf(retryError);
+          }
+        }
+        return outcomeOf(error);
+      }
+    });
+  })().finally(() => {
+    // Released here rather than inside the lock, so the in-tab dedupe covers the
+    // whole operation INCLUDING the wait for the cross-tab lock.
+    inFlight = null;
+  });
   return inFlight;
+}
+
+/** The boolean face of `refreshPortalSession`, for callers that only need "did it work". */
+export function refreshPortalToken(): Promise<boolean> {
+  return refreshPortalSession().then((outcome) => outcome === 'renewed');
 }
 
 // Started once a session exists, stopped on logout. The old version was a
@@ -309,31 +440,41 @@ function endDeadSession(): void {
   /*
    * A session that never existed cannot have died.
    *
-   * Read BEFORE `clearSession()`, and it is the whole fix: `/auth/me` answers
-   * 401 for a signed-out visitor, which is the ORDINARY case on every public
-   * page. The interceptor treated that identically to an expired session — it
-   * refreshed, got another 401, and hard-navigated to the sign-in screen.
+   * `/auth/me` answers 401 for a signed-out visitor, which is the ORDINARY case
+   * on every public page. This branch once treated that identically to an
+   * expired session — it refreshed, got another 401, and hard-navigated to the
+   * sign-in screen. So a visitor who opened /auth/register was thrown off it
+   * before they could type, landing on /auth/login?next=/auth/register. Nobody
+   * could sign up. The same happened on forgot-password and reset-password, the
+   * two pages a locked-out client reaches for.
    *
-   * So a visitor who opened /auth/register was thrown off it before they could
-   * type, landing on /auth/login?next=/auth/register. Nobody could sign up. The
-   * same happened on forgot-password and reset-password — the two pages a
-   * locked-out client reaches for — and exempting LOGIN_PATH alone hid it,
-   * because the login page was the one public page that stayed put.
-   *
-   * The CSRF cookie is the signal because it is the one cookie this app can
-   * still see, it is set and cleared alongside the session, and it is not a
-   * credential — the same reasoning `startProactiveRefresh` already uses. No
-   * cookie means nobody was signed in, so there is nothing to evict them from.
-   *
-   * Deliberately not a list of public paths: one would have to be kept in step
-   * with `proxy.ts`, and a page added to one and not the other fails exactly
-   * this way again.
+   * The check that fixed it now lives below, against `isPublicPath` rather than
+   * against the CSRF cookie — see the comment there for why the cookie was the
+   * wrong signal for the right question.
    */
-  const hadSession = readCsrfCookie() !== undefined;
-
   clearSession();
+  /*
+   * Tell the other tabs. Whichever tab notices first is the one that knows; the
+   * rest are sitting on a rendered portal with a dead session behind it and
+   * would only find out when somebody clicked something.
+   */
+  announceSessionEvent('signed-out');
   if (typeof window === 'undefined') return;
-  if (!hadSession) return;
+  /*
+   * Nothing to evict anyone from: these pages are meant to work signed out.
+   *
+   * This replaces `readCsrfCookie() !== undefined`. The intent was right — a
+   * visitor who never had a session must not be thrown off /auth/register — but
+   * the signal was wrong, because the server clears the CSRF cookie for the
+   * WHOLE browser on logout and it expires 8 hours in against the refresh
+   * cookie's 30 days. So a tab whose session had genuinely died concluded nobody
+   * had ever been signed in, and kept rendering the client's name and balance.
+   *
+   * `isPublicPath` asks the question directly, from the one list `proxy.ts` also
+   * reads. The comment this replaces rejected a path list because a second copy
+   * would drift; there is no second copy.
+   */
+  if (isPublicPath(window.location.pathname)) return;
   if (window.location.pathname.startsWith(LOGIN_PATH)) return;
   // A HARD navigation, deliberately, against @next/next's advice to use
   // router.push. The session is dead: a client-side push keeps the same JS
@@ -352,10 +493,19 @@ apiClient.interceptors.response.use(
     const isAuthEndpoint = AUTH_ENDPOINT_PATTERN.test(url);
 
     if (error.response?.status === 401 && originalRequest && !isAuthEndpoint) {
+      /*
+       * `outcome` is threaded through rather than collapsed to a boolean,
+       * because "the API refused this token" and "we could not ask" have to end
+       * differently. Collapsing them is what wiped a half-filled KYC form on a
+       * dropped connection: the two were indistinguishable here, so the
+       * transport failure took the dead-session path and cleared the draft.
+       */
+      let outcome: RefreshOutcome = 'dead';
+
       if (!originalRequest._retry) {
         originalRequest._retry = true;
-        const refreshed = await refreshPortalToken();
-        if (refreshed) {
+        outcome = await refreshPortalSession();
+        if (outcome === 'renewed') {
           // No header to re-attach: the rotated session cookie travels on its own.
           // The CSRF header is rebuilt by the request interceptor on the retry,
           // which matters because refresh ROTATES the token — replaying the old
@@ -376,8 +526,19 @@ apiClient.interceptors.response.use(
        * between the two calls. The client sat on a fully rendered portal with a
        * dead session and no way to find out, because every subsequent request
        * took the same path and stopped in the same place.
+       *
+       * A second 401 after a SUCCESSFUL rotation is genuinely dead — the server
+       * answered, and its answer was no. Only a refresh that never got an answer
+       * is `unreachable`, which is why the default above is `dead`.
+       *
+       * And an `unreachable` refresh ends nothing at all. We do not know the
+       * session is over; we know we could not ask. Signing the client out on that
+       * basis is a network blip logging somebody out — reachable mid-KYC on a
+       * phone, which is this portal's primary device. The 401 propagates instead,
+       * the page renders its own error with a retry, and the session, the timer
+       * and the half-filled form all survive.
        */
-      endDeadSession();
+      if (outcome !== 'unreachable') endDeadSession();
     }
     // Rethrow the original AxiosError, never a wrapped one: every caller reads
     // `error.response.data.message` through apiErrorMessage, and the 401 branch
