@@ -410,8 +410,27 @@ function KycShell({ children }: { children: React.ReactNode }) {
           .kyc-progress-wrap {
             padding: 24px 16px 0;
           }
+          /*
+           * The progress rail pushed the page sideways on a phone.
+           *
+           * white-space: nowrap kept "Address Proof" on one line, and a flex
+           * item defaults to min-width: auto — so the node could not shrink
+           * below its own text and the fifth step ran ~16px past a 393px
+           * viewport. The whole document then scrolled sideways, on the one
+           * screen almost every client reaches from a phone.
+           *
+           * Both halves are needed: letting the label wrap does nothing while
+           * the node refuses to shrink, and min-width: 0 alone leaves the text
+           * refusing to break.
+           */
+          .kyc-step-node {
+            min-width: 0;
+          }
           .kyc-step-label {
             font-size: 0.6rem;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            padding: 0 2px;
           }
         }
       `}</style>

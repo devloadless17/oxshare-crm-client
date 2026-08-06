@@ -1,0 +1,170 @@
+import { expect, test, type Page } from '@playwright/test';
+import { TINY_PNG } from './helpers';
+
+/**
+ * KYC onboarding, on the device it is actually used from.
+ *
+ * The KYC review found the mobile-capture gaps to be the largest group of real
+ * defects, and no unit test could reach most of them: `capture` attributes,
+ * whether a photo is previewed before it is sent, and — the one that matters
+ * most — the canvas normalisation that rotates a photo upright, strips its GPS
+ * metadata and brings a 12 MB camera original under the upload limit.
+ *
+ * That canvas path had NEVER been executed. jsdom has no image decoding, so its
+ * unit tests deliberately cover only the pure arithmetic and the failure
+ * behaviour. This is the first thing that runs it for real, end to end, against
+ * the actual upload endpoint.
+ *
+ * Runs as `e2e-kyc@oxshare.com`: verified, but never submitted. It stops short
+ * of submitting on purpose — that leaves the fixture `in_progress`, which
+ * `saveStep` accepts indefinitely, so the spec is repeatable. The submit
+ * contract itself is proven server-side in `test/kyc-http.spec.ts`.
+ */
+
+test.use({ storageState: 'e2e/.auth/kyc-client.json' });
+
+/**
+ * Put the document uploader back to its empty state.
+ *
+ * These specs share one fixture and one KYC row, so an earlier spec that
+ * uploaded leaves the tile showing "Replace" rather than the two capture
+ * buttons — and the next spec then fails on run two while passing on run one.
+ * Order-dependence is exactly the flakiness worth refusing, so each spec puts
+ * the uploader where it expects to find it rather than hoping.
+ */
+async function resetUploader(page: Page): Promise<void> {
+  await page.waitForLoadState('networkidle');
+  const replace = page.getByRole('button', { name: /^replace$/i }).first();
+  if (await replace.isVisible().catch(() => false)) await replace.click();
+}
+
+test.describe('the KYC wizard', () => {
+  test('opens on the first incomplete step', async ({ page }) => {
+    await page.goto('/kyc');
+    await page.waitForURL(/\/kyc\/step\/\d/);
+
+    // A client with nothing submitted belongs at the beginning.
+    await expect(page).toHaveURL(/\/kyc\/step\/1/);
+  });
+
+  test('offers BOTH a camera and a file picker for a document', async ({ page }) => {
+    /*
+     * The requirement is both, and it is why this is not simply a `capture`
+     * attribute: on iOS and Android a bare `capture` makes an input
+     * camera-ONLY, which locks out anyone who photographed their ID with a
+     * second device or already holds a scan.
+     */
+    await page.goto('/kyc/step/2');
+    await resetUploader(page);
+
+    await expect(page.getByRole('button', { name: /take photo/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /choose file/i }).first()).toBeVisible();
+
+    // Two inputs: one asking for the rear camera, one asking for nothing.
+    const withCapture = page.locator('input[type="file"][capture]');
+    const withoutCapture = page.locator('input[type="file"]:not([capture])');
+    await expect(withCapture.first()).toHaveAttribute('capture', 'environment');
+    expect(await withoutCapture.count()).toBeGreaterThan(0);
+  });
+
+  test('PREVIEWS a chosen photo before sending it, and only uploads on confirm', async ({
+    page,
+  }) => {
+    /*
+     * The sharper half of the mobile problem. The uploader used to send the file
+     * and then render a thumbnail, so the first shot was already on the API
+     * host's disk and attached to the submission before the client had seen it
+     * at any usable size — and every discarded attempt cost a full mobile upload
+     * plus an orphaned identity document on the server.
+     *
+     * This also exercises the canvas normalisation for real: choosing the file
+     * decodes it, draws it oriented, and re-encodes before anything is sent.
+     */
+    await page.goto('/kyc/step/2');
+    await resetUploader(page);
+
+    const uploads: string[] = [];
+    page.on('request', (r) => {
+      if (r.url().includes('/kyc/upload')) uploads.push(r.method());
+    });
+
+    await page.locator('input[type="file"]:not([capture])').first().setInputFiles({
+      name: 'passport.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG,
+    });
+
+    // Shown, with a way out — and nothing sent yet.
+    const confirm = page.getByRole('button', { name: /use this/i });
+    await expect(confirm).toBeVisible();
+    await expect(page.getByRole('button', { name: /retake/i })).toBeVisible();
+    expect(uploads).toEqual([]);
+
+    await confirm.click();
+
+    // Now it is sent, and the tile says so.
+    await expect(page.getByText(/uploaded/i).first()).toBeVisible({ timeout: 20_000 });
+    expect(uploads).toEqual(['POST']);
+  });
+
+  test('warns that a tiny image may be unreadable, without refusing it', async ({ page }) => {
+    /*
+     * 1x1 is far below the readable floor, so this is the warning path. It is
+     * advisory by decision: a legitimate small scan refused outright is a worse
+     * outcome than a marginal one a reviewer can judge for themselves.
+     */
+    await page.goto('/kyc/step/2');
+    await resetUploader(page);
+
+    await page.locator('input[type="file"]:not([capture])').first().setInputFiles({
+      name: 'tiny.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG,
+    });
+
+    await expect(page.getByRole('status')).toContainText(/hard to read/i);
+    // Warned, not blocked.
+    await expect(page.getByRole('button', { name: /use this/i })).toBeEnabled();
+  });
+
+  test('gives the profile fields mobile keyboards and autofill', async ({ page }) => {
+    // The form is filled once, on a phone, with a keyboard over half the screen.
+    // It carried no autoComplete at all, so a saved address was typed by hand.
+    await page.goto('/kyc/step/1');
+    await page.waitForLoadState('networkidle');
+
+    const first = page.locator('input[autocomplete="given-name"]');
+    await expect(first).toBeVisible();
+    await expect(page.locator('input[autocomplete="family-name"]')).toBeVisible();
+
+    // Date of birth is a native date input, so the OS picker opens rather than
+    // a text keyboard.
+    await expect(page.locator('input[type="date"]')).toBeVisible();
+  });
+
+  test('uses the OS picker for the 250-option country list', async ({ page }) => {
+    // A custom listbox of ~250 entries is a 250-item scroll on a phone with no
+    // letter-jump. Long lists fall back to a native select for that reason.
+    await page.goto('/kyc/step/1');
+    // The fields render from `/kyc/config`, so the form does not exist until
+    // that request lands. Asserting before it does was a race in this spec, not
+    // a defect in the page.
+    await page.waitForLoadState('networkidle');
+
+    const nativeSelects = page.locator('select');
+    expect(await nativeSelects.count()).toBeGreaterThan(0);
+  });
+
+  test('fits a 393px screen without sideways scrolling', async ({ page, isMobile }) => {
+    // A form that overflows horizontally on a phone is one people abandon.
+    test.skip(!isMobile, 'the point of this case is the mobile viewport');
+
+    await page.goto('/kyc/step/1');
+    await page.waitForLoadState('networkidle');
+
+    const overflows = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+    );
+    expect(overflows).toBe(false);
+  });
+});

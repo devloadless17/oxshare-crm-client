@@ -17,8 +17,34 @@ export const E2E_CLIENT = {
   password: 'client123',
 } as const;
 
-/** Where the signed-in session is cached between specs. See `auth.setup.ts`. */
+/**
+ * A VERIFIED client with no KYC submission — the one the wizard spec drives.
+ *
+ * Separate from `E2E_CLIENT`, which is already approved and so has no wizard
+ * left to walk. This one deliberately never submits, staying `in_progress`,
+ * which is what makes the spec repeatable.
+ */
+export const E2E_KYC_CLIENT = {
+  email: 'e2e-kyc@oxshare.com',
+  password: 'client123',
+} as const;
+
+/** Where each signed-in session is cached between specs. See `auth.setup.ts`. */
 export const STORAGE_STATE = 'e2e/.auth/client.json';
+export const KYC_STORAGE_STATE = 'e2e/.auth/kyc-client.json';
+
+/**
+ * A real 1x1 PNG, as bytes.
+ *
+ * Real rather than `Buffer.from('x')` because the upload path checks the file's
+ * leading bytes against its declared type (`file-signature.ts`) and refuses
+ * anything that is not genuinely the format it claims. A fake would be rejected
+ * by the server, and the spec would be testing the rejection path by accident.
+ */
+export const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
 
 /**
  * Sign in through the real form.

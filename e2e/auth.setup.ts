@@ -1,7 +1,7 @@
 import { test as setup } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { E2E_CLIENT, signIn, STORAGE_STATE } from './helpers';
+import { E2E_CLIENT, E2E_KYC_CLIENT, KYC_STORAGE_STATE, signIn, STORAGE_STATE } from './helpers';
 
 /**
  * Sign in ONCE, and let every spec reuse the session.
@@ -24,4 +24,16 @@ setup('authenticate as the e2e client', async ({ page }) => {
   // Not committed: these are live session cookies, and `.auth/` is gitignored.
   mkdirSync(dirname(STORAGE_STATE), { recursive: true });
   await page.context().storageState({ path: STORAGE_STATE });
+});
+
+/**
+ * The second fixture: verified, but with no submission, so the wizard is
+ * reachable. A separate session because it is a different identity — sharing
+ * one would mean the wizard spec and the verified-state specs fighting over the
+ * same KYC row.
+ */
+setup('authenticate as the e2e KYC client', async ({ page }) => {
+  await signIn(page, E2E_KYC_CLIENT);
+  mkdirSync(dirname(KYC_STORAGE_STATE), { recursive: true });
+  await page.context().storageState({ path: KYC_STORAGE_STATE });
 });
