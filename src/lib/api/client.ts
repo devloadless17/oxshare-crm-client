@@ -529,10 +529,26 @@ apiClient.interceptors.response.use(
        * followed by a `/auth/refresh 401 SESSION_REVOKED`, over and over.
        *
        * It is not only noise: that route is throttled at 20/min, and a shared
-       * office or mobile-carrier IP reaches that on ordinary traffic. The admin
-       * console already skips it this way.
+       * office or mobile-carrier IP reaches that on ordinary traffic.
+       *
+       * THE CSRF COOKIE IS PART OF THE CONDITION, and leaving it out was a
+       * regression I nearly shipped. A signed-in client whose access token has
+       * lapsed — the ordinary state of anyone returning after fifteen minutes —
+       * may well land on `/auth/login` from a bookmark. Skipping the renewal
+       * there resolves their profile to null, so `RedirectIfAuthenticated` never
+       * fires and they are shown a sign-in form over a live session: exactly the
+       * defect the reverse gate exists to prevent.
+       *
+       * The cookie is a sound signal HERE, unlike in `endDeadSession`, because
+       * this is an optimisation rather than a correctness decision. A false
+       * negative costs one wasted request — the old behaviour. A false positive
+       * costs one renewal attempt, which is what should happen anyway.
        */
-      if (typeof window !== 'undefined' && isPublicPath(window.location.pathname)) {
+      if (
+        typeof window !== 'undefined' &&
+        isPublicPath(window.location.pathname) &&
+        readCsrfCookie() === undefined
+      ) {
         return Promise.reject(error);
       }
 
