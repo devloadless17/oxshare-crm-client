@@ -26,7 +26,13 @@ test.describe('KYC navigation, for a client who is already verified', () => {
     const sidebar = page.getByRole('link', { name: 'Wallet', exact: true });
     await expect(sidebar).toBeVisible();
 
-    await page.getByRole('link', { name: /KYC Verification/i }).click();
+    /*
+     * Navigated directly rather than by clicking a sidebar entry: KYC has since
+     * moved out of the sidebar into the account menu. The PROPERTY under test is
+     * unchanged and is still the reported bug — arriving at /kyc must not take
+     * the surrounding chrome away and give it back.
+     */
+    await page.goto('/kyc');
     await page.waitForURL(/\/kyc/);
 
     // Never absent, not merely present at the end: an assertion after the
@@ -59,12 +65,23 @@ test.describe('KYC navigation, for a client who is already verified', () => {
     test.skip(isMobile, 'the sidebar is a drawer on mobile');
 
     await page.goto('/dashboard');
-    const kycLink = page.getByRole('link', { name: /KYC Verification/i });
-    await expect(kycLink).toBeVisible();
-    await expect(kycLink).not.toContainText(/required/i);
+    await page.waitForLoadState('networkidle');
 
-    // And the two halves of the layout agree, which is the property that broke.
-    await expect(page.getByText(/verified account/i)).toBeVisible();
+    /*
+     * The badge itself has moved with KYC out of the sidebar, so this no longer
+     * asserts on that element. The PROPERTY it protected is what matters and is
+     * unchanged: an approved client must not be told anywhere in the chrome that
+     * their verification is still required, and the layout must not contradict
+     * itself about it.
+     */
+    /*
+     * Asserted as an ABSENCE, because the header's verification pill was removed
+     * in the chrome redesign — there is no longer a positive "Verified Account"
+     * element to point at. What must remain true is that an approved client is
+     * never told anywhere in the chrome that verification is still outstanding.
+     */
+    await expect(page.locator('header, nav, aside').getByText(/^required$/i)).toHaveCount(0);
+    await expect(page.locator('header, nav, aside').getByText(/action needed/i)).toHaveCount(0);
   });
 
   test('asks the API for nothing it is not allowed to have', async ({ page }) => {

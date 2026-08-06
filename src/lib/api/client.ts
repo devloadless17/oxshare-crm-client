@@ -306,8 +306,34 @@ type RetriableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
  * for why a value we generated still cannot be trusted when it is read.
  */
 function endDeadSession(): void {
+  /*
+   * A session that never existed cannot have died.
+   *
+   * Read BEFORE `clearSession()`, and it is the whole fix: `/auth/me` answers
+   * 401 for a signed-out visitor, which is the ORDINARY case on every public
+   * page. The interceptor treated that identically to an expired session — it
+   * refreshed, got another 401, and hard-navigated to the sign-in screen.
+   *
+   * So a visitor who opened /auth/register was thrown off it before they could
+   * type, landing on /auth/login?next=/auth/register. Nobody could sign up. The
+   * same happened on forgot-password and reset-password — the two pages a
+   * locked-out client reaches for — and exempting LOGIN_PATH alone hid it,
+   * because the login page was the one public page that stayed put.
+   *
+   * The CSRF cookie is the signal because it is the one cookie this app can
+   * still see, it is set and cleared alongside the session, and it is not a
+   * credential — the same reasoning `startProactiveRefresh` already uses. No
+   * cookie means nobody was signed in, so there is nothing to evict them from.
+   *
+   * Deliberately not a list of public paths: one would have to be kept in step
+   * with `proxy.ts`, and a page added to one and not the other fails exactly
+   * this way again.
+   */
+  const hadSession = readCsrfCookie() !== undefined;
+
   clearSession();
   if (typeof window === 'undefined') return;
+  if (!hadSession) return;
   if (window.location.pathname.startsWith(LOGIN_PATH)) return;
   // A HARD navigation, deliberately, against @next/next's advice to use
   // router.push. The session is dead: a client-side push keeps the same JS
