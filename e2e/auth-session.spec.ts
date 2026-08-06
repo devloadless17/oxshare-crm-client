@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { collectRejections, E2E_CLIENT, newClient, signIn } from './helpers';
+import { collectRejections, E2E_CLIENT, newClient, register, signIn } from './helpers';
 
 /**
  * Does the session actually hold, on every page, across a refresh?
@@ -165,13 +165,7 @@ test.describe('registration', () => {
     const client = newClient();
     const rejections = collectRejections(page);
 
-    await page.goto('/auth/register');
-    await page.getByPlaceholder('John').fill('Kaya');
-    await page.getByPlaceholder('Doe').fill('Newman');
-    await page.getByPlaceholder('you@example.com').fill(client.email);
-    await page.locator('input[type="password"]').first().fill(client.password);
-
-    await page.getByRole('button', { name: /complete registration|create account/i }).click();
+    await register(page, client);
 
     // Somewhere that tells them to check their inbox — never the KYC wizard.
     await page.waitForURL(/verify|login/, { timeout: 30_000 });
@@ -217,12 +211,7 @@ test.describe('an unverified client', () => {
      */
     const client = newClient();
 
-    await page.goto('/auth/register');
-    await page.getByPlaceholder('John').fill('Kaya');
-    await page.getByPlaceholder('Doe').fill('Newman');
-    await page.getByPlaceholder('you@example.com').fill(client.email);
-    await page.locator('input[type="password"]').first().fill(client.password);
-    await page.getByRole('button', { name: /complete registration|create account/i }).click();
+    await register(page, client);
     await page.waitForURL(/verify|login/, { timeout: 30_000 });
 
     // Counted only AFTER registration settles, so this is about browsing.

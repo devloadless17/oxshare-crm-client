@@ -121,6 +121,32 @@ test.describe('moving around the portal', () => {
     expect(rejections.list()).toEqual([]);
   });
 
+  test('marks exactly one nav item as current, on every page', async ({ page }) => {
+    /*
+     * Said, not just shown.
+     *
+     * Active state was carried entirely by colour and font weight, so a screen
+     * reader announced a row of identical links and anyone who cannot separate
+     * those colours got nothing either. `aria-current="page"` is what assistive
+     * technology reads, and asserting the COUNT is one also catches the other
+     * half: two items both claiming to be where you are, which is what prefix
+     * matching produced on the admin console.
+     */
+    /*
+     * `/kyc` is deliberately absent from this list. `visibleNavItems` removes
+     * that entry once a client is approved — which this fixture is — so on /kyc
+     * there is correctly nothing to mark, and asserting otherwise would demand
+     * a nav item the app is right not to render.
+     */
+    for (const route of ['/dashboard', '/wallet', '/transactions', '/accounts']) {
+      await page.goto(route);
+      await page.waitForLoadState('networkidle');
+
+      const current = page.getByRole('navigation').first().locator('[aria-current]');
+      await expect(current, `${route} did not mark exactly one nav item as current`).toHaveCount(1);
+    }
+  });
+
   test('survives the browser back and forward buttons', async ({ page }) => {
     // The navigation nobody tests and everybody uses. Next's client router and
     // an auth context that re-resolves per route can disagree here in a way no

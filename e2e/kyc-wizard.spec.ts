@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { TINY_PNG } from './helpers';
+import { resetKycFixture, TINY_PNG } from './helpers';
 
 /**
  * KYC onboarding, on the device it is actually used from.
@@ -47,6 +47,23 @@ async function resetUploader(page: Page): Promise<void> {
 }
 
 test.describe('the KYC wizard', () => {
+  /*
+   * A clean submission before every test, from the server rather than the UI.
+   *
+   * `resetUploader` puts the WIDGET back; this puts the ROW back, and only the
+   * second one survives a re-run. The fixture is seeded with no submission, so
+   * run one passed and every run after it met an uploader already holding a
+   * document — status still `not_started`, `document` quietly non-null — and the
+   * preview-before-upload flow these specs exist to assert never rendered.
+   *
+   * Seeding cannot fix that: seeds run at boot and the dev server stays up for
+   * days. A fixture that only works once is not a fixture.
+   */
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/kyc');
+    await resetKycFixture(page);
+  });
+
   test('opens on the first incomplete step', async ({ page }) => {
     await page.goto('/kyc');
     await page.waitForURL(/\/kyc\/step\/\d/);
@@ -55,18 +72,11 @@ test.describe('the KYC wizard', () => {
     await expect(page).toHaveURL(/\/kyc\/step\/1/);
   });
 
-  /*
-   * FIXME: the fixture reaches this spec with a document already attached.
-   *
-   * An earlier spec uploads one, and "Replace" does not return the tile to the
-   * state that shows both capture routes — so this asserts against a tile it
-   * never sees. The fix is a per-spec reset that goes through the API rather
-   * than the UI, which needs a decision about how E2E resets fixture state.
-   *
-   * The requirement itself is covered by the unit suite, which asserts both
-   * inputs exist and that only one carries `capture`.
-   */
-  test.fixme('offers BOTH a camera and a file picker for a document', async ({ page }) => {
+  // Un-fixme'd: the per-spec API reset this was waiting on is the `beforeEach`
+  // above. "Replace" never returned the tile to the state showing both capture
+  // routes, so this asserted against a tile it could not see; resetting the ROW
+  // rather than the widget removes the problem instead of working around it.
+  test('offers BOTH a camera and a file picker for a document', async ({ page }) => {
     /*
      * The requirement is both, and it is why this is not simply a `capture`
      * attribute: on iOS and Android a bare `capture` makes an input

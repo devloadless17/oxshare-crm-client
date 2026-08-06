@@ -1,4 +1,8 @@
 import type { Page, Response } from '@playwright/test';
+// The app's own cookie names, not a second copy of them. `client.ts` explains
+// why they are worth importing rather than retyping: the backend computes these
+// and this repo hardcodes them, with nothing connecting the two.
+import { CSRF_COOKIE_NAMES } from '../src/lib/api/client';
 
 /**
  * The client the E2E SUITE owns — seeded verified and KYC-approved.
@@ -99,6 +103,97 @@ export async function signIn(
   }
 
   await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
+}
+
+/**
+ * Register a brand-new client through the real form.
+ *
+ * Shares `signIn`'s reason for existing: registration is capped at TEN PER HOUR
+ * per IP — a far tighter budget than login's five per minute, and one a suite
+ * that registers on every run WILL exhaust after a few iterations. Waiting only
+ * on the URL turns that into a bare 30-second timeout that reads as "the
+ * registration flow is broken", and the honest answer is "you have registered
+ * ten people this hour".
+ *
+ * The cap is right and should not be relaxed for tests. What the tests owe is to
+ * say which one they hit.
+ */
+export async function register(
+  page: Page,
+  client: { email: string; password: string },
+): Promise<void> {
+  await page.goto('/auth/register');
+  await page.getByPlaceholder('John').fill('Kaya');
+  await page.getByPlaceholder('Doe').fill('Newman');
+  await page.getByPlaceholder('you@example.com').fill(client.email);
+  await page.locator('input[type="password"]').first().fill(client.password);
+
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (res) => res.url().includes('/api/auth/register') && res.request().method() === 'POST',
+      { timeout: 30_000 },
+    ),
+    page.getByRole('button', { name: /complete registration|create account/i }).click(),
+  ]);
+
+  if (response.status() === 429) {
+    throw new Error(
+      'Rate limited registering: POST /auth/register answered 429. The cap is ten per hour ' +
+        'per IP and it is not the thing under test — wait, or run this spec less often.',
+    );
+  }
+  if (!response.ok()) {
+    throw new Error(`Registration answered ${response.status()} for ${client.email}.`);
+  }
+}
+
+/**
+ * Put the KYC fixture back to an empty submission.
+ *
+ * WHY THIS IS NEEDED. `e2e-kyc@oxshare.com` is seeded with no submission, which
+ * makes the FIRST run of the wizard spec repeatable and every run after it a
+ * different world: the specs upload a document, the row keeps it, and the next
+ * run finds an uploader already showing its "uploaded" state — so the
+ * preview-before-upload flow it exists to assert never renders. The status
+ * stayed `not_started` while `document` quietly became non-null, which is why
+ * the failure looked like a product regression rather than accumulated state.
+ *
+ * Seeding cannot fix it: seeds run at boot, and the dev server people actually
+ * run these against stays up for days. The fixture has to reset itself.
+ *
+ * Driven through `POST /kyc/reset`, the real endpoint, from inside the page so
+ * it carries the real session cookies — and the CSRF header, because the API
+ * refuses a state-changing request without it. That header is the one thing the
+ * app is allowed to read from JS (it is proof of same-origin, not a
+ * credential), which is exactly why this can be done from here at all.
+ *
+ * Safe by construction: `resetKyc` refuses when a submission is approved or
+ * under review, so this can never destroy the approved fixture even if pointed
+ * at the wrong session.
+ */
+export async function resetKycFixture(page: Page): Promise<void> {
+  const status = await page.evaluate(async (cookieNames) => {
+    const jar = document.cookie.split('; ');
+    const raw = cookieNames
+      .map((name) => jar.find((c) => c.startsWith(`${name}=`)))
+      .find((found) => found !== undefined);
+    if (raw === undefined) return 0;
+
+    const res = await fetch('/api/kyc/reset', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'x-oxshare-csrf': decodeURIComponent(raw.slice(raw.indexOf('=') + 1)) },
+    });
+    return res.status;
+  }, CSRF_COOKIE_NAMES);
+
+  if (status === 0) throw new Error('No CSRF cookie — is this page signed in?');
+  // 200 is a reset; 400 means there was nothing to reset, which is the same
+  // world as far as the wizard is concerned. Anything else is worth failing on
+  // rather than discovering three assertions later.
+  if (status !== 200 && status !== 201 && status !== 400) {
+    throw new Error(`POST /kyc/reset answered ${status}; the wizard fixture is not clean.`);
+  }
 }
 
 /**
