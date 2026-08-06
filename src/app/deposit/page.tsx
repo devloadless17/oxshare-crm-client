@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowRight, Banknote, Check, Coins, Copy, Loader2 } from 'lucide-react';
+import { AlertCircle, ArrowRight, Banknote, Check, Coins, Copy } from 'lucide-react';
+import { Spinner } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -198,7 +199,7 @@ export default function DepositPage() {
           <Button type="submit" size="lg" disabled={busy} className="w-full sm:w-auto">
             {busy ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                <Spinner />
                 <span>{t('deposit.submitting')}</span>
               </>
             ) : (

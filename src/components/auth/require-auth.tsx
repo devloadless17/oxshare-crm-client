@@ -8,6 +8,7 @@ import { apiClient } from '@/lib/api/client';
 import { isKycApproved, requiresApprovedKyc } from '@/lib/kyc-access';
 import { loginPathFor } from '@/lib/return-to';
 import { Button } from '@/components/ui/button';
+import { PageLoader } from '@/components/ui/loader';
 import { t } from '@/lib/i18n';
 
 /**
@@ -253,16 +254,9 @@ function SessionUnreachable({ onRetry }: { onRetry: () => void }) {
  */
 function SessionCheck() {
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="flex min-h-screen items-center justify-center bg-background"
-    >
-      <span className="sr-only">{t('session.checking')}</span>
-      <span
-        aria-hidden="true"
-        className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary"
-      />
-    </div>
+    // srOnly: this screen is deliberately anonymous — see the comment above —
+    // and a visible "Checking your session" is a claim about a session that,
+    // for some of the people looking at it, does not exist.
+    <PageLoader label={t('session.checking')} srOnly fullScreen />
   );
 }

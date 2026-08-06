@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Mail, Loader2, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Mail, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
@@ -77,15 +77,8 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
 
-              <Button type="submit" disabled={isLoading} size="lg" className="w-full">
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>{t('auth.forgot.sending')}</span>
-                  </>
-                ) : (
-                  <span>{t('auth.forgot.submitCta')}</span>
-                )}
+              <Button type="submit" loading={isLoading} size="lg" className="w-full">
+                {isLoading ? t('auth.forgot.sending') : t('auth.forgot.submitCta')}
               </Button>
             </form>
           )}

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Lock, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
@@ -113,15 +113,8 @@ function ResetPasswordForm() {
                 </div>
               </div>
 
-              <Button type="submit" disabled={isLoading} size="lg" className="w-full">
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>{t('auth.reset.submitting')}</span>
-                  </>
-                ) : (
-                  <span>{t('auth.reset.submitCta')}</span>
-                )}
+              <Button type="submit" loading={isLoading} size="lg" className="w-full">
+                {isLoading ? t('auth.reset.submitting') : t('auth.reset.submitCta')}
               </Button>
             </form>
           )}

@@ -1,13 +1,18 @@
-// TWIN FILE — an identical copy lives at the same path in oxshare-crm-admin.
-// Behaviour changes belong in BOTH. Anything app-specific (cookie names,
-// token lifetimes, redirect paths, endpoint patterns) goes in the config block
-// at the top of the file, never inline — that is what keeps a diff between the
-// two copies a signal rather than noise.
+// NO LONGER A TWIN, and the header saying it was is why this note replaces it.
+//
+// It diverged from admin's copy twice, deliberately: the scale-on-press was
+// removed here alone (press feedback in the client portal is colour only), and
+// `loading` below pulls in `components/ui/loader`, which is a portal component.
+// `scripts/check-twins.sh` records both and no longer compares this file.
+//
+// The SHAPE is still meant to match — variants, sizes, `asChild`, the props
+// interface — so a new variant belongs in both by hand.
 
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
+import { Spinner } from '@/components/ui/loader';
 
 const buttonVariants = cva(
   /*
@@ -52,13 +57,64 @@ const buttonVariants = cva(
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /**
+   * The button is waiting on something it started.
+   *
+   * Handles the whole state rather than just drawing a spinner: it DISABLES the
+   * button and sets `aria-busy`. Every call site was doing the first of those by
+   * hand and none was doing the second, so a double-click filed two withdrawals
+   * on any screen whose author forgot — and `Idempotent` on the API is the last
+   * line of defence for that, not the first.
+   *
+   * The label stays put. Swapping "Sign in" for "Signing in…" resizes the button
+   * under the pointer that is still travelling toward it, and on a slow request
+   * that is a real mis-click. Pass different children if a screen genuinely
+   * needs different words.
+   */
+  loading?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  (
+    { className, variant, size, asChild = false, loading = false, children, disabled, ...props },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : 'button';
+
+    /*
+     * `asChild` and `loading` cannot combine, and this is why rather than an
+     * oversight. Slot requires EXACTLY ONE child — injecting a spinner beside
+     * the caller's element gives it two and React throws. `asChild` is used
+     * here for links (`<Button asChild><Link/></Button>`), and a navigation has
+     * nothing to wait on: it either happens or it does not. So the prop is
+     * ignored in that combination rather than crashing the screen.
+     */
+    if (asChild) {
+      return (
+        <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>
+          {children}
+        </Comp>
+      );
+    }
+
     return (
-      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        // Disabled BY the loading state, not merely alongside it. A button that
+        // shows a spinner and still accepts clicks is the double-submit bug
+        // wearing the costume of its own fix.
+        disabled={disabled ?? loading}
+        aria-busy={loading || undefined}
+        {...props}
+      >
+        {/* Inherits the button's foreground through `currentColor`, so it is
+            legible on primary, destructive, outline and ghost alike without
+            any call site choosing a colour. `[&_svg]:size-4` in the base class
+            sizes it. */}
+        {loading && <Spinner />}
+        {children}
+      </Comp>
     );
   },
 );

@@ -3,7 +3,8 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { CheckCircle2, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Spinner } from '@/components/ui/loader';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
@@ -149,7 +150,7 @@ function VerifyEmailForm() {
           {isLoading ? (
             <div className="py-8 space-y-4">
               <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-info/10">
-                <Loader2 className="h-8 w-8 text-info animate-spin" />
+                <Spinner size="lg" className="text-info" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-foreground">{t('auth.verify.verifying')}</h3>

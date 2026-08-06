@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { AlertCircle, Camera, CheckCircle2, Loader2, RefreshCw, VideoOff } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, RefreshCw, VideoOff } from 'lucide-react';
+import { Spinner } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
@@ -207,7 +208,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
             >
               {uploading ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Spinner size="md" />
                   <span>{t('kyc.processing')}</span>
                 </>
               ) : (
@@ -250,7 +251,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
               </div>
             ) : uploading ? (
               <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground px-4 py-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Spinner />
                 <span>{t('kyc.uploadingSelfie')}</span>
               </div>
             ) : (

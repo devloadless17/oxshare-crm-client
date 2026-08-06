@@ -1,7 +1,7 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
 import { BackendPending } from '@/components/backend-pending';
+import { PageLoader } from '@/components/ui/loader';
 import type { ResourceStatus } from '@/hooks/use-resource';
 import { t } from '@/lib/i18n';
 import { apiErrorRequestId } from '@/lib/api/errors';
@@ -50,14 +50,10 @@ export function AsyncBoundary({
   error?: unknown;
   children: React.ReactNode;
 }) {
-  if (status === 'loading') {
-    return (
-      <div className="flex items-center justify-center py-16" role="status" aria-live="polite">
-        <Loader2 className="h-8 w-8 animate-spin text-link" />
-        <span className="sr-only">{label}</span>
-      </div>
-    );
-  }
+  // `srOnly`, because this sits inside a page that already has a heading saying
+  // what is loading. Repeating it under the spinner is noise for a sighted
+  // reader; a screen reader still hears it through `PageLoader`'s role="status".
+  if (status === 'loading') return <PageLoader label={label} srOnly />;
 
   if (status === 'unavailable') return <BackendPending endpoints={endpoints} />;
 

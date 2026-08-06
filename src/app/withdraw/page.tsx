@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { AlertCircle, CheckCircle2, Info, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { useResource } from '@/hooks/use-resource';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { apiErrorMessage } from '@/lib/api/errors';
@@ -375,15 +375,14 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
         </div>
       )}
 
-      <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            <span>{step === 'details' ? t('withdraw.sendingCode') : t('withdraw.submitting')}</span>
-          </>
-        ) : (
-          <span>{step === 'details' ? t('withdraw.continue') : t('withdraw.submit')}</span>
-        )}
+      <Button type="submit" loading={isSubmitting} className="w-full">
+        {isSubmitting
+          ? step === 'details'
+            ? t('withdraw.sendingCode')
+            : t('withdraw.submitting')
+          : step === 'details'
+            ? t('withdraw.continue')
+            : t('withdraw.submit')}
       </Button>
     </form>
   );

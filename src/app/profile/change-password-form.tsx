@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -129,15 +129,8 @@ export function ChangePasswordForm({ onChanged }: { onChanged?: () => void }) {
         </div>
       </div>
 
-      <Button type="submit" disabled={busy}>
-        {busy ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            <span>{t('profile.changingPassword')}</span>
-          </>
-        ) : (
-          <span>{t('profile.changePasswordCta')}</span>
-        )}
+      <Button type="submit" loading={busy}>
+        {busy ? t('profile.changingPassword') : t('profile.changePasswordCta')}
       </Button>
     </form>
   );

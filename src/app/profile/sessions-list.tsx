@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Loader2, Monitor, Smartphone } from 'lucide-react';
+import { Monitor, Smartphone } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { useResource } from '@/hooks/use-resource';
 import { accountApi, type Session } from '@/lib/api/account';
@@ -114,10 +114,9 @@ function SessionRow({ session, onRevoked }: { session: Session; onRevoked: () =>
           variant="outline"
           size="sm"
           onClick={() => void handleRevoke()}
-          disabled={busy}
+          loading={busy}
           className="shrink-0 text-destructive hover:bg-destructive/10"
         >
-          {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
           <span>{busy ? t('profile.sessionRevoking') : t('profile.sessionRevoke')}</span>
         </Button>
       )}

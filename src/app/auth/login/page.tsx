@@ -3,16 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Lock,
-  Mail,
-  Eye,
-  EyeOff,
-  Loader2,
-  AlertCircle,
-  RefreshCw,
-  CheckCircle2,
-} from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -213,13 +204,14 @@ function LoginForm() {
                   variant="destructive"
                   size="sm"
                   onClick={() => void handleResendEmail()}
+                  loading={isResending}
+                  // Still explicitly disabled for the COOLDOWN, which is not a
+                  // loading state — nothing is in flight, the client simply may
+                  // not ask again yet. `loading` covers only the first case.
                   disabled={isResending || resendCooldown > 0}
                 >
                   {isResending ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                      <span>{t('auth.login.resendSending')}</span>
-                    </>
+                    <span>{t('auth.login.resendSending')}</span>
                   ) : resendCooldown > 0 ? (
                     <span>{t('auth.login.resendCooldown', { seconds: resendCooldown })}</span>
                   ) : (
@@ -306,15 +298,8 @@ function LoginForm() {
           </div>
         </div>
 
-        <Button type="submit" disabled={isLoading} size="lg" className="w-full">
-          {isLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              <span>{t('auth.login.submitting')}</span>
-            </>
-          ) : (
-            <span>{t('auth.login.submit')}</span>
-          )}
+        <Button type="submit" loading={isLoading} size="lg" className="w-full">
+          {isLoading ? t('auth.login.submitting') : t('auth.login.submit')}
         </Button>
       </form>
     </AuthShell>

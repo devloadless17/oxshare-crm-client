@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
+import { Spinner } from '@/components/ui/loader';
 import { Avatar, AvatarFallback, AvatarImage, initialsOf } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { accountApi } from '@/lib/api/account';
@@ -135,11 +136,7 @@ export function AvatarUploader({
             onChange={(e) => void handleFile(e.target.files?.[0])}
             className="sr-only"
           />
-          {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-          )}
+          {busy ? <Spinner /> : <Pencil className="h-3.5 w-3.5" aria-hidden="true" />}
           {/* The icon carries no name of its own, and this control opens a file
               picker that replaces the client's photo. */}
           <span className="sr-only">

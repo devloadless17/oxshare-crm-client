@@ -355,6 +355,50 @@
   }
 }
 
+/*
+ * ── The loader ──────────────────────────────────────────────────────────────
+ *
+ * It spins. Always, in every motion setting, and the media query below is what
+ * makes that true rather than what breaks it.
+ *
+ * The blanket `prefers-reduced-motion` rule at the foot of this file sets
+ * `animation-duration: 0.001ms !important` and `animation-iteration-count: 1`
+ * on EVERYTHING. That is right for decorative motion and fatal here: it does
+ * not slow a spinner, it finishes it instantly and leaves a frozen arc. So a
+ * spinner with no override does not spin at all for anyone whose OS has
+ * "reduce motion" on — which is exactly what was reported.
+ *
+ * The override re-asserts the rotation at higher specificity (`.loader-spin`
+ * beats `*`) with `!important` to match. Same keyframes, same speed, both
+ * settings. A progress indicator is not decoration: it is the only thing on
+ * screen saying the app has not hung, and freezing it removes the message
+ * rather than calming it.
+ *
+ * An opacity pulse was used here for the reduced-motion case and is gone —
+ * rotation is what a loader is expected to do, and the fade read as a bounce.
+ * `role="status"` on the wrapper carries the same message to assistive tech.
+ */
+@keyframes loader-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loader-spin {
+  transform-origin: center;
+  animation: loader-rotate 750ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-spin {
+    /* Beats the blanket rule below. Without this the spinner is static. */
+    animation-name: loader-rotate !important;
+    animation-duration: 750ms !important;
+    animation-timing-function: linear !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

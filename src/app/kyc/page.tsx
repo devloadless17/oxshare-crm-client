@@ -2,7 +2,8 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
+import { Spinner } from '@/components/ui/loader';
 import api from '@/lib/api';
 import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
@@ -66,7 +67,7 @@ export default function KycPage() {
     <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center space-y-4">
       <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-link border border-primary/20">
         <ShieldCheck className="h-8 w-8 text-link" />
-        <Loader2 className="absolute h-14 w-14 animate-spin text-primary/40" />
+        <Spinner size="xl" className="absolute text-primary/40" />
       </div>
 
       <div className="space-y-1">

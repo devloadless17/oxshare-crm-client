@@ -1,15 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import {
-  UploadCloud,
-  CheckCircle2,
-  FileText,
-  Loader2,
-  RefreshCw,
-  Camera,
-  FolderOpen,
-} from 'lucide-react';
+import { Spinner } from '@/components/ui/loader';
+import { UploadCloud, CheckCircle2, FileText, RefreshCw, Camera, FolderOpen } from 'lucide-react';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { normaliseDocumentImage } from '@/lib/image-capture';
 import { t } from '@/lib/i18n';
@@ -274,12 +267,12 @@ export function DocumentUploader({
 
       {preparing ? (
         <div className="flex flex-col items-center gap-3 py-2">
-          <Loader2 className="h-8 w-8 animate-spin text-link" />
+          <Spinner size="lg" className="text-link" />
           <p className="text-xs font-semibold text-foreground">{t('kyc.preparingImage')}</p>
         </div>
       ) : loading ? (
         <div className="flex w-full flex-col items-center gap-3 py-2">
-          <Loader2 className="h-8 w-8 text-link animate-spin" />
+          <Spinner size="lg" className="text-link" />
           <div className="space-y-1 w-full max-w-[220px]">
             <p className="text-xs font-semibold text-foreground">{t('kyc.uploadingFile')}</p>
             {/* Determinate, because "please wait" for two minutes on mobile data

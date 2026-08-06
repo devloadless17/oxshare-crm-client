@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/loader';
 import api from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import {
@@ -342,7 +343,7 @@ export default function KycStepPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[45vh] p-6 text-center space-y-4">
         <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-link border border-primary/20">
-          <Loader2 className="h-7 w-7 animate-spin text-link" />
+          <Spinner size="lg" className="text-link" />
         </div>
         <div className="space-y-1">
           <p className="text-sm font-bold text-foreground">{t('kyc.loadingTitle')}</p>

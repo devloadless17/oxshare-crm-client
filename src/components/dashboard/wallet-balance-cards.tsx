@@ -1,6 +1,7 @@
 'use client';
 
-import { Wallet, Coins, Loader2 } from 'lucide-react';
+import { Wallet, Coins } from 'lucide-react';
+import { Spinner } from '@/components/ui/loader';
 import { useResource } from '@/hooks/use-resource';
 import { walletApi } from '@/lib/api/wallet';
 import { formatMoney } from '@/lib/money';
@@ -57,12 +58,7 @@ export function WalletBalanceCards() {
   // spins; on failure it shows an em dash, not a zero.
   const display = (value: string | undefined, currency: 'USD' | 'USDT') => {
     if (wallets.status === 'loading') {
-      return (
-        <Loader2
-          className="h-5 w-5 animate-spin text-muted-foreground"
-          aria-label={t('common.loading')}
-        />
-      );
+      return <Spinner size="md" className="text-muted-foreground" />;
     }
     if (value === undefined) return <span className="text-muted-foreground">—</span>;
     return formatMoney(value, currency);

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, User, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Lock, Mail, User, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
@@ -212,15 +212,8 @@ function RegisterForm() {
               </div>
             </div>
 
-            <Button type="submit" disabled={isLoading} size="lg" className="w-full">
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>{t('auth.register.submitting')}</span>
-                </>
-              ) : (
-                <span>{t('auth.register.submitCta')}</span>
-              )}
+            <Button type="submit" loading={isLoading} size="lg" className="w-full">
+              {isLoading ? t('auth.register.submitting') : t('auth.register.submitCta')}
             </Button>
           </form>
         </div>
