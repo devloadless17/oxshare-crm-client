@@ -3,6 +3,9 @@ import { cn } from '@/lib/utils';
 /**
  * The one loading indicator in this app.
  *
+ * TWIN FILE — an identical copy lives at the same path in oxshare-crm-admin.
+ * Behaviour changes belong in both.
+ *
  * Before this there were fourteen spellings of "please wait": lucide's
  * `Loader2` at five different sizes and four different colours, a
  * border-and-`animate-spin` div in `RequireAuth`, and a `RefreshCw` that spun
