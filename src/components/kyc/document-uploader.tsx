@@ -107,6 +107,17 @@ export function DocumentUploader({
   const [uploadError, setUploadError] = React.useState<string | null>(null);
   /** Chosen but not yet sent — the confirm/retake step. */
   const [pending, setPending] = React.useState<File | null>(null);
+  /*
+   * The client asked to replace a document that is ALREADY on the server.
+   *
+   * Needed because `uploaded` is a prop, not state. `retake` clears everything
+   * this component owns, but it cannot clear the parent's flag — so after a
+   * successful upload `isUploaded` stayed true no matter what was cleared, the
+   * uploaded view re-rendered identically, and Replace looked like a dead
+   * button. This is the one piece of "yes, I know it is uploaded, show me the
+   * picker anyway" that lives here rather than upstream.
+   */
+  const [replacing, setReplacing] = React.useState(false);
   /** Rotating, shrinking and stripping metadata — before anything is shown. */
   const [preparing, setPreparing] = React.useState(false);
   /** The normalised image is below the readable floor. A warning, not a block. */
@@ -175,6 +186,10 @@ export function DocumentUploader({
     try {
       await onUpload(field, pending, setProgress);
       setPending(null);
+      // The replacement landed, so stop overriding the uploaded view — it now
+      // shows the new document. Only on success: a failed upload must leave the
+      // client on the picker with the error, not back on the old file.
+      setReplacing(false);
     } catch (err: unknown) {
       // apiErrorMessage, not an inline read of err.response.data.message. This was
       // the fourth hand-rolled copy of that extraction in the two frontends, and
@@ -206,7 +221,13 @@ export function DocumentUploader({
     onPendingChange?.(field, pending !== null);
   }, [field, pending, onPendingChange]);
 
-  const isUploaded = !!((preview || uploaded) && !pending);
+  const isUploaded = !!((preview || uploaded) && !pending && !replacing);
+
+  /** Replace an already-uploaded document: clear this component, show the picker. */
+  const replace = React.useCallback(() => {
+    retake();
+    setReplacing(true);
+  }, [retake]);
   const openFilePicker = () => fileInputRef.current?.click();
   const openCamera = () => cameraInputRef.current?.click();
 
@@ -368,7 +389,7 @@ export function DocumentUploader({
             )}
           </div>
 
-          <Button type="button" variant="outline" size="sm" onClick={retake}>
+          <Button type="button" variant="outline" size="sm" onClick={replace}>
             <RefreshCw className="h-3 w-3 text-muted-foreground" />
             <span>{t('kyc.replaceHint')}</span>
           </Button>
