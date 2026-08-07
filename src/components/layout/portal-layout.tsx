@@ -77,11 +77,7 @@ export const NAV_ITEMS: NavItem[] = [
   // KYC gate: a client whose approval lapsed still has every right to
   // enumerate their own history.
   { label: 'nav.transactions', href: '/transactions', icon: Receipt },
-  { label: 'nav.accounts', href: '/accounts', icon: LineChart, comingSoon: true },
-  // Where the client downloads the terminal. A destination rather than an
-  // action — they come here to get something, not to move money — so unlike
-  // Deposit and Withdraw it belongs on the rail.
-  { label: 'nav.platforms', href: '/platforms', icon: MonitorDown },
+  { label: 'nav.accounts', href: '/accounts', icon: LineChart },
   /*
    * The partner programme. A destination, and permanent: unlike KYC it does not
    * disappear once dealt with, because an approved partner comes back to it for
@@ -90,6 +86,21 @@ export const NAV_ITEMS: NavItem[] = [
    * not need to know which.
    */
   { label: 'nav.partner', href: '/partner', icon: Handshake },
+  /*
+   * Where the client downloads the terminal, and the LAST entry on the rail.
+   *
+   * It sat above the partner programme, and it is here now because the rail is
+   * ordered by how often a client returns to a destination. Downloading MT5 is
+   * something they do once per device and then never again; the partner screen
+   * is one an approved partner comes back to for their referral link and their
+   * earnings. Ordering a nav by first-use rather than by recurring use puts the
+   * least-revisited item in the most reachable slot.
+   *
+   * It is also the natural foot of the list for a second reason: it leads OFF
+   * the portal. Every entry above it navigates within the app; this one hands
+   * the client an installer.
+   */
+  { label: 'nav.platforms', href: '/platforms', icon: MonitorDown },
   // KYC is here but conditional — see `visibleNavItems`.
 ];
 

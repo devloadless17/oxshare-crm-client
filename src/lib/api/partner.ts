@@ -14,6 +14,30 @@ export type IbAccount = components['schemas']['IbAccountDto'];
 export type IbApplication = components['schemas']['IbApplicationDto'];
 export type IbApplicationStatus = IbApplication['status'];
 
+/**
+ * The partner dashboard: level, earnings, referred clients and sub-partners.
+ *
+ * ## `earnings.engineLive` is the field that matters most on this screen
+ *
+ * FALSE means the commission engine does not exist — migration 0028 removed it
+ * and nothing writes commission entries yet. The totals are therefore TRUE
+ * READS of an empty ledger rather than computed results, and the UI must say so
+ * beside them.
+ *
+ * That distinction is the whole reason the flag is on the wire. "You have
+ * earned nothing" and "nothing has been calculated yet" are different
+ * sentences, and a partner who is owed money reads the first as a dispute — the
+ * same failure as the wallet that rendered `$0.00` while the client held $700.
+ *
+ * When something starts writing commission entries the flag flips server-side
+ * and the same totals become live, with no change needed here.
+ */
+export type IbOverview = components['schemas']['IbOverviewDto'];
+export type IbEarnings = components['schemas']['IbEarningsDto'];
+export type IbReferredClient = components['schemas']['IbReferredClientDto'];
+export type IbSubPartner = components['schemas']['IbSubPartnerDto'];
+export type IbLevelSummary = components['schemas']['IbLevelSummaryDto'];
+
 export interface ApplyToPartnerInput {
   motivation?: string;
   expectedVolume?: string;
@@ -31,6 +55,20 @@ export const partnerApi = {
    */
   async status(signal?: AbortSignal): Promise<IbStatus> {
     const { data } = await apiClient.get<IbStatus>('/ib/status', { signal });
+    return data;
+  },
+
+  /**
+   * The partner's own dashboard, in one request.
+   *
+   * 404s for a client who is not a partner, deliberately — zeroes across the
+   * board would render as a partner dashboard belonging to somebody who is not
+   * one. Call `status()` first and only ask for this once `account` is present;
+   * `useResource` reports a 404 as `unavailable`, which reads as "not built" and
+   * would be the wrong sentence here.
+   */
+  async overview(signal?: AbortSignal): Promise<IbOverview> {
+    const { data } = await apiClient.get<IbOverview>('/ib/overview', { signal });
     return data;
   },
 

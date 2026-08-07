@@ -12,14 +12,19 @@ app: registration, email verification, KYC onboarding, wallet.
 
 ```
 src/app/auth/{login,register,forgot-password,reset-password,verify-email}/page.tsx
-src/app/kyc/{page,step/[step],submitted}/ · dashboard/ · wallet/ · accounts/
+src/app/kyc/{page,step/[step],submitted}/ · dashboard/ · wallet/ · accounts/ · transactions/ ·
+                                          partner/ · platforms/ · {deposit,withdraw,transfer}/
 src/components/kyc/                       DocumentUploader · DynamicStepRenderer · SelfieCamera
 src/components/                           async-boundary · backend-pending · query-provider ·
                                           theme-* · dashboard/* · layout/portal-layout · ui/*
+src/components/wallet/wallet-card         the balance card (see "Wallet cards" below)
+src/components/transactions/              transaction-filters — the toolbar AND `applyFilters`
+src/components/partner/partner-dashboard  earnings · referred clients · sub-partners
 src/context/UserContext.tsx
 src/hooks/                                use-resource · use-hydrated
-src/lib/api/                              client · auth · errors · wallet · index · types.gen.ts
-src/lib/                                  money · countries-data · route-guard · utils
+src/lib/api/                              client · auth · errors · wallet · trading · partner ·
+                                          payments · index · types.gen.ts
+src/lib/                                  money · date-range · countries-data · route-guard · utils
 src/proxy.ts                              route gate (session PRESENCE only — never reads a claim)
 ```
 
@@ -84,15 +89,86 @@ Async handlers on JSX attributes need an explicit `void` — `onClick={() => voi
 `src/lib/api/errors.ts` holds the canonical `apiErrorMessage(error, fallback)`, including the
 `error.message` fallback. Use it instead of reaching into `err.response.data.message` inline.
 
+## The money/partner/accounts screens
+
+Four screens landed together and share one rule: **state what is true, never render a plausible
+number.** Each carries the rule differently, and each has a specific bug it exists to prevent.
+
+- **`/wallet`** renders each currency as a payment CARD (`components/wallet/wallet-card.tsx`) —
+  wallet id, currency, available balance, holder, and the three `MoneyAction`s beneath it. The
+  card metaphor stops short of a fake card number, chip or expiry: those imply an instrument the
+  client can present somewhere, and none exists. An **unopened** wallet renders an em dash and a
+  sentence, deliberately flat and muted, **never `$0.00`** — that is what showed a client holding
+  $700 a zero, and a prettier card is exactly the change that reintroduces it.
+
+- **`/transactions`** filters by type, status, currency, free text, date range and sort. The
+  toolbar and `applyFilters` live in `components/transactions/transaction-filters.tsx`, exported
+  and pure so the money rules are assertions rather than something you find by clicking.
+  Filtering is **client-side and that is bounded**: `GET /payments/transactions` returns the whole
+  history as a bare array and takes no query parameters, so counts are honest and a sort covers
+  the real set. **If that endpoint ever grows paging, this must move server-side** — filtering one
+  page and calling it a filter over the history would silently under-report a client's own money.
+
+- **`/accounts`** is live via `GET /trading/accounts` (new — see the backend note below). Live and
+  demo are separate SECTIONS rather than one list with a tag, because the distinction is whether
+  the money is real and a demo row between two live ones is what makes the wrong one plausible.
+  It shows `balance` and **never equity, margin or open positions** — there is no MT5 bridge, so
+  nothing here holds them. The screen says so in the UI, not only in a comment: a figure labelled
+  only "Balance" gets read as equity, and those differ by every open position.
+
+- **`/partner`** is full width **for an approved partner only** — that state is a dashboard
+  (figure tiles, client table, sub-partner list) and a table squeezed into `max-w-3xl` wraps into
+  something unreadable. The other four states stay centred and capped, because a lone card
+  stretched across an ultrawide monitor is a line of text with a button off to the right. Width
+  follows the content, not the route.
+
+### `earnings.engineLive` is the field that matters most on the partner screen
+
+The commission engine now EXISTS (backend `modules/ib/commission*`): a client deposit accrues to
+the partner chain, and an hourly job credits it. `GET /ib/overview` sums real
+`commission`/`rebate`/`payout` ledger entries — never a figure derived from referral count × rate.
+
+`engineLive` is a server-side READ — "has any accrual ever been confirmed?" — not a constant. It
+flips true on its own the first time the pipeline pays anyone, with no frontend change.
+
+While it is false the UI **must** say so beside the totals. A zero then means "nothing has been
+credited yet", which is a different sentence from "you have earned nothing", and a partner who is
+owed money reads the second as a dispute. Same rule as the wallet's missing-wallet-is-not-a-zero.
+
+Do **not** re-derive this flag client-side from `lifetime === '0'`: that is per-partner, so a
+brand-new partner on a fully working platform would be told the calculation is not running.
+
+### Dates are `YYYY-MM-DD` strings — `lib/date-range.ts`
+
+The range picker (`ui/date-range-picker.tsx`, one trigger opening two months) keeps all its
+arithmetic in a pure module, for the same reason money does: every boundary case has a wrong
+answer that ships silently.
+
+- **Never `toISOString().split('T')[0]`** — it converts to UTC first, so it returns tomorrow for
+  eastern zones in the evening and yesterday for western zones in the morning. `todayIso()` uses
+  local getters.
+- **The end of a range is INCLUSIVE by date part.** Comparing a timestamp against the end date
+  parsed as midnight excludes almost the whole final day — the "my newest transaction vanished
+  when I set an end date" bug. `withinRange` compares date parts, so there is no end-of-day
+  arithmetic to get wrong.
+- A range selected backwards is **normalised**, not refused.
+- `date-range.test.ts` and `transaction-filters.test.ts` pin both, and were mutation-checked.
+
 ## Money in the UI
 
 Balances arrive as **strings** (`'250.00000000'`) and stay strings all the way to the DOM.
 
-`src/lib/money.ts` is the only formatter: `formatMoney(value, currency)` and
-`isZeroMoney(value)`, both on decimal.js. `Number()`, `parseFloat` and `Intl.NumberFormat` are
+`src/lib/money.ts` is the only formatter: `formatMoney(value, currency)`, `isZeroMoney(value)` and
+`compareMoney(a, b)`, all on decimal.js. `Number()`, `parseFloat` and `Intl.NumberFormat` are
 banned on money paths (the first two by lint) — `Number('12345678901234567.89')` is already wrong
 before formatting begins, and `isZeroMoney` exists so nobody writes `value !== '0.00000000'`,
 which breaks the moment the API returns `'0'`.
+
+**`compareMoney` is what you sort amounts with**, and it exists because both obvious alternatives
+are wrong in ways that look right: `Number(a) - Number(b)` loses precision before comparing, and
+`a.localeCompare(b)` puts `'9.00'` above `'100.00'`. Any list a client can sort by amount hits the
+second on its first mixed-magnitude row. (Admin reaches the same rule through
+`compareValues(a, b, 'money')`; `money.ts` is a **twin file**, so `compareMoney` was added to both.)
 
 A wallet absent from `GET /wallet` has genuinely not been opened. Render that as such, not as zero.
 
@@ -155,8 +231,8 @@ admin's.
   because a change to `/wallet`, `/deposit`, `/withdraw` or the KYC gate had no automated
   protection at all beyond `type-check`, `lint` and `build`.
 
-  What exists now is three files, chosen because they cover the two rules that are expensive to
-  get wrong and cheap to break by accident:
+  What exists now is five files, chosen because they cover the rules that are expensive to get
+  wrong and cheap to break by accident:
 
   - `src/lib/money.test.ts` — §6.1. The assertions are the ugly values (`12345678901234567.89`,
     eight-decimal balances), so a refactor to `Number()` or `Intl.NumberFormat` FAILS rather than
@@ -166,10 +242,16 @@ admin's.
     shows up in production.
   - `src/components/kyc/money-action.test.tsx` — that an unanswered KYC question blocks rather
     than optimistically links.
+  - `src/lib/date-range.test.ts` — the INCLUSIVE range end (a transaction stamped 23:45 on the
+    closing day must match), local-not-UTC `todayIso`, backwards selection, and impossible dates
+    like `2026-02-31`. Every one of these fails silently rather than throwing.
+  - `src/components/transactions/transaction-filters.test.ts` — that amounts sort through
+    decimal.js, so `'9'` does not outrank `'100'` and two amounts a float would collapse stay
+    distinct; and that the filter does not mutate React Query's cached array.
 
-  All three were mutation-checked when written: the guarantee was deliberately broken and each
-  test failed on the right assertion. Add tests the same way — if you cannot describe the
-  regression a test catches, it is not earning its run time.
+  All five were mutation-checked when written: the guarantee was deliberately broken and each test
+  failed on the right assertion. Add tests the same way — if you cannot describe the regression a
+  test catches, it is not earning its run time.
 
   `vitest.config.mts` sets NO coverage thresholds yet, and that is deliberate; see the comment in
   it. `vitest.setup.ts` and `src/test/render.tsx` are TWIN FILES with admin — behaviour changes

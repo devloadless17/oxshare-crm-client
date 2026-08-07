@@ -4,6 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Check, Copy, Handshake, ShieldCheck, Clock, XCircle } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
+import { PartnerDashboard } from '@/components/partner/partner-dashboard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,12 +36,28 @@ import { t } from '@/lib/i18n';
  * and a button to apply again. Dropping them back on a blank form would tell
  * them nothing about what to change, which is the whole reason the reason is
  * required on the admin side.
+ *
+ * ## Full width, and why the width is per-STATE rather than per-page
+ *
+ * An approved partner gets the whole page: their screen is a dashboard — figure
+ * tiles, a client table, a sub-partner list — and a table of referred clients
+ * squeezed into a 48rem column wraps into something unreadable on the one screen
+ * a partner actually works from.
+ *
+ * The other four states are still centred and capped. They are a single card
+ * with one action ("apply", "you were rejected, here is why"), and a lone card
+ * stretched across an ultrawide monitor is a line of text with a button
+ * somewhere off to the right. Width follows the content, not the route.
  */
 export default function PartnerPage() {
   const query = useResource<IbStatus>(['ib-status'], (signal) => partnerApi.status(signal));
 
+  // The approved dashboard is wide; every other state is a single card and
+  // stays capped. See the note above.
+  const wide = query.data?.account !== null && query.data?.account !== undefined;
+
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 py-2">
+    <div className={`w-full space-y-6 py-2 ${wide ? '' : 'mx-auto max-w-3xl'}`}>
       <header className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">{t('partner.title')}</h1>
         <p className="text-sm text-muted-foreground">{t('partner.subtitle')}</p>
@@ -152,15 +169,20 @@ function ApprovedPanel({ account }: { account: NonNullable<IbStatus['account']> 
       </div>
 
       {/*
-        Said plainly rather than shown as a zero.
-        A "$0.00 earned" tile on a screen for somebody who has been introducing
-        clients reads as "you have earned nothing", when the truth is that no
-        engine has computed anything yet. Same rule as the wallet: state what is
-        true instead of rendering a plausible number.
+        The dashboard: earnings, referred clients and sub-partners.
+
+        It replaces a single line that read "earnings reporting is not available
+        yet". That sentence was true and is now MORE precisely true one level
+        down — `PartnerDashboard` renders the real ledger totals and states that
+        the commission engine has not run, rather than asking the partner to
+        infer it. The rule is unchanged: never a computed-looking zero.
+
+        Its own `AsyncBoundary` and its own query, deliberately. This panel has
+        already rendered by the time the overview resolves, so a partner sees
+        their referral link immediately instead of waiting on a second request
+        to paint the screen they came for.
       */}
-      <p className="rounded-xl border border-dashed border-border p-4 text-xs leading-relaxed text-muted-foreground">
-        {t('partner.earningsPending')}
-      </p>
+      <PartnerDashboard />
     </div>
   );
 }

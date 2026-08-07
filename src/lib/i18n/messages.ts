@@ -780,6 +780,133 @@ export const messages = {
 
   'partner.loadFailed': 'Could not load your partner status.',
   'partner.loading': 'Loading your partner status…',
+
+  // ── Partner dashboard (GET /ib/overview) ──────────────────────────────────
+  // The approved partner's working screen: what they earn, who they introduced
+  // and who sits beneath them.
+  'partner.overviewLoading': 'Loading your partner dashboard…',
+  'partner.overviewLoadFailed': 'Could not load your partner dashboard.',
+
+  'partner.earningsHeading': 'Earnings',
+  'partner.earningsLifetime': 'Lifetime earnings',
+  'partner.earningsRecent': 'Last 30 days',
+  /*
+   * THE honesty line, and the reason `engineLive` crosses the wire at all.
+   *
+   * Shown beside a zero total whenever no commission engine has run. Without it
+   * a structural zero is indistinguishable from "you earned nothing", which on a
+   * screen about money somebody expects to be paid reads as a dispute rather
+   * than as a feature that has not shipped.
+   */
+  /*
+   * Shown only until the engine has confirmed its FIRST payout platform-wide.
+   *
+   * It no longer says "not live yet" — the engine exists and runs hourly. What
+   * it says now is the narrower and still-true thing: nothing has been credited
+   * so far, so a zero here is an empty history rather than an uncalculated one.
+   */
+  'partner.earningsNotLive':
+    'No commission has been credited yet. Earnings are calculated when a client you introduced ' +
+    'makes a deposit, and are paid into your wallet shortly afterwards.',
+  'partner.earningsLiveNote': 'Credited to your wallet as it is earned.',
+  'partner.earningsPendingLabel': 'Awaiting payout',
+
+  'partner.levelHeading': 'Your level',
+  'partner.levelRateRevenue': '{rate}% revenue share',
+  'partner.levelRatePerLot': '{rate} per lot',
+  'partner.levelDirectLimit': 'Up to {max} direct partners',
+  'partner.levelDirectUnlimited': 'Unlimited direct partners',
+  'partner.levelUnknown': 'Your level is being configured.',
+
+  'partner.clientsHeading': 'Clients you introduced',
+  'partner.clientsCount': '{count} total · {verified} verified',
+  'partner.clientsEmpty': 'No clients yet',
+  'partner.clientsEmptyBody':
+    'Share your referral link — clients who sign up through it appear here.',
+  'partner.clientsColName': 'Client',
+  'partner.clientsColStatus': 'Identity',
+  'partner.clientsColSince': 'Joined',
+  'partner.clientVerified': 'Verified',
+  'partner.clientUnverified': 'Not verified',
+
+  'partner.subPartnersHeading': 'Partners beneath you',
+  'partner.subPartnersEmpty': 'No sub-partners yet',
+  'partner.subPartnersEmptyBody':
+    'Partners placed under you appear here, with the level they were assigned.',
+  'partner.subPartnerLevel': 'Level {level}',
+  'partner.subPartnerSuspended': 'Suspended',
+  'partner.subPartnerActive': 'Active',
+
+  // ── Wallet cards ──────────────────────────────────────────────────────────
+  // The credit-card presentation. `walletIdLabel` is shown with a truncated id
+  // — see the card component for why the whole uuid is not rendered.
+  'wallet.cardIdLabel': 'Wallet ID',
+  'wallet.cardHolder': 'Account holder',
+  'wallet.cardOpened': 'Opened',
+  'wallet.cardNotOpenedTitle': 'Not opened',
+  'wallet.copyId': 'Copy wallet ID',
+  'wallet.copiedId': 'Wallet ID copied',
+  'wallet.totalHeading': 'Total balance',
+  'wallet.totalNote': 'Across your opened wallets, per currency.',
+
+  // ── Transactions filtering ────────────────────────────────────────────────
+  'transactions.filters': 'Filters',
+  'transactions.filterType': 'Type',
+  'transactions.filterStatus': 'Status',
+  'transactions.filterCurrency': 'Currency',
+  'transactions.filterAll': 'All',
+  'transactions.filterSearch': 'Search',
+  'transactions.filterSearchPlaceholder': 'Reference or amount',
+  'transactions.filterDateRange': 'Date range',
+  // Named for the calendar rather than reusing `common.next`: "Next" alone on
+  // an icon-only control tells a screen-reader user nothing about what advances.
+  'transactions.calendarPrevMonth': 'Previous month',
+  'transactions.calendarNextMonth': 'Next month',
+  'transactions.filterFrom': 'From',
+  'transactions.filterTo': 'To',
+  'transactions.filterApply': 'Apply',
+  'transactions.filterClear': 'Clear filters',
+  'transactions.filterClearDates': 'Clear dates',
+  'transactions.dateAnyTime': 'Any time',
+  'transactions.dateFromOnly': 'From {from}',
+  'transactions.dateToOnly': 'Until {to}',
+  'transactions.dateBoth': '{from} — {to}',
+  'transactions.rangeInvalid': 'The start date is after the end date.',
+  'transactions.noMatches': 'No transactions match these filters',
+  'transactions.noMatchesBody': 'Try widening the date range or clearing a filter.',
+  'transactions.showingCount': 'Showing {shown} of {total}',
+  'transactions.colCurrency': 'Currency',
+  'transactions.sortNewest': 'Newest first',
+  'transactions.sortOldest': 'Oldest first',
+  'transactions.sortAmountDesc': 'Largest amount',
+  'transactions.sortAmountAsc': 'Smallest amount',
+  'transactions.sortLabel': 'Sort',
+  'transactions.transfer': 'Transfer',
+
+  // ── Trading accounts ──────────────────────────────────────────────────────
+  'accounts.balanceLabel': 'Balance',
+  'accounts.statusLabel': 'Status',
+  'accounts.currencyLabel': 'Currency',
+  'accounts.statusActive': 'Active',
+  'accounts.statusSuspended': 'Suspended',
+  'accounts.statusClosed': 'Closed',
+  'accounts.loginPending': 'Being issued',
+  'accounts.copyLogin': 'Copy login',
+  'accounts.copiedLogin': 'Login copied',
+  'accounts.liveCount': '{count} live',
+  'accounts.demoCount': '{count} demo',
+  /*
+   * Stated on the screen, not just in a code comment.
+   *
+   * The CRM holds `balance` because there is no MT5 bridge; equity, margin and
+   * open positions genuinely do not exist anywhere in this system. A trading
+   * screen that showed a balance without saying what it is NOT invites a client
+   * to read it as equity, and those differ by every open position.
+   */
+  'accounts.balanceNote':
+    'This is your deposited balance held in the CRM. Live equity, margin and open positions are ' +
+    'shown in the MetaTrader 5 terminal.',
+  'accounts.fundAccount': 'Transfer funds',
 } as const;
 
 /** Every valid key. A typo is a compile error, never a string rendered as itself. */

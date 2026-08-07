@@ -1,12 +1,11 @@
 'use client';
 
-import { Wallet } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
-import { MoneyAction } from '@/components/kyc/money-action';
+import { WalletCard } from '@/components/wallet/wallet-card';
+import { useUser } from '@/context/UserContext';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
-import { walletApi, type Wallet as WalletRecord, type WalletCurrency } from '@/lib/api/wallet';
-import { formatMoney, isZeroMoney } from '@/lib/money';
+import { walletApi, type WalletCurrency } from '@/lib/api/wallet';
 import { t, type MessageKey } from '@/lib/i18n';
 
 /**
@@ -21,13 +20,17 @@ import { t, type MessageKey } from '@/lib/i18n';
  * — which is a different sentence from "you have no money", and is rendered as
  * one. An em dash and an explanation, never a fabricated number.
  *
+ * `WalletCard` carries that rule now; the redesign into card form deliberately
+ * did not relax it, because a more attractive card is exactly the sort of change
+ * that quietly reintroduces a plausible-looking zero.
+ *
  * ## The actions live beside the number
  *
- * Deposit, Withdraw and Transfer are `MoneyAction`s, and these cards are the
- * only way into those routes — see the note on `NAV_ITEMS`. Moving money is
- * something a client decides while LOOKING at a balance, so the control belongs
- * next to the figure they are deciding against rather than in a navigation rail
- * two slots away from it.
+ * Deposit, Withdraw and Transfer are `MoneyAction`s rendered under each card,
+ * and these cards are the only way into those routes — see the note on
+ * `NAV_ITEMS`. Moving money is something a client decides while LOOKING at a
+ * balance, so the control belongs next to the figure they are deciding against
+ * rather than in a navigation rail two slots away from it.
  */
 
 /**
@@ -51,14 +54,25 @@ const CURRENCIES: { code: WalletCurrency; label: MessageKey; note: MessageKey }[
 
 export default function WalletPage() {
   const wallets = useResource(['wallets'], (signal) => walletApi.getWallets(signal));
+  const { user } = useUser();
 
   const byCurrency = new Map((wallets.data ?? []).map((w) => [w.currency, w]));
+
+  /*
+   * The name embossed on the card foot.
+   *
+   * Undefined rather than a placeholder when the profile has no name on it: a
+   * card reading "Client User" is fabricated identity on the customer-facing
+   * app, which is the same class of mistake as a fabricated balance. The card
+   * simply omits the line.
+   */
+  const holder = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || undefined;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{t('wallet.heading')}</h1>
-        <p className="text-sm text-muted-foreground mt-1">{t('wallet.subtitle')}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t('wallet.subtitle')}</p>
       </div>
 
       <AsyncBoundary
@@ -69,111 +83,25 @@ export default function WalletPage() {
         errorMessage={apiErrorMessage(wallets.error, t('wallet.loadFailed'))}
         error={wallets.error}
       >
-        <div className="grid gap-6 md:grid-cols-2">
+        {/*
+          `xl:grid-cols-2`, not `md:` — the card has a fixed 1.6 aspect ratio and
+          a `max-w-md` cap, so two of them side by side need real width before
+          the pair stops feeling cramped against the sidebar. Below that they
+          stack, which is also the phone layout this portal is primarily read on.
+        */}
+        <div className="grid gap-8 xl:grid-cols-2">
           {CURRENCIES.map(({ code, label, note }) => (
-            <BalanceCard
+            <WalletCard
               key={code}
               label={t(label)}
               note={t(note)}
               currency={code}
               wallet={byCurrency.get(code)}
+              holder={holder}
             />
           ))}
         </div>
       </AsyncBoundary>
-    </div>
-  );
-}
-
-function BalanceCard({
-  label,
-  note,
-  currency,
-  wallet,
-}: {
-  label: string;
-  note: string;
-  currency: WalletCurrency;
-  wallet: WalletRecord | undefined;
-}) {
-  return (
-    <div className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-muted-foreground uppercase">{label}</span>
-        <Wallet className="h-5 w-5 text-link" aria-hidden="true" />
-      </div>
-
-      <div>
-        {wallet ? (
-          <>
-            {/*
-              `available`, not `balance` — the two differ by whatever is held
-              against a pending withdrawal, and the number a client reads as
-              "what I have" is the one they can actually act on. The total is
-              still shown, but only underneath and only when it differs.
-            */}
-            <p className="text-3xl font-bold tabular-nums">
-              {formatMoney(wallet.available, currency)}
-            </p>
-            {/* Only when something is actually held. On every other card it is
-                a line explaining that nothing is happening, which is noise. */}
-            {!isZeroMoney(wallet.onHold) && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {t('wallet.onHold', {
-                  amount: formatMoney(wallet.onHold, currency),
-                  total: formatMoney(wallet.balance, currency),
-                })}
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">{note}</p>
-          </>
-        ) : (
-          <>
-            {/*
-              An em dash, and a sentence saying why. NOT `$0.00` — see the note
-              at the top of this file for what that cost the last time.
-            */}
-            <p className="text-3xl font-bold text-muted-foreground">—</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t('wallet.notOpened', { currency })}
-            </p>
-          </>
-        )}
-      </div>
-
-      <div className="flex flex-wrap gap-2 pt-2">
-        <MoneyAction
-          href="/deposit"
-          icon="deposit"
-          label={t('wallet.deposit')}
-          size="sm"
-          className="flex-1"
-        />
-        {/*
-          Withdraw and Transfer are offered on an unopened wallet too, and that
-          is deliberate rather than an oversight. Both lead to a screen that
-          reads the real balance and explains itself — /withdraw says plainly
-          that there is nothing funded to withdraw from. Hiding the controls
-          instead would leave a client with an empty card and no way to find out
-          what they are for.
-        */}
-        <MoneyAction
-          href="/withdraw"
-          icon="withdraw"
-          label={t('wallet.withdraw')}
-          variant="outline"
-          size="sm"
-          className="flex-1"
-        />
-        <MoneyAction
-          href="/transfer"
-          icon="transfer"
-          label={t('wallet.transfer')}
-          variant="outline"
-          size="sm"
-          className="flex-1"
-        />
-      </div>
     </div>
   );
 }
