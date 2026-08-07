@@ -24,10 +24,13 @@ import {
 import { useUser } from '@/context/UserContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import type { components } from '@/lib/api/types.gen';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { UserMenu } from './user-menu';
 import { NotificationsSheet } from './notifications-sheet';
 import { t, type MessageKey } from '@/lib/i18n';
+
+type KycStatusDto = components['schemas']['KycStatusDto'];
 
 export interface NavItem {
   /** A message key, not a string — resolved through t() at render time. */
@@ -234,12 +237,18 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
    * Sharing the key with `/kyc`, `/kyc/step/[step]` and `/kyc/submitted` also
    * means one invalidation updates all four.
    */
+  /*
+   * The cache holds the DTO; `select` narrows it to the badge's string.
+   *
+   * Storing the bare status here put a STRING under a key that `/kyc`,
+   * `/kyc/submitted`, `/kyc/step/[step]` and the KYC layout all fill with the
+   * DTO OBJECT — so the shared entry meant two different things depending on
+   * which screen loaded first. See the longer note in `use-kyc-access.ts`.
+   */
   const { data: kycStatus = 'not_started' } = useQuery({
     queryKey: ['kyc-status'],
-    queryFn: async () => {
-      const res = await apiClient.get<{ status?: string }>('/kyc/status');
-      return res.data?.status ?? 'not_started';
-    },
+    queryFn: async () => (await apiClient.get<KycStatusDto | null>('/kyc/status')).data ?? null,
+    select: (dto) => dto?.status ?? 'not_started',
     enabled: user?.emailVerified === true,
     retry: false,
   });

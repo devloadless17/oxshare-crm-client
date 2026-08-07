@@ -3,7 +3,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@/context/UserContext';
 import { apiClient } from '@/lib/api/client';
+import type { components } from '@/lib/api/types.gen';
 import { isKycApproved, isKycPending, isKycRejected } from '@/lib/kyc-access';
+
+type KycStatusDto = components['schemas']['KycStatusDto'];
 
 /**
  * "May this client move money, and if not, why not?"
@@ -44,12 +47,25 @@ import { isKycApproved, isKycPending, isKycRejected } from '@/lib/kyc-access';
 export function useKycAccess() {
   const { user, isLoading: userLoading } = useUser();
 
+  /*
+   * The CACHE holds the whole DTO; `select` narrows it for this caller.
+   *
+   * It used to store `res.data.status` — a bare string — under a key four other
+   * files fill with the DTO OBJECT. One key, two shapes, and whichever screen
+   * mounted first decided which one was in the cache. A client who refreshed
+   * the dashboard (string) and then clicked through to /kyc/submitted (object
+   * reader) got `'approved'.status` === undefined, fell to the page's
+   * `?? 'submitted'` default, and was told their approved verification was
+   * still under review — permanently, because a fresh cache entry never
+   * refetches.
+   *
+   * `select` is what keeps both readers honest: the shared entry stays one
+   * shape, and narrowing happens per consumer instead of per writer.
+   */
   const { data: status, isPending } = useQuery({
     queryKey: ['kyc-status'],
-    queryFn: async () => {
-      const res = await apiClient.get<{ status?: string }>('/kyc/status');
-      return res.data?.status ?? 'not_started';
-    },
+    queryFn: async () => (await apiClient.get<KycStatusDto | null>('/kyc/status')).data ?? null,
+    select: (dto) => dto?.status ?? 'not_started',
     enabled: user?.emailVerified === true,
     retry: false,
   });

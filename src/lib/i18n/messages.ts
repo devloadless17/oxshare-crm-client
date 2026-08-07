@@ -484,6 +484,13 @@ export const messages = {
   'dashboard.internalTransferHint': 'Move funds between MT5 accounts',
   'dashboard.kycStatus': 'KYC Status',
   'dashboard.kycVerified': 'Level 1 Verified • Trading Enabled',
+  // The other four states this card can be in. Only `kycVerified` existed, and
+  // it was rendered unconditionally — so every client, including one who had
+  // just registered, was told trading was enabled.
+  'dashboard.kycLoading': 'Checking your verification status…',
+  'dashboard.kycPending': 'Under review — we will email you when it is complete.',
+  'dashboard.kycRejected': 'Action required — your documents were not approved.',
+  'dashboard.kycNotStarted': 'Not started — verify your identity to enable trading.',
   'dashboard.openPositions': '{count} Open Positions',
   'dashboard.underReview': '{count} Under Review',
   'dashboard.noActivityBody':
