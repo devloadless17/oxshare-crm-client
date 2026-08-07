@@ -6,13 +6,19 @@ import { usePathname } from 'next/navigation';
 import {
   Handshake,
   LayoutDashboard,
+  LineChart,
   MonitorDown,
+  Receipt,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
   Clock,
   ShieldAlert,
   Menu,
+  // Aliased: `Wallet` is also the name of the generated wallet DTO across this
+  // codebase, and one import shadowing the other in a file that grows to use
+  // both is a confusing compile error at best.
+  Wallet as WalletIcon,
   X,
 } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
@@ -36,26 +42,39 @@ export interface NavItem {
 /**
  * The primary rail: the places a client goes to LOOK at something.
  *
- * `/accounts`, `/wallet` and `/transactions` left with the money teardown, and
- * `/deposit` and `/withdraw` went before them — those two were never rail items
- * anyway, because they are ACTIONS on a balance rather than destinations, and
- * they lived as buttons beside the number the client was deciding against.
- *
- * All of it returns with the money rebuild. Put the destinations back here and
- * the actions back beside a balance; do not give deposit and withdraw permanent
- * rail slots, which is the arrangement that split one idea across two entries
- * neither of which showed a number.
+ * `/wallet`, `/transactions` and `/accounts` are back with the money rebuild,
+ * and `/deposit`, `/withdraw` and `/transfer` are deliberately NOT. Those three
+ * are ACTIONS on a balance rather than destinations, and they live as
+ * `MoneyAction` buttons on the wallet card, beside the number the client is
+ * deciding against. Giving them permanent rail slots is the arrangement that
+ * split one idea across three entries none of which showed a figure — and it
+ * also put a live-looking link in front of clients the payments API refuses,
+ * which is what `MoneyAction` exists to handle.
  *
  * `/profile` is in the account menu at the foot of the sidebar, where a client
  * would look for it. `/kyc` is conditional — see `visibleNavItems`.
  *
- * The `comingSoon` treatment stays in the type and in the renderer below. It is
- * the house pattern the root CLAUDE.md records ("Unbuilt sidebar entries render
- * as disabled 'Soon' items ... they are committed scope, don't delete the
- * links"), and the money rebuild will want it.
+ * `/accounts` is `comingSoon`: the screen exists and is honest about waiting on
+ * `GET /trading/accounts`, and the rail says the same thing rather than
+ * offering a link that leads to a placeholder. That is the house pattern the
+ * root CLAUDE.md records — unbuilt entries stay visible as disabled "Soon"
+ * items, because they are committed scope.
  */
 export const NAV_ITEMS: NavItem[] = [
   { label: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard },
+  /*
+   * The balance, and the only way into the three money actions.
+   *
+   * High in the rail because it is the screen a funded client opens most, and
+   * because the deposit/withdraw/transfer controls hang off it — burying it
+   * would bury them.
+   */
+  { label: 'nav.wallet', href: '/wallet', icon: WalletIcon },
+  // What has happened to the money. A reading screen, so it is not behind the
+  // KYC gate: a client whose approval lapsed still has every right to
+  // enumerate their own history.
+  { label: 'nav.transactions', href: '/transactions', icon: Receipt },
+  { label: 'nav.accounts', href: '/accounts', icon: LineChart, comingSoon: true },
   // Where the client downloads the terminal. A destination rather than an
   // action — they come here to get something, not to move money — so unlike
   // Deposit and Withdraw it belongs on the rail.

@@ -3,6 +3,8 @@
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@/context/UserContext';
+import { useKycAccess } from '@/hooks/use-kyc-access';
+import { requiresApprovedKyc } from '@/lib/kyc-access';
 import { loginPathFor } from '@/lib/return-to';
 import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/loader';
@@ -25,11 +27,27 @@ import { t } from '@/lib/i18n';
  *
  * This is the CLIENT half of a rule the server owns. It exists to explain the
  * refusal before the user invests effort in it, never to be the refusal itself.
+ *
+ * `/wallet` is DELIBERATELY absent, and the list is checked against the
+ * controllers rather than assumed: `EmailVerifiedGuard` sits on
+ * `payments.controller.ts` and `kyc.controller.ts`, and NOT on
+ * `wallet.controller.ts`. `GET /wallet` is served to an unverified client, so
+ * gating the screen in front of it would hide a client's own balance from them
+ * for a reason the API does not hold. A gate copied from a guess is how a list
+ * like this drifts past the rule it mirrors.
  */
-const EMAIL_VERIFIED_PATHS = ['/kyc', '/deposit', '/withdraw', '/transactions'];
+const EMAIL_VERIFIED_PATHS = ['/kyc', '/deposit', '/withdraw', '/transfer', '/transactions'];
 
 /** Where an unverified client is sent to finish verifying. */
 const VERIFY_EMAIL_PATH = '/verify-email/pending';
+
+/**
+ * Where a client without an approved identity check is sent from a money route.
+ *
+ * `/kyc` is a stub that forwards to whichever step is next, so this one path is
+ * right for a client who has done nothing and for one who stopped at step four.
+ */
+const KYC_PATH = '/kyc';
 
 function requiresVerifiedEmail(pathname: string): boolean {
   // Whole segments, never a bare prefix — same rule as proxy.ts, same reason:
@@ -130,24 +148,63 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     !isLoading && user !== null && !user.emailVerified && requiresVerifiedEmail(pathname);
 
   /*
-   * The KYC-approval gate on the money routes lived here and is gone with them.
+   * The KYC-approval gate on the money routes, rebuilt with them.
    *
-   * It read `/kyc/status` and bounced an unapproved client off /deposit,
-   * /withdraw and /transfer, because a dialog in front of a link is a courtesy
-   * and not a gate — those URLs get typed, bookmarked and shared.
+   * `MoneyAction` already puts a dialog in front of every link into /deposit,
+   * /withdraw and /transfer — but a dialog in front of a link is a COURTESY and
+   * not a gate. Those URLs get typed, bookmarked, shared and returned to from
+   * an email, and none of those paths pass through a button.
    *
-   * REBUILD IT with the money screens. Two details are worth carrying over: the
-   * query key matched `PortalChrome`'s exactly so react-query served both from
-   * one request, and the gate refused to act while the status was still in
-   * flight — redirecting on an unanswered question is the bug that made
-   * onboarding unreachable here twice.
+   * `useKycAccess` shares `PortalChrome`'s `['kyc-status']` query key exactly,
+   * so react-query serves both from one request rather than two that can
+   * disagree — see the hook, and the note in `portal-layout.tsx` about what
+   * putting a pathname in that key cost.
+   *
+   * Same server relationship as the email gate above: `KycVerifiedGuard` sits
+   * on all four money-moving routes and refuses regardless, so this explains
+   * the refusal early rather than being it.
    */
+  const kyc = useKycAccess();
+  const onMoneyRoute = requiresApprovedKyc(pathname);
+
+  /*
+   * IT DOES NOT ACT WHILE THE ANSWER IS IN FLIGHT.
+   *
+   * `kyc.isLoading` is checked before `!kyc.approved`, and that ordering is the
+   * whole of it: redirecting on an unanswered question is the bug that made
+   * onboarding unreachable here twice — once in `proxy.ts` reading a claim off
+   * the wrong token, once in `decideRoute`. An approved client whose
+   * `/kyc/status` had not landed would be bounced off their own withdrawal
+   * screen, and reloading would not help because the race is the same every
+   * time.
+   *
+   * That is the opposite trade from `MoneyAction`, which blocks WHILE loading —
+   * and both are right, because the costs are not the same. There, a false
+   * block costs one click. Here, a false REDIRECT throws a verified client off
+   * a page they are entitled to; the paint is held instead (see `kycUnresolved`
+   * below), which costs a moment and cannot be wrong.
+   */
+  const kycBlocked = onMoneyRoute && !kyc.isLoading && !kyc.approved;
+  // The money route is reachable, the answer is not in yet, and the form must
+  // not be painted for someone about to be bounced off it — the same reason
+  // this component holds the first paint for the profile itself.
+  const kycUnresolved = onMoneyRoute && kyc.isLoading;
 
   const redirectTo = signedOut
     ? loginPathFor(pathname, typeof window === 'undefined' ? '' : window.location.search)
     : needsVerification
       ? VERIFY_EMAIL_PATH
-      : null;
+      : /*
+         * To /kyc, not to /dashboard.
+         *
+         * The client came here to move money and cannot yet; the one thing
+         * that changes that is the wizard. Dropping them on the dashboard
+         * would answer "no" without saying what to do about it — which is
+         * exactly what `KycGateDialog` exists to avoid on the button path.
+         */
+        kycBlocked
+        ? KYC_PATH
+        : null;
 
   React.useEffect(() => {
     if (redirectTo) router.replace(redirectTo);
@@ -172,7 +229,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   // route the KYC answer is as load-bearing as the profile itself, and rendering
   // the withdrawal form to someone about to be bounced off it is the same bug
   // this component was written to fix, one gate further in.
-  if (isLoading || redirectTo) return <SessionCheck />;
+  if (isLoading || redirectTo || kycUnresolved) return <SessionCheck />;
 
   return <>{children}</>;
 }

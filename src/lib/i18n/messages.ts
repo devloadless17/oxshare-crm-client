@@ -361,6 +361,10 @@ export const messages = {
   'wallet.depositUsdt': 'Deposit USDT',
   'wallet.withdraw': 'Withdraw',
   'wallet.transfer': 'Transfer',
+  // What each wallet is FOR, under the figure. Says the role rather than
+  // repeating the currency code already printed beside the number.
+  'wallet.usdNote': 'Your primary fiat balance for funding trading accounts.',
+  'wallet.usdtNote': 'Tether on the TRC20 network.',
 
   // ── Transactions (CORE-13) ────────────────────────────────────────────────
   'transactions.title': 'Transactions',
@@ -412,10 +416,17 @@ export const messages = {
   'deposit.title': 'Deposit',
   'deposit.subtitle': 'Tell us what you are sending, then transfer it quoting the reference.',
   'deposit.methodTitle': 'How are you sending it?',
-  'deposit.methodBank': 'Bank transfer',
-  'deposit.methodBankHint': 'Wire or local transfer in USD. Usually 1–3 business days.',
-  'deposit.methodUsdt': 'USDT (TRC20)',
-  'deposit.methodUsdtHint': 'Tether on Tron. Usually credited within the hour of confirmation.',
+  // The per-method labels and hints that used to sit here are GONE, not
+  // orphaned: the methods come from `GET /payments/methods` now, and their
+  // names and instructions are the operator's own words rendered verbatim.
+  // Keeping translated copy for "Bank transfer" would mean two names for one
+  // method, and the one on screen would be whichever the code happened to
+  // reach for.
+  'deposit.loadingMethods': 'Loading the ways you can pay',
+  'deposit.methodsFailed': 'Could not load the payment methods.',
+  'deposit.noMethods': 'No deposit methods are available yet',
+  'deposit.noMethodsBody':
+    'Your account manager has not set up a way to receive deposits on your account. Contact them and they will enable one.',
   'deposit.amountLabel': 'Amount',
   'deposit.submit': 'Get my deposit reference',
   'deposit.submitting': 'Creating...',
@@ -433,12 +444,25 @@ export const messages = {
   'deposit.instructionsTitle': 'Where to send it',
   'deposit.newRequest': 'Start another deposit',
   'deposit.trackIt': 'Track it on your transactions',
-  // The account details themselves are operator data and are NOT hardcoded
-  // here — see the deposit page for why the screen asks support for them
-  // rather than inventing them.
-  'deposit.instructionsPending':
-    'Your account manager will send the payment details for this reference. They are not published in the portal.',
+  // The account details are operator data, served by `GET /payments/methods`
+  // and rendered verbatim — `deposit.instructionsPending` said the portal did
+  // not publish them and is gone with the endpoint that replaced it.
+  'deposit.viaMethod': 'By {method}',
+  'deposit.payToLabel': 'Send to',
+  'deposit.instructionsLabel': 'Instructions',
+  // Only rendered where the operator actually set a limit. Three keys rather
+  // than one with an optional half, because "Between $10 and —" is the kind of
+  // sentence a template with a missing value produces.
   'deposit.minMax': 'Between {min} and {max} per transfer.',
+  'deposit.minOnly': 'Minimum {min} per transfer.',
+  'deposit.maxOnly': 'Maximum {max} per transfer.',
+
+  // ── Transfer (wallet ⇄ trading account) ───────────────────────────────────
+  // The screen behind these is a placeholder: `POST /payments/transfers` works,
+  // but nothing lists the client's trading accounts, so there is no picker to
+  // populate. See app/transfer/page.tsx.
+  'transfer.title': 'Transfer',
+  'transfer.subtitle': 'Move funds between your wallet and a trading account',
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
   'dashboard.title': 'Trading Overview',

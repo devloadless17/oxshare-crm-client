@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, startProactiveRefresh } from '@/lib/api/client';
 import { authApi } from '@/lib/api/auth';
 import { clearKycDraft } from '@/lib/kyc-draft';
+import { clearWithdrawIntent } from '@/lib/withdraw-intent';
 import { announceSessionEvent, onSessionEvent } from '@/lib/session-channel';
 import { isPublicPath } from '@/lib/public-paths';
 
@@ -151,6 +152,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (event !== 'signed-out') return;
       queryClient.clear();
       clearKycDraft();
+      // The part-finished withdrawal too — it holds an amount and a payout
+      // destination. Both, not one: this handler and `logout` below are the two
+      // ways a session ends, and only clearing it in one leaves the other
+      // carrying the previous person's financial detail into the next session.
+      clearWithdrawIntent();
       if (typeof window === 'undefined') return;
       /*
        * Already somewhere a signed-out visitor belongs — there is nothing to
@@ -176,10 +182,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     // "no KYC data survives the logout" guarantee this function claims was not
     // true of the one place that data actually sat. See lib/kyc-draft.ts.
     clearKycDraft();
-    // `clearWithdrawIntent()` was here on the same reasoning — it held an amount
-    // and a payout destination — and left with the withdraw screen. Whatever the
-    // money rebuild persists locally must be cleared here and in the
+    // `clearWithdrawIntent()` is back with the withdraw screen, on the same
+    // reasoning: it holds an amount and a payout destination. Here AND in the
     // `signed-out` handler above; both, not one.
+    clearWithdrawIntent();
     // Every other tab, before this one navigates away and stops being able to.
     announceSessionEvent('signed-out');
     // A HARD navigation, deliberately. `queryClient.clear()` drops the cache but
