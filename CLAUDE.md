@@ -149,19 +149,34 @@ admin's.
 - The `sessionStorage` restore effect in `kyc/step/[step]/page.tsx` carries a reasoned
   `react-hooks/set-state-in-effect` exemption. Keep the comment and the disable — a lazy
   `useState` initialiser there would cause a hydration mismatch on a half-filled form.
-- **THIS REPO HAS NO TESTS, and that is deliberate.** All 291 of them were deleted on an explicit
-  instruction, along with `e2e/`, `src/test/`, `vitest.config.mts`, `playwright.config.ts` and
-  every test dependency. There is no `npm test` here. Do not add one back, or write a `*.test.tsx`,
-  without asking — a lone test file with no runner is worse than none.
+- **Tests are back, on request, and the suite is deliberately small.** All 291 were deleted on an
+  explicit instruction, along with `e2e/`, `src/test/`, `vitest.config.mts` and every test
+  dependency. `npm test` was then re-added — also on request — when the money screens landed,
+  because a change to `/wallet`, `/deposit`, `/withdraw` or the KYC gate had no automated
+  protection at all beyond `type-check`, `lint` and `build`.
 
-  What is left is the whole of the automated protection on a customer-facing money app:
-  `npm run type-check`, `npm run lint`, `npm run format:check` (the three the pre-stop hook runs),
-  plus `npm run build`, `check:css` and `check:twins` by hand. So a change to `/wallet`,
-  `/deposit`, `/withdraw` or the KYC gate is verified by reading and by running the app, and
-  nothing else. Weigh that before changing a balance path.
+  What exists now is three files, chosen because they cover the two rules that are expensive to
+  get wrong and cheap to break by accident:
 
-  `admin/` and `backend/` are unaffected and still run their suites — 444 and 1001 tests. The
-  backend is where the money rules are actually enforced, and that is still covered.
+  - `src/lib/money.test.ts` — §6.1. The assertions are the ugly values (`12345678901234567.89`,
+    eight-decimal balances), so a refactor to `Number()` or `Intl.NumberFormat` FAILS rather than
+    passing. A test asserting `formatMoney('10','USD') === '$10.00'` would prove nothing.
+  - `src/lib/kyc-access.test.ts` — who may reach a money screen. Pins the "either signal is
+    enough" rule and the whole-segment path match, both of which have a wrong answer that only
+    shows up in production.
+  - `src/components/kyc/money-action.test.tsx` — that an unanswered KYC question blocks rather
+    than optimistically links.
+
+  All three were mutation-checked when written: the guarantee was deliberately broken and each
+  test failed on the right assertion. Add tests the same way — if you cannot describe the
+  regression a test catches, it is not earning its run time.
+
+  `vitest.config.mts` sets NO coverage thresholds yet, and that is deliberate; see the comment in
+  it. `vitest.setup.ts` and `src/test/render.tsx` are TWIN FILES with admin — behaviour changes
+  belong in both.
+
+  `admin/` and `backend/` run much larger suites — 434 and ~1000 tests. The backend is where the
+  money rules are actually enforced, and that remains the deepest coverage.
 - The README is create-next-app boilerplate and says port 3000 for the wrong reasons. Ignore it.
 
 <!-- BEGIN:nextjs-agent-rules -->
