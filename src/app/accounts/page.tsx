@@ -87,15 +87,27 @@ export default function AccountsPage() {
         error={accounts.error}
       >
         {rows.length === 0 ? (
-          // Drawn only after the server has said the list is empty — never as a
-          // default. See the file note.
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card py-16 text-center">
+          /*
+           * Drawn only after the server has said the list is empty — never as a
+           * default. See the file note.
+           *
+           * FILLS the page, for the reason `/transactions` records: sized in
+           * viewport units because the layout is `min-h-screen` with no unbroken
+           * `h-full` chain, so a percentage height would collapse to its
+           * content. `justify-center` centres the message in that space rather
+           * than pinning it under the heading.
+           */
+          <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
             <LineChart className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
             <p className="text-sm font-semibold">{t('accounts.empty')}</p>
             <p className="max-w-sm text-xs text-muted-foreground">{t('accounts.emptyBody')}</p>
           </div>
         ) : (
-          <div className="space-y-8">
+          // Fills the page, matching the empty state and the loader so the
+          // screen keeps one shape across all three states. Viewport units
+          // rather than `h-full` — the layout is `min-h-screen` with no unbroken
+          // `h-full` chain, so a percentage height would collapse silently.
+          <div className="flex min-h-[60vh] flex-col space-y-8">
             {/*
               What the balance means, said ONCE at the top rather than repeated
               on every card. Repeating it per card would bury the figures it is

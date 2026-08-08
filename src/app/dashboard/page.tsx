@@ -1,66 +1,72 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { MonitorDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { t } from '@/lib/i18n';
-import { KycStatusCard } from '@/components/dashboard/kyc-status-card';
+'use client';
 
-export const metadata: Metadata = {
-  title: 'Dashboard — OXShare',
-};
+import { KycStatusCard } from '@/components/dashboard/kyc-status-card';
+import { DashboardBody } from '@/components/dashboard/dashboard-body';
+import { useUser } from '@/context/UserContext';
+import { t } from '@/lib/i18n';
 
 /**
- * The client's landing page, reduced to what actually exists.
+ * The client's landing page.
  *
- * ## What left, and why nothing took its place
+ * ## What was here, and why the emptiness was correct at the time
  *
- * This screen carried live balance cards, deposit and withdraw actions, and two
- * stat tiles reading "0 trading accounts" and "0 pending transactions". The
- * balances and the actions went with the money teardown.
+ * This screen was a heading, a KYC prompt and a download link. It had been
+ * stripped to that deliberately: the version before it carried live balance
+ * cards and two stat tiles reading "0 trading accounts" and "0 pending
+ * transactions", and the comment above those tiles admitted no endpoint existed
+ * for either. A client holding three accounts read "0", the same way a client
+ * holding $700 once read "$0.00" on the wallet.
  *
- * The two TILES went for a different reason, and it is worth keeping: they were
- * hardcoded zeros. The comment above them admitted no endpoint existed for
- * either, and a fabricated zero beside a real number is the exact failure this
- * repo has already fixed twice — a client holding three accounts was shown "0",
- * and a client holding $700 was shown "$0.00".
+ * Emptying it was right. An emptier dashboard that tells the truth beats a full
+ * one that invents figures — and the note left behind said plainly that real
+ * numbers would return with real endpoints behind them.
  *
- * So nothing replaces them. An emptier dashboard that tells the truth beats a
- * full one that invents figures, and the money rebuild brings back real numbers
- * with real endpoints behind them.
+ * ## They have
  *
- * ## What is left is real
+ * `GET /dashboard` counts rows: wallets, transactions, trading accounts, open
+ * positions and five totals, in one request so the panels cannot disagree about
+ * which instant they describe. Nothing on this screen is derived or defaulted.
  *
- * Verification, because it is genuinely the client's next action, and the
- * terminal download, because it works today. Both lead somewhere that exists.
+ * The positions panel renders empty for everyone, because nothing writes to
+ * `positions` until an MT5 bridge exists — but the query is REAL, so that
+ * emptiness is a database answer rather than a hardcoded state. Its copy says
+ * trades are not SYNCED rather than "you have no trades", because a client who
+ * traded this morning would still see zero and the second sentence would be
+ * false.
+ *
+ * ## KYC stays at the top
+ *
+ * It is the client's genuine next action while it is outstanding, and
+ * `KycStatusCard` renders nothing once there is nothing to do — so a verified
+ * client gets the data, not a permanent green tick.
  */
 export default function DashboardPage() {
+  const { user } = useUser();
+
+  /*
+   * The greeting uses the client's own name when there is one.
+   *
+   * `undefined` rather than a placeholder when the profile has no name: this app
+   * once rendered the literal "Client User" for a null user on the
+   * customer-facing portal, which is fabricated identity in the same family as a
+   * fabricated balance. The generic welcome line is used instead.
+   */
+  const firstName = user?.firstName?.trim();
+
   return (
-    <div className="space-y-8">
-      <div className="rounded-2xl border border-border bg-card p-6 lg:p-8">
-        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
-          {t('dashboard.title')}
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {firstName ? t('dashboard.greeting', { name: firstName }) : t('dashboard.title')}
         </h1>
-        <p className="mt-1 text-xs md:text-sm text-muted-foreground">{t('dashboard.welcome')}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.welcome')}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <KycStatusCard />
+      {/* Renders nothing once verification is done — a badge is a call to
+          action, and an approved client has no action. */}
+      <KycStatusCard />
 
-        <article className="flex flex-col rounded-xl border border-border bg-card p-5 sm:p-6">
-          <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <MonitorDown className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <h2 className="mt-4 text-sm font-semibold text-foreground">{t('platforms.title')}</h2>
-          <p className="mt-1.5 flex-1 text-xs leading-relaxed text-muted-foreground">
-            {t('platforms.subtitle')}
-          </p>
-          <div className="mt-5">
-            <Button asChild size="sm">
-              <Link href="/platforms">{t('platforms.download')}</Link>
-            </Button>
-          </div>
-        </article>
-      </div>
+      <DashboardBody />
     </div>
   );
 }

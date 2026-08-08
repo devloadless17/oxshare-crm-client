@@ -37,27 +37,25 @@ import { t } from '@/lib/i18n';
  * them nothing about what to change, which is the whole reason the reason is
  * required on the admin side.
  *
- * ## Full width, and why the width is per-STATE rather than per-page
+ * ## Full width, on every state
  *
- * An approved partner gets the whole page: their screen is a dashboard — figure
- * tiles, a client table, a sub-partner list — and a table of referred clients
- * squeezed into a 48rem column wraps into something unreadable on the one screen
- * a partner actually works from.
+ * No `max-w-*` and no `mx-auto` anywhere on this route. The page fills whatever
+ * the layout gives it.
  *
- * The other four states are still centred and capped. They are a single card
- * with one action ("apply", "you were rejected, here is why"), and a lone card
- * stretched across an ultrawide monitor is a line of text with a button
- * somewhere off to the right. Width follows the content, not the route.
+ * It briefly capped the four non-approved states at `max-w-3xl` and centred
+ * them, on the reasoning that a lone "apply" card stretched across an ultrawide
+ * monitor is a line of text with a button off to the right. That reasoning was
+ * about the CARD, and the fix belongs on the card — the panels below cap their
+ * own text with `max-w-md` on the copy that needs it. Capping the PAGE also
+ * moved the heading and the whole column inward, so the partner screen sat at a
+ * different width from every other screen in the portal and read as a different
+ * app.
  */
 export default function PartnerPage() {
   const query = useResource<IbStatus>(['ib-status'], (signal) => partnerApi.status(signal));
 
-  // The approved dashboard is wide; every other state is a single card and
-  // stays capped. See the note above.
-  const wide = query.data?.account !== null && query.data?.account !== undefined;
-
   return (
-    <div className={`w-full space-y-6 py-2 ${wide ? '' : 'mx-auto max-w-3xl'}`}>
+    <div className="w-full space-y-6 py-2">
       <header className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">{t('partner.title')}</h1>
         <p className="text-sm text-muted-foreground">{t('partner.subtitle')}</p>

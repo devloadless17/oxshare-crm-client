@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { Check, Copy, Wallet as WalletIcon } from 'lucide-react';
-import { MoneyAction } from '@/components/kyc/money-action';
 import type { Wallet as WalletRecord, WalletCurrency } from '@/lib/api/wallet';
 import { formatMoney, isZeroMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
@@ -10,37 +9,40 @@ import { t } from '@/lib/i18n';
 /**
  * A wallet, presented as a payment card.
  *
- * ## The card metaphor earns its place, and where it stops
+ * ## It looks like a card, and carries NO chrome of its own
  *
- * A balance card is scanned, not read: a client opening this screen wants the
- * NUMBER and the two or three things they can do with it. The card shape gives
- * that a fixed anatomy — brand mark top-left, identifier along the bottom,
- * figure in the middle — so the eye lands in the same place on every card
- * regardless of which currency it is.
+ * No outer border, no drop shadow, no panel wrapper. A credit card is a single
+ * coloured object with a fixed anatomy — mark top-left, figure in the middle,
+ * identifier along the bottom — and every extra rule around it makes it read as
+ * "a box that contains a card" instead. The only geometry is `aspect-[1.586]`,
+ * the real ISO/IEC 7810 ID-1 ratio, and a large radius.
  *
- * Where the metaphor deliberately stops: this does NOT render a fake card
- * number, a chip, an expiry or a network logo. Those would imply a physical
- * instrument the client can present somewhere, and no such instrument exists.
- * The identifier shown is the real wallet id, labelled as one.
+ * The ACTIONS are not here either. They live once beneath the carousel on the
+ * wallet page, because three buttons repeated per card is three buttons that
+ * look like they act on that card alone — and deposit, withdraw and transfer all
+ * open their own screen where the currency is chosen anyway.
+ *
+ * ## Where the metaphor stops
+ *
+ * No fake card number, no chip, no expiry, no network logo. Those imply a
+ * physical instrument the client can present somewhere, and none exists. The
+ * identifier is the real wallet id, labelled as one.
  *
  * ## A missing wallet is still not a zero
  *
- * The rule the wallet screen turns on, preserved through the redesign: a
- * currency absent from `GET /wallet` has genuinely NOT BEEN OPENED, which is a
- * different sentence from "you have no money". An unopened card renders an em
- * dash and an explanation. It does NOT render `$0.00` — that is what showed a
- * client holding $700 a zero, and a prettier card is exactly the sort of change
- * that quietly reintroduces it.
+ * The rule the whole screen turns on: a currency absent from `GET /wallet` has
+ * genuinely NOT BEEN OPENED, which is a different sentence from "you have no
+ * money". An unopened card renders an em dash and an explanation, never `$0.00`
+ * — that is what showed a client holding $700 a zero, and a prettier card is
+ * exactly the change that quietly reintroduces it.
  */
 export function WalletCard({
   label,
-  note,
   currency,
   wallet,
   holder,
 }: {
   label: string;
-  note: string;
   currency: WalletCurrency;
   wallet: WalletRecord | undefined;
   /** The signed-in client's name, for the card foot. Absent renders nothing. */
@@ -49,163 +51,128 @@ export function WalletCard({
   const opened = wallet !== undefined;
 
   return (
-    <div className="flex flex-col gap-4">
+    /*
+     * The card face.
+     *
+     * A GRADIENT rather than a flat fill — this is the one place in the app
+     * where the surface is an object rather than a panel, and a deep two-stop
+     * wash is what makes it read as a card at a glance. Both stops are theme
+     * tokens, so it follows dark mode rather than pinning one palette.
+     *
+     * `overflow-hidden` because the decorative arcs below are positioned past
+     * the edges; without it they would paint over the page.
+     */
+    <div
+      className={`relative flex aspect-[1.586] w-full flex-col justify-between overflow-hidden rounded-2xl p-5 sm:p-6 ${
+        opened
+          ? 'bg-linear-to-br from-primary via-primary to-link text-primary-foreground'
+          : // An unopened wallet is flat and muted: it is a placeholder for
+            // something that does not exist yet, and giving it the same weight
+            // as a funded card would misrepresent it at a glance — the failure
+            // mode this screen has already had once.
+            'border border-dashed border-border bg-muted/40 text-muted-foreground'
+      }`}
+    >
       {/*
-        The card face.
-
-        `aspect-[1.6]` is the ISO/IEC 7810 ID-1 ratio a payment card actually
-        has, so the shape reads as a card rather than as a rounded box that
-        happens to be wide. It is capped by `max-w-md` so the figure does not
-        stretch across an ultrawide monitor into something unscannable.
-
-        A GRADIENT, not a flat fill, and only here: it is what separates the
-        card object from the page's cards-as-panels used everywhere else in this
-        app. Both stops are theme tokens, so it follows dark mode instead of
-        pinning one palette.
+        Two soft arcs, the way a real card carries an embossed curve. Purely
+        decorative, so `aria-hidden` and `pointer-events-none` — they must never
+        intercept a click aimed at the copy button below.
       */}
-      <div
-        className={`relative flex aspect-[1.6] w-full max-w-md flex-col justify-between overflow-hidden rounded-2xl p-5 sm:p-6 ${
-          opened
-            ? 'bg-linear-to-br from-primary via-primary to-link text-primary-foreground shadow-lg'
-            : // An unopened wallet is deliberately flat and muted: it is a
-              // placeholder for something that does not exist yet, and giving it
-              // the same weight as a funded card would misrepresent it at a
-              // glance, which is the failure mode this screen has already had.
-              'border border-dashed border-border bg-muted/40 text-muted-foreground'
-        }`}
-      >
-        {/*
-          Decorative sheen. `aria-hidden` and pointer-events-none — it carries no
-          information and must never intercept a click aimed at the card.
-        */}
-        {opened && (
+      {opened && (
+        <>
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -end-16 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl"
+            className="pointer-events-none absolute -end-20 -top-24 h-56 w-56 rounded-full bg-white/10"
           />
-        )}
-
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p
-              className={`text-[11px] font-semibold tracking-widest uppercase ${
-                opened ? 'text-primary-foreground/75' : 'text-muted-foreground'
-              }`}
-            >
-              {label}
-            </p>
-            {/* The currency code, large, because it is what tells two otherwise
-                identical cards apart at a glance. */}
-            <p className="mt-0.5 text-sm font-bold tracking-wide">{currency}</p>
-          </div>
-          <WalletIcon
-            className={`h-6 w-6 shrink-0 ${opened ? 'text-primary-foreground/80' : ''}`}
+          <div
             aria-hidden="true"
+            className="pointer-events-none absolute -bottom-28 -start-16 h-56 w-56 rounded-full bg-black/5"
           />
+        </>
+      )}
+
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p
+            className={`text-[10px] font-semibold tracking-widest uppercase ${
+              opened ? 'text-primary-foreground/70' : 'text-muted-foreground'
+            }`}
+          >
+            {label}
+          </p>
+          {/* The currency code, prominent, because it is what tells two
+              otherwise identical cards apart in a carousel. */}
+          <p className="mt-0.5 text-sm font-bold tracking-wide">{currency}</p>
         </div>
+        <WalletIcon
+          className={`h-6 w-6 shrink-0 ${opened ? 'text-primary-foreground/70' : ''}`}
+          aria-hidden="true"
+        />
+      </div>
 
-        <div className="relative">
-          {opened ? (
-            <>
-              {/*
-                `available`, not `balance`. The two differ by whatever is held
-                against a pending withdrawal, and the number a client reads as
-                "what I have" is the one they can actually act on. The total
-                appears below, and only when it differs.
+      <div className="relative">
+        {opened ? (
+          <>
+            {/*
+              `available`, not `balance`. The two differ by whatever is held
+              against a pending withdrawal, and the number a client reads as
+              "what I have" is the one they can actually act on. The total
+              appears below it, and only when the two differ.
 
-                `tabular-nums` so the digits do not reflow as the figure updates.
-              */}
-              <p className="text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
-                {formatMoney(wallet.available, currency)}
+              `tabular-nums` so the digits do not reflow as the figure updates.
+            */}
+            <p className="text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
+              {formatMoney(wallet.available, currency)}
+            </p>
+            {!isZeroMoney(wallet.onHold) && (
+              <p className="mt-1 text-[11px] text-primary-foreground/80">
+                {t('wallet.onHold', {
+                  amount: formatMoney(wallet.onHold, currency),
+                  total: formatMoney(wallet.balance, currency),
+                })}
               </p>
-              {!isZeroMoney(wallet.onHold) && (
-                <p className="mt-1 text-xs text-primary-foreground/80">
-                  {t('wallet.onHold', {
-                    amount: formatMoney(wallet.onHold, currency),
-                    total: formatMoney(wallet.balance, currency),
-                  })}
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              {/* An em dash and a sentence saying why — never a fabricated
-                  number. See the component note. */}
-              <p className="text-3xl font-bold sm:text-4xl">—</p>
-              <p className="mt-1 text-xs">{t('wallet.notOpened', { currency })}</p>
-            </>
-          )}
-        </div>
-
-        {/* The foot: holder and identifier, where a card carries them. */}
-        <div className="relative flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <p
-              className={`text-[9px] font-semibold tracking-widest uppercase ${
-                opened ? 'text-primary-foreground/60' : 'text-muted-foreground'
-              }`}
-            >
-              {opened ? t('wallet.cardIdLabel') : t('wallet.cardNotOpenedTitle')}
-            </p>
-            {opened ? (
-              <WalletIdentifier id={wallet.id} />
-            ) : (
-              <p className="font-mono text-xs tracking-widest">••••••••</p>
             )}
-          </div>
-
-          {holder && (
-            <p
-              className={`max-w-[45%] truncate text-end text-[11px] font-semibold tracking-wide uppercase ${
-                opened ? 'text-primary-foreground/80' : 'text-muted-foreground'
-              }`}
-            >
-              {holder}
-            </p>
-          )}
-        </div>
+          </>
+        ) : (
+          <>
+            {/* An em dash and a sentence saying why — never a fabricated
+                number. See the component note. */}
+            <p className="text-3xl font-bold sm:text-4xl">—</p>
+            <p className="mt-1 text-[11px]">{t('wallet.notOpened', { currency })}</p>
+          </>
+        )}
       </div>
 
       {/*
-        The actions, BELOW the card rather than on it.
+        The foot: identifier and holder, where a card carries them.
 
-        On the face they would compete with the balance for the same glance and
-        would have to be styled against a gradient in two themes. Below, they sit
-        at full contrast against the page — and they stay beside the number the
-        client is deciding against, which is the placement rule that put them on
-        this screen instead of in the nav rail.
-
-        Offered on an unopened wallet too, deliberately: /withdraw and /transfer
-        both read the real balance and explain themselves. Hiding them would
-        leave a client with an empty card and no way to find out what it is for.
+        The unopened card used to print `••••••••` here — a masked value implying
+        a hidden real one. There is no wallet and so no id to mask, so the dots
+        were decoration pretending to be data. The row is simply absent instead,
+        which is what "not opened" actually looks like.
       */}
-      <div className="flex max-w-md flex-wrap gap-2">
-        <MoneyAction
-          href="/deposit"
-          icon="deposit"
-          label={t('wallet.deposit')}
-          size="sm"
-          className="flex-1"
-        />
-        <MoneyAction
-          href="/withdraw"
-          icon="withdraw"
-          label={t('wallet.withdraw')}
-          variant="outline"
-          size="sm"
-          className="flex-1"
-        />
-        <MoneyAction
-          href="/transfer"
-          icon="transfer"
-          label={t('wallet.transfer')}
-          variant="outline"
-          size="sm"
-          className="flex-1"
-        />
-      </div>
+      <div className="relative flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          {opened && (
+            <>
+              <p className="text-[9px] font-semibold tracking-widest text-primary-foreground/60 uppercase">
+                {t('wallet.cardIdLabel')}
+              </p>
+              <WalletIdentifier id={wallet.id} />
+            </>
+          )}
+        </div>
 
-      <p className="max-w-md text-xs leading-relaxed text-muted-foreground">{note}</p>
+        {holder && (
+          <p
+            className={`max-w-[45%] truncate text-end text-[11px] font-semibold tracking-wide uppercase ${
+              opened ? 'text-primary-foreground/80' : 'text-muted-foreground'
+            }`}
+          >
+            {holder}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -255,7 +222,7 @@ function WalletIdentifier({ id }: { id: string }) {
         // Icon-only, so it needs a name — without one a screen reader announces
         // "button" and the only way to obtain the full id is unreachable.
         aria-label={t('wallet.copyId')}
-        className="rounded p-0.5 text-primary-foreground/70 transition-colors hover:text-primary-foreground focus-outline"
+        className="focus-outline rounded p-0.5 text-primary-foreground/70 transition-colors hover:text-primary-foreground"
       >
         {copied ? (
           <Check className="h-3.5 w-3.5" aria-hidden="true" />

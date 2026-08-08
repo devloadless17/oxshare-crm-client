@@ -46,40 +46,51 @@ export function KycStatusCard() {
   const { isLoading, approved, pending, rejected } = useKycAccess();
 
   /*
-   * Order matters: approved wins over everything, and `isLoading` is checked
-   * before the negative states so a client whose status has not answered yet is
-   * never shown "Not started" — the wrong answer confidently, which is the
-   * habit this card is being cured of.
+   * AN APPROVED CLIENT SEES NOTHING AT ALL.
+   *
+   * This used to render a permanent "Level 1 Verified • Trading Enabled" card,
+   * and that is a status light that never changes: it occupies the top of the
+   * dashboard forever, tells the client something they cannot act on, and pushes
+   * the data they actually came for further down the page on every visit.
+   *
+   * It is the same mistake the header pill made — `portal-layout.tsx` records
+   * removing a permanent "Verified Account" badge for exactly this reason, and
+   * `kycNavBadge` returns `undefined` on the same principle: a status card is a
+   * call to action, and somebody with no action left needs no card.
+   *
+   * Returning null rather than keeping a quieter version, because there is no
+   * quieter version worth the vertical space. Verification is confirmable on
+   * /profile whenever the client wants to check.
    */
-  const state: CardState = approved
+  if (approved) return null;
+
+  /*
+   * Order matters below: `isLoading` is checked before the negative states so a
+   * client whose status has not answered yet is never shown "Not started" — the
+   * wrong answer confidently, which is the habit this card is being cured of.
+   */
+  const state: CardState = isLoading
     ? {
-        copy: 'dashboard.kycVerified',
-        icon: ShieldCheck,
-        tone: 'bg-success/10 text-success',
+        copy: 'dashboard.kycLoading',
+        icon: Clock,
+        tone: 'bg-muted text-muted-foreground',
         cta: false,
       }
-    : isLoading
-      ? {
-          copy: 'dashboard.kycLoading',
-          icon: Clock,
-          tone: 'bg-muted text-muted-foreground',
-          cta: false,
-        }
-      : pending
-        ? { copy: 'dashboard.kycPending', icon: Clock, tone: 'bg-info/10 text-info', cta: false }
-        : rejected
-          ? {
-              copy: 'dashboard.kycRejected',
-              icon: ShieldAlert,
-              tone: 'bg-destructive/10 text-destructive',
-              cta: true,
-            }
-          : {
-              copy: 'dashboard.kycNotStarted',
-              icon: ShieldAlert,
-              tone: 'bg-warning/10 text-warning',
-              cta: true,
-            };
+    : pending
+      ? { copy: 'dashboard.kycPending', icon: Clock, tone: 'bg-info/10 text-info', cta: false }
+      : rejected
+        ? {
+            copy: 'dashboard.kycRejected',
+            icon: ShieldAlert,
+            tone: 'bg-destructive/10 text-destructive',
+            cta: true,
+          }
+        : {
+            copy: 'dashboard.kycNotStarted',
+            icon: ShieldAlert,
+            tone: 'bg-warning/10 text-warning',
+            cta: true,
+          };
 
   const Icon = state.icon;
 

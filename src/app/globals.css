@@ -300,6 +300,26 @@
  * one custom property the keyframe reads. Adding a variant means adding a line.
  */
 @layer utilities {
+  /*
+   * A scroll container with no visible scrollbar.
+   *
+   * For the wallet carousel: the track is a REAL scrolling element — that is
+   * what buys native touch inertia, trackpad swipe and correct RTL behaviour
+   * without re-implementing any of them — but its scrollbar would sit directly
+   * under the card and read as part of it. The dots below already say how many
+   * cards there are and which one is showing, so nothing is lost.
+   *
+   * Only use this where another affordance communicates that content scrolls.
+   * On an ordinary overflowing panel, hiding the scrollbar hides the fact.
+   */
+  .scrollbar-none {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* legacy Edge */
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none; /* WebKit/Blink */
+  }
+
   @keyframes enter {
     from {
       opacity: var(--tw-enter-opacity, 1);

@@ -116,11 +116,37 @@ number.** Each carries the rule differently, and each has a specific bug it exis
   nothing here holds them. The screen says so in the UI, not only in a comment: a figure labelled
   only "Balance" gets read as equity, and those differ by every open position.
 
-- **`/partner`** is full width **for an approved partner only** — that state is a dashboard
-  (figure tiles, client table, sub-partner list) and a table squeezed into `max-w-3xl` wraps into
-  something unreadable. The other four states stay centred and capped, because a lone card
-  stretched across an ultrawide monitor is a line of text with a button off to the right. Width
-  follows the content, not the route.
+- **`/partner`** is full width on **every** state — no `max-w-*`, no `mx-auto` on the route. The
+  four non-approved states were briefly capped, on the reasoning that a lone "apply" card stretched
+  across an ultrawide monitor is a line of text with a button off to the right. That reasoning is
+  about the CARD, so the fix belongs there (`max-w-md` on the prose inside the panels); capping the
+  PAGE also moved the heading inward, so the partner screen sat at a different width from every
+  other screen and read as a different app.
+
+- **`/dashboard`** renders from `GET /dashboard`: four stat tiles, wallets, recent transactions,
+  open positions and trading accounts. It was two cards (KYC + download) before, and that emptiness
+  was CORRECT at the time — the version before it carried tiles reading "0 trading accounts" with
+  no endpoint behind them, so a client with three read zero. Every figure is counted server-side
+  now. `KycStatusCard` renders **nothing** for an approved client: a permanent "Level 1 Verified"
+  card is a status light that never changes, telling somebody something they cannot act on while
+  pushing the real data down the page — the same reason the header pill was removed.
+
+### The empty states fill the page, and are sized in `vh`
+
+`/transactions` and `/accounts` use `min-h-[60vh]` plus `justify-center`, **not** `h-full`. The
+layout is `min-h-screen` with no unbroken `h-full` chain from `<html>` down, so a percentage height
+has nothing to resolve against and silently collapses to its content.
+
+### Positions are empty for everyone, and the copy says why carefully
+
+Nothing writes to the `positions` table until an MT5 bridge exists. The panel says trades are not
+**synced** — never "you have no trades" — because a client who opened a position this morning would
+still see zero, and the second sentence would be false. The terminal is named as the source of
+truth and linked, so the panel reads as a boundary rather than a broken feature.
+
+`largestBalance` on the dashboard is **not** a cross-currency sum: $500 + 200 USDT is not "700" of
+anything, and there is no FX source in this system. It reports the largest single holding with its
+own currency label.
 
 ### `earnings.engineLive` is the field that matters most on the partner screen
 

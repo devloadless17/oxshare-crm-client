@@ -102,7 +102,21 @@ export default function TransactionsPage() {
           empty one. Filters appear only once there is something to filter.
         */}
         {rows.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card py-16 text-center">
+          /*
+           * The empty state FILLS the page rather than sitting as a short card
+           * under the heading.
+           *
+           * Sized in viewport units, not `h-full`: the layout uses
+           * `min-h-screen` and there is no unbroken `h-full` chain from <html>
+           * down, so a percentage height has nothing to resolve against and
+           * would silently collapse to its content. `min-h-[60vh]` is measured
+           * against the viewport directly, so it works wherever this renders.
+           *
+           * `justify-center` then puts the message in the middle of that space
+           * instead of pinned to its top edge, which is what makes the screen
+           * read as deliberately empty rather than half-loaded.
+           */
+          <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
             <Receipt className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
             <p className="text-sm font-semibold">{t('transactions.empty')}</p>
             <p className="max-w-sm text-xs text-muted-foreground">{t('transactions.emptyBody')}</p>
@@ -116,8 +130,25 @@ export default function TransactionsPage() {
               onClear={() => setFilters(INITIAL_FILTERS)}
             />
 
-            <div className="overflow-hidden rounded-2xl border border-border bg-card">
-              <div className="overflow-x-auto">
+            {/*
+              The table frame FILLS the page, whether it holds two rows or
+              forty.
+
+              `min-h-[60vh]` matches the empty state above and the page loader,
+              so the screen keeps one shape across all three — a frame that
+              shrinks to its content between states is what makes the filter
+              controls above it jump under the cursor.
+
+              Viewport units rather than `h-full`: the layout is `min-h-screen`
+              with no unbroken `h-full` chain from <html>, so a percentage height
+              has nothing to resolve against and collapses silently.
+
+              `flex-col` with a `flex-1` scroll region below is what pins the
+              count footer to the bottom of that frame instead of letting it
+              float directly under the last row.
+            */}
+            <div className="flex min-h-[60vh] flex-col overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="flex-1 overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-muted/30 text-left text-muted-foreground">

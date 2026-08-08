@@ -483,6 +483,18 @@ export const messages = {
   'dashboard.internalTransfer': 'Internal Transfer',
   'dashboard.internalTransferHint': 'Move funds between MT5 accounts',
   'dashboard.kycStatus': 'KYC Status',
+  /*
+   * UNUSED, deliberately kept rather than deleted.
+   *
+   * `KycStatusCard` renders NOTHING for an approved client now — a permanent
+   * "Level 1 Verified" card is a status light that never changes, telling
+   * somebody something they cannot act on while pushing the data they came for
+   * down the page. The header pill was removed for the same reason.
+   *
+   * The string stays because "verified" is a state a future screen may need to
+   * name (a profile summary, an account-status page), and rewriting it later
+   * risks a different wording for the same fact. Delete it if that never comes.
+   */
   'dashboard.kycVerified': 'Level 1 Verified • Trading Enabled',
   // The other four states this card can be in. Only `kycVerified` existed, and
   // it was rendered unconditionally — so every client, including one who had
@@ -844,6 +856,12 @@ export const messages = {
   'wallet.cardHolder': 'Account holder',
   'wallet.cardOpened': 'Opened',
   'wallet.cardNotOpenedTitle': 'Not opened',
+  'wallet.previousCard': 'Previous wallet',
+  'wallet.nextCard': 'Next wallet',
+  'wallet.goToCard': 'Show {currency} wallet',
+  'wallet.recentHeading': 'Recent activity',
+  'wallet.recentEmpty': 'No transactions yet',
+  'wallet.recentEmptyBody': 'Deposits, withdrawals and transfers appear here as they happen.',
   'wallet.copyId': 'Copy wallet ID',
   'wallet.copiedId': 'Wallet ID copied',
   'wallet.totalHeading': 'Total balance',
@@ -907,6 +925,48 @@ export const messages = {
     'This is your deposited balance held in the CRM. Live equity, margin and open positions are ' +
     'shown in the MetaTrader 5 terminal.',
   'accounts.fundAccount': 'Transfer funds',
+
+  // ── Dashboard (GET /dashboard) ────────────────────────────────────────────
+  'dashboard.greeting': 'Welcome back, {name}',
+  'dashboard.loading': 'Loading your dashboard…',
+  'dashboard.loadFailed': 'Could not load your dashboard.',
+  'dashboard.totalBalance': 'Total balance',
+  'dashboard.totalBalanceNote': 'Across your opened wallets',
+  'dashboard.statOpenPositions': 'Open positions',
+  'dashboard.statReferredClients': 'Clients referred',
+  'dashboard.walletsHeading': 'Your wallets',
+  'dashboard.walletsEmpty': 'No wallets opened yet',
+  'dashboard.walletsEmptyBody': 'A wallet opens with your first deposit in that currency.',
+  'dashboard.positionsHeading': 'Open positions',
+  'dashboard.positionsEmpty': 'No open positions',
+  /*
+   * The honest sentence for an empty positions panel.
+   *
+   * It says trades are not SYNCED yet rather than "you have no trades", because
+   * those are different claims and only the first is one this system can make:
+   * nothing writes to `positions` until an MT5 bridge exists, so a client who
+   * traded this morning would still see zero here. Same rule as the wallet's
+   * missing-wallet-is-not-a-zero.
+   */
+  'dashboard.positionsEmptyBody':
+    'Trades opened in MetaTrader 5 are not synced to the portal yet. Your terminal is the source ' +
+    'of truth for live positions.',
+  'dashboard.positionsColSymbol': 'Symbol',
+  'dashboard.positionsColSide': 'Side',
+  'dashboard.positionsColVolume': 'Volume',
+  'dashboard.positionsColOpenPrice': 'Open price',
+  'dashboard.positionsColAccount': 'Account',
+  'dashboard.positionsColOpened': 'Opened',
+  'dashboard.sideBuy': 'Buy',
+  'dashboard.sideSell': 'Sell',
+  'dashboard.accountsHeading': 'Trading accounts',
+  'dashboard.accountsEmpty': 'No trading accounts yet',
+  'dashboard.accountsEmptyBody': 'Your MT5 accounts appear here once they are opened.',
+  'dashboard.transactionsEmpty': 'No transactions yet',
+  'dashboard.transactionsEmptyBody': 'Deposits and withdrawals appear here as they happen.',
+  'dashboard.quickActions': 'Quick actions',
+  'dashboard.viewAllAccounts': 'All accounts',
+  'dashboard.viewAllTransactions': 'All transactions',
 } as const;
 
 /** Every valid key. A typo is a compile error, never a string rendered as itself. */
