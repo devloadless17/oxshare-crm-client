@@ -15,7 +15,12 @@ import {
   type Filters,
 } from '@/components/transactions/transaction-filters';
 import { apiErrorMessage } from '@/lib/api/errors';
-import { paymentsApi, type Transaction, type TransactionQuery } from '@/lib/api/payments';
+import {
+  MANUAL_ADMIN_PROVIDER,
+  paymentsApi,
+  type Transaction,
+  type TransactionQuery,
+} from '@/lib/api/payments';
 import { formatMoney } from '@/lib/money';
 import { t, type MessageKey } from '@/lib/i18n';
 
@@ -193,6 +198,26 @@ export default function TransactionsPage() {
       cell: (tx) => <span className="text-muted-foreground">{tx.currency}</span>,
     },
     {
+      /*
+       * HOW the money moved — the payment method's own name, or "Added by our
+       * team" for a manual credit.
+       *
+       * Not sortable: the API's sort allow-list has no column for it (the name
+       * comes from a joined table), and a header that reorders nothing is worse
+       * than one that does not offer to.
+       *
+       * ## This is not the `kind` badge that was removed
+       *
+       * That one predicted the deposit FLOW before the server had decided it,
+       * and printed our integration's classification on a control the client was
+       * about to use. This is a fact about a movement that has already happened,
+       * on a row describing it — the client's own answer to "where did this come
+       * from", which their statement could not previously give them.
+       */
+      header: t('transactions.colMethod'),
+      cell: (tx) => <MethodCell tx={tx} />,
+    },
+    {
       header: t('transactions.colStatus'),
       sortKey: 'state',
       /*
@@ -355,6 +380,36 @@ export default function TransactionsPage() {
         )}
       </AsyncBoundary>
     </div>
+  );
+}
+
+/**
+ * Where a movement came from, in the client's words rather than the system's.
+ *
+ * Three cases, in the order they are decided:
+ *
+ *  1. `methodName` — the operator's own name for the method ("Whish Money").
+ *     Resolved server-side from `payment_methods`, so it is never a key and
+ *     never translated: it is a brand, and the client saw exactly these words on
+ *     the deposit screen when they chose it.
+ *  2. `manual_admin` — money the team placed by hand. The label is OURS and
+ *     therefore translated, because it is a sentence rather than a name.
+ *  3. Anything else — an em dash. A withdrawal has no method, and inventing one
+ *     ("Unknown", "Other") would put a word where the honest answer is nothing.
+ *     `provider` is deliberately NOT shown raw: `manual_bank_transfer` is an
+ *     internal identifier, not something to put on a client's statement.
+ */
+function MethodCell({ tx }: { tx: Transaction }) {
+  if (tx.methodName) return <span>{tx.methodName}</span>;
+
+  if (tx.provider === MANUAL_ADMIN_PROVIDER) {
+    return <span className="text-muted-foreground italic">{t('transactions.manualCredit')}</span>;
+  }
+
+  return (
+    <span className="text-muted-foreground" aria-hidden="true">
+      —
+    </span>
   );
 }
 

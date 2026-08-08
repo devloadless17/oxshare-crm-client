@@ -19,6 +19,21 @@ import type { components } from './types.gen';
  * drift.
  */
 export type Transaction = components['schemas']['TransactionDto'];
+
+/**
+ * `transaction.provider` for money an ADMIN placed by hand.
+ *
+ * The one provider string a screen is allowed to recognise by name, and it has
+ * to be recognised somewhere: such a transaction has no `methodKey` and no
+ * `methodName`, because it went through no payment method — so without this it
+ * would render as "no source" on the client's own statement.
+ *
+ * Every OTHER provider value is off-limits to a branch. The set is open (it
+ * grows with each method an operator adds), which is why `methodName` is
+ * resolved server-side for display. Mirrors `MANUAL_ADMIN_PROVIDER` in the
+ * backend's `transactions.service.ts`; the two must agree exactly.
+ */
+export const MANUAL_ADMIN_PROVIDER = 'manual_admin';
 /** One page of history plus the count of everything that matched the filters. */
 export type TransactionPage = components['schemas']['TransactionPageDto'];
 /**

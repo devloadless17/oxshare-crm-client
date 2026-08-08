@@ -2385,6 +2385,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/wallets/credit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add funds to a client's wallet by hand
+         * @description Writes a successful DEPOSIT transaction and a ledger entry, so the credit appears in the client's own history, and emails them the amount and the reason. Requires a reason: an unexplained credit cannot be audited.
+         */
+        post: operations["AdminMoneyController_creditWallet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/withdrawals/{id}/approve": {
         parameters: {
             query?: never;
@@ -3186,8 +3206,10 @@ export interface components {
             currency: "USD" | "USDT";
             /** @enum {string} */
             state: "pending" | "approved" | "success" | "failure" | "rejected";
-            /** @enum {string} */
-            provider?: "whish" | "usdt";
+            /** @description Open set — never switch on this exhaustively. */
+            provider?: string;
+            methodKey?: string | null;
+            methodName?: string | null;
             /** @description The provider's own reference. Backs UNIQUE(provider, provider_ref), which is what makes settlement idempotent in the database (§6.3). */
             providerRef?: string | null;
             destination?: string | null;
@@ -4205,6 +4227,22 @@ export interface components {
             counts: {
                 [key: string]: number;
             };
+        };
+        CreditWalletDto: {
+            /**
+             * Format: uuid
+             * @description The client to credit.
+             */
+            userId: string;
+            /** @example 250.00000000 */
+            amount: string;
+            /**
+             * @description Must be a currency the platform holds.
+             * @example USD
+             */
+            currency: string;
+            /** @example Goodwill adjustment for the failed 4 August transfer. */
+            reason: string;
         };
         WithdrawalRejectDto: {
             /** @description Free-text reason, when not using a configured reasonId. */
@@ -7790,6 +7828,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WithdrawalListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminMoneyController_creditWallet: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A unique value per intended credit, reused only when retrying that same one. It is also stored as the transaction `provider_ref`, so a replay collides on UNIQUE(provider, provider_ref) and credits once (R-5.2). */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditWalletDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionDto"];
                 };
             };
         };

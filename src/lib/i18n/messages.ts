@@ -947,6 +947,11 @@ export const messages = {
   // when nothing is filtered.
   'transactions.ofTotal': '{total} in total',
   'transactions.colCurrency': 'Currency',
+  'transactions.colMethod': 'Method',
+  // Money the team placed by hand. The client's own words for it, never the
+  // raw `manual_admin` provider string — that is an internal identifier and has
+  // no business on somebody's statement.
+  'transactions.manualCredit': 'Added by our team',
 
   // The sort SELECT is gone (`sortNewest`, `sortOldest`, `sortAmountDesc`,
   // `sortAmountAsc`, `sortLabel`). Ordering is a table-header click now, so the
