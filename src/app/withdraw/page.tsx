@@ -14,6 +14,19 @@ import { formatMoney, isZeroMoney } from '@/lib/money';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  AmountField,
+  AmountPresets,
+  DestinationSelect,
+  FormError,
+  MoneyFooter,
+  MoneyHeader,
+  MoneySection,
+  MoneySheet,
+  StepRail,
+  SummaryRow,
+} from '@/components/money/money-shell';
+import { presetsWithin } from '@/components/money/amount-presets';
 import { t } from '@/lib/i18n';
 
 /**
@@ -262,128 +275,191 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
 
   if (fundable.length === 0) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-        {t('withdraw.noWallets')}
-      </div>
+      <MoneySheet>
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 p-6 text-center">
+          <AlertCircle className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
+          <p className="max-w-sm text-sm text-muted-foreground">{t('withdraw.noWallets')}</p>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/deposit">{t('wallet.deposit')}</Link>
+          </Button>
+        </div>
+      </MoneySheet>
     );
   }
 
+  /*
+   * Quick-pick amounts, capped at what is AVAILABLE — not `balance`, which
+   * includes anything already held against another pending withdrawal. A preset
+   * above that would fill the field with a value the server then refuses.
+   *
+   * Still not a gate. The value goes to the server as a string and the server
+   * re-derives every constraint (R-5.1); no comparison decides anything here.
+   */
+  const presets = selected ? presetsWithin(null, selected.available) : [];
+
   return (
-    <form
-      onSubmit={(e) => void (step === 'details' ? requestCode(e) : submit(e))}
-      className="space-y-5 rounded-2xl border border-border bg-card p-6"
-    >
-      {error && (
-        <div
-          role="alert"
-          className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
-        >
-          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{error}</span>
+    <form onSubmit={(e) => void (step === 'details' ? requestCode(e) : submit(e))}>
+      <MoneySheet>
+        {/*
+          Two steps, and the rail says which one. The second is not cosmetic: the
+          emailed code is bound by HMAC to the exact amount, currency,
+          destination and provider from step one, so "confirm" genuinely is a
+          different state with different editability.
+        */}
+        <div className="border-b border-border px-5 py-4 sm:px-6">
+          <StepRail
+            steps={[t('money.stepAmount'), t('money.stepConfirm')]}
+            active={step === 'details' ? 0 : 1}
+          />
         </div>
-      )}
 
-      <div className="space-y-1.5">
-        <Label htmlFor="withdraw-currency">{t('withdraw.currency')}</Label>
-        <select
-          id="withdraw-currency"
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value as Currency)}
-          disabled={step === 'confirm'}
-          className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
-        >
-          {fundable.map((w) => (
-            <option key={w.currency} value={w.currency}>
-              {w.currency}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="withdraw-amount">{t('withdraw.amount')}</Label>
-        <Input
-          id="withdraw-amount"
-          // `inputMode` rather than type="number": a number input hands back a
-          // coerced value in some browsers, and §6.1 says money stays a string
-          // from the keystroke to the request body.
-          inputMode="decimal"
-          autoComplete="off"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder={t('withdraw.amountPlaceholder')}
-          disabled={step === 'confirm'}
-        />
-        {selected && (
-          <p className="text-[11px] text-muted-foreground">
-            {t('withdraw.available', {
-              amount: formatMoney(selected.available, selected.currency),
-            })}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="withdraw-destination">{t('withdraw.destination')}</Label>
-        <Input
-          id="withdraw-destination"
-          value={destination}
-          onChange={(e) => setDestination(e.target.value)}
-          placeholder={t('withdraw.destinationPlaceholder')}
-          autoComplete="off"
-          disabled={step === 'confirm'}
-        />
-        <p className="text-[11px] text-muted-foreground">{t('withdraw.destinationHint')}</p>
-      </div>
-
-      <div className="flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 p-3 text-[11px] text-info">
-        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-        <span>{t('withdraw.reviewNote')}</span>
-      </div>
-
-      {step === 'confirm' && (
-        <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-3">
-          {otpNotice && <p className="text-[11px] text-muted-foreground">{otpNotice}</p>}
-
-          {otpRequired && (
-            <div className="space-y-1.5">
-              <Label htmlFor="withdraw-otp">{t('withdraw.otpLabel')}</Label>
-              <Input
-                id="withdraw-otp"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
+        <MoneySection title={t('withdraw.amount')}>
+          <div className="space-y-4">
+            {/*
+              The currency picker is only a QUESTION when there is more than one
+              funded wallet. With a single one it is a control with one option —
+              noise on a money form — so the currency is stated instead.
+            */}
+            {fundable.length > 1 ? (
+              <DestinationSelect
+                label={t('withdraw.currency')}
+                value={currency}
+                onChange={(value) => setCurrency(value as Currency)}
+                disabled={step === 'confirm'}
+                groups={[
+                  {
+                    label: t('deposit.groupWallet'),
+                    options: fundable.map((w) => ({
+                      value: w.currency,
+                      label: t('deposit.toWallet', { currency: w.currency }),
+                      hint: formatMoney(w.available, w.currency),
+                    })),
+                  },
+                ]}
               />
-              <p className="text-[11px] text-muted-foreground">{t('withdraw.otpHint')}</p>
+            ) : null}
+
+            <AmountField
+              label={t('withdraw.amount')}
+              value={amount}
+              onChange={setAmount}
+              currency={currency}
+              disabled={step === 'confirm'}
+              /*
+               * "Use max" fills the AVAILABLE balance — not `balance`, which
+               * includes whatever is already held against another pending
+               * withdrawal. Offering that would produce a server refusal the
+               * client cannot explain.
+               *
+               * This is a convenience, NOT a gate: the value still goes to the
+               * server as a string and the server re-derives every constraint
+               * (R-5.1). No comparison happens on this side.
+               */
+              max={selected ? { amount: selected.available, label: t('money.useMax') } : undefined}
+              hint={
+                selected
+                  ? t('withdraw.available', {
+                      amount: formatMoney(selected.available, selected.currency),
+                    })
+                  : undefined
+              }
+            />
+
+            {presets.length > 0 && step === 'details' && (
+              <AmountPresets presets={presets} currency={currency} onPick={setAmount} />
+            )}
+          </div>
+        </MoneySection>
+
+        <MoneySection title={t('withdraw.destination')}>
+          <div className="space-y-1.5">
+            <Label htmlFor="withdraw-destination" className="sr-only">
+              {t('withdraw.destination')}
+            </Label>
+            <Input
+              id="withdraw-destination"
+              value={destination}
+              onChange={(e) => setDestination(e.target.value)}
+              placeholder={t('withdraw.destinationPlaceholder')}
+              autoComplete="off"
+              disabled={step === 'confirm'}
+              className="h-12 font-mono text-sm"
+            />
+            <p className="text-[11px] text-muted-foreground">{t('withdraw.destinationHint')}</p>
+          </div>
+
+          <p className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/5 p-3 text-[11px] leading-relaxed text-muted-foreground">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-info" aria-hidden="true" />
+            <span>{t('withdraw.reviewNote')}</span>
+          </p>
+        </MoneySection>
+
+        {step === 'confirm' && (
+          <MoneySection title={t('withdraw.otpLabel')}>
+            <div className="space-y-4">
+              {otpNotice && <p className="text-xs text-muted-foreground">{otpNotice}</p>}
+
+              {/* A summary of what the code is BOUND to. The client is
+                  confirming these exact values, and showing them is what makes
+                  "confirm" meaningful rather than a second button press. */}
+              <dl className="divide-y divide-border">
+                <SummaryRow
+                  label={t('withdraw.amount')}
+                  value={formatMoney(amount, currency)}
+                  strong
+                />
+                <SummaryRow
+                  label={t('withdraw.destination')}
+                  value={<span className="font-mono text-xs break-all">{destination}</span>}
+                />
+              </dl>
+
+              {otpRequired && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="withdraw-otp">{t('withdraw.otpLabel')}</Label>
+                  <Input
+                    id="withdraw-otp"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="000000"
+                    className="h-14 text-center text-2xl font-bold tracking-[0.4em] tabular-nums"
+                  />
+                  <p className="text-[11px] text-muted-foreground">{t('withdraw.otpHint')}</p>
+                </div>
+              )}
+
+              {/* The only way to change a locked field. Re-entering step one
+                  clears the code, because it was bound to the previous intent. */}
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                onClick={editDetails}
+                className="h-auto justify-start p-0 text-[11px]"
+              >
+                {t('withdraw.editDetails')}
+              </Button>
             </div>
-          )}
+          </MoneySection>
+        )}
 
-          {/* The only way to change a locked field. Re-entering step one clears
-              the code, because it was bound to the previous intent. */}
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            onClick={editDetails}
-            className="h-auto justify-start p-0 text-[11px]"
-          >
-            {t('withdraw.editDetails')}
+        <MoneyFooter className="space-y-4">
+          <FormError message={error} />
+
+          <Button type="submit" size="lg" loading={isSubmitting} className="h-12 w-full">
+            {isSubmitting
+              ? step === 'details'
+                ? t('withdraw.sendingCode')
+                : t('withdraw.submitting')
+              : step === 'details'
+                ? t('withdraw.continue')
+                : t('withdraw.submit')}
           </Button>
-        </div>
-      )}
-
-      <Button type="submit" loading={isSubmitting} className="w-full">
-        {isSubmitting
-          ? step === 'details'
-            ? t('withdraw.sendingCode')
-            : t('withdraw.submitting')
-          : step === 'details'
-            ? t('withdraw.continue')
-            : t('withdraw.submit')}
-      </Button>
+        </MoneyFooter>
+      </MoneySheet>
     </form>
   );
 }
@@ -393,29 +469,43 @@ export default function WithdrawPage() {
   const wallets = useResource(['wallets'], (signal) => walletApi.getWallets(signal));
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t('withdraw.title')}</h1>
-        <p className="text-sm text-muted-foreground mt-1">{t('withdraw.subtitle')}</p>
-      </div>
+    <div className="w-full space-y-6">
+      <MoneyHeader title={t('withdraw.title')} subtitle={t('withdraw.subtitle')} />
 
       {submitted ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-success/30 bg-success/5 py-14 text-center">
-          <CheckCircle2 className="h-10 w-10 text-success" aria-hidden="true" />
-          <h2 className="text-base font-bold text-success">{t('withdraw.submittedTitle')}</h2>
-          {/*
-            Says the funds are HELD, not sent. The backend puts the amount on
-            hold and writes no ledger entry until an admin settles it — telling
-            the client "sent" would be a different, wrong story about their money.
-          */}
-          <p className="max-w-md text-xs text-muted-foreground">{t('withdraw.submittedBody')}</p>
-          <Link
-            href="/transactions"
-            className="text-xs font-semibold text-link hover:underline focus-outline rounded-sm"
-          >
-            {t('withdraw.viewTransactions')}
-          </Link>
-        </div>
+        <MoneySheet>
+          <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 p-6 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-success">
+              <CheckCircle2 className="h-7 w-7" aria-hidden="true" />
+            </span>
+            {/*
+              Says the funds are HELD, not sent. The backend puts the amount on
+              hold and writes no ledger entry until an admin settles it — telling
+              the client "sent" would be a different, wrong story about their
+              money.
+
+              `role="status"` so the outcome is announced: this replaces the form
+              after an async submit, and a screen-reader user would otherwise be
+              left on the button's last announcement.
+            */}
+            <div>
+              <h2 role="status" className="text-lg font-bold">
+                {t('withdraw.submittedTitle')}
+              </h2>
+              <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
+                {t('withdraw.submittedBody')}
+              </p>
+            </div>
+            <div className="flex w-full max-w-xs flex-col gap-2">
+              <Button asChild size="sm">
+                <Link href="/transactions">{t('withdraw.viewTransactions')}</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/wallet">{t('deposit.backToWallet')}</Link>
+              </Button>
+            </div>
+          </div>
+        </MoneySheet>
       ) : (
         <AsyncBoundary
           status={wallets.status}

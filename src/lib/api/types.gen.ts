@@ -568,7 +568,7 @@ export interface paths {
         };
         /**
          * Every currency, including disabled ones, in operator order
-         * @description Unlike the client-facing GET /currencies, this includes disabled currencies — managing them is the point of the screen.
+         * @description Unlike the client-facing GET /currencies, this includes disabled currencies — managing them is the point of the screen. Readable with `payments.view` as well, because the payment-method form picks a currency from this list.
          */
         get: operations["AdminCurrenciesController_list"];
         put?: never;
@@ -940,6 +940,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payments/deposits/{reference}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Re-check a gateway deposit with the provider, settling it if it has completed
+         * @description Asks the payment provider directly rather than trusting anything the browser carried back. Safe to call repeatedly: settlement is idempotent, so this and the provider callback converge on the same outcome whichever arrives first.
+         */
+        get: operations["PaymentsController_settleDeposit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/payments/deposits": {
         parameters: {
             query?: never;
@@ -1043,14 +1063,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Every payment method, configured or not
-         * @description Includes disabled methods and ones with no pay-to details — managing those is the point of the screen. Clients see a narrower list: GET /payments/methods returns only what is enabled AND configured.
+         * Every payment method, enabled or not
+         * @description Includes disabled methods — turning them on and off is the point of the screen. Clients see a narrower list: GET /payments/methods returns only what is enabled AND, for a gateway, reachable from this deployment.
          */
         get: operations["AdminPaymentMethodsController_list"];
         put?: never;
         /**
          * Add a payment method
-         * @description A method with no `payTo` is created but never offered to clients — see the service. That is deliberate: an account number nobody has filled in cannot receive money, and inventing one is how money leaves and does not arrive.
+         * @description Key, name, currency and an optional logo. `enabled` decides whether clients are offered it, and is the only thing about a method an operator changes afterwards — with one exception they cannot: a GATEWAY method stays hidden on a deployment holding no provider credentials, because a client who picks it would land on an error.
          */
         post: operations["AdminPaymentMethodsController_create"];
         delete?: never;
@@ -1086,11 +1106,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /**
-         * Remove a payment method
-         * @description Refuses one that any deposit references — disabling is almost always what was meant, and it keeps the history readable while stopping new deposits.
-         */
-        delete: operations["AdminPaymentMethodsController_remove"];
+        delete?: never;
         options?: never;
         head?: never;
         /**
@@ -1098,6 +1114,23 @@ export interface paths {
          * @description PATCH, and `key` itself is not editable: it is the primary key and `transactions.method_key` references it, so renaming is a data migration rather than an edit.
          */
         patch: operations["AdminPaymentMethodsController_update"];
+        trace?: never;
+    };
+    "/v1/admin/payment-methods/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload a payment-method logo (JPEG, PNG, WebP or SVG, max 1MB) */
+        post: operations["AdminPaymentMethodsController_uploadLogo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/wallet": {
@@ -1335,6 +1368,23 @@ export interface paths {
         };
         /** Serve a client's own profile photo */
         get: operations["UploadsController_serveAvatar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/uploads/payment-logos/{file}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Serve a payment-method logo (public) */
+        get: operations["UploadsController_servePaymentLogo"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3039,20 +3089,19 @@ export interface components {
             key: string;
             /** @example Whish Money */
             name: string;
-            /**
-             * @description Decides the deposit FLOW, so a screen branches on this rather than on the key — a screen that checks `key === "whish"` needs editing every time a method is added.
-             * @enum {string}
-             */
-            kind: "manual" | "gateway" | "crypto";
             /** @example USD */
             currency: string;
             logoUrl: string | null;
-            /** @description What the client must do, in the operator's words. Rendered verbatim. */
-            instructions: string | null;
-            /** @description The account the client sends to. A method with none is NOT offered — see PaymentMethodsService.listAvailable. */
-            payTo: string | null;
-            minAmount: string | null;
-            maxAmount: string | null;
+            /**
+             * @description The smallest deposit this method accepts, RESOLVED SERVER-SIDE from the platform limits (§12.4). The same figure `POST /payments/deposits` enforces, so a client showing it cannot promise a floor the validator disagrees with. A decimal string, never a number (§6.1).
+             * @example 10.00000000
+             */
+            minAmount: string;
+            /**
+             * @description The largest deposit this method accepts. Same source and same guarantee as above.
+             * @example 5000.00000000
+             */
+            maxAmount: string;
             enabled: boolean;
             sortOrder: number;
         };
@@ -3090,12 +3139,19 @@ export interface components {
              */
             method: string;
             /**
-             * @description Always `pending`. Nothing is credited until the operator confirms receipt.
+             * @description Always `pending`. Nothing is credited until the operator confirms receipt (manual method) or the provider confirms the payment (gateway method).
              * @example pending
              */
             state: string;
             /** Format: date-time */
             createdAt: string;
+            /**
+             * @description The provider's hosted payment page, for a GATEWAY method. Send the client there — they pay on the provider’s own domain, and no card or OTP detail touches this system.
+             *
+             *     NULL for a manual method, where the client is shown `payTo` and instructions instead. A client MUST branch on this: assuming a link strands a bank-transfer client with nowhere to go, and assuming instructions shows a gateway client an account number that is not how that method works.
+             * @example https://whish.money/pay/8nQS2mL
+             */
+            paymentUrl: string | null;
         };
         RequestWithdrawalDto: {
             /** @example 300.00000000 */
@@ -3200,19 +3256,10 @@ export interface components {
             key: string;
             /** @example Whish Money */
             name: string;
-            /** @enum {string} */
-            kind: "manual" | "gateway" | "crypto";
             /** @example USD */
             currency: string;
+            /** @example /v1/uploads/payment-logos/8f2c….png */
             logoUrl?: string;
-            /** @description Shown verbatim on the deposit screen. */
-            instructions?: string;
-            /** @description The Whish number, IBAN or wallet address. */
-            payTo?: string;
-            /** @example 10.00 */
-            minAmount?: string;
-            /** @example 5000.00 */
-            maxAmount?: string;
             /** @default true */
             enabled: boolean;
             /** @default 0 */
@@ -3220,16 +3267,18 @@ export interface components {
         };
         UpdatePaymentMethodDto: {
             name?: string;
-            /** @enum {string} */
-            kind?: "manual" | "gateway" | "crypto";
             currency?: string;
+            /** @example /v1/uploads/payment-logos/8f2c….png */
             logoUrl?: string;
-            instructions?: string;
-            payTo?: string;
-            minAmount?: string;
-            maxAmount?: string;
             enabled?: boolean;
             sortOrder?: number;
+        };
+        PaymentLogoResponseDto: {
+            /**
+             * @description A path on THIS API, not a third-party host. Put it on the method’s `logoUrl` when saving.
+             * @example /v1/uploads/payment-logos/8f2c….png
+             */
+            logoUrl: string;
         };
         WalletDto: {
             id: string;
@@ -5674,6 +5723,27 @@ export interface operations {
             };
         };
     };
+    PaymentsController_settleDeposit: {
+        parameters: {
+            query: {
+                method: string;
+            };
+            header?: never;
+            path: {
+                reference: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     PaymentsController_requestDeposit: {
         parameters: {
             query?: never;
@@ -5877,25 +5947,6 @@ export interface operations {
             };
         };
     };
-    AdminPaymentMethodsController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     AdminPaymentMethodsController_update: {
         parameters: {
             query?: never;
@@ -5917,6 +5968,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentMethodDto"];
+                };
+            };
+        };
+    };
+    AdminPaymentMethodsController_uploadLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentLogoResponseDto"];
                 };
             };
         };
@@ -6162,6 +6232,25 @@ export interface operations {
         };
     };
     UploadsController_serveAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UploadsController_servePaymentLogo: {
         parameters: {
             query?: never;
             header?: never;

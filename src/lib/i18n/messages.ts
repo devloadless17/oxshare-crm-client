@@ -463,6 +463,44 @@ export const messages = {
   // populate. See app/transfer/page.tsx.
   'transfer.title': 'Transfer',
   'transfer.subtitle': 'Move funds between your wallet and a trading account',
+  'transfer.loading': 'Loading your trading accounts',
+  'transfer.loadFailed': 'Could not load your trading accounts.',
+  'transfer.directionTitle': 'Which way?',
+  'transfer.toAccount': 'Wallet → Trading account',
+  'transfer.toAccountHint': 'Fund an account so you can trade with it.',
+  'transfer.toWallet': 'Trading account → Wallet',
+  'transfer.toWalletHint': 'Bring funds back so you can withdraw them.',
+  'transfer.accountTitle': 'Which account?',
+  'transfer.noAccounts': 'No live trading accounts yet',
+  /*
+   * Says LIVE specifically. A client holding only a demo account has accounts —
+   * telling them they have none would be the same false statement the accounts
+   * page once made — but none that money can move to.
+   */
+  'transfer.noAccountsBody':
+    'Transfers move real money, so they need a live account. Demo accounts trade practice funds ' +
+    'and are not linked to your wallet.',
+  'transfer.submit': 'Transfer funds',
+  'transfer.submitting': 'Transferring…',
+  'transfer.failed': 'Could not complete the transfer. Please try again.',
+  'transfer.confirmTitle': 'Confirm the transfer',
+  'transfer.from': 'From',
+  'transfer.to': 'To',
+  'transfer.walletLabel': '{currency} wallet',
+  'transfer.accountLabel': 'Account {login}',
+  /*
+   * The settlement caveat, stated on the confirmation. A transfer is asynchronous
+   * — `wallet_to_account` HOLDS the amount and credits nothing until the bridge
+   * confirms — so a screen implying the money has arrived is wrong at exactly
+   * the moment a client checks their platform and finds nothing.
+   */
+  'transfer.settlementNote':
+    'Transfers are processed in order and can take a few moments to appear. The amount is held ' +
+    'until it settles.',
+  'transfer.doneTitle': 'Transfer submitted',
+  'transfer.doneBody':
+    'Your transfer is being processed. It will appear in your transactions once it settles.',
+  'transfer.another': 'Make another transfer',
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
   'dashboard.title': 'Trading Overview',
@@ -925,6 +963,79 @@ export const messages = {
     'This is your deposited balance held in the CRM. Live equity, margin and open positions are ' +
     'shown in the MetaTrader 5 terminal.',
   'accounts.fundAccount': 'Transfer funds',
+
+  // ── The money flows: shared steps and gateway payments ────────────────────
+  'money.stepMethod': 'Method',
+  'money.stepAmount': 'Amount',
+  'money.stepConfirm': 'Confirm',
+  'money.stepDone': 'Done',
+  'money.useMax': 'Use max',
+  'money.back': 'Back',
+  'money.continue': 'Continue',
+  'money.availableBalance': 'Available: {amount}',
+
+  /*
+   * Gateway copy — everything below is shown AFTER the deposit is filed, when
+   * the server's answer has said which flow this is.
+   *
+   * `gatewayBadge` ("Instant"), `manualBadge` ("Manual") and `redirecting`
+   * ("Opening the payment page…") are GONE. All three appeared BEFORE the answer
+   * arrived, predicted from a `kind` field on the method that migration 0043
+   * dropped — and the prediction was wrong for a whole release, labelling the
+   * live Whish gateway "Manual". Copy that promises a payment page for a deposit
+   * that will not open one is the failure mode, so the promise now waits for the
+   * fact. `gatewayNote` goes with them: it was already unused.
+   */
+  'deposit.payNow': 'Continue to payment',
+  'deposit.gatewayReturnNote':
+    'Once you have paid, you will be returned here and your balance updates automatically.',
+  'deposit.openPaymentPage': 'Open the payment page',
+  'deposit.paymentLinkReady': 'Your payment link is ready',
+  'deposit.paymentLinkBody':
+    'If the payment page did not open, use the button below. The link stays valid until you pay ' +
+    'it or it expires.',
+
+  // The return screens, after the provider sends the client back.
+  'deposit.checking': 'Confirming your payment…',
+  'deposit.checkingBody': 'We are checking with the payment provider. This usually takes a moment.',
+  'deposit.successTitle': 'Payment received',
+  /*
+   * No `{amount}` placeholder, deliberately. The return screen settles the
+   * deposit but does not fetch its details, so an amount here would either be
+   * read from the URL — a value the client can edit — or left blank. Naming the
+   * wallet instead is true without either.
+   */
+  'deposit.successBody': 'Your deposit has been credited to your wallet.',
+  'deposit.pendingStillTitle': 'Payment not confirmed yet',
+  /*
+   * The careful one. At Whish, `pending` INCLUDES "the client tried and failed"
+   * — the link stays payable until it is paid or expires. So this must not say
+   * the payment failed, and must not say it succeeded.
+   */
+  'deposit.pendingStillBody':
+    'The provider has not confirmed this payment yet. If you completed it, it will appear in your ' +
+    'transactions shortly — there is no need to pay again.',
+  'deposit.failureTitle': 'Payment not completed',
+  'deposit.failureBody':
+    'This payment was not completed and nothing has been charged. You can start a new deposit ' +
+    'whenever you are ready.',
+  'deposit.backToWallet': 'Back to my wallet',
+  'deposit.tryAgain': 'Start a new deposit',
+  'deposit.missingReference': 'This link is missing its payment reference.',
+
+  // ── Destination: where the money lands ────────────────────────────────────
+  'deposit.destinationTitle': 'Where should it go?',
+  'deposit.destinationLabel': 'Destination',
+  'deposit.groupWallet': 'My wallets',
+  'deposit.groupAccounts': 'Trading accounts',
+  'deposit.toWallet': '{currency} wallet',
+  'deposit.toWalletHint': 'Keep it in your wallet to withdraw or transfer later.',
+  'deposit.toAccount': 'Account {login}',
+  'deposit.toAccountHint': 'Funded automatically once the payment clears.',
+  'deposit.amountRange': 'Between {min} and {max}',
+  'deposit.amountBelowMin': 'The minimum deposit is {min}.',
+  'deposit.amountAboveMax': 'The maximum deposit is {max}.',
+  'deposit.pay': 'Pay {amount}',
 
   // ── Dashboard (GET /dashboard) ────────────────────────────────────────────
   'dashboard.greeting': 'Welcome back, {name}',

@@ -21,23 +21,33 @@ export type DepositRequest = components['schemas']['DepositRequestDto'];
  * A way to send money, as the OPERATOR configured it.
  *
  * This is what makes the deposit screen dynamic rather than a hardcoded list of
- * two. `instructions` and `payTo` are the operator's own words and account
- * details, rendered verbatim — the portal has no business reformatting an IBAN,
- * and it certainly has none inventing one.
+ * two. What arrives is what an operator enabled, in the order they chose: a key,
+ * a name, a currency, a logo and the bounds the server will enforce.
  *
- * Branch on `kind`, never on `key`: the schema says so, and a screen that
- * checks `key === 'whish'` needs editing every time a method is added.
+ * ## There is no `kind`, and the screen must not go looking for one
+ *
+ * It said `manual | gateway | crypto` and told the portal which deposit flow to
+ * draw. The column was dropped in migration 0043, because it was a fact about
+ * the backend's own integrations rather than about the method — and the screen
+ * was printing it beside each option as "Manual" or "Instant", which is a
+ * statement about our plumbing shown to somebody choosing how to pay.
+ *
+ * What decides the flow now is the ANSWER to `request()`: a `paymentUrl` means
+ * pay here and now, its absence means quote this reference on a transfer. The
+ * server knows by then, so the portal branches on the outcome rather than on a
+ * prediction of it — and still never on `key`, which would need editing every
+ * time a method is added.
  */
 export type PaymentMethod = components['schemas']['PaymentMethodDto'];
-export type PaymentMethodKind = PaymentMethod['kind'];
 
 export const depositsApi = {
   /**
    * The methods this client may actually use, in the operator's chosen order.
    *
-   * The endpoint only returns methods that are enabled AND have a `payTo`, so
-   * every row here is one the client can genuinely send money to. There is no
-   * client-side filtering to add and none to forget.
+   * The endpoint returns only what an operator ENABLED — and, for a method
+   * backed by a payment gateway, only if this deployment holds that provider's
+   * credentials. So every row here is one the client can genuinely send money
+   * through. There is no client-side filtering to add and none to forget.
    */
   async listMethods(signal?: AbortSignal): Promise<PaymentMethod[]> {
     const { data } = await apiClient.get<PaymentMethod[]>('/payments/methods', { signal });
@@ -91,6 +101,32 @@ export const depositsApi = {
           : {}),
       },
       idempotent(idempotencyKey),
+    );
+    return data;
+  },
+
+  /**
+   * "I have come back from the payment page — did it work?"
+   *
+   * For GATEWAY methods only. The server re-asks the provider over an
+   * authenticated channel and settles the deposit if it has completed; nothing
+   * the browser carries back is trusted, because a query string is something
+   * the client can edit.
+   *
+   * Safe to call repeatedly, and it races the provider's own callback on
+   * purpose — a callback can be delayed, lost, or blocked by a firewall, and a
+   * client staring at a pending deposit they have just paid for is the worst
+   * outcome this flow has. Whichever arrives first settles it; the other is a
+   * no-op.
+   */
+  async settle(
+    reference: string,
+    method: string,
+    signal?: AbortSignal,
+  ): Promise<{ state: string }> {
+    const { data } = await apiClient.get<{ state: string }>(
+      `/payments/deposits/${encodeURIComponent(reference)}/status?method=${encodeURIComponent(method)}`,
+      { signal },
     );
     return data;
   },
