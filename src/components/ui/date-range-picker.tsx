@@ -230,21 +230,46 @@ export function DateRangePicker({
            * off-screen on a narrow desktop window. `z-50` clears the sticky
            * table header, which is `z-20`.
            */
-          className="absolute end-0 z-50 mt-2 rounded-xl border border-border bg-card p-3 shadow-lg"
+          /*
+           * ⚠️ `w-max` — WITHOUT IT THE POPOVER CANNOT BE WIDER THAN THE TRIGGER.
+           *
+           * This is the whole bug, and it is not obvious. An absolutely
+           * positioned box with `width: auto` is shrink-to-fit, which CSS defines
+           * as `min(max(preferred-minimum, available), preferred)` — and
+           * `available` is the width of the containing block. The containing
+           * block here is the `relative` wrapper around the trigger, one cell of
+           * the filter grid. So two calendars side by side were squeezed into a
+           * quarter-width toolbar column no matter how the grid inside was sized.
+           *
+           * `w-max` opts out: the box takes its max-content width, which is what
+           * the two months actually need. The trigger keeps its own width and is
+           * unaffected — it is a sibling, not a parent of this.
+           *
+           * ## The phone
+           *
+           * `max-w-[calc(100vw-2rem)]` caps it at the viewport with a 1rem
+           * margin either side, because `w-max` on its own would happily run off
+           * the screen. The second month is already hidden below `sm` (see
+           * below), so at that cap a phone shows one full month rather than a
+           * clipped pair. `end-0` anchors the popover's trailing edge to the
+           * trigger's, so it grows INWARD — off the leading edge is where a
+           * `start-0` version would disappear on a narrow window.
+           */
+          className="absolute end-0 z-50 mt-2 w-max max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-4 shadow-lg"
         >
-          <div className="flex items-center justify-between px-1 pb-2">
+          <div className="flex items-center justify-between px-1 pb-3">
             <button
               type="button"
               onClick={() => setView(previousMonth(view.year, view.month))}
               aria-label={t('transactions.calendarPrevMonth')}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
             >
               {/* Mirrored under RTL rather than swapped: "previous" points at
                   the start of the line, which is the right in Arabic. */}
               <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
             </button>
 
-            <div className="flex flex-1 justify-around gap-6 text-xs font-semibold">
+            <div className="flex flex-1 justify-around gap-8 text-sm font-semibold">
               <span>{monthLabel(view.year, view.month)}</span>
               <span className="hidden sm:inline">{monthLabel(right.year, right.month)}</span>
             </div>
@@ -253,13 +278,13 @@ export function DateRangePicker({
               type="button"
               onClick={() => setView(nextMonth(view.year, view.month))}
               aria-label={t('common.next')}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
             >
               <ChevronRight className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
             </button>
           </div>
 
-          <div className="flex gap-6">
+          <div className="flex gap-8">
             <MonthGrid
               year={view.year}
               month={view.month}
@@ -283,8 +308,8 @@ export function DateRangePicker({
             </div>
           </div>
 
-          <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
-            <p className="text-[11px] text-muted-foreground">{formatRangeLabel(draft)}</p>
+          <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-4">
+            <p className="text-xs text-muted-foreground">{formatRangeLabel(draft)}</p>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -341,11 +366,11 @@ function MonthGrid({
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-0.5 pb-1">
+      <div className="grid grid-cols-7 gap-1 pb-1">
         {weekdayLabels().map((weekday) => (
           <span
             key={weekday.key}
-            className="flex h-7 w-8 items-center justify-center text-[10px] font-semibold text-muted-foreground"
+            className="flex h-8 w-10 items-center justify-center text-[11px] font-semibold text-muted-foreground"
             // The single letter is ambiguous out of context (T could be Tuesday
             // or Thursday), so the full name is what assistive tech announces.
             aria-label={weekday.long}
@@ -356,7 +381,7 @@ function MonthGrid({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-0.5">
+      <div className="grid grid-cols-7 gap-1">
         {days.map((day) => {
           const isEnd = day.isRangeStart || day.isRangeEnd;
           return (
@@ -374,7 +399,7 @@ function MonthGrid({
               aria-label={longDateLabel(day.iso)}
               aria-pressed={isEnd || day.isInRange}
               className={cn(
-                'flex h-8 w-8 items-center justify-center rounded-md text-xs transition-colors focus-outline',
+                'flex h-10 w-10 items-center justify-center rounded-md text-sm transition-colors focus-outline',
                 !day.inMonth && 'text-muted-foreground/40',
                 day.disabled && 'cursor-not-allowed opacity-40 hover:bg-transparent',
                 !day.disabled && !isEnd && !day.isInRange && 'hover:bg-muted',

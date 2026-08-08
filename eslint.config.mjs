@@ -274,6 +274,26 @@ export default defineConfig([
       'max-lines': ['error', { max: 340, skipBlankLines: true, skipComments: true }],
     },
   },
+  {
+    /*
+     * `data-table.tsx` is a TWIN of admin's, and is exempted at admin's own
+     * ceiling rather than this app's.
+     *
+     * It is not this app's file to split. `scripts/check-twins.sh` compares the
+     * two byte for byte outside the config block, so splitting it here would
+     * either break the twin check or force the same split on admin as a side
+     * effect of a lint rule that only exists in this repo. Admin pins it at 680
+     * for the same reason it is large — selection, expansion, three pagination
+     * modes and sorting in one component — and this matches that number exactly
+     * so the file is held to one limit rather than two.
+     *
+     * Lower it in ADMIN first; this follows.
+     */
+    files: ['src/components/data-table.tsx'],
+    rules: {
+      'max-lines': ['error', { max: 680, skipBlankLines: true, skipComments: true }],
+    },
+  },
 
   {
     // Test files may use loose typing against fixtures.

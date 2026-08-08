@@ -1,10 +1,19 @@
 'use client';
 
 import * as React from 'react';
-import { Check, Copy, Wallet as WalletIcon } from 'lucide-react';
+import { Check, Copy, Eye, EyeOff, Wallet as WalletIcon } from 'lucide-react';
 import type { Wallet as WalletRecord, WalletCurrency } from '@/lib/api/wallet';
 import { formatMoney, isZeroMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
+
+/**
+ * What a hidden amount renders as.
+ *
+ * A fixed-width run of dots, NOT a mask of the real digits. Masking per
+ * character leaks the magnitude — `••••••` beside `••••` tells anybody watching
+ * which wallet holds more, which is most of what hiding a balance is for.
+ */
+const MASK = '••••••';
 
 /**
  * A wallet, presented as a payment card.
@@ -49,6 +58,20 @@ export function WalletCard({
   holder?: string;
 }) {
   const opened = wallet !== undefined;
+
+  /*
+   * PER CARD, and not remembered between visits.
+   *
+   * Per card because the reason to hide a balance is somebody standing behind
+   * you, and that is answered by covering the one figure on screen — a single
+   * app-wide switch would also blank the card the client came to look at.
+   *
+   * Not persisted because a balance that is still hidden tomorrow is a wallet
+   * screen that looks broken, and the client has to remember a control they
+   * pressed once to fix it. It resets to visible on every mount, which is what
+   * `useState` gives without a stored preference to keep in step.
+   */
+  const [hidden, setHidden] = React.useState(false);
 
   return (
     /*
@@ -121,15 +144,43 @@ export function WalletCard({
 
               `tabular-nums` so the digits do not reflow as the figure updates.
             */}
-            <p className="text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
-              {formatMoney(wallet.available, currency)}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
+                {hidden ? MASK : formatMoney(wallet.available, currency)}
+              </p>
+              <button
+                type="button"
+                onClick={() => setHidden((current) => !current)}
+                /*
+                  Icon-only, so it needs a name — and the name states the ACTION,
+                  not the state. "Balance hidden" would leave a screen-reader user
+                  unable to tell what pressing it does.
+                */
+                aria-label={hidden ? t('wallet.showAmount') : t('wallet.hideAmount')}
+                aria-pressed={hidden}
+                className="focus-outline rounded p-1 text-primary-foreground/70 transition-colors hover:text-primary-foreground"
+              >
+                {hidden ? (
+                  <EyeOff className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Eye className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            </div>
+            {/*
+              The on-hold line carries TWO more figures, so it is masked by the
+              same switch rather than left showing. Hiding the headline balance
+              while printing "500.00 on hold of 700.00 total" underneath would
+              make the control look like it did nothing.
+            */}
             {!isZeroMoney(wallet.onHold) && (
               <p className="mt-1 text-[11px] text-primary-foreground/80">
-                {t('wallet.onHold', {
-                  amount: formatMoney(wallet.onHold, currency),
-                  total: formatMoney(wallet.balance, currency),
-                })}
+                {hidden
+                  ? t('wallet.onHold', { amount: MASK, total: MASK })
+                  : t('wallet.onHold', {
+                      amount: formatMoney(wallet.onHold, currency),
+                      total: formatMoney(wallet.balance, currency),
+                    })}
               </p>
             )}
           </>

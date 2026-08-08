@@ -377,7 +377,10 @@ export const messages = {
   'transactions.colType': 'Type',
   'transactions.colAmount': 'Amount',
   'transactions.colStatus': 'Status',
-  'transactions.colReference': 'Reference',
+  // `colReference` is gone with its column: a 20-character opaque provider id
+  // that a client has no use for in a list, taking the width that made every
+  // other column readable. It is still on the deposit confirmation, which is
+  // where somebody actually needs to quote it.
   'transactions.deposit': 'Deposit',
   'transactions.withdrawal': 'Withdrawal',
   'transactions.statePending': 'Pending review',
@@ -904,6 +907,10 @@ export const messages = {
   'wallet.copiedId': 'Wallet ID copied',
   'wallet.totalHeading': 'Total balance',
   'wallet.totalNote': 'Across your opened wallets, per currency.',
+  // The ACTION, not the state. "Balance hidden" as a button name leaves a
+  // screen-reader user unable to tell what pressing it would do.
+  'wallet.hideAmount': 'Hide balance',
+  'wallet.showAmount': 'Show balance',
 
   // ── Transactions filtering ────────────────────────────────────────────────
   'transactions.filters': 'Filters',
@@ -911,8 +918,12 @@ export const messages = {
   'transactions.filterStatus': 'Status',
   'transactions.filterCurrency': 'Currency',
   'transactions.filterAll': 'All',
-  'transactions.filterSearch': 'Search',
-  'transactions.filterSearchPlaceholder': 'Reference or amount',
+  /*
+   * `filterSearch` and `filterSearchPlaceholder` are GONE with the search box.
+   * It matched provider references and raw amount strings — useful only to
+   * somebody who had already copied one of those from elsewhere — while
+   * occupying a permanent slot above a table that can now be ordered and paged.
+   */
   'transactions.filterDateRange': 'Date range',
   // Named for the calendar rather than reusing `common.next`: "Next" alone on
   // an icon-only control tells a screen-reader user nothing about what advances.
@@ -931,13 +942,48 @@ export const messages = {
   'transactions.noMatches': 'No transactions match these filters',
   'transactions.noMatchesBody': 'Try widening the date range or clearing a filter.',
   'transactions.showingCount': 'Showing {shown} of {total}',
+  // Appended after `showingCount` only when a filter is hiding rows, so the
+  // footer can say "showing 10 of 24 · 37 in total" without repeating itself
+  // when nothing is filtered.
+  'transactions.ofTotal': '{total} in total',
   'transactions.colCurrency': 'Currency',
-  'transactions.sortNewest': 'Newest first',
-  'transactions.sortOldest': 'Oldest first',
-  'transactions.sortAmountDesc': 'Largest amount',
-  'transactions.sortAmountAsc': 'Smallest amount',
-  'transactions.sortLabel': 'Sort',
+
+  // The sort SELECT is gone (`sortNewest`, `sortOldest`, `sortAmountDesc`,
+  // `sortAmountAsc`, `sortLabel`). Ordering is a table-header click now, so the
+  // control is the column itself and needs no separate label — the four fixed
+  // pairings it offered were a menu of the combinations somebody enumerated.
+  //
+  // The paging strings are NOT here either: `DataTable` and `Pagination` are
+  // twins with admin and carry admin's own `pagination.*` and `table.*` keys,
+  // which are added below rather than duplicated under a `transactions.` prefix.
   'transactions.transfer': 'Transfer',
+
+  // ── Table and pagination ──────────────────────────────────────────────────
+  //
+  // TWINNED WITH ADMIN, key for key. `components/{data-table,pagination,
+  // cursor-pagination}.tsx` and `lib/table-sort.ts` are twin files, so their
+  // strings have to exist here under the same names — a twin that reads a key
+  // this app spells differently is a twin that renders blank in one of the two.
+  'pagination.summary': 'Showing {showing} {noun}',
+  'pagination.range': 'Showing {start} to {end} of {total} {noun}',
+  'pagination.summaryOfTotal': 'Showing {showing} {noun} of {total}',
+  'pagination.page': 'Page {number}',
+  'pagination.previous': 'Previous',
+  'pagination.next': 'Next',
+  'pagination.rowsPerPage': 'Rows per page:',
+  'pagination.ellipsis': '…',
+  'pagination.showingAll': 'Showing all {count}',
+  'pagination.firstTitle': 'First Page',
+  'pagination.firstAria': 'Go to First Page',
+  'pagination.previousTitle': 'Previous Page',
+  'pagination.nextTitle': 'Next Page',
+  'pagination.lastTitle': 'Last Page',
+  'pagination.lastAria': 'Go to Last Page',
+  'table.sortScopeNote': 'Sorted within this page only — other pages are not included.',
+  'table.selectedCount': '{count} {noun} selected',
+  'table.row': 'row',
+  'table.rows': 'rows',
+  'table.clearSelection': 'Clear selection',
 
   // ── Trading accounts ──────────────────────────────────────────────────────
   'accounts.balanceLabel': 'Balance',

@@ -74,9 +74,20 @@ export default function WalletPage() {
    * not render for them, and `/wallet` itself still works.
    */
   const emailUnverified = user !== null && user.emailVerified === false;
+  /*
+   * The RECENT panel asks the server for exactly what it shows.
+   *
+   * `limit: RECENT_LIMIT` rather than fetching a page and slicing it. The
+   * endpoint filters, orders and pages in the database now, so "the newest six"
+   * is a request it can answer — and asking for a hundred rows to render six was
+   * only ever defensible while the whole array arrived anyway.
+   *
+   * The query key carries the limit, so this cache entry cannot collide with the
+   * transactions screen's own paged one.
+   */
   const transactions = useResource(
-    ['transactions'],
-    (signal) => paymentsApi.getTransactions(signal),
+    ['transactions', { limit: RECENT_LIMIT }],
+    (signal) => paymentsApi.getTransactions({ limit: RECENT_LIMIT }, signal),
     { enabled: !emailUnverified },
   );
 
@@ -92,7 +103,8 @@ export default function WalletPage() {
    */
   const holder = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || undefined;
 
-  const recent = (transactions.data ?? []).slice(0, RECENT_LIMIT);
+  // Already the newest `RECENT_LIMIT`, ordered by the database — no slice.
+  const recent = transactions.data?.items ?? [];
 
   return (
     <div className="space-y-8">

@@ -265,7 +265,29 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
   });
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    /*
+     * BOUNDED height, not a floor — `h-dvh`, not `min-h-screen`.
+     *
+     * `min-h-screen` sets a MINIMUM and lets content grow past it, so nothing
+     * below it has a height to resolve against. Every `flex-1` down the tree
+     * then falls back to content size, which is why `DataTable`'s `fill` mode —
+     * the one that pins the column header and keeps the pager on screen —
+     * silently reverted to growing here while working in admin. That is a layout
+     * bug with no error message, which is why admin's own layout carries the
+     * same note.
+     *
+     * `h-dvh` rather than admin's `h-screen`: `vh` on mobile Safari and Chrome
+     * is the height with the URL bar HIDDEN, so a `100vh` app is permanently
+     * taller than the visible viewport and the bottom of every screen sits under
+     * the browser chrome. `dvh` tracks the bar as it collapses. This app is the
+     * customer-facing one and is mostly read on a phone, so it takes the unit
+     * admin's comment says it should have used.
+     *
+     * The cost, stated because it is a real change: `<main>` becomes the scroll
+     * container instead of the window. Page-level scroll position, and anything
+     * that reads `window.scrollY`, now belongs to that element.
+     */
+    <div className="flex h-dvh overflow-hidden bg-background text-foreground">
       {/* Mobile Overlay */}
       {mobileOpen && (
         <div
@@ -552,7 +574,22 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 lg:p-8">{children}</main>
+        {/*
+          `min-h-0` is the twin of `min-w-0` above and fails the same way.
+
+          A flex item's default `min-height` is `auto`, which is its CONTENT —
+          so without this `flex-1` cannot actually bound this element: a tall
+          page pushes `<main>` past the viewport, `overflow-y-auto` finds
+          nothing to overflow, and the whole document scrolls instead. That also
+          takes the bound away from anything inside asking for `flex-1`, which
+          is what `DataTable`'s `fill` mode needs.
+
+          `flex flex-col` so a page can hand its own `flex-1` child the height —
+          the transactions table is one.
+        */}
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 sm:p-5 md:p-6 lg:p-8">
+          {children}
+        </main>
       </div>
     </div>
   );

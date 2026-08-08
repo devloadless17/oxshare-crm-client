@@ -1024,7 +1024,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The signed-in client's own transactions */
+        /**
+         * The signed-in client's own transactions, filtered, ordered and paged
+         * @description Every filter is applied by the database against the whole table, so `total` is the real count of matching rows and a sort covers the entire history rather than one page.
+         */
         get: operations["PaymentsController_myTransactions"];
         put?: never;
         post?: never;
@@ -3212,6 +3215,13 @@ export interface components {
             message: string;
             /** @description False when the operator has the withdrawal-OTP control switched off; the withdrawal may then be submitted without a code. */
             required: boolean;
+        };
+        TransactionPageDto: {
+            items: components["schemas"]["TransactionDto"][];
+            /** @description Rows matching the filters, across every page. */
+            total: number;
+            page: number;
+            limit: number;
         };
         RequestTransferDto: {
             /** @description A live trading account belonging to the caller. */
@@ -5821,7 +5831,20 @@ export interface operations {
     };
     PaymentsController_myTransactions: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Deposits or withdrawals only. */
+                direction?: "deposit" | "withdrawal";
+                state?: "pending" | "approved" | "success" | "failure" | "rejected";
+                currency?: string;
+                /** @description Inclusive, YYYY-MM-DD. */
+                from?: string;
+                /** @description Inclusive, YYYY-MM-DD. */
+                to?: string;
+                sort?: "createdAt" | "amount" | "direction" | "currency" | "state";
+                order?: "asc" | "desc";
+                page?: number;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5833,7 +5856,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TransactionDto"][];
+                    "application/json": components["schemas"]["TransactionPageDto"];
                 };
             };
         };

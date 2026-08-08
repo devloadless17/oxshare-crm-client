@@ -23,6 +23,7 @@ export function AsyncBoundary({
   onRetry,
   errorMessage,
   error,
+  fill = false,
   children,
 }: {
   status: ResourceStatus;
@@ -48,14 +49,54 @@ export function AsyncBoundary({
    * back to an unreportable failure.
    */
   error?: unknown;
+  /**
+   * Let the ready branch own the remaining height, and centre the others in it.
+   *
+   * For pages whose child is a `fill` DataTable. Without this the four non-ready
+   * branches are content-height cards that sit at the top of a tall empty page,
+   * and the ready branch — a fragment — leaves the table's `flex-1` to resolve
+   * against the page wrapper, which works only by accident of there being no
+   * other flex child. Passing it makes the height contract explicit at every
+   * branch rather than at one.
+   *
+   * Ported from admin's copy verbatim. These two files are NEAR-TWINS whose doc
+   * asks for the props to be kept in step by hand, and this one is what that
+   * instruction is for: admin grew `fill` when `DataTable` did, this app did
+   * not, and the divergence only surfaced when the table was ported here too.
+   */
+  fill?: boolean;
   children: React.ReactNode;
 }) {
+  /*
+   * The non-ready branches keep their natural size and are CENTRED in the
+   * space, rather than stretched to fill it. A retry card stretched to 700px
+   * tall puts its button in the middle of an empty expanse; centring a
+   * normally-sized card is what every other full-height empty state does.
+   */
+  const frame = fill ? 'flex min-h-0 flex-1 flex-col items-center justify-center' : '';
+
   // `srOnly`, because this sits inside a page that already has a heading saying
   // what is loading. Repeating it under the spinner is noise for a sighted
   // reader; a screen reader still hears it through `PageLoader`'s role="status".
-  if (status === 'loading') return <PageLoader label={label} srOnly />;
+  if (status === 'loading') {
+    return fill ? (
+      <div className={frame}>
+        <PageLoader label={label} srOnly />
+      </div>
+    ) : (
+      <PageLoader label={label} srOnly />
+    );
+  }
 
-  if (status === 'unavailable') return <BackendPending endpoints={endpoints} />;
+  if (status === 'unavailable') {
+    return fill ? (
+      <div className={frame}>
+        <BackendPending endpoints={endpoints} />
+      </div>
+    ) : (
+      <BackendPending endpoints={endpoints} />
+    );
+  }
 
   /*
    * A 403 is a closed door, not a broken page — R-2.3.
@@ -67,7 +108,7 @@ export function AsyncBoundary({
    * nothing for support to look up.
    */
   if (status === 'forbidden') {
-    return (
+    const card = (
       <div
         className="rounded-xl border border-border bg-card p-8 text-center space-y-2"
         role="alert"
@@ -76,11 +117,12 @@ export function AsyncBoundary({
         <p className="text-sm text-muted-foreground">{t('common.notPermittedBody')}</p>
       </div>
     );
+    return fill ? <div className={frame}>{card}</div> : card;
   }
 
   if (status === 'error') {
     const requestId = apiErrorRequestId(error);
-    return (
+    const card = (
       <div
         className="rounded-xl border border-border bg-card p-8 text-center space-y-3"
         role="alert"
@@ -102,7 +144,13 @@ export function AsyncBoundary({
         </Button>
       </div>
     );
+    return fill ? <div className={frame}>{card}</div> : card;
   }
 
-  return <>{children}</>;
+  /*
+   * The ready branch STRETCHES; it does not centre. `frame` centres its child,
+   * which is right for a card and wrong for a table that is supposed to fill
+   * the space — so this uses the stretching half of the same contract.
+   */
+  return fill ? <div className="flex min-h-0 flex-1 flex-col">{children}</div> : <>{children}</>;
 }

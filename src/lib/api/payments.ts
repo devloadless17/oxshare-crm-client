@@ -19,6 +19,43 @@ import type { components } from './types.gen';
  * drift.
  */
 export type Transaction = components['schemas']['TransactionDto'];
+/** One page of history plus the count of everything that matched the filters. */
+export type TransactionPage = components['schemas']['TransactionPageDto'];
+/**
+ * The filters, ordering and paging the SERVER applies.
+ *
+ * ## ⚠️ HAND-DECLARED, and this is the gap
+ *
+ * `ListTransactionsQueryDto` exists in the backend but does NOT appear in
+ * `components['schemas']`: Swagger flattens a `@Query()` DTO into individual
+ * `parameters` on the operation rather than emitting a named schema, so
+ * openapi-typescript has nothing to generate. This is the case the repo rule
+ * covers — hand-declare, and name the gap so it gets replaced rather than
+ * forgotten.
+ *
+ * What that costs, stated because it is the exact failure aliasing exists to
+ * prevent: a column named here that the API's `@IsIn` does not accept compiles
+ * fine and fails at runtime as a 400, on a money screen. The two lists below
+ * must be kept in step with `TRANSACTION_SORT_FIELDS` and the query DTO by hand.
+ *
+ * The value TYPES are still borrowed from the generated `TransactionDto`, so a
+ * state or direction renamed in the schema is a compile error here even though
+ * the envelope is not.
+ */
+export interface TransactionQuery {
+  direction?: Transaction['direction'];
+  state?: Transaction['state'];
+  currency?: string;
+  /** Inclusive, `YYYY-MM-DD`. */
+  from?: string;
+  /** Inclusive, `YYYY-MM-DD`. */
+  to?: string;
+  sort?: 'createdAt' | 'amount' | 'direction' | 'currency' | 'state';
+  order?: 'asc' | 'desc';
+  page?: number;
+  /** Capped at 100 by the API. */
+  limit?: number;
+}
 export type RequestWithdrawal = components['schemas']['RequestWithdrawalDto'];
 export type RequestWithdrawalOtp = components['schemas']['RequestWithdrawalOtpDto'];
 export type WithdrawalOtpResponse = components['schemas']['WithdrawalOtpResponseDto'];
@@ -30,14 +67,39 @@ export type WithdrawalProvider = RequestWithdrawal['provider'];
 
 export const paymentsApi = {
   /**
-   * The signed-in client's own transactions, newest first.
+   * The signed-in client's own transactions — filtered, ordered and paged BY THE
+   * SERVER.
    *
-   * Scoped by the session on the server — there is no user parameter, and there
-   * must never be one (R-4.4: the owner comes from the token, never from a
-   * request field).
+   * Scoped by the session — there is no user parameter, and there must never be
+   * one (R-4.4: the owner comes from the token, never from a request field).
+   *
+   * ## ⚠️ Every argument here is a database predicate, not a hint
+   *
+   * This used to fetch a bare array and the screen narrowed it in the browser.
+   * The endpoint capped that array at 100 rows, so a client with more history
+   * than that filtered the newest hundred while the screen said it was filtering
+   * everything. Passing the filters means the WHERE, the ORDER BY and the COUNT
+   * all describe the same complete set.
+   *
+   * `total` is therefore the real number of matching rows, and the reason the
+   * response is an envelope rather than an array: a bare array has nowhere to
+   * put the one number that makes the count on screen true.
+   *
+   * Undefined values are DROPPED rather than sent empty — `state=` would reach
+   * the API as an empty string and fail its `@IsIn`, so "no filter" has to be
+   * the absence of the parameter.
    */
-  async getTransactions(signal?: AbortSignal): Promise<Transaction[]> {
-    const { data } = await apiClient.get<Transaction[]>('/payments/transactions', { signal });
+  async getTransactions(
+    query: TransactionQuery = {},
+    signal?: AbortSignal,
+  ): Promise<TransactionPage> {
+    const params = Object.fromEntries(
+      Object.entries(query).filter(([, value]) => value !== undefined && value !== ''),
+    );
+    const { data } = await apiClient.get<TransactionPage>('/payments/transactions', {
+      params,
+      signal,
+    });
     return data;
   },
 

@@ -2,24 +2,37 @@
 
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import type { Transaction } from '@/lib/api/payments';
-import { compareMoney } from '@/lib/money';
-import { EMPTY_RANGE, withinRange, type DateRange } from '@/lib/date-range';
+import type { Transaction, TransactionQuery } from '@/lib/api/payments';
+import { EMPTY_RANGE, type DateRange } from '@/lib/date-range';
 import { t, type MessageKey } from '@/lib/i18n';
 
 /**
- * The transactions toolbar, and the filtering it drives.
+ * The transactions toolbar, and the query it produces.
  *
- * Extracted from the page so the page stays a page: the filter STATE shape, the
- * comparators and the narrowing rules are one concern, and keeping them beside
- * the table meant one file owning both "what the client's history is" and "how
- * it is being sliced".
+ * Extracted from the page so the page stays a page: the filter STATE shape and
+ * its translation to the wire are one concern, and keeping them beside the table
+ * meant one file owning both "what the client's history is" and "how it is being
+ * sliced".
  *
- * `applyFilters` is exported and pure, so the rules that are expensive to get
- * wrong — money sorted as text, a search that misses the formatted amount — are
- * assertions rather than something you find by clicking.
+ * ## The narrowing itself has MOVED TO THE SERVER
+ *
+ * This file used to export `applyFilters`, `sortRows` and `paginate` — pure
+ * functions that ran in the browser over what was documented as the client's
+ * whole history. It was not the whole history: the endpoint capped its array at
+ * 100 rows, so anyone past that was filtering the newest hundred while the count
+ * on screen claimed otherwise.
+ *
+ * `toQuery` is what replaced them: the toolbar's state as query parameters the
+ * database applies. Still pure, still the one place `'all'` becomes "no
+ * parameter", and still worth its own tests for that reason.
  */
 
 /** The five states a transaction can hold, mapped to copy and colour. */
@@ -43,31 +56,18 @@ export const STATE: Record<Transaction['state'], { key: MessageKey; className: s
   },
 };
 
-export type SortKey = 'newest' | 'oldest' | 'amountDesc' | 'amountAsc';
-
-const SORTS: { key: SortKey; label: MessageKey }[] = [
-  { key: 'newest', label: 'transactions.sortNewest' },
-  { key: 'oldest', label: 'transactions.sortOldest' },
-  { key: 'amountDesc', label: 'transactions.sortAmountDesc' },
-  { key: 'amountAsc', label: 'transactions.sortAmountAsc' },
-];
-
 export interface Filters {
   direction: 'all' | Transaction['direction'];
   state: 'all' | Transaction['state'];
   currency: string;
-  search: string;
   range: DateRange;
-  sort: SortKey;
 }
 
 export const INITIAL_FILTERS: Filters = {
   direction: 'all',
   state: 'all',
   currency: 'all',
-  search: '',
   range: EMPTY_RANGE,
-  sort: 'newest',
 };
 
 /** True when anything is narrowing the list — drives the "Clear" affordance. */
@@ -76,88 +76,59 @@ export function hasActiveFilters(filters: Filters): boolean {
     filters.direction !== 'all' ||
     filters.state !== 'all' ||
     filters.currency !== 'all' ||
-    filters.search.trim() !== '' ||
     filters.range.from !== null ||
     filters.range.to !== null
   );
 }
 
 /**
- * Narrow and order the rows.
+ * The toolbar's state, as the API's query parameters.
  *
- * CLIENT-SIDE, and correct only because `GET /payments/transactions` returns the
- * client's whole history as a bare array — it accepts no query parameters. So
- * the counts are honest ("showing 4 of 37" counts the real total) and a sort
- * covers the entire set rather than one page.
+ * ## ⚠️ Filtering is the DATABASE's job now, and this is the whole seam
  *
- * IF THAT ENDPOINT EVER GROWS PAGING, this must move server-side. Filtering a
- * page and presenting it as a filter over the history is the failure R-2.5
- * names, and here it would silently under-report a client's own money.
+ * `applyFilters`, `sortRows` and `paginate` used to live here and ran in the
+ * browser. That was documented as correct because the endpoint "returns the
+ * client's whole history as a bare array" — and it did not: `listForUser`
+ * carried a `LIMIT 100`. So a client with more history than that was filtering
+ * the newest hundred while the screen reported the result as a filter over
+ * everything, which is R-2.5's under-report on the one screen a client would use
+ * to check their own ledger.
+ *
+ * The server applies every constraint now, against the whole table, and returns
+ * the real matching count. What is left here is the translation between the
+ * toolbar's shape and the API's — pure, and the only place `'all'` is turned
+ * into an absent parameter.
+ *
+ * `'all'` maps to `undefined`, never to an empty string: `state=` reaches the
+ * API as `''` and fails its `@IsIn`, so "no filter" has to be the absence of the
+ * parameter rather than a blank one.
  */
-export function applyFilters(rows: Transaction[], filters: Filters): Transaction[] {
-  const needle = filters.search.trim().toLowerCase();
-
-  const matched = rows.filter((row) => {
-    if (filters.direction !== 'all' && row.direction !== filters.direction) return false;
-    if (filters.state !== 'all' && row.state !== filters.state) return false;
-    if (filters.currency !== 'all' && row.currency !== filters.currency) return false;
-    if (!withinRange(row.createdAt, filters.range)) return false;
-
-    if (needle) {
-      /*
-       * Matched against the RAW amount string, not the formatted one.
-       *
-       * `formatMoney` inserts a currency symbol and grouping separators, so
-       * searching the formatted text would make "1234" fail to match
-       * "$1,234.00" — the exact number the client can see on screen. The raw
-       * string is also what they are most likely copying from a bank statement.
-       */
-      const haystack = [row.providerRef, row.amount, row.destination, row.provider]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      if (!haystack.includes(needle)) return false;
-    }
-
-    return true;
-  });
-
-  /*
-   * Sorted on a COPY — `Array.prototype.sort` mutates, and `rows` is React
-   * Query's cached array. Sorting it in place would reorder the cache, so the
-   * next render would depend on whichever sort was last applied.
-   */
-  return [...matched].sort((a, b) => {
-    switch (filters.sort) {
-      case 'oldest':
-        return a.createdAt.localeCompare(b.createdAt);
-      /*
-       * Amount sorts go through decimal.js, never `Number()`.
-       *
-       * These are NUMERIC(28,8) strings: `Number('12345678901234567.89')` has
-       * already lost precision before any comparison, and a plain string
-       * compare puts '9.00' above '100.00'. Same trap admin's
-       * `sortType: 'money'` exists to close.
-       */
-      case 'amountDesc':
-        return compareMoney(b.amount, a.amount);
-      case 'amountAsc':
-        return compareMoney(a.amount, b.amount);
-      case 'newest':
-      default:
-        return b.createdAt.localeCompare(a.createdAt);
-    }
-  });
+export function toQuery(filters: Filters): TransactionQuery {
+  return {
+    direction: filters.direction === 'all' ? undefined : filters.direction,
+    state: filters.state === 'all' ? undefined : filters.state,
+    currency: filters.currency === 'all' ? undefined : filters.currency,
+    /*
+     * The range is already `YYYY-MM-DD` — `lib/date-range.ts` keeps it that way
+     * precisely so it can cross a wire without a timezone conversion. Never
+     * `toISOString().split('T')[0]` here: that converts to UTC first and returns
+     * tomorrow for eastern zones in the evening.
+     */
+    from: filters.range.from ?? undefined,
+    to: filters.range.to ?? undefined,
+  };
 }
 
 /**
- * The toolbar.
+ * The toolbar: type, status, currency and a date range.
  *
- * Native `<select>` rather than the Radix `Select` used elsewhere in this app.
- * These are short, flat lists of plain strings with no icons or descriptions,
- * and the native control brings its own mobile picker, keyboard type-ahead and
- * accessibility for free. `ui/select.tsx` stays right where an option must
- * render as something other than text.
+ * ## What is NOT here any more
+ *
+ * The free-text SEARCH and the sort SELECT are gone. Sorting moved to the table
+ * headers, where the column being ordered is the thing being clicked. The search
+ * box matched provider references and raw amount strings — a field whose useful
+ * inputs were values the client had to already have copied from somewhere else,
+ * sitting permanently above a table they can now order and page through.
  */
 export function TransactionFilters({
   filters,
@@ -170,9 +141,6 @@ export function TransactionFilters({
   onChange: <K extends keyof Filters>(key: K, value: Filters[K]) => void;
   onClear: () => void;
 }) {
-  const selectClass =
-    'h-9 w-full rounded-lg border border-border bg-background px-2.5 text-xs font-medium transition-colors hover:bg-muted focus-outline';
-
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-3 pb-3">
@@ -189,62 +157,60 @@ export function TransactionFilters({
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <label className="space-y-1.5">
-          <span className="text-[11px] font-semibold text-muted-foreground">
-            {t('transactions.filterType')}
-          </span>
-          <select
-            value={filters.direction}
-            onChange={(event) => onChange('direction', event.target.value as Filters['direction'])}
-            className={selectClass}
-          >
-            <option value="all">{t('transactions.filterAll')}</option>
-            <option value="deposit">{t('transactions.deposit')}</option>
-            <option value="withdrawal">{t('transactions.withdrawal')}</option>
-          </select>
-        </label>
+      {/*
+        FIVE columns, not four, so the date range can have two of them.
 
-        <label className="space-y-1.5">
-          <span className="text-[11px] font-semibold text-muted-foreground">
-            {t('transactions.filterStatus')}
-          </span>
-          <select
-            value={filters.state}
-            onChange={(event) => onChange('state', event.target.value as Filters['state'])}
-            className={selectClass}
-          >
-            <option value="all">{t('transactions.filterAll')}</option>
-            {/* Driven by the same typed map the badges use, so a new state
-                cannot appear in one and be missing from the other. */}
-            {(Object.keys(STATE) as Transaction['state'][]).map((state) => (
-              <option key={state} value={state}>
-                {t(STATE[state].key)}
-              </option>
-            ))}
-          </select>
-        </label>
+        Every control here was one equal cell, which for a range is not enough:
+        its trigger renders "2026-08-01 — 2026-08-31", roughly twice the longest
+        label any of the three selects can show, so it truncated to an ellipsis
+        and the client could not read the range they had just chosen. Widening
+        the field is the fix; making it TALLER than its neighbours would have
+        been a row of controls that no longer line up.
+      */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <FilterSelect
+          label={t('transactions.filterType')}
+          value={filters.direction}
+          onValueChange={(value) => onChange('direction', value as Filters['direction'])}
+          options={[
+            { value: 'all', label: t('transactions.filterAll') },
+            { value: 'deposit', label: t('transactions.deposit') },
+            { value: 'withdrawal', label: t('transactions.withdrawal') },
+          ]}
+        />
 
-        <label className="space-y-1.5">
-          <span className="text-[11px] font-semibold text-muted-foreground">
-            {t('transactions.filterCurrency')}
-          </span>
-          <select
-            value={filters.currency}
-            onChange={(event) => onChange('currency', event.target.value)}
-            className={selectClass}
-          >
-            <option value="all">{t('transactions.filterAll')}</option>
-            {currencies.map((currency) => (
-              <option key={currency} value={currency}>
-                {currency}
-              </option>
-            ))}
-          </select>
-        </label>
+        <FilterSelect
+          label={t('transactions.filterStatus')}
+          value={filters.state}
+          onValueChange={(value) => onChange('state', value as Filters['state'])}
+          options={[
+            { value: 'all', label: t('transactions.filterAll') },
+            /* Driven by the same typed map the badges use, so a new state cannot
+               appear in one and be missing from the other. */
+            ...(Object.keys(STATE) as Transaction['state'][]).map((state) => ({
+              value: state,
+              label: t(STATE[state].key),
+            })),
+          ]}
+        />
 
-        {/* The two-calendar range picker, behind one trigger. */}
-        <label className="space-y-1.5">
+        <FilterSelect
+          label={t('transactions.filterCurrency')}
+          value={filters.currency}
+          onValueChange={(value) => onChange('currency', value)}
+          options={[
+            { value: 'all', label: t('transactions.filterAll') },
+            ...currencies.map((currency) => ({ value: currency, label: currency })),
+          ]}
+        />
+
+        {/*
+          The two-calendar range picker, behind one trigger — and TWO cells wide.
+
+          `sm:col-span-2` gives it the whole row at the two-column breakpoint,
+          where a half-width trigger is narrower still than it is on desktop.
+        */}
+        <label className="space-y-1.5 sm:col-span-2">
           <span className="text-[11px] font-semibold text-muted-foreground">
             {t('transactions.filterDateRange')}
           </span>
@@ -254,36 +220,52 @@ export function TransactionFilters({
             label={t('transactions.filterDateRange')}
           />
         </label>
-
-        <label className="space-y-1.5">
-          <span className="text-[11px] font-semibold text-muted-foreground">
-            {t('transactions.filterSearch')}
-          </span>
-          <Input
-            value={filters.search}
-            onChange={(event) => onChange('search', event.target.value)}
-            placeholder={t('transactions.filterSearchPlaceholder')}
-            className="h-9 text-xs"
-          />
-        </label>
-
-        <label className="space-y-1.5">
-          <span className="text-[11px] font-semibold text-muted-foreground">
-            {t('transactions.sortLabel')}
-          </span>
-          <select
-            value={filters.sort}
-            onChange={(event) => onChange('sort', event.target.value as SortKey)}
-            className={selectClass}
-          >
-            {SORTS.map((sort) => (
-              <option key={sort.key} value={sort.key}>
-                {t(sort.label)}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
+    </div>
+  );
+}
+
+/**
+ * One labelled filter, on the app's own Select rather than a native one.
+ *
+ * These were native `<select>`s, chosen because the lists are short and flat and
+ * the native control brings its own mobile picker for free. They are the Radix
+ * one now for consistency: every other select on this app — the deposit
+ * destination, the withdraw account — is already `ui/select`, and two controls
+ * that do the same job while looking and behaving differently is the thing that
+ * reads as unfinished. The native control also cannot be themed, so these were
+ * the one place in the portal where dark mode fell back to the OS palette.
+ *
+ * NOT wrapped in a `<label>`: the trigger is a button, and a label wrapping a
+ * button makes the whole label a second click target for it. `aria-label` names
+ * it instead, and the visible caption sits above.
+ */
+function FilterSelect({
+  label,
+  value,
+  onValueChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="space-y-1.5">
+      <span className="block text-[11px] font-semibold text-muted-foreground">{label}</span>
+      <Select value={value} onValueChange={onValueChange}>
+        <SelectTrigger aria-label={label} className="h-9 w-full text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value} className="text-xs">
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

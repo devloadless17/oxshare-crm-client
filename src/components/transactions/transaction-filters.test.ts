@@ -1,161 +1,99 @@
 import { describe, expect, it } from 'vitest';
-import { applyFilters, INITIAL_FILTERS, type Filters } from './transaction-filters';
-import type { Transaction } from '@/lib/api/payments';
+import { hasActiveFilters, INITIAL_FILTERS, toQuery, type Filters } from './transaction-filters';
 
 /**
- * The narrowing and ordering behind the transactions screen.
+ * The toolbar's translation to the API's query parameters.
  *
- * The assertions that earn their runtime are the money ones. Sorting decimal
- * STRINGS is where this screen has a wrong answer that looks right: both
- * `Number(a) - Number(b)` and `a.localeCompare(b)` produce a plausible-looking
- * ordering that is incorrect for values a real client actually holds, and
- * neither throws. A test asserting "the filter returns fewer rows" would prove
- * nothing.
+ * ## What these tests are now, and what they used to be
  *
- * Mutation-checked when written: the money comparator was swapped for a text
- * compare and for a `Number()` subtraction, and the named tests below failed on
- * each.
+ * They used to cover `applyFilters`, `sortRows` and `paginate` — narrowing,
+ * ordering and paging performed in the BROWSER. All three are gone: the endpoint
+ * capped its array at 100 rows, so filtering it client-side under-reported the
+ * history of any client past that, and the database does the work now.
+ *
+ * The money assertions went with them and are not lost. Ordering amounts is
+ * `ORDER BY amount` on a `NUMERIC(28,8)` column — Postgres compares it exactly,
+ * so the '9.00' above '100.00' trap the old comparator existed to avoid cannot
+ * be reached from here at all. That guarantee moved to where the sort happens.
+ *
+ * What is left is small and still worth pinning, because it has a wrong answer
+ * that fails at RUNTIME rather than in the type system: `'all'` must become an
+ * ABSENT parameter. Sent as `state=` it reaches the API as an empty string,
+ * fails `@IsIn`, and the client gets a 400 on their own transaction history.
+ *
+ * Mutation-checked when written: `undefined` was replaced with `''` and with
+ * the literal `'all'`, and the named tests below failed on each.
  */
-
-/** A transaction with only the fields the filters read. */
-function tx(overrides: Partial<Transaction>): Transaction {
-  return {
-    id: Math.random().toString(36).slice(2),
-    userId: 'user-1',
-    walletId: 'wallet-1',
-    direction: 'deposit',
-    amount: '100.00000000',
-    currency: 'USD',
-    state: 'success',
-    provider: 'manual',
-    providerRef: null,
-    destination: null,
-    rejectionReason: null,
-    createdAt: new Date(2026, 7, 7, 12, 0, 0).toISOString(),
-    ...overrides,
-  } as Transaction;
-}
 
 const base: Filters = INITIAL_FILTERS;
 
-describe('applyFilters — money ordering', () => {
+describe('toQuery', () => {
   /*
-   * THE regression. A plain string compare puts '9' above '100' because it
-   * compares '9' against '1' character by character. Every client holding both
-   * a two-figure and a three-figure transaction hits this on the first sort.
+   * ⚠️ THE regression. Every one of these is `'all'` by default, so a mapping
+   * that passed the sentinel through would send four invalid parameters on the
+   * very first render of the screen.
    */
-  it('orders amounts numerically, not as text', () => {
-    const rows = [
-      tx({ amount: '9.00000000' }),
-      tx({ amount: '100.00000000' }),
-      tx({ amount: '25.00000000' }),
-    ];
+  it('omits every filter that is set to "all"', () => {
+    const query = toQuery(base);
 
-    const sorted = applyFilters(rows, { ...base, sort: 'amountDesc' });
-    expect(sorted.map((row) => row.amount)).toEqual(['100.00000000', '25.00000000', '9.00000000']);
+    expect(query.direction).toBeUndefined();
+    expect(query.state).toBeUndefined();
+    expect(query.currency).toBeUndefined();
+    // Not an empty string — that is the shape the API refuses.
+    expect(Object.values(query).every((value) => value !== '' && value !== 'all')).toBe(true);
+  });
+
+  it('passes a chosen filter through unchanged', () => {
+    const query = toQuery({
+      ...base,
+      direction: 'withdrawal',
+      state: 'pending',
+      currency: 'USDT',
+    });
+
+    expect(query).toMatchObject({
+      direction: 'withdrawal',
+      state: 'pending',
+      currency: 'USDT',
+    });
   });
 
   /*
-   * Beyond IEEE-754's exact integer range, so `Number()` collapses these two
-   * distinct amounts to the same value and the comparison returns 0 — leaving
-   * the order to whatever the sort algorithm happened to do.
+   * The range crosses the wire as the `YYYY-MM-DD` strings `date-range.ts`
+   * already holds — never re-derived through a Date.
+   *
+   * `toISOString().split('T')[0]` is the trap: it converts to UTC first, so an
+   * evening selection in an eastern zone would be sent as tomorrow and the
+   * client's newest transaction would fall outside their own filter.
    */
-  it('distinguishes amounts that a float would collapse', () => {
-    const rows = [tx({ amount: '12345678901234567.89' }), tx({ amount: '12345678901234567.88' })];
+  it('sends the date range as the literal YYYY-MM-DD strings', () => {
+    const query = toQuery({ ...base, range: { from: '2026-08-01', to: '2026-08-31' } });
 
-    const sorted = applyFilters(rows, { ...base, sort: 'amountAsc' });
-    expect(sorted.map((row) => row.amount)).toEqual([
-      '12345678901234567.88',
-      '12345678901234567.89',
-    ]);
+    expect(query.from).toBe('2026-08-01');
+    expect(query.to).toBe('2026-08-31');
   });
 
-  it('orders by date newest-first by default', () => {
-    const older = tx({ createdAt: new Date(2026, 6, 1, 9, 0, 0).toISOString() });
-    const newer = tx({ createdAt: new Date(2026, 7, 20, 9, 0, 0).toISOString() });
+  it('omits an unset half of the range rather than sending null', () => {
+    const query = toQuery({ ...base, range: { from: '2026-08-01', to: null } });
 
-    const sorted = applyFilters([older, newer], base);
-    expect(sorted[0]).toBe(newer);
-  });
-
-  /*
-   * `Array.prototype.sort` mutates. `rows` is React Query's cached array, so
-   * sorting in place would reorder the cache and make the next render depend on
-   * whichever sort was applied last.
-   */
-  it('does not reorder the array it was given', () => {
-    const rows = [tx({ amount: '9.00000000' }), tx({ amount: '100.00000000' })];
-    const snapshot = [...rows];
-
-    applyFilters(rows, { ...base, sort: 'amountDesc' });
-    expect(rows).toEqual(snapshot);
+    expect(query.from).toBe('2026-08-01');
+    expect(query.to).toBeUndefined();
   });
 });
 
-describe('applyFilters — narrowing', () => {
-  it('filters by direction, state and currency independently', () => {
-    const rows = [
-      tx({ direction: 'deposit', state: 'success', currency: 'USD' }),
-      tx({ direction: 'withdrawal', state: 'pending', currency: 'USDT' }),
-    ];
-
-    expect(applyFilters(rows, { ...base, direction: 'withdrawal' })).toHaveLength(1);
-    expect(applyFilters(rows, { ...base, state: 'pending' })).toHaveLength(1);
-    expect(applyFilters(rows, { ...base, currency: 'USD' })).toHaveLength(1);
+describe('hasActiveFilters', () => {
+  /* Drives whether "Clear" is offered. A permanently visible Clear on an
+     untouched toolbar is a control that does nothing; one that stays hidden
+     while a filter is set leaves the client no way back to their full history. */
+  it('is false for the untouched toolbar', () => {
+    expect(hasActiveFilters(base)).toBe(false);
   });
 
-  /*
-   * Searched against the RAW amount, because `formatMoney` would render this as
-   * "$1,234.00" — so matching the formatted text would make the digits a client
-   * reads off their own screen fail to find the row.
-   */
-  it('searches the raw amount, not the formatted one', () => {
-    const rows = [tx({ amount: '1234.00000000' }), tx({ amount: '99.00000000' })];
-    expect(applyFilters(rows, { ...base, search: '1234' })).toHaveLength(1);
-  });
-
-  it('searches the provider reference case-insensitively', () => {
-    const rows = [tx({ providerRef: 'TXN-ABC-991' }), tx({ providerRef: 'TXN-XYZ-002' })];
-    expect(applyFilters(rows, { ...base, search: 'abc' })).toHaveLength(1);
-  });
-
-  /*
-   * The date filter must be inclusive at BOTH ends — a transaction stamped late
-   * on the closing day is exactly the row a client is looking for when they set
-   * that end date. `withinRange` owns the rule; this asserts it is actually
-   * wired into the filter rather than merely existing.
-   */
-  it('includes a transaction stamped late on the range end date', () => {
-    const rows = [tx({ createdAt: new Date(2026, 7, 7, 23, 50, 0).toISOString() })];
-    const filtered = applyFilters(rows, {
-      ...base,
-      range: { from: '2026-08-01', to: '2026-08-07' },
-    });
-    expect(filtered).toHaveLength(1);
-  });
-
-  it('excludes a transaction outside the range', () => {
-    const rows = [tx({ createdAt: new Date(2026, 7, 9, 12, 0, 0).toISOString() })];
-    const filtered = applyFilters(rows, {
-      ...base,
-      range: { from: '2026-08-01', to: '2026-08-07' },
-    });
-    expect(filtered).toHaveLength(0);
-  });
-
-  it('combines filters as AND rather than OR', () => {
-    const rows = [
-      tx({ direction: 'deposit', currency: 'USD' }),
-      tx({ direction: 'deposit', currency: 'USDT' }),
-      tx({ direction: 'withdrawal', currency: 'USD' }),
-    ];
-
-    const filtered = applyFilters(rows, { ...base, direction: 'deposit', currency: 'USD' });
-    expect(filtered).toHaveLength(1);
-  });
-
-  it('returns everything when nothing is set', () => {
-    const rows = [tx({}), tx({}), tx({})];
-    expect(applyFilters(rows, base)).toHaveLength(3);
+  it('is true for any single filter, including one half of a date range', () => {
+    expect(hasActiveFilters({ ...base, direction: 'deposit' })).toBe(true);
+    expect(hasActiveFilters({ ...base, state: 'pending' })).toBe(true);
+    expect(hasActiveFilters({ ...base, currency: 'USD' })).toBe(true);
+    expect(hasActiveFilters({ ...base, range: { from: '2026-08-01', to: null } })).toBe(true);
+    expect(hasActiveFilters({ ...base, range: { from: null, to: '2026-08-31' } })).toBe(true);
   });
 });
