@@ -5,6 +5,7 @@ import { ArrowDownLeft, ArrowUpRight, Receipt } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { MoneyAction } from '@/components/kyc/money-action';
 import { Button } from '@/components/ui/button';
+import { WalletCard } from '@/components/wallet/wallet-card';
 import { WalletCarousel, type CarouselEntry } from '@/components/wallet/wallet-carousel';
 import { useUser } from '@/context/UserContext';
 import { useResource } from '@/hooks/use-resource';
@@ -94,6 +95,34 @@ export default function WalletPage() {
   const byCurrency = new Map((wallets.data ?? []).map((w) => [w.currency as string, w]));
 
   /*
+   * Only the currencies this client ACTUALLY holds a wallet in.
+   *
+   * The carousel used to render a card per supported currency and show an
+   * unopened one as an em dash with "not opened yet". That was the right fix for
+   * the ORIGINAL bug — a missing wallet rendering as `$0.00`, which showed a
+   * client holding $700 a zero — but it over-corrected: a client with one USD
+   * wallet had to swipe past a permanent placeholder for a currency they had
+   * never asked for.
+   *
+   * The rule that mattered survives intact, because it was never about the card:
+   * a missing wallet must not be presented as a balance of nothing. Showing no
+   * card at all says exactly that, and says it more plainly than a dash did.
+   *
+   * Opening one is not lost either — choosing a method in that currency on the
+   * deposit screen creates the wallet, and the operator can open one from the
+   * admin console.
+   */
+  const held = CURRENCIES.filter((entry) => byCurrency.has(entry.code));
+
+  /*
+   * The lone wallet, bound once rather than indexed at three call sites —
+   * `noUncheckedIndexedAccess` types `held[0]` as possibly undefined, and a
+   * non-null assertion on a money screen is exactly the shortcut worth not
+   * taking.
+   */
+  const only = held.length === 1 ? held[0] : undefined;
+
+  /*
    * The name embossed on the card foot.
    *
    * Undefined rather than a placeholder when the profile has no name: this app
@@ -123,7 +152,29 @@ export default function WalletPage() {
       >
         <div className="space-y-8">
           <div className="space-y-4">
-            <WalletCarousel entries={CURRENCIES} byCurrency={byCurrency} holder={holder} />
+            {/*
+              ONE wallet renders the card ALONE — no track, no arrows, no dots.
+              `WalletCarousel` already hides its controls for a single entry, but
+              it still wraps the card in a scroll container with snap points,
+              which is machinery around something that cannot move. The card is
+              the same either way; only the chrome differs.
+
+              NO wallets renders nothing at all rather than an empty carousel.
+              The actions below stay: opening a wallet is what a deposit does, so
+              the way out of this state is the button already on the screen.
+            */}
+            {only ? (
+              <div className="w-full max-w-md">
+                <WalletCard
+                  label={t(only.label)}
+                  currency={only.code}
+                  wallet={byCurrency.get(only.code)}
+                  holder={holder}
+                />
+              </div>
+            ) : held.length > 1 ? (
+              <WalletCarousel entries={held} byCurrency={byCurrency} holder={holder} />
+            ) : null}
 
             {/*
               The three actions, ONCE, beneath the carousel.
