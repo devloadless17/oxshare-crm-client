@@ -781,6 +781,8 @@ export const messages = {
   'notifications.itemUnread': 'Unread',
   'notifications.recentNotice': 'Showing your {count} most recent notifications.',
   'notifications.fallbackTitle': 'Notification',
+  'notifications.soundOn': 'Notification sound is on',
+  'notifications.soundOff': 'Notification sound is off',
   'notifications.verifyEmailTitle': 'Verify your email first',
   'notifications.verifyEmailBody':
     'Account alerts appear here once your email address is confirmed.',

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Bell } from 'lucide-react';
+import { Bell, Volume2, VolumeX } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Sheet,
@@ -20,6 +20,14 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { useUser } from '@/context/UserContext';
 import { t } from '@/lib/i18n';
 import { relativeTime } from '@/lib/relative-time';
+import { useNotificationStream } from '@/hooks/use-notification-stream';
+import {
+  playNotificationSound,
+  setSoundEnabled,
+  soundEnabled,
+  soundEnabledOnServer,
+  subscribeToSoundPreference,
+} from '@/lib/notification-sound';
 import { resolveKind } from './notification-kinds';
 
 /**
@@ -53,6 +61,9 @@ const COUNT_KEY = ['notifications', 'unread-count'] as const;
 const LIST_KEY = ['notifications'] as const;
 const PAGE_SIZE = 30;
 
+/** A stable no-op, so an unverified render does not rebuild the subscription. */
+const NO_STREAM = () => undefined;
+
 export function NotificationsSheet() {
   const queryClient = useQueryClient();
   const { user } = useUser();
@@ -70,11 +81,42 @@ export function NotificationsSheet() {
    */
   const verified = user?.emailVerified === true;
 
+  /*
+   * The sound preference lives in localStorage, which React does not own and
+   * the server cannot read — subscribed to rather than copied into state, with
+   * an explicit server snapshot so the first client render matches the
+   * server's instead of flipping after hydration.
+   */
+  const soundOn = React.useSyncExternalStore(
+    subscribeToSoundPreference,
+    soundEnabled,
+    soundEnabledOnServer,
+  );
+
+  /*
+   * The live stream. Proven up, the poll backs off to five minutes; otherwise
+   * the original sixty-second cadence carries the feature.
+   *
+   * Gated on `verified` like the queries below: both feed routes sit behind
+   * `EmailVerifiedGuard`, so an unverified client opening a stream would be
+   * refused — and EventSource retries a refused connection forever, which
+   * turns one 403 into a reconnect loop.
+   */
+  const { connected } = useNotificationStream(
+    verified
+      ? () => {
+          void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+          playNotificationSound();
+        }
+      : NO_STREAM,
+    verified,
+  );
+
   const count = useQuery({
     queryKey: COUNT_KEY,
     queryFn: ({ signal }) => notificationsApi.getUnreadCount(signal),
     enabled: verified,
-    refetchInterval: 60_000,
+    refetchInterval: connected ? 300_000 : 60_000,
     retry: false,
   });
   const unread = count.data?.count;
@@ -118,7 +160,36 @@ export function NotificationsSheet() {
 
       <SheetContent side="right" className="gap-0">
         <SheetHeader>
-          <SheetTitle>{t('notifications.title')}</SheetTitle>
+          <div className="flex items-center justify-between gap-2">
+            <SheetTitle>{t('notifications.title')}</SheetTitle>
+            {/*
+              A control, not an indicator — it says what the client has ASKED
+              for, not what the speaker is doing. Audio can be refused by the
+              browser until they interact with the page, and claiming "on"
+              while that holds it silent would be a status light that lies.
+            */}
+            <button
+              type="button"
+              aria-pressed={soundOn}
+              aria-label={soundOn ? t('notifications.soundOn') : t('notifications.soundOff')}
+              title={soundOn ? t('notifications.soundOn') : t('notifications.soundOff')}
+              onClick={() => {
+                const next = !soundOn;
+                setSoundEnabled(next);
+                // On the way ON only. It confirms the choice and, being a
+                // click, satisfies the autoplay policy so the next real
+                // notification is audible.
+                if (next) playNotificationSound();
+              }}
+              className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
+            >
+              {soundOn ? (
+                <Volume2 className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <VolumeX className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
           <SheetDescription className="sr-only">{t('notifications.emptyBody')}</SheetDescription>
         </SheetHeader>
         {/* Mounted only while open — see the component note. */}
