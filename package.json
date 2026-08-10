@@ -72,5 +72,8 @@
     "*.{ts,tsx}": [
       "./scripts/gate-file.sh"
     ]
+  },
+  "overrides": {
+    "js-yaml": "^4.3.1"
   }
 }
