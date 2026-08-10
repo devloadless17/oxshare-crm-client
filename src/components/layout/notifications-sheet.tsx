@@ -1,119 +1,329 @@
 'use client';
 
 import * as React from 'react';
-import { Bell, Download, Info, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
+import { Bell } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { t, type MessageKey } from '@/lib/i18n';
+import { AsyncBoundary } from '@/components/async-boundary';
+import { useResource } from '@/hooks/use-resource';
+import { notificationsApi, type AppNotification } from '@/lib/api/notifications';
+import { apiErrorMessage } from '@/lib/api/errors';
+import { useUser } from '@/context/UserContext';
+import { t } from '@/lib/i18n';
+import { relativeTime } from '@/lib/relative-time';
+import { resolveKind } from './notification-kinds';
 
 /**
- * The notification bell, and the panel behind it.
+ * The notification bell, and the panel behind it — live since
+ * `GET /notifications` landed. (This file's previous version showed labelled
+ * sample rows and said so; the migration its doc comment promised — SAMPLES →
+ * `useResource`, `previewNotice` → a real empty state — is this.)
  *
- * ## Why the content is placeholder, and why it says so
+ * TWIN in intent with the admin console's `layout/notifications-sheet.tsx` —
+ * same component shape — but NOT a twin file: the kind catalogues are disjoint
+ * (account events here, work-queue events there), and mutations here are plain
+ * async handlers with inline error state, the portal's frozen convention (no
+ * useMutation, no toast library).
  *
- * There is no notifications table, no endpoint and nothing emitting events. The
- * bell that used to sit here was removed for exactly that reason: it had no
- * handler, no menu, and a permanent unread dot implying items that did not
- * exist. It is back because the SURFACE is wanted now and the data will follow.
+ * ## The badge polls; the list fetches on open
  *
- * What is deliberately not back is the lie. The panel opens with a plain
- * statement that notifications are not live, and the rows beneath it are
- * product copy — welcome, finish verification, the terminal is downloadable —
- * not fabricated account events. That distinction is the whole design: a
- * placeholder "Deposit approved · $5,000" on a money product is not a harmless
- * mock, it is a client calling support about money they do not have.
+ * The unread count lives beside the trigger on a 60-second / `retry: false`
+ * cadence and is NOT drawn at zero or unknown — a badge that cannot be counted
+ * is a badge that is not drawn, the same rule that removed the old permanent
+ * dot. The list lives inside `SheetContent`, which unmounts when closed, so
+ * opening naturally fetches fresh.
  *
- * There is also NO unread count. A badge that always says "1" teaches people to
- * ignore badges, which is the habit this product will need unlearned on the day
- * the badge starts meaning something.
+ * ## Read is EXPLICIT, never a side effect of opening
  *
- * When `GET /notifications` lands: replace `SAMPLES` with a `useResource` call,
- * render through `<AsyncBoundary>`, delete `previewNotice`, and let the empty
- * state be a real one.
+ * Opening marks nothing. Clicking a row marks that row; "Mark all as read" is
+ * a button. Auto-mark-on-open would destroy the unread signal before anything
+ * was read.
  */
 
-interface SampleNotification {
-  id: string;
-  icon: React.ElementType;
-  title: MessageKey;
-  body: MessageKey;
-}
-
-const SAMPLES: SampleNotification[] = [
-  {
-    id: 'welcome',
-    icon: Info,
-    title: 'notifications.sampleWelcomeTitle',
-    body: 'notifications.sampleWelcomeBody',
-  },
-  {
-    id: 'kyc',
-    icon: ShieldCheck,
-    title: 'notifications.sampleKycTitle',
-    body: 'notifications.sampleKycBody',
-  },
-  {
-    id: 'platform',
-    icon: Download,
-    title: 'notifications.samplePlatformTitle',
-    body: 'notifications.samplePlatformBody',
-  },
-];
+const COUNT_KEY = ['notifications', 'unread-count'] as const;
+const LIST_KEY = ['notifications'] as const;
+const PAGE_SIZE = 30;
 
 export function NotificationsSheet() {
+  const queryClient = useQueryClient();
+  const { user } = useUser();
+  const [open, setOpen] = React.useState(false);
+
+  /*
+   * Both feed routes sit behind the backend's `EmailVerifiedGuard`, and this
+   * layout mounts on screens an UNVERIFIED client can reach (`/dashboard`,
+   * `/profile`, `/platforms` — `EMAIL_VERIFIED_PATHS` does not cover them).
+   * Polling a guaranteed 403 every sixty seconds and then telling a client
+   * they lack permission to read their own notifications is a worse answer
+   * than not asking: the bell simply does not fetch until the address is
+   * proved. `undefined` (still loading) is treated as not-yet, so a flash of
+   * requests cannot escape while the profile resolves.
+   */
+  const verified = user?.emailVerified === true;
+
+  const count = useQuery({
+    queryKey: COUNT_KEY,
+    queryFn: ({ signal }) => notificationsApi.getUnreadCount(signal),
+    enabled: verified,
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const unread = count.data?.count;
+
   return (
-    <Sheet>
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        /*
+         * The whole prefix, not just the count: `QueryProvider` holds a
+         * 30-second `staleTime`, so invalidating the count alone let the
+         * remounted list serve cache — a badge reading "1 unread" over a panel
+         * reading "Nothing yet". `LIST_KEY` is the prefix of both.
+         */
+        if (next) void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+      }}
+    >
       {/*
-        Icon-only, so it needs a name: without one a screen reader announces
-        "button" and the only route to this panel is unreachable to anyone not
-        looking at it. Same reasoning as the mobile menu trigger next to it, and
-        it is sized to match that button so the header reads as one row of
-        controls rather than two shapes.
+        Icon-only, so it needs a name — without one a screen reader announces
+        "button". Sized to match the mobile menu trigger beside it.
       */}
       <SheetTrigger
-        aria-label={t('notifications.open')}
-        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-muted focus-outline"
+        aria-label={
+          unread
+            ? `${t('notifications.open')} — ${t('notifications.unreadCountLabel', { count: unread })}`
+            : t('notifications.open')
+        }
+        className="relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-muted focus-outline"
       >
         <Bell className="h-4 w-4" aria-hidden="true" />
+        {unread ? (
+          <span
+            aria-hidden="true"
+            className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground"
+          >
+            {unread > 9 ? '9+' : unread}
+          </span>
+        ) : null}
       </SheetTrigger>
 
       <SheetContent side="right" className="gap-0">
         <SheetHeader>
           <SheetTitle>{t('notifications.title')}</SheetTitle>
-          <SheetDescription>{t('notifications.previewNotice')}</SheetDescription>
+          <SheetDescription className="sr-only">{t('notifications.emptyBody')}</SheetDescription>
         </SheetHeader>
-
-        <div className="flex-1 overflow-y-auto p-3">
-          <ul className="space-y-2">
-            {SAMPLES.map((item) => {
-              const Icon = item.icon;
-              return (
-                <li
-                  key={item.id}
-                  className="flex gap-3 rounded-lg border border-border bg-muted/30 p-3"
-                >
-                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0 space-y-1">
-                    <p className="text-xs font-semibold text-foreground">{t(item.title)}</p>
-                    <p className="text-xs leading-relaxed text-muted-foreground">{t(item.body)}</p>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                      {t('notifications.sampleWhen')}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+        {/* Mounted only while open — see the component note. */}
+        <NotificationsList unreadCount={unread ?? 0} enabled={verified} />
       </SheetContent>
     </Sheet>
+  );
+}
+
+function NotificationsList({ unreadCount, enabled }: { unreadCount: number; enabled: boolean }) {
+  const queryClient = useQueryClient();
+  const [markAllError, setMarkAllError] = React.useState<string | null>(null);
+  const [markingAll, setMarkingAll] = React.useState(false);
+
+  const query = useResource(
+    [...LIST_KEY, 'list'],
+    (signal) => notificationsApi.getNotifications({ limit: PAGE_SIZE }, signal),
+    { enabled },
+  );
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: LIST_KEY });
+
+  // Portal convention: a plain async handler with inline error state — no
+  // useMutation, no toast (neither exists in this app).
+  async function markAllRead() {
+    try {
+      setMarkAllError(null);
+      setMarkingAll(true);
+      await notificationsApi.markAllRead();
+      await invalidate();
+    } catch (error) {
+      setMarkAllError(apiErrorMessage(error, t('notifications.markAllReadFailed')));
+    } finally {
+      setMarkingAll(false);
+    }
+  }
+
+  /*
+   * Per-row mark-read, fired alongside navigation. The catch is an explicit
+   * swallow: an error here would interrupt a navigation the client asked for
+   * to report the failure of something they didn't — an unread row that stays
+   * unread is silently retriable on the next visit.
+   */
+  function markRead(item: AppNotification) {
+    if (item.readAt) return;
+    notificationsApi
+      .markRead(item.id)
+      .then(invalidate)
+      .catch(() => undefined);
+  }
+
+  const items = query.data?.items ?? [];
+  /*
+   * Derived from the rows the client can SEE, OR-ed with the polled count:
+   * gating on the count alone let a failed count poll (`retry: false`) hide
+   * the button above a list of visibly-unread rows.
+   *
+   * Gated on `ready` as well: rendering it over the error or not-available
+   * card offers a button that would clear notifications the client never got
+   * to see — the same "read is explicit" rule, by another route.
+   */
+  const hasUnread =
+    query.status === 'ready' && (unreadCount > 0 || items.some((item) => !item.readAt));
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {hasUnread && (
+        <div className="border-b border-border px-3 py-2">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => void markAllRead()}
+              disabled={markingAll}
+              className="cursor-pointer text-xs font-medium text-primary hover:underline disabled:opacity-50 focus-outline"
+            >
+              {t('notifications.markAllRead')}
+            </button>
+          </div>
+          {markAllError && (
+            <p role="alert" className="pt-1 text-right text-[11px] text-destructive">
+              {markAllError}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-3">
+        {!enabled ? (
+          /*
+           * Not a spinner and not an empty state: a disabled query never
+           * resolves, and "Nothing yet" would be a claim about a feed nobody
+           * asked for. This says what is true and what to do about it — the
+           * feed is gated on a verified address, like the routes behind it.
+           */
+          <div className="flex flex-col items-center gap-1 py-10 text-center">
+            <Bell className="mb-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <p className="text-sm font-medium text-foreground">
+              {t('notifications.verifyEmailTitle')}
+            </p>
+            <p className="text-xs text-muted-foreground">{t('notifications.verifyEmailBody')}</p>
+          </div>
+        ) : (
+          <AsyncBoundary
+            status={query.status}
+            label={t('notifications.loading')}
+            endpoints={['GET /notifications']}
+            onRetry={query.refetch}
+            errorMessage={t('notifications.loadFailed')}
+            error={query.error}
+            fill
+          >
+            {items.length === 0 ? (
+              <div className="flex flex-col items-center gap-1 py-10 text-center">
+                <Bell className="mb-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm font-medium text-foreground">
+                  {t('notifications.emptyTitle')}
+                </p>
+                <p className="text-xs text-muted-foreground">{t('notifications.emptyBody')}</p>
+              </div>
+            ) : (
+              <>
+                <ul className="space-y-2">
+                  {items.map((item) => (
+                    <NotificationRow key={item.id} item={item} onRead={() => markRead(item)} />
+                  ))}
+                </ul>
+                {query.data?.nextCursor ? (
+                  <p className="pt-3 text-center text-[11px] text-muted-foreground">
+                    {t('notifications.recentNotice', { count: items.length })}
+                  </p>
+                ) : null}
+              </>
+            )}
+          </AsyncBoundary>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NotificationRow({ item, onRead }: { item: AppNotification; onRead: () => void }) {
+  const config = resolveKind(item.kind);
+  const Icon = config?.icon ?? Bell;
+  const unread = !item.readAt;
+
+  const body = (
+    <>
+      <span
+        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${unread ? 'bg-primary/15' : 'bg-primary/10'} text-primary`}
+      >
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1 space-y-1">
+        <span className="flex items-baseline justify-between gap-2">
+          <span className="text-xs font-semibold text-foreground">
+            {config ? t(config.titleKey) : t('notifications.fallbackTitle')}
+            {unread && <span className="sr-only"> — {t('notifications.itemUnread')}</span>}
+          </span>
+          <span className="shrink-0 text-[10px] text-muted-foreground">
+            {relativeTime(item.createdAt)}
+          </span>
+        </span>
+        {config ? (
+          <span className="block text-xs leading-relaxed text-muted-foreground">
+            {t(config.bodyKey, config.vars?.(item.params))}
+          </span>
+        ) : null}
+      </span>
+      {unread && (
+        <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+      )}
+    </>
+  );
+
+  const rowClass = `flex gap-3 rounded-lg border border-border p-3 ${unread ? 'bg-primary/5' : 'bg-muted/30'}`;
+
+  /*
+   * A known kind navigates to where the client acts on it; the sheet closes
+   * with it. An unknown kind — a backend newer than this deploy — renders as a
+   * plain row: generic title and timestamp, never a raw slug.
+   */
+  if (config?.href) {
+    return (
+      <li>
+        <SheetClose asChild>
+          <Link
+            href={config.href}
+            onClick={onRead}
+            className={`${rowClass} transition-colors hover:bg-muted focus-outline`}
+          >
+            {body}
+          </Link>
+        </SheetClose>
+      </li>
+    );
+  }
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onRead}
+        className={`${rowClass} w-full cursor-pointer text-left transition-colors hover:bg-muted focus-outline`}
+      >
+        {body}
+      </button>
+    </li>
   );
 }

@@ -7,6 +7,7 @@ import { useResource } from '@/hooks/use-resource';
 import { accountApi, type Session } from '@/lib/api/account';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
+import { relativeTime } from '@/lib/relative-time';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -171,41 +172,6 @@ export function describeDevice(userAgent: string | null | undefined): string {
 /** Phone or laptop, for the icon only. Wrong guesses cost nothing. */
 function looksMobile(userAgent: string | null | undefined): boolean {
   return !!userAgent && /\bAndroid\b|\biPhone\b|\biPad\b|\bMobile\b/.test(userAgent);
-}
-
-/**
- * "3 minutes ago". The unit a client thinks in when scanning for an intruder.
- *
- * `Intl.RelativeTimeFormat` rather than a date library — it is built in, it
- * localises, and this is the only place in the portal that needs it. Note this
- * is NOT a money path: `Intl` is banned there (see lib/money.ts) because it
- * rounds, which is irrelevant for a timestamp and fatal for a balance.
- */
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return iso;
-
-  const seconds = Math.round((then - Date.now()) / 1000);
-  const units: [Intl.RelativeTimeFormatUnit, number][] = [
-    ['second', 60],
-    ['minute', 60],
-    ['hour', 24],
-    ['day', 30],
-    ['month', 12],
-    ['year', Infinity],
-  ];
-
-  let value = seconds;
-  for (const [unit, step] of units) {
-    if (Math.abs(value) < step) {
-      return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(
-        Math.round(value),
-        unit,
-      );
-    }
-    value /= step;
-  }
-  return iso;
 }
 
 /** The login date, absolute — "signed in 3 weeks ago" is harder to place. */

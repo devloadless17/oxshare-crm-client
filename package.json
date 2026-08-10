@@ -18,7 +18,10 @@
     "prepare": "husky",
     "check:twins": "./scripts/check-twins.sh",
     "check:api-types": "./scripts/check-api-types.sh",
-    "check:css": "node scripts/check-css-classes.mjs"
+    "check:css": "node scripts/check-css-classes.mjs",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",
@@ -42,6 +45,7 @@
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",

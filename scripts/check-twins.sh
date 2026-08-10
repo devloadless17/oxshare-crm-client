@@ -92,6 +92,7 @@ TWINS=(
   src/components/theme-provider.tsx
   src/lib/utils.ts
   src/lib/money.ts
+  src/lib/relative-time.ts
   src/lib/asset-url.ts
   src/lib/table-sort.ts
   src/components/data-table.tsx

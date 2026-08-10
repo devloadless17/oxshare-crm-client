@@ -764,23 +764,61 @@ export const messages = {
 
   // ── Notifications ─────────────────────────────────────────────────────────
   //
-  // There is no notifications table, no endpoint and nothing emitting events.
-  // The panel is a PREVIEW of the surface, and it says so at the top in plain
-  // words rather than presenting placeholder rows as account history — a fake
-  // "deposit approved" on a money product is not a harmless placeholder.
+  // The LIVE bell — `GET /notifications` and its three siblings. The per-kind
+  // pairs (`kind<PascalKind>Title/Body`) mirror the backend's event catalogue
+  // via `components/layout/notification-kinds.ts`; an event this file has no
+  // pair for renders as `fallbackTitle`, never a raw slug. Money placeholders
+  // are filled by `formatMoney` — never by interpolating a raw amount.
   'notifications.title': 'Notifications',
   'notifications.open': 'Open notifications',
-  'notifications.previewNotice':
-    'Preview — notifications are not live yet, so nothing here is real.',
-  'notifications.sampleWelcomeTitle': 'Welcome to OXShare',
-  'notifications.sampleWelcomeBody':
-    'Your client portal is ready. Complete verification to start trading.',
-  'notifications.sampleKycTitle': 'Verification reminder',
-  'notifications.sampleKycBody': 'Finish your identity check to unlock deposits and withdrawals.',
-  'notifications.samplePlatformTitle': 'Trading terminal available',
-  'notifications.samplePlatformBody':
-    'Download the desktop or mobile terminal from the Platforms page.',
-  'notifications.sampleWhen': 'Sample',
+  'notifications.loading': 'Loading notifications',
+  'notifications.loadFailed': 'Could not load your notifications.',
+  'notifications.emptyTitle': 'Nothing yet',
+  'notifications.emptyBody': 'Alerts about your account will appear here.',
+  'notifications.unreadCountLabel': '{count} unread',
+  'notifications.markAllRead': 'Mark all as read',
+  'notifications.markAllReadFailed': 'Could not mark notifications as read.',
+  'notifications.itemUnread': 'Unread',
+  'notifications.recentNotice': 'Showing your {count} most recent notifications.',
+  'notifications.fallbackTitle': 'Notification',
+  'notifications.verifyEmailTitle': 'Verify your email first',
+  'notifications.verifyEmailBody':
+    'Account alerts appear here once your email address is confirmed.',
+  'notifications.kindDepositSucceededTitle': 'Deposit credited',
+  'notifications.kindDepositSucceededBody':
+    'Your deposit of {amount} has been confirmed and credited to your wallet.',
+  'notifications.kindDepositFailedTitle': 'Deposit failed',
+  'notifications.kindDepositFailedBody':
+    'Your deposit of {amount} could not be completed. You can try again.',
+  'notifications.kindWalletCreditedTitle': 'Wallet credited',
+  'notifications.kindWalletCreditedBody': '{amount} was added to your wallet: {reason}',
+  'notifications.kindWithdrawalApprovedTitle': 'Withdrawal approved',
+  'notifications.kindWithdrawalApprovedBody':
+    'Your withdrawal of {amount} was approved and is being processed.',
+  'notifications.kindWithdrawalRejectedTitle': 'Withdrawal declined',
+  'notifications.kindWithdrawalRejectedBody':
+    'Your withdrawal of {amount} was declined: {reason}. The funds are back in your balance.',
+  'notifications.kindWithdrawalPaidTitle': 'Withdrawal sent',
+  'notifications.kindWithdrawalPaidBody':
+    'Your withdrawal of {amount} has been sent to your nominated destination.',
+  'notifications.kindKycApprovedTitle': 'Identity verified',
+  'notifications.kindKycApprovedBody':
+    'Your verification was approved. Deposits and withdrawals are unlocked.',
+  'notifications.kindKycRejectedTitle': 'Verification needs attention',
+  'notifications.kindKycRejectedBody': 'Your verification was declined: {reason}. You can retry.',
+  'notifications.kindCommissionConfirmedTitle': 'Commission credited',
+  'notifications.kindCommissionConfirmedBody':
+    'A commission of {amount} was credited to your wallet.',
+  'notifications.kindPartnerApprovedTitle': 'Partner application approved',
+  'notifications.kindPartnerApprovedBody':
+    'Welcome to the partner programme. Your referral link is ready.',
+  'notifications.kindPartnerRejectedTitle': 'Partner application declined',
+  'notifications.kindPartnerRejectedBody': 'Your partner application was declined: {reason}',
+  'notifications.kindPartnerSuspendedTitle': 'Partner account suspended',
+  'notifications.kindPartnerSuspendedBody':
+    'Your partner account was suspended. Contact support for details.',
+  'notifications.kindPartnerRestoredTitle': 'Partner account restored',
+  'notifications.kindPartnerRestoredBody': 'Your partner account is active again.',
   // ── Partner programme ─────────────────────────────────────────────────────
   'partner.title': 'Partner Programme',
   'partner.subtitle': 'Introduce clients to OxShare and earn from their activity.',
