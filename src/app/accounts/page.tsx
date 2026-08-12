@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Check, Copy, Info, LineChart, MonitorDown } from 'lucide-react';
+import { Check, Copy, LineChart, MonitorDown } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { Button } from '@/components/ui/button';
 import { useResource } from '@/hooks/use-resource';
@@ -12,6 +12,7 @@ import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { formatMoney } from '@/lib/money';
 import { t, type MessageKey } from '@/lib/i18n';
 import { OpenAccountButton } from '@/components/accounts/open-account-button';
+import { Tabs, TabPanel, type TabDefinition } from '@/components/ui/tabs';
 
 /**
  * The client's MT5 trading accounts, live and demo.
@@ -30,19 +31,24 @@ import { OpenAccountButton } from '@/components/accounts/open-account-button';
  * empty list is only ever drawn after the server has actually said the list is
  * empty.
  *
- * ## Balance is shown; equity is NOT, and the screen says so
+ * ## Balance is the CRM-held figure, and it is labelled as one
  *
- * `balance` is the CRM-held figure — what a wallet→account transfer credits —
- * and it is genuinely the number this system owns. Equity, margin, free margin
- * and open positions are computed from live prices against open trades, and
- * there is no MT5 bridge, so nothing here holds them.
+ * `balance` is what a wallet→account transfer credits — genuinely the number
+ * this system owns. Equity, margin and open positions are computed from live
+ * prices against open trades and belong to the terminal, which is one click
+ * away on this screen.
  *
- * The note under the balance states that in the UI rather than only in a
- * comment. A trading screen that shows a figure labelled only "Balance" invites
- * a trader to read it as equity, and those differ by every open position — which
- * on a losing position is the difference between "I have $5,000" and a margin
- * call.
+ * There used to be a standing note under the tab saying exactly that. It is
+ * gone: it explained a distinction the card's own label already draws, and a
+ * caveat that never changes is one a reader stops seeing — along with anything
+ * else placed near it.
  */
+/** Two environments, in the order a client cares about them. */
+const TABS: TabDefinition[] = [
+  { value: 'live', label: t('accounts.liveHeading') },
+  { value: 'demo', label: t('accounts.demoHeading') },
+];
+
 export default function AccountsPage() {
   const accounts = useResource(['trading-accounts'], (signal) => tradingApi.getAccounts(signal));
 
@@ -62,15 +68,38 @@ export default function AccountsPage() {
   const live = rows.filter((row) => row.environment === 'live');
   const demo = rows.filter((row) => row.environment === 'demo');
 
+  /*
+   * Local state rather than the URL.
+   *
+   * The admin console puts its tab in the query string because operators send
+   * each other links to a specific settings tab. Nobody links a client to their
+   * own demo tab, and adding a history entry per tab press would bury whatever
+   * page they arrived from under two or three of them.
+   */
+  const [tab, setTab] = React.useState('live');
+
+  /*
+   * A FLEX COLUMN rather than `space-y-6`, so the tab panel can be told to take
+   * whatever height is left. `<main>` is already `flex flex-col` with a bounded
+   * height; this continues that chain, `AsyncBoundary fill` continues it past
+   * the four states, and the panel's `flex-1` ends it at the empty card. Break
+   * any link and the card falls back to its content height — which is the short
+   * stub in the middle of an empty page this replaced.
+   */
   return (
-    <div className="space-y-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{t('accounts.title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t('accounts.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <OpenAccountButton />
+          {/*
+            No create button up here any more. Each TAB owns its own, because
+            the tab already answers the question the old shared dialog had to
+            ask — and a header button would have to ask it again, from inside a
+            tab that had already been chosen.
+          */}
           {/* The terminal is where these accounts are actually traded, so the
               download sits on this screen as well as in the rail. */}
           <Button asChild variant="outline" size="sm">
@@ -89,65 +118,49 @@ export default function AccountsPage() {
         onRetry={() => void accounts.refetch()}
         errorMessage={apiErrorMessage(accounts.error, t('accounts.loadFailed'))}
         error={accounts.error}
+        fill
       >
-        {rows.length === 0 ? (
-          /*
-           * Drawn only after the server has said the list is empty — never as a
-           * default. See the file note.
-           *
-           * FILLS the page, for the reason `/transactions` records: sized in
-           * viewport units because the layout is `min-h-screen` with no unbroken
-           * `h-full` chain, so a percentage height would collapse to its
-           * content. `justify-center` centres the message in that space rather
-           * than pinning it under the heading.
-           */
-          <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
-            <LineChart className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
-            <p className="text-sm font-semibold">{t('accounts.empty')}</p>
-            <p className="max-w-sm text-xs text-muted-foreground">{t('accounts.emptyBody')}</p>
-            {/*
-              THE POINT OF THIS SCREEN when a client has nothing. Without it the
-              empty state is a dead end that tells somebody to contact support
-              for a thing the system can do in a second — which is exactly what
-              it did.
-            */}
-            <div className="pt-1">
-              <OpenAccountButton />
-            </div>
-          </div>
-        ) : (
-          // Fills the page, matching the empty state and the loader so the
-          // screen keeps one shape across all three states. Viewport units
-          // rather than `h-full` — the layout is `min-h-screen` with no unbroken
-          // `h-full` chain, so a percentage height would collapse silently.
-          <div className="flex min-h-[60vh] flex-col space-y-8">
-            {/*
-              What the balance means, said ONCE at the top rather than repeated
-              on every card. Repeating it per card would bury the figures it is
-              meant to qualify.
-            */}
-            <p className="flex items-start gap-2 rounded-xl border border-info/30 bg-info/5 p-3 text-xs leading-relaxed text-muted-foreground">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" aria-hidden="true" />
-              <span>{t('accounts.balanceNote')}</span>
-            </p>
+        {/*
+          TABS rather than two stacked sections.
 
-            <AccountSection
-              heading={t('accounts.liveHeading')}
-              note={t('accounts.liveNote')}
-              count={t('accounts.liveCount', { count: live.length })}
-              accounts={live}
-              tone="live"
-            />
+          Live and demo accounts are answers to different questions — "what am I
+          trading" and "what am I practising with" — and a client is in one mode
+          at a time. Stacked, the demo list pushed the live one off the screen
+          for anybody holding several, and the empty half of the page was a
+          permanent reminder of the thing they were not doing.
 
-            <AccountSection
-              heading={t('accounts.demoHeading')}
-              note={t('accounts.demoNote')}
-              count={t('accounts.demoCount', { count: demo.length })}
-              accounts={demo}
-              tone="demo"
-            />
-          </div>
-        )}
+          It also gives each environment somewhere to put its OWN create button,
+          which is what the old shared dialog was awkwardly working around.
+        */}
+        <Tabs tabs={TABS} value={tab} onValueChange={setTab} idPrefix="accounts" />
+
+        <TabPanel
+          value="live"
+          activeValue={tab}
+          idPrefix="accounts"
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <EnvironmentPanel
+            environment="live"
+            accounts={live}
+            emptyTitle={t('accounts.liveEmpty')}
+            emptyBody={t('accounts.liveEmptyBody')}
+          />
+        </TabPanel>
+
+        <TabPanel
+          value="demo"
+          activeValue={tab}
+          idPrefix="accounts"
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <EnvironmentPanel
+            environment="demo"
+            accounts={demo}
+            emptyTitle={t('accounts.demoEmpty')}
+            emptyBody={t('accounts.demoEmptyBody')}
+          />
+        </TabPanel>
       </AsyncBoundary>
     </div>
   );
@@ -166,41 +179,59 @@ export default function AccountsPage() {
  * client unable to tell "I have no demo accounts" from "this portal does not do
  * demo accounts".
  */
-function AccountSection({
-  heading,
-  note,
-  count,
+/**
+ * One environment's accounts, with the button that creates another.
+ *
+ * The create button sits in BOTH the populated and the empty state. The empty
+ * one is the case that matters: a client with no accounts previously had no way
+ * to get one, so the screen was a dead end telling them to contact support for
+ * a thing the system does in a second.
+ */
+function EnvironmentPanel({
+  environment,
   accounts,
-  tone,
+  emptyTitle,
+  emptyBody,
 }: {
-  heading: string;
-  note: string;
-  count: string;
+  environment: 'live' | 'demo';
   accounts: TradingAccount[];
-  tone: 'live' | 'demo';
+  emptyTitle: string;
+  emptyBody: string;
 }) {
-  return (
-    <section className="space-y-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">{heading}</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">{note}</p>
+  if (accounts.length === 0) {
+    return (
+      /* `min-h-[16rem]` as a floor, not the height: on a short viewport the
+         remaining space can be less than the card needs. */
+      <div className="flex min-h-[16rem] flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
+        <LineChart className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
+        <p className="text-sm font-semibold">{emptyTitle}</p>
+        <p className="max-w-sm text-xs text-muted-foreground">{emptyBody}</p>
+        <div className="pt-1">
+          <OpenAccountButton environment={environment} held={accounts.length} explainWhenClosed />
         </div>
-        <span className="text-[11px] font-semibold text-muted-foreground">{count}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      {/*
+        The balance caveat is gone. It explained that the figure was the CRM's
+        deposited balance rather than live equity — true when nothing synced,
+        and now just noise: the card labels the figure and the terminal is one
+        click away. A permanent explanation of every number is how a screen
+        stops being read at all.
+      */}
+      <div className="flex justify-end">
+        <OpenAccountButton environment={environment} held={accounts.length} variant="outline" />
       </div>
 
-      {accounts.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-          {t('accounts.noneOfKind')}
-        </p>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-          {accounts.map((account) => (
-            <AccountCard key={account.id} account={account} tone={tone} />
-          ))}
-        </div>
-      )}
-    </section>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {accounts.map((account) => (
+          <AccountCard key={account.id} account={account} tone={environment} />
+        ))}
+      </div>
+    </div>
   );
 }
 

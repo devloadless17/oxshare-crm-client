@@ -552,11 +552,51 @@ export const messages = {
   // "Live" and "Demo" are jargon to somebody opening their first account, so
   // each option says what it MEANS. Only one distinction matters and it is
   // expensive in one direction.
-  'accounts.open': 'Open account',
-  'accounts.openTitle': 'Open a trading account',
-  'accounts.openBody': 'Choose the kind of account you want. You can have more than one.',
   'accounts.live': 'Live account',
   'accounts.liveBody': 'Trades with real money. Fund it from your wallet once it is open.',
+  // Each tab opens its OWN kind of account, so the button says which — "Open
+  // account" inside the Demo tab leaves a client wondering what they will get.
+  'accounts.openLiveTitle': 'Open a live account',
+  'accounts.openDemoTitle': 'Open a demo account',
+  'accounts.openConfirm': 'Open account',
+  'accounts.opening': 'Opening…',
+  'accounts.cancel': 'Cancel',
+
+  // "Account type" rather than "group": a group is MT5's word for the folder a
+  // login sits in, and the client is choosing a product.
+  'accounts.fieldType': 'Account type',
+  'accounts.typeCurrencyHint': 'This account will be held in {currency}.',
+  'accounts.fieldLeverage': 'Leverage',
+  'accounts.leverageHint':
+    'How far your margin stretches. Higher leverage magnifies losses as much as gains.',
+
+  // Shown INSTEAD of the create button when the broker has not switched this
+  // environment on. Silence there reads as a broken page.
+  'accounts.liveClosed':
+    'Live accounts cannot be opened online yet. Contact support and we will open one for you.',
+  'accounts.demoClosed':
+    'Demo accounts cannot be opened online yet. Contact support and we will open one for you.',
+
+  // Shown INSTEAD of the create button once the client is at the limit — the
+  // reason, in the place the control was, rather than a control that refuses.
+  'accounts.capReached': 'You have reached the maximum of {max} accounts of this kind.',
+
+  'accounts.fieldName': 'Account name',
+  'accounts.namePlaceholder': 'Swing trading',
+  'accounts.nameHint': 'Optional. Helps you tell your accounts apart if you have several.',
+  'accounts.fieldStartingBalance': 'Starting balance',
+  'accounts.startingBalanceHint':
+    'Practice money, up to {max}. Choose an amount close to what you would really trade — the practice is only useful if the position sizes are.',
+  'accounts.colBalance': 'Balance',
+
+  // Per-tab, so each says what is missing rather than "no accounts" twice.
+  'accounts.liveEmpty': 'No live accounts yet',
+  'accounts.liveEmptyBody':
+    'A live account trades real money. Open one, then fund it from your wallet.',
+  'accounts.demoEmpty': 'No demo accounts yet',
+  'accounts.demoEmptyBody':
+    'A demo account trades practice money. Nothing is at risk, and you do not need to be verified.',
+
   'accounts.openLive': 'Open a live account',
   'accounts.demo': 'Demo account',
   'accounts.demoBody': 'Trades with practice money. Nothing at risk, and no verification needed.',
@@ -1083,9 +1123,6 @@ export const messages = {
    * screen that showed a balance without saying what it is NOT invites a client
    * to read it as equity, and those differ by every open position.
    */
-  'accounts.balanceNote':
-    'This is your deposited balance held in the CRM. Live equity, margin and open positions are ' +
-    'shown in the MetaTrader 5 terminal.',
   'accounts.fundAccount': 'Transfer funds',
 
   // ── The money flows: shared steps and gateway payments ────────────────────

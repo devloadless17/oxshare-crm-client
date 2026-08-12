@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Info, LineChart, TrendingUp } from 'lucide-react';
+import { LineChart, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Dashboard, Position } from '@/lib/api/trading';
 import { formatMoney } from '@/lib/money';
@@ -226,13 +226,6 @@ export function AccountsPanel({ accounts }: { accounts: Dashboard['tradingAccoun
           </ul>
         )}
       </Panel>
-
-      {accounts.length > 0 && (
-        <p className="flex items-start gap-2 rounded-xl border border-info/30 bg-info/5 p-3 text-xs leading-relaxed text-muted-foreground">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" aria-hidden="true" />
-          <span>{t('accounts.balanceNote')}</span>
-        </p>
-      )}
     </>
   );
 }

@@ -55,10 +55,38 @@ export type PositionStatus = Position['status'];
 export type Dashboard = components['schemas']['DashboardDto'];
 export type DashboardStats = components['schemas']['DashboardStatsDto'];
 
-/** Which environments this deployment lets a client open unaided. */
+/** One account type the broker sells online. */
+export interface AccountType {
+  /** The MT5 group path. Sent back on create and validated server-side. */
+  group: string;
+  /** Read live from MT5. Empty when the server could not be asked. */
+  currency: string;
+}
+
+/** What a client may open themselves, and on what terms. */
 export interface SelfServiceAvailability {
   live: boolean;
   demo: boolean;
+  liveTypes: AccountType[];
+  demoTypes: AccountType[];
+  /** The leverage ladder. A fixed list, not a free number — see the API. */
+  leverages: number[];
+  /*
+   * The caps, so the page can stop offering a button the API would refuse.
+   * Compared against the accounts it is already rendering — no extra request.
+   */
+  maxLiveAccounts: number;
+  maxDemoAccounts: number;
+  /**
+   * The largest demo starting balance, as a decimal string.
+   *
+   * It arrives from the API rather than being a constant here. It WAS a
+   * constant, duplicated between this app and the server, which meant the
+   * figure the client was shown and the figure enforced could differ by a
+   * deploy — and the client would find out by having their number silently
+   * reduced.
+   */
+  maxDemoDeposit: string;
 }
 
 /**
@@ -76,7 +104,26 @@ export interface OpenedAccount {
   environment: TradingEnvironment;
   currency: string;
   leverage: number;
+  /** What MT5 holds — the demo starting balance, or '0'. Read back, not assumed. */
+  balance: string;
   credentialsSentTo: string;
+}
+
+/** What the client gets to decide when opening an account. */
+export interface OpenAccountInput {
+  environment: TradingEnvironment;
+  /** An MT5 group from the offered list. Omit to take the first. */
+  group?: string;
+  /** One of the offered leverages. The API refuses anything else. */
+  leverage?: number;
+  /** A label. Omit for the client's own name, which is what MT5 expects. */
+  name?: string;
+  /**
+   * DEMO ONLY. A decimal string, like every amount crossing this boundary.
+   * The API REFUSES it on a live account rather than ignoring it, so sending
+   * it there turns a valid request into an error.
+   */
+  startingBalance?: string;
 }
 
 export const tradingApi = {
@@ -114,8 +161,8 @@ export const tradingApi = {
    * KYC error code the money endpoints use, so the existing verification prompt
    * applies unchanged.
    */
-  async openAccount(environment: TradingEnvironment): Promise<OpenedAccount> {
-    const { data } = await apiClient.post<OpenedAccount>('/trading/accounts', { environment });
+  async openAccount(input: OpenAccountInput): Promise<OpenedAccount> {
+    const { data } = await apiClient.post<OpenedAccount>('/trading/accounts', input);
     return data;
   },
 
