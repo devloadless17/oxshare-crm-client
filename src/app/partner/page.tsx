@@ -4,6 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Check, Copy, Handshake, ShieldCheck, Clock, XCircle } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
+import { ApplyPanel } from '@/components/partner/apply-panel';
 import { PartnerDashboard } from '@/components/partner/partner-dashboard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,13 +55,21 @@ import { t } from '@/lib/i18n';
 export default function PartnerPage() {
   const query = useResource<IbStatus>(['ib-status'], (signal) => partnerApi.status(signal));
 
+  /*
+   * NO PAGE HEADER, and the panel takes the whole frame.
+   *
+   * Every state below opens with its own heading — "Become a partner", "Under
+   * review", the partner's own dashboard — so a standing "Partner Programme"
+   * above them was a second title saying the same thing in smaller words, with
+   * the real one an inch below it.
+   *
+   * `flex min-h-0 flex-1 flex-col` continues the height chain `<main>` starts,
+   * so the panel fills what is left rather than sitting in a short box with
+   * empty space under it. `AsyncBoundary fill` carries it past the four states,
+   * and the panels themselves stretch.
+   */
   return (
-    <div className="w-full space-y-6 py-2">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">{t('partner.title')}</h1>
-        <p className="text-sm text-muted-foreground">{t('partner.subtitle')}</p>
-      </header>
-
+    <div className="flex min-h-0 w-full flex-1 flex-col">
       <AsyncBoundary
         status={query.status}
         label={t('partner.loading')}
@@ -68,6 +77,7 @@ export default function PartnerPage() {
         onRetry={() => query.refetch()}
         errorMessage={apiErrorMessage(query.error, t('partner.loadFailed'))}
         error={query.error}
+        fill
       >
         {query.data ? (
           <PartnerState status={query.data} onChanged={() => void query.refetch()} />
@@ -86,7 +96,12 @@ function PartnerState({ status, onChanged }: { status: IbStatus; onChanged: () =
   const application = status.application;
 
   if (application?.status === 'pending')
-    return <PendingPanel submittedAt={application.submittedAt} />;
+    return (
+      <PendingPanel
+        submittedAt={application.submittedAt}
+        agencyName={application.agencyName ?? null}
+      />
+    );
 
   if (application?.status === 'rejected') {
     return <RejectedPanel reason={application.rejectionReason} onReapply={onChanged} />;
@@ -141,6 +156,32 @@ function ApprovedPanel({ account }: { account: NonNullable<IbStatus['account']> 
           >
             {t('partner.suspendedNotice')}
           </p>
+        )}
+
+        {/*
+          THE AGENCY, and what it lets them sell.
+
+          A partner's clients are offered this agency's products and nothing
+          else, so it is the single fact that decides what their book can hold —
+          and until now the only place it existed was an admin screen they
+          cannot see.
+
+          Absent when they are on no agency, rather than printed as "none": a
+          partner appointed before agencies existed has clients who are offered
+          the FULL catalogue, and "none" would read as the opposite.
+        */}
+        {account.agencyName && (
+          <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
+            <p className="text-xs font-semibold text-muted-foreground">
+              {t('partner.agencyLabel')}
+            </p>
+            <p className="mt-1 text-sm font-semibold">{account.agencyName}</p>
+            {account.products.length > 0 && (
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {t('partner.agencyProducts', { products: account.products.join(', ') })}
+              </p>
+            )}
+          </div>
         )}
 
         <dl className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -236,14 +277,32 @@ function CopyableLink({ id, value }: { id: string; value: string }) {
 
 // ── pending ─────────────────────────────────────────────────────────────────
 
-function PendingPanel({ submittedAt }: { submittedAt: string }) {
+function PendingPanel({
+  submittedAt,
+  agencyName,
+}: {
+  submittedAt: string;
+  agencyName: string | null;
+}) {
+  /*
+   * The programme they asked for, in the footnote beside the date.
+   *
+   * Once the form is gone this is the only place an applicant can see what they
+   * requested, and "which one did I pick" is the question somebody asks a week
+   * into waiting. Null on an application submitted before agencies existed, and
+   * then the footnote is the date alone rather than an empty label.
+   */
+  const footnote = agencyName
+    ? t('partner.pendingSubmittedFor', { date: formatDate(submittedAt), agency: agencyName })
+    : t('partner.pendingSubmitted', { date: formatDate(submittedAt) });
+
   return (
     <StatusPanel
       icon={Clock}
       tone="warning"
       heading={t('partner.pendingHeading')}
       body={t('partner.pendingBody')}
-      footnote={t('partner.pendingSubmitted', { date: formatDate(submittedAt) })}
+      footnote={footnote}
     />
   );
 }
@@ -302,99 +361,6 @@ function IneligiblePanel({ reason }: { reason: string | null }) {
         </Button>
       </div>
     </StatusPanel>
-  );
-}
-
-// ── applying ────────────────────────────────────────────────────────────────
-
-/**
- * One card, one button.
- *
- * There was a form here — motivation, expected volume, website — and it was
- * three questions standing between a client and a request the reviewer decides
- * from their ACCOUNT anyway. Verified identity and real activity are what an
- * approval turns on; a paragraph typed to get past a form adds nothing a
- * reviewer would weigh, and every field is one more reason to abandon.
- *
- * The API still accepts those fields, and they stay in the DTO as optional —
- * an admin-side or a later "tell us more" flow can fill them without a
- * migration. This screen simply does not ask.
- */
-function ApplyPanel({ onApplied }: { onApplied: () => void }) {
-  const [submitting, setSubmitting] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const submit = async () => {
-    setSubmitting(true);
-    setError(null);
-    try {
-      await partnerApi.apply({});
-      /*
-       * Refetch rather than assume the shape of success. The next render is
-       * driven by what the server says — which is the difference between this
-       * and the optimistic version `kyc/submitted` records, where a failed
-       * request told the client they had submitted when they had not.
-       */
-      onApplied();
-    } catch (err) {
-      setError(apiErrorMessage(err, t('partner.submitFailed')));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="border-b border-border bg-muted/30 p-8 text-center">
-        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Handshake className="h-8 w-8" aria-hidden="true" />
-        </span>
-        <h2 className="mt-5 text-xl font-bold tracking-tight">{t('partner.applyHeading')}</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
-          {t('partner.applyIntro')}
-        </p>
-      </div>
-
-      <div className="p-8">
-        <h3 className="text-sm font-semibold">{t('partner.pitchHeading')}</h3>
-        <ol className="mt-4 space-y-3">
-          {[t('partner.pitchOne'), t('partner.pitchTwo'), t('partner.pitchThree')].map(
-            (line, index) => (
-              <li key={line} className="flex gap-3 text-sm">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-                  {index + 1}
-                </span>
-                <span className="leading-relaxed text-muted-foreground">{line}</span>
-              </li>
-            ),
-          )}
-        </ol>
-
-        {error && (
-          <p
-            role="alert"
-            className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
-          >
-            {error}
-          </p>
-        )}
-
-        <div className="mt-8 space-y-3">
-          <Button
-            type="button"
-            size="lg"
-            className="w-full"
-            loading={submitting}
-            onClick={() => void submit()}
-          >
-            {submitting ? t('partner.submitting') : t('partner.submit')}
-          </Button>
-          <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-            {t('partner.applyFootnote')}
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }
 

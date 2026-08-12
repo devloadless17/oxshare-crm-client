@@ -895,8 +895,6 @@ export const messages = {
   'notifications.kindPartnerRestoredTitle': 'Partner account restored',
   'notifications.kindPartnerRestoredBody': 'Your partner account is active again.',
   // ── Partner programme ─────────────────────────────────────────────────────
-  'partner.title': 'Partner Programme',
-  'partner.subtitle': 'Introduce clients to OxShare and earn from their activity.',
 
   // The pitch, shown only to somebody who is not yet a partner.
   'partner.pitchHeading': 'How the programme works',
@@ -908,6 +906,13 @@ export const messages = {
   'partner.applyHeading': 'Become a partner',
   'partner.applyIntro':
     'Earn from the clients you introduce to OxShare. Your account is already verified, so there is nothing to fill in — send the request and we will review it.',
+  'partner.agencyLabel': 'Your programme',
+  'partner.agencyProducts': 'Your clients can open: {products}',
+  'partner.pendingSubmittedFor': 'Applied for {agency} on {date}',
+  'partner.chooseAgency': 'Choose a programme',
+  'partner.chooseAgencyHint':
+    'Which programme you are appointed under decides the account types your clients can open. Pick the one you want to apply for — an administrator reviews it.',
+  'partner.agencySells': 'Accounts: {products}',
   'partner.applyFootnote': 'We review every request and email you the decision.',
   'partner.submit': 'Request to become a partner',
   'partner.submitting': 'Submitting…',

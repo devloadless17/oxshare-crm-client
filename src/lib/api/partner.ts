@@ -38,7 +38,19 @@ export type IbReferredClient = components['schemas']['IbReferredClientDto'];
 export type IbSubPartner = components['schemas']['IbSubPartnerDto'];
 export type IbLevelSummary = components['schemas']['IbLevelSummaryDto'];
 
+/** An agency (وكالة) a client may apply to be appointed under. */
+export type Agency = components['schemas']['PublicAgencyDto'];
+
 export interface ApplyToPartnerInput {
+  /**
+   * Which agency is being applied for.
+   *
+   * Optional in the API, because a deployment with none configured must still
+   * take partners. Where agencies exist the form makes it a required choice —
+   * "which programme" is the question the applicant is best placed to answer
+   * and a reviewer is not.
+   */
+  agencyId?: string;
   motivation?: string;
   expectedVolume?: string;
   website?: string;
@@ -69,6 +81,17 @@ export const partnerApi = {
    */
   async overview(signal?: AbortSignal): Promise<IbOverview> {
     const { data } = await apiClient.get<IbOverview>('/ib/overview', { signal });
+    return data;
+  },
+
+  /**
+   * The programmes open for application, with the products each carries.
+   *
+   * An EMPTY list is a working state, not a failure: it means the broker has
+   * configured no agencies, and the form should still let the client apply.
+   */
+  async agencies(signal?: AbortSignal): Promise<Agency[]> {
+    const { data } = await apiClient.get<Agency[]>('/ib/agencies', { signal });
     return data;
   },
 
