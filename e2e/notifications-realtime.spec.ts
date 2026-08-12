@@ -5,16 +5,18 @@ import { expect, request as apiRequest, test, type Page } from '@playwright/test
  *
  * ## Why this test exists and the unit tests do not replace it
  *
- * `use-notification-stream.test.ts` proves the hook drives a fake
- * `EventSource` correctly, and `notifications-realtime.spec.ts` in the backend
- * proves Postgres announces a committed row. Neither proves the thing a person
- * actually cares about: that a page which has been sitting open, untouched,
- * shows the new notification on its own.
+ * `use-realtime.test.ts` proves the hook drives a fake socket correctly, and
+ * `notifications-realtime.spec.ts` in the backend proves Postgres announces a
+ * committed row. Neither proves the thing a person actually cares about: that a
+ * page which has been sitting open, untouched, shows the new notification on
+ * its own.
  *
  * Everything between those two proofs has to work for that to happen — the
- * trigger, the LISTEN connection, the SSE handler, Next's rewrite proxying a
- * stream rather than buffering it, the browser's EventSource, React Query's
- * invalidation, and the render. That chain is only testable in a browser.
+ * trigger, the LISTEN connection, the gateway's room routing, the cookie
+ * authenticating a handshake that carries no Authorization header, the CSP
+ * actually permitting `ws:` to a DIFFERENT origin than the API, Socket.IO's
+ * upgrade, React Query's invalidation, and the render. That chain is only
+ * testable in a browser, and most of it has no HTTP request to assert on.
  *
  * ## How it proves "no refresh" rather than assuming it
  *
@@ -26,7 +28,7 @@ import { expect, request as apiRequest, test, type Page } from '@playwright/test
  * ## And "realtime" rather than "eventually"
  *
  * The badge is awaited with a timeout FAR below the polling fallback. The
- * portal polls the unread count every 60 seconds when the stream is down and
+ * portal polls the unread count every 60 seconds when the socket is down and
  * every 5 minutes when it is up, so anything appearing inside a few seconds
  * cannot have come from a poll.
  */
@@ -184,58 +186,63 @@ test.describe('the bell updates without a refresh', () => {
     expect(await markerSurvived(page)).toBe(true);
   });
 
-  test('the stream carries no notification body — the row is refetched, not pushed', async ({
+  test('the socket carries no notification body — the row is refetched, not pushed', async ({
     page,
   }) => {
     /*
-     * A privacy property, asserted from the wire.
+     * A privacy property, asserted from the wire itself.
      *
-     * The SSE frame deliberately carries only an id and a kind: the content is
+     * The frame deliberately carries only an id and a kind: the content is
      * re-read over the authenticated endpoint, so a notification body never
      * travels outside a permission-checked read, and the 8000-byte NOTIFY
      * channel never has to hold a rejection reason.
+     *
+     * Read from `page.on('websocket')` rather than by intercepting a URL,
+     * because there is no longer a request to intercept — a WebSocket is one
+     * upgrade followed by frames, and the frames are the only place the claim
+     * can be checked.
      */
     const frames: string[] = [];
-    page.on('response', (response) => {
-      if (response.url().includes('/notifications/stream')) frames.push(response.url());
+    page.on('websocket', (ws) => {
+      ws.on('framereceived', (frame) => frames.push(frame.payload.toString()));
     });
 
     await markEverythingRead(page);
     const reason = `Realtime payload check ${Date.now()}`;
 
-    const streamBodies: string[] = [];
-    await page.route('**/notifications/stream', async (route) => {
-      const response = await route.fetch();
-      streamBodies.push(await response.text().catch(() => ''));
-      await route.fulfill({ response });
-    });
-
     await creditWallet('1.23000000', reason);
     await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: 20_000 });
 
-    // Whatever the stream said, it did not say this.
-    expect(streamBodies.join('\n')).not.toContain(reason);
+    // The socket must have spoken at all — otherwise the assertion below is
+    // satisfied by silence, which is exactly how this test rots.
+    const wire = frames.join('\n');
+    expect(wire).toContain('notification.created');
+    // …and what it said did not include the body.
+    expect(wire).not.toContain(reason);
   });
 
   test('recovers on its own after the connection drops', async ({ page, context }) => {
     /*
      * The failure that matters most in production: a proxy or a laptop lid
-     * kills the stream. `EventSource` reconnects by itself, and underneath it
-     * the poll keeps running — so the bell must catch up either way, with no
-     * human action.
+     * kills the socket. Socket.IO reconnects by itself, and underneath it the
+     * poll keeps running — so the bell must catch up either way, with no human
+     * action.
+     *
+     * `setOffline` rather than route-blocking: Playwright's request routing
+     * does not intercept a WebSocket, so blocking a URL would break nothing
+     * and the test would pass without ever dropping the connection.
      */
     await markEverythingRead(page);
     await plantMarker(page);
 
-    // Break every future stream attempt, then let it heal.
-    await context.route('**/notifications/stream', (route) => route.abort());
+    await context.setOffline(true);
     await page.waitForTimeout(1_000);
-    await context.unroute('**/notifications/stream');
+    await context.setOffline(false);
 
     const reason = `Realtime recovery ${Date.now()}`;
     await creditWallet('2.34000000', reason);
 
-    // Generous: this may be carried by the reconnected stream OR by the
+    // Generous: this may be carried by the reconnected socket OR by the
     // 60-second fallback poll. Either is a pass — the point is that it
     // arrives without anybody touching the page.
     await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: 90_000 });

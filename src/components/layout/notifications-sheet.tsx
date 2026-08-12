@@ -20,7 +20,7 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { useUser } from '@/context/UserContext';
 import { t } from '@/lib/i18n';
 import { relativeTime } from '@/lib/relative-time';
-import { useNotificationStream } from '@/hooks/use-notification-stream';
+import { useRealtime } from '@/hooks/use-realtime';
 import {
   playNotificationSound,
   setSoundEnabled,
@@ -61,9 +61,6 @@ const COUNT_KEY = ['notifications', 'unread-count'] as const;
 const LIST_KEY = ['notifications'] as const;
 const PAGE_SIZE = 30;
 
-/** A stable no-op, so an unverified render does not rebuild the subscription. */
-const NO_STREAM = () => undefined;
-
 export function NotificationsSheet() {
   const queryClient = useQueryClient();
   const { user } = useUser();
@@ -94,21 +91,26 @@ export function NotificationsSheet() {
   );
 
   /*
-   * The live stream. Proven up, the poll backs off to five minutes; otherwise
+   * The live socket. Proven up, the poll backs off to five minutes; otherwise
    * the original sixty-second cadence carries the feature.
    *
    * Gated on `verified` like the queries below: both feed routes sit behind
-   * `EmailVerifiedGuard`, so an unverified client opening a stream would be
-   * refused — and EventSource retries a refused connection forever, which
-   * turns one 403 into a reconnect loop.
+   * `EmailVerifiedGuard`, so an unverified client's handshake would be refused
+   * — and Socket.IO retries a refused connection by default, which turns one
+   * rejection into a reconnect loop.
    */
-  const { connected } = useNotificationStream(
-    verified
-      ? () => {
-          void queryClient.invalidateQueries({ queryKey: LIST_KEY });
-          playNotificationSound();
-        }
-      : NO_STREAM,
+  const { connected } = useRealtime(
+    {
+      /*
+       * Passed inline: `useRealtime` keys its effect on the event NAMES and
+       * holds the handlers in a ref, so a fresh object per render does not
+       * rebuild the socket.
+       */
+      'notification.created': () => {
+        void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+        playNotificationSound();
+      },
+    },
     verified,
   );
 
