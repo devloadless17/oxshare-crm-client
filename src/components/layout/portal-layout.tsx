@@ -589,6 +589,20 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
         */}
         <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 sm:p-5 md:p-6 lg:p-8">
           {children}
+          {/*
+            A SPACER, not more padding.
+
+            `<main>` is the scroll container and already carries `p-*`, but a
+            scroll container's BOTTOM padding is dropped once its content
+            overflows — scroll to the end and the last card sits flush against
+            the window edge. It is a long-standing browser behaviour rather than
+            a mistake in the padding here, so adding more of it changes nothing.
+
+            An empty element after the content cannot be collapsed away, so the
+            gap survives the scroll. `shrink-0` because this lives in a flex
+            column and would otherwise be the first thing squeezed to nothing.
+          */}
+          <div aria-hidden="true" className="h-4 shrink-0 sm:h-5 md:h-6 lg:h-8" />
         </main>
       </div>
     </div>

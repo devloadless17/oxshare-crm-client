@@ -69,7 +69,16 @@ export default function PartnerPage() {
    * and the panels themselves stretch.
    */
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col">
+    /*
+      `pb-6` on the PAGE, not on `<main>`.
+
+      `<main>` is the scroll container and already carries padding, but a scroll
+      container's bottom padding is dropped once its content overflows — scroll
+      to the end and the last card sits flush against the window edge. This div
+      is a normal flex child rather than the scroller, so its padding is
+      honoured, which is what actually puts space under the final card.
+    */
+    <div className="flex min-h-0 w-full flex-1 flex-col pb-6">
       <AsyncBoundary
         status={query.status}
         label={t('partner.loading')}

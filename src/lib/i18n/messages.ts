@@ -906,6 +906,45 @@ export const messages = {
   'partner.applyHeading': 'Become a partner',
   'partner.applyIntro':
     'Earn from the clients you introduce to OxShare. Your account is already verified, so there is nothing to fill in — send the request and we will review it.',
+  // ── The partner area's tabs ───────────────────────────────────────────────
+  'partner.tabOverview': 'Overview',
+  'partner.tabCommissions': 'Commission',
+  'partner.tabPositions': 'Open positions',
+
+  'partner.commissionsLoading': 'Loading your commission',
+  'partner.commissionsFailed': 'Could not load your commission.',
+  'partner.commissionsEmpty': 'No commission yet',
+  'partner.commissionsEmptyBody':
+    'You earn when a client you introduced closes a trade. Each entry shows what the broker made on it and your share.',
+  'partner.colDate': 'Date',
+  'partner.colClient': 'Client',
+  'partner.colSource': 'From',
+  'partner.colBase': 'Broker earned',
+  'partner.colRate': 'Your rate',
+  'partner.colAmount': 'Your share',
+  'partner.colStatus': 'Status',
+  'partner.sourceTrade': 'Closed trade',
+  // Historical only — commission is no longer earned on deposits.
+  'partner.sourceDeposit': 'Deposit',
+  'partner.viaSubPartner': '(via sub-partner)',
+  'partner.statusPaid': 'Paid',
+  'partner.statusPending': 'Pending',
+  'partner.statusReversed': 'Reversed',
+
+  'partner.positionsLoading': 'Loading open positions',
+  'partner.positionsFailed': 'Could not load the open positions.',
+  'partner.positionsEmpty': 'Nothing open right now',
+  'partner.positionsEmptyBody':
+    'Trades your clients have open appear here while they run. Closed ones move to the Commission tab.',
+  'partner.colSymbol': 'Symbol',
+  'partner.colSide': 'Side',
+  'partner.colVolume': 'Lots',
+  'partner.colOpenPrice': 'Open price',
+  'partner.colFloating': 'Floating',
+  'partner.colOpened': 'Opened',
+  'partner.sideBuy': 'Buy',
+  'partner.sideSell': 'Sell',
+
   'partner.agencyLabel': 'Your programme',
   'partner.agencyProducts': 'Your clients can open: {products}',
   'partner.pendingSubmittedFor': 'Applied for {agency} on {date}',

@@ -38,6 +38,12 @@ export type IbReferredClient = components['schemas']['IbReferredClientDto'];
 export type IbSubPartner = components['schemas']['IbSubPartnerDto'];
 export type IbLevelSummary = components['schemas']['IbLevelSummaryDto'];
 
+/** One commission entry, with the status that says whether it is money yet. */
+export type IbCommissionRow = components['schemas']['IbCommissionRowDto'];
+
+/** One open trade belonging to a client this partner introduced. */
+export type IbClientPosition = components['schemas']['IbClientPositionDto'];
+
 /** An agency (وكالة) a client may apply to be appointed under. */
 export type Agency = components['schemas']['PublicAgencyDto'];
 
@@ -92,6 +98,24 @@ export const partnerApi = {
    */
   async agencies(signal?: AbortSignal): Promise<Agency[]> {
     const { data } = await apiClient.get<Agency[]>('/ib/agencies', { signal });
+    return data;
+  },
+
+  /**
+   * Every commission earned, claim and credit alike.
+   *
+   * The dashboard totals read the ledger — money PAID — so a partner mid-window
+   * sees zero there. This list carries `status`, which is what lets the screen
+   * explain the difference rather than appear to contradict itself.
+   */
+  async commissions(signal?: AbortSignal): Promise<IbCommissionRow[]> {
+    const { data } = await apiClient.get<IbCommissionRow[]>('/ib/commissions', { signal });
+    return data;
+  },
+
+  /** Open trades of this partner's DIRECT clients. */
+  async positions(signal?: AbortSignal): Promise<IbClientPosition[]> {
+    const { data } = await apiClient.get<IbClientPosition[]>('/ib/positions', { signal });
     return data;
   },
 
