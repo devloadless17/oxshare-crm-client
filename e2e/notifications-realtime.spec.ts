@@ -1,4 +1,5 @@
 import { expect, request as apiRequest, test, type Page } from '@playwright/test';
+import { CSRF_COOKIE_NAMES } from '../src/lib/api/client';
 
 /**
  * The bell updates WITHOUT a refresh.
@@ -74,6 +75,9 @@ test.beforeAll(async () => {
   const clients = await adminApi.get(
     `${API}/admin/clients?q=${encodeURIComponent(E2E_CLIENT_EMAIL)}&limit=5`,
   );
+  // Checked before parsing: a 403 or 429 here would otherwise surface as a
+  // TypeError on `.items`, hiding the actual reason behind a stack trace.
+  expect(clients.ok(), `the client lookup answered ${clients.status()}`).toBeTruthy();
   const found = ((await clients.json()) as { items: { id: string; email: string }[] }).items.find(
     (c) => c.email === E2E_CLIENT_EMAIL,
   );
@@ -118,12 +122,22 @@ async function markEverythingRead(page: Page): Promise<void> {
   await page.goto('/dashboard');
   await expect(bell(page)).toBeVisible();
 
-  // The CSRF token is the one cookie readable by JS, by design — the same
-  // contract the portal itself uses on every state change.
-  const csrf = await page.evaluate(() => {
-    const match = /(?:^|;\s*)oxshare_crm_portal_csrf=([^;]+)/.exec(document.cookie);
-    return match?.[1] ?? '';
-  });
+  /*
+   * The CSRF token is the one cookie readable by JS, by design — the same
+   * contract the portal itself uses on every state change.
+   *
+   * Read through `CSRF_COOKIE_NAMES` rather than a literal: on a secure origin
+   * the backend issues the `__Host-` prefixed spelling, so a hand-rolled regex
+   * for the bare name matches nothing and every test in this file fails on an
+   * empty token rather than on what it is testing.
+   */
+  const csrf = await page.evaluate((names: readonly string[]) => {
+    const jar = document.cookie.split('; ');
+    const raw = names
+      .map((name) => jar.find((c) => c.startsWith(`${name}=`)))
+      .find((found) => found !== undefined);
+    return raw === undefined ? '' : decodeURIComponent(raw.slice(raw.indexOf('=') + 1));
+  }, CSRF_COOKIE_NAMES);
   expect(csrf, 'the portal session carried no CSRF cookie').toBeTruthy();
 
   // `page.request` shares the browser context's cookies, so this is the
@@ -232,20 +246,53 @@ test.describe('the bell updates without a refresh', () => {
      * does not intercept a WebSocket, so blocking a URL would break nothing
      * and the test would pass without ever dropping the connection.
      */
+    /*
+     * The socket is watched so this test can PROVE it dropped and came back.
+     * Without that it passes whether or not reconnection works at all — the
+     * 60-second poll would carry the badge on its own, which is exactly the
+     * fallback this test is supposed to be looking past.
+     *
+     * Attached BEFORE the first navigation: `page.on('websocket')` only reports
+     * sockets opened after it is registered, so listening later would watch
+     * nothing and count zero forever.
+     */
+    let closed = 0;
+    let opened = 0;
+    page.on('websocket', (ws) => {
+      opened += 1;
+      ws.on('close', () => {
+        closed += 1;
+      });
+    });
+
     await markEverythingRead(page);
+    // The page must actually have a socket before dropping it means anything.
+    await expect.poll(() => opened, { timeout: 20_000 }).toBeGreaterThan(0);
+
     await plantMarker(page);
 
     await context.setOffline(true);
-    await page.waitForTimeout(1_000);
+    // Long enough for the browser to notice the socket is gone.
+    await expect.poll(() => closed, { timeout: 20_000 }).toBeGreaterThan(0);
     await context.setOffline(false);
 
+    /*
+     * Deliberately NOT asserting that a new WebSocket opens.
+     *
+     * Recovery over long-polling is equally correct — that is the whole point
+     * of `tryAllTransports` — and it creates no WebSocket to observe. Requiring
+     * one would fail the test for taking the fallback it is supposed to allow.
+     * The timing assertion below is what actually proves the transport is back.
+     */
     const reason = `Realtime recovery ${Date.now()}`;
     await creditWallet('2.34000000', reason);
 
-    // Generous: this may be carried by the reconnected socket OR by the
-    // 60-second fallback poll. Either is a pass — the point is that it
-    // arrives without anybody touching the page.
-    await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: 90_000 });
+    /*
+     * Under the POLL budget, deliberately. Allowing 90s here would let a
+     * completely broken reconnect pass on the 60-second fallback; holding it to
+     * the realtime budget means the reconnected socket is what delivered this.
+     */
+    await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: REALTIME_BUDGET_MS });
     expect(await markerSurvived(page)).toBe(true);
   });
 });

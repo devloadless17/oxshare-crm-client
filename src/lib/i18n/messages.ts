@@ -804,6 +804,10 @@ export const messages = {
   'notifications.loadFailed': 'Could not load your notifications.',
   'notifications.emptyTitle': 'Nothing yet',
   'notifications.emptyBody': 'Alerts about your account will appear here.',
+  // The PANEL's description, read by a screen reader when it opens. Distinct
+  // from emptyBody, which describes an empty list — announcing that to
+  // somebody whose panel holds thirty rows is simply wrong.
+  'notifications.panelDescription': 'Recent alerts about your account.',
   'notifications.unreadCountLabel': '{count} unread',
   'notifications.markAllRead': 'Mark all as read',
   'notifications.markAllReadFailed': 'Could not mark notifications as read.',
