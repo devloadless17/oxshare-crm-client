@@ -11,6 +11,7 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { formatMoney } from '@/lib/money';
 import { t, type MessageKey } from '@/lib/i18n';
+import { OpenAccountButton } from '@/components/accounts/open-account-button';
 
 /**
  * The client's MT5 trading accounts, live and demo.
@@ -68,14 +69,17 @@ export default function AccountsPage() {
           <h1 className="text-2xl font-bold tracking-tight">{t('accounts.title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t('accounts.subtitle')}</p>
         </div>
-        {/* The terminal is where these accounts are actually traded, so the
-            download sits on this screen as well as in the rail. */}
-        <Button asChild variant="outline" size="sm">
-          <Link href="/platforms">
-            <MonitorDown className="h-4 w-4" aria-hidden="true" />
-            {t('nav.platforms')}
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <OpenAccountButton />
+          {/* The terminal is where these accounts are actually traded, so the
+              download sits on this screen as well as in the rail. */}
+          <Button asChild variant="outline" size="sm">
+            <Link href="/platforms">
+              <MonitorDown className="h-4 w-4" aria-hidden="true" />
+              {t('nav.platforms')}
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <AsyncBoundary
@@ -101,6 +105,15 @@ export default function AccountsPage() {
             <LineChart className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
             <p className="text-sm font-semibold">{t('accounts.empty')}</p>
             <p className="max-w-sm text-xs text-muted-foreground">{t('accounts.emptyBody')}</p>
+            {/*
+              THE POINT OF THIS SCREEN when a client has nothing. Without it the
+              empty state is a dead end that tells somebody to contact support
+              for a thing the system can do in a second — which is exactly what
+              it did.
+            */}
+            <div className="pt-1">
+              <OpenAccountButton />
+            </div>
           </div>
         ) : (
           // Fills the page, matching the empty state and the loader so the

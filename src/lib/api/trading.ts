@@ -55,6 +55,30 @@ export type PositionStatus = Position['status'];
 export type Dashboard = components['schemas']['DashboardDto'];
 export type DashboardStats = components['schemas']['DashboardStatsDto'];
 
+/** Which environments this deployment lets a client open unaided. */
+export interface SelfServiceAvailability {
+  live: boolean;
+  demo: boolean;
+}
+
+/**
+ * A freshly opened account. NO PASSWORDS, deliberately.
+ *
+ * MT5 issues the master and investor passwords once and nothing stores them.
+ * They are emailed to the client's registered address instead of being returned
+ * here — this response is read by a browser, which is not necessarily one the
+ * client controls. `credentialsSentTo` is echoed so the screen can say where
+ * they went.
+ */
+export interface OpenedAccount {
+  id: string;
+  login: string;
+  environment: TradingEnvironment;
+  currency: string;
+  leverage: number;
+  credentialsSentTo: string;
+}
+
 export const tradingApi = {
   /**
    * Every account this client holds, live first then demo, newest first within
@@ -64,6 +88,37 @@ export const tradingApi = {
    * rather than a growing log. The server does the environment ordering so the
    * portal's grouping and the API cannot disagree about which is which.
    */
+  /**
+   * Whether this deployment lets a client open accounts themselves.
+   *
+   * Asked BEFORE drawing the buttons. The alternative — draw them and let the
+   * API refuse — teaches a client that a feature is not for them by making them
+   * press it, which is a poor way to find out.
+   */
+  async getSelfServiceAvailability(signal?: AbortSignal): Promise<SelfServiceAvailability> {
+    const { data } = await apiClient.get<SelfServiceAvailability>(
+      '/trading/accounts/self-service',
+      { signal },
+    );
+    return data;
+  },
+
+  /**
+   * Open a trading account.
+   *
+   * One field: the environment. The MT5 group, leverage and currency are the
+   * broker's configuration rather than the client's choice — see
+   * `SelfServiceGroups` on the API side.
+   *
+   * A live account requires a verified identity and is refused with the same
+   * KYC error code the money endpoints use, so the existing verification prompt
+   * applies unchanged.
+   */
+  async openAccount(environment: TradingEnvironment): Promise<OpenedAccount> {
+    const { data } = await apiClient.post<OpenedAccount>('/trading/accounts', { environment });
+    return data;
+  },
+
   async getAccounts(signal?: AbortSignal): Promise<TradingAccount[]> {
     const { data } = await apiClient.get<TradingAccount[]>('/trading/accounts', { signal });
     return data;

@@ -548,6 +548,35 @@ export const messages = {
   'dashboard.underReview': '{count} Under Review',
   'dashboard.noActivityBody':
     'Your recent deposits, withdrawals and transfers will appear here automatically.',
+  // ── Opening an account ────────────────────────────────────────────────────
+  // "Live" and "Demo" are jargon to somebody opening their first account, so
+  // each option says what it MEANS. Only one distinction matters and it is
+  // expensive in one direction.
+  'accounts.open': 'Open account',
+  'accounts.openTitle': 'Open a trading account',
+  'accounts.openBody': 'Choose the kind of account you want. You can have more than one.',
+  'accounts.live': 'Live account',
+  'accounts.liveBody': 'Trades with real money. Fund it from your wallet once it is open.',
+  'accounts.openLive': 'Open a live account',
+  'accounts.demo': 'Demo account',
+  'accounts.demoBody': 'Trades with practice money. Nothing at risk, and no verification needed.',
+  'accounts.openDemo': 'Open a demo account',
+  'accounts.openFailed': 'That account could not be opened. Please try again.',
+  'accounts.liveNeedsKyc':
+    'A live account needs your identity verified first. You can open a demo account right now without it.',
+  'accounts.verifyNow': 'Verify my identity',
+
+  'accounts.openedTitle': 'Your account is ready',
+  'accounts.openedDone': 'Done',
+  'accounts.credentialsEmailed':
+    'Your login and passwords have been emailed to {email}. They are not shown here.',
+  'accounts.credentialsNoCopy':
+    'We keep no copy of your passwords. If the email does not arrive, contact support and we will set a new one — they cannot be looked up.',
+  'accounts.colLogin': 'Login',
+  'accounts.colCurrency': 'Currency',
+  'accounts.colLeverage': 'Leverage',
+  'accounts.colEnvironment': 'Type',
+
   'accounts.emptyBody': 'Create an MT5 live or demo account to start trading.',
   'dashboard.recentTransactions': 'Recent Transactions',
 
