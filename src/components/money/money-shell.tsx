@@ -80,18 +80,28 @@ export function StepRail({ steps, active }: { steps: string[]; active: number })
   );
 }
 
-/** A page heading with a way back. */
+/**
+ * A page heading with a way back.
+ *
+ * `title` and `subtitle` are OPTIONAL, and omitting them leaves the back link
+ * alone. /withdraw does exactly that: its card carries a step rail naming both
+ * steps, so an `<h1>` reading "Withdraw" above a rail whose first step is
+ * "Method" was the third thing on screen saying where the client already knew
+ * they were. Dropping the heading is not the same as dropping the way back —
+ * they lived in one component, which is why this takes a prop rather than the
+ * page rendering its own `<Link>` and drifting from the other two screens.
+ */
 export function MoneyHeader({
   title,
   subtitle,
   backHref = '/wallet',
 }: {
-  title: string;
-  subtitle: string;
+  title?: string;
+  subtitle?: string;
   backHref?: string;
 }) {
   return (
-    <div className="space-y-3">
+    <div className={cn(title || subtitle ? 'space-y-3' : undefined)}>
       <Button asChild variant="ghost" size="sm" className="-ms-2">
         <Link href={backHref}>
           {/* Mirrored under RTL rather than swapped: "back" points at the start
@@ -100,10 +110,12 @@ export function MoneyHeader({
           {t('nav.wallet')}
         </Link>
       </Button>
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-      </div>
+      {(title || subtitle) && (
+        <div>
+          {title && <h1 className="text-2xl font-bold tracking-tight">{title}</h1>}
+          {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -193,7 +205,10 @@ export function MethodTile({
   return (
     <label
       className={cn(
-        'relative flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-colors',
+        // `p-3` and `rounded-xl`, down from `p-4`/`rounded-2xl`: a method tile
+        // is a radio button, and at the larger size a single-rail list read as
+        // a hero card for the one option available.
+        'relative flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors',
         checked
           ? 'border-primary bg-primary/5 ring-1 ring-primary'
           : 'border-border hover:bg-muted/40',
@@ -277,8 +292,15 @@ export function MoneySection({
   className?: string;
 }) {
   return (
-    <section className={cn('border-t border-border px-5 py-5 first:border-t-0 sm:px-6', className)}>
-      <h2 className="mb-3 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+    /*
+     * `py-4`, down from `py-5`. Three stacked sections at the larger padding
+     * pushed a four-field form past the fold on a laptop, which on a money
+     * screen means the submit button is somewhere the client has to go looking
+     * for. The horizontal padding is unchanged — that is what keeps the card
+     * from feeling cramped at the edges.
+     */
+    <section className={cn('border-t border-border px-5 py-4 first:border-t-0 sm:px-6', className)}>
+      <h2 className="mb-2.5 text-xs font-bold tracking-wide text-muted-foreground uppercase">
         {title}
       </h2>
       {children}
@@ -335,7 +357,7 @@ export function DestinationSelect({
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger id={id} className="h-12 w-full">
+        <SelectTrigger id={id} className="h-10 w-full">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>

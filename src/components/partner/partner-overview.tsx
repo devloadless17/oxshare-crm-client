@@ -6,7 +6,7 @@ import { AsyncBoundary } from '@/components/async-boundary';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbOverview } from '@/lib/api/partner';
-import { formatMoney } from '@/lib/money';
+import { formatDecimal, formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
 
 /**
@@ -144,7 +144,7 @@ function DashboardBody({ data }: { data: IbOverview }) {
                   every partner who ever saw it, because the cap was never set.
                 */}
                 <p className="text-sm font-semibold">
-                  {t('partner.levelRateRevenue', { rate: trimRate(level.rateValue) })}
+                  {t('partner.levelRateRevenue', { rate: formatDecimal(level.rateValue) })}
                 </p>
               </div>
             </div>
@@ -397,11 +397,6 @@ function CardHeader({
  * column with money, and `Number()` on that path is banned for the reason
  * `money.ts` records.
  */
-function trimRate(rate: string): string {
-  if (!rate.includes('.')) return rate;
-  return rate.replace(/0+$/, '').replace(/\.$/, '');
-}
-
 /**
  * A date in the reader's own locale.
  *

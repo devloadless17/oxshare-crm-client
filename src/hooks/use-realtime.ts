@@ -64,6 +64,16 @@ function acquire(): Socket | null {
   // Realtime is OFF rather than pointed somewhere wrong — see `lib/env.ts`.
   if (!REALTIME_ORIGIN) return null;
 
+  /*
+   * A socket that already exists but is DOWN is reconnected here.
+   *
+   * `unauthorized` disconnects deliberately and hands the retry to a timer, and
+   * a component that unmounts and remounts in between would otherwise re-acquire
+   * that dead socket and sit on it — connected to nothing, reporting nothing,
+   * with the retry timer cleared by the `release()` that ran on unmount.
+   */
+  if (shared && !shared.connected) shared.connect();
+
   if (!shared) {
     shared = io(`${REALTIME_ORIGIN}${NAMESPACE}`, {
       withCredentials: true,

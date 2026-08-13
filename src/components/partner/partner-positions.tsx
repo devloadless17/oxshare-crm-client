@@ -7,6 +7,7 @@ import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbClientPosition } from '@/lib/api/partner';
 import { t } from '@/lib/i18n';
+import { compareMoney, formatDecimal } from '@/lib/money';
 
 /**
  * What this partner's clients have open right now.
@@ -74,7 +75,7 @@ export function PartnerPositions() {
     },
     {
       header: t('partner.colVolume'),
-      cell: (row) => trimLots(row.volume),
+      cell: (row) => formatDecimal(row.volume),
       align: 'right',
       cellClassName: 'tabular',
       sortable: true,
@@ -83,7 +84,9 @@ export function PartnerPositions() {
     },
     {
       header: t('partner.colOpenPrice'),
-      cell: (row) => row.openPrice,
+      // A PRICE, not money: no currency, and every significant digit kept —
+      // this rendered `157.4200000000`, which is the storage scale on screen.
+      cell: (row) => formatDecimal(row.openPrice),
       align: 'right',
       cellClassName: 'tabular text-muted-foreground',
     },
@@ -97,15 +100,23 @@ export function PartnerPositions() {
       header: t('partner.colFloating'),
       cell: (row) => (
         <span
+          /*
+           * `compareMoney`, never `Number(row.profit)`. The coercion this repo
+           * bans on money paths was here twice — and a float is wrong before the
+           * comparison happens, which on a P/L column decides whether a partner
+           * sees red or green.
+           */
           className={
-            Number(row.profit ?? 0) > 0
-              ? 'text-success'
-              : Number(row.profit ?? 0) < 0
-                ? 'text-destructive'
-                : 'text-muted-foreground'
+            row.profit === null || row.profit === undefined
+              ? 'text-muted-foreground'
+              : compareMoney(row.profit, '0') > 0
+                ? 'text-success'
+                : compareMoney(row.profit, '0') < 0
+                  ? 'text-destructive'
+                  : 'text-muted-foreground'
           }
         >
-          {row.profit ?? '—'}
+          {row.profit === null || row.profit === undefined ? '—' : formatDecimal(row.profit)}
         </span>
       ),
       align: 'right',
@@ -148,10 +159,6 @@ export function PartnerPositions() {
 }
 
 /** `'0.5000'` → `'0.5'`. Lots are read, not summed, at this scale. */
-function trimLots(volume: string): string {
-  return volume.includes('.') ? volume.replace(/0+$/, '').replace(/\.$/, '') : volume;
-}
-
 function formatDate(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();

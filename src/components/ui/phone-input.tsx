@@ -29,6 +29,15 @@ export interface PhoneInputProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /**
+   * The accessible name for the number field.
+   *
+   * The withdraw form's visible label is `sr-only`, and this component owns its
+   * own markup with no id for a `htmlFor` to point at — so without this the
+   * client hears "edit text, blank" on the one field that decides where their
+   * money goes.
+   */
+  'aria-label'?: string;
 }
 
 export function PhoneInput({
@@ -38,6 +47,7 @@ export function PhoneInput({
   placeholder = '70 123 456',
   disabled = false,
   className,
+  'aria-label': ariaLabel,
 }: PhoneInputProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -108,7 +118,7 @@ export function PhoneInput({
         type="button"
         disabled={disabled}
         onClick={() => setOpen(!open)}
-        className="flex h-10 items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-2 text-xs font-semibold ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer min-w-[115px]"
+        className="flex h-9 items-center justify-between gap-1.5 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs font-semibold ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer min-w-[92px]"
       >
         <span className="flex items-center gap-2 truncate">
           <CountryFlagIcon code={selectedCountry.code} />
@@ -129,12 +139,13 @@ export function PhoneInput({
         onChange={handleNumberChange}
         placeholder={placeholder}
         disabled={disabled}
-        className="flex-1 font-mono text-xs"
+        aria-label={ariaLabel}
+        className="h-9 flex-1 font-mono text-xs"
       />
 
       {/* Searchable Dropdown Popover */}
       {open && (
-        <div className="absolute top-12 left-0 z-50 w-72 rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl p-2 animate-in fade-in-0 zoom-in-95 duration-150">
+        <div className="absolute top-11 left-0 z-50 w-72 rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl p-2 animate-in fade-in-0 zoom-in-95 duration-150">
           {/* Search Box */}
           <div className="relative mb-2">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />

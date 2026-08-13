@@ -285,21 +285,13 @@ export const messages = {
   'auth.verify.invalidToken': 'The verification link is invalid or has expired.',
   'auth.verify.resendCta': 'Resend Verification Email',
 
-  // ── Withdrawal confirmation (FR-CORE-08 / FR-IND-05) ──────────────────────
-  'withdraw.continue': 'Continue',
-  'withdraw.sendingCode': 'Sending code…',
-  'withdraw.otpLabel': 'Confirmation code',
-  'withdraw.otpHint':
-    'The code is tied to this exact amount and destination. Change either and you will need a new one.',
-  'withdraw.needOtp': 'Enter the 6-digit code from your email.',
-  // Shown when a refresh is resumed rather than restarted. Says the code still
-  // works, because the previous behaviour taught clients the opposite: the form
-  // reset, the emailed code stopped being accepted, and nothing connected the
-  // two.
-  'withdraw.restoredNotice':
-    'We kept this withdrawal from before you reloaded, so the code already in your email still works.',
-  'withdraw.otpSendFailed': 'Could not send the confirmation code. Please try again.',
-  'withdraw.editDetails': 'Change amount or destination',
+  /*
+   * The nine withdrawal-confirmation strings that lived here are GONE with the
+   * emailed code and the two-step form it belonged to (FR-CORE-08 /
+   * FR-IND-05): `continue`, `sendingCode`, `otpLabel`, `otpHint`, `needOtp`,
+   * `restoredNotice`, `otpSendFailed` and `editDetails`. The API no longer
+   * issues or verifies a code, so nothing can put them on screen.
+   */
   'common.notPermittedTitle': 'Not available on your account',
   'common.notPermittedBody':
     'Your account does not have access to this. If you think that is wrong, contact support.',
@@ -398,22 +390,51 @@ export const messages = {
   'withdraw.amount': 'Amount',
   'withdraw.amountPlaceholder': '0.00',
   'withdraw.available': 'Available: {amount}',
-  'withdraw.destination': 'Destination',
-  'withdraw.destinationPlaceholder': 'IBAN, or your USDT TRC20 address',
-  'withdraw.destinationHint':
-    'Double-check this. A withdrawal sent to the wrong destination cannot be recalled.',
+  /*
+   * ── The payout-target field, per rail ────────────────────────────────────
+   *
+   * `withdraw.destination*` is GONE. It labelled the field "Destination" — a
+   * database column, not a question — and its placeholder listed "IBAN, or your
+   * USDT TRC20 address", so a client paying out over Whish was asked for a
+   * destination and shown an IBAN hint for a rail they had not chosen.
+   *
+   * Each rail names its own field now, through
+   * `components/money/withdrawal-fields.tsx`. Adding a rail means a row in
+   * `withdrawal_payment_methods` and a pair of keys here.
+   */
+  // The SECTION heading above the per-rail field. "Recipient" rather than
+  // "Destination": it names who is being paid, which is the question, where
+  // the old word named a database column.
+  'withdraw.recipient': 'Recipient',
+  'withdraw.whishPhoneLabel': 'Whish phone number',
+  // Names the consequence rather than saying "double-check", and says WHOSE
+  // number it has to be — a client who has just typed their own needs to know.
+  'withdraw.whishPhoneHint':
+    'The Whish account that will receive the money. A payout sent to the wrong number cannot be recalled.',
+  // The fallback for a rail this build does not know yet — `{method}` is the
+  // operator's own name for it, so the field is still specific.
+  'withdraw.genericAccountLabel': '{method} account',
+  'withdraw.genericAccountHint':
+    'The {method} account that will receive the money. A payout sent to the wrong account cannot be recalled.',
   'withdraw.submit': 'Request withdrawal',
   'withdraw.submitting': 'Submitting…',
   'withdraw.needAmount': 'Enter an amount to withdraw.',
-  'withdraw.needDestination': 'Enter the phone number the funds should be sent to.',
+  'withdraw.needDestination': 'Enter where the funds should be sent.',
   'withdraw.needMethod': 'Choose how you want to be paid.',
   'withdraw.failed': 'Could not submit your withdrawal request.',
-  'withdraw.method': 'Withdraw to',
-  'withdraw.phoneLabel': 'Phone number',
-  // Names the consequence rather than saying "double-check": a client who has
-  // just typed their own number needs to know WHOSE number it must be.
-  'withdraw.phoneHint':
-    'The number that will receive the money. Make sure it is registered with the method above — a payout sent to the wrong number cannot be recalled.',
+  'withdraw.method': 'Withdraw with',
+  /*
+   * Two steps: the RAIL, then the amount and whatever that rail needs.
+   *
+   * The method is asked first because it decides what the second step asks for
+   * — a phone number on Whish, something else on the next rail. The single page
+   * this replaced asked for a payout target before the client had said where it
+   * was going.
+   */
+  'withdraw.stepMethod': 'Method',
+  'withdraw.stepDetails': 'Details',
+  'withdraw.continue': 'Continue',
+  'withdraw.changeMethod': 'Change',
   'withdraw.noMethods':
     'Withdrawals are unavailable at the moment. Please check back shortly or contact support.',
   'withdraw.submittedTitle': 'Withdrawal requested',
@@ -421,8 +442,14 @@ export const messages = {
     'Your request is with our team for review. The amount is held against your balance until it is approved or declined, and you will be emailed either way.',
   'withdraw.viewTransactions': 'View your transactions',
   'withdraw.noWallets': 'You have no funded wallet to withdraw from yet.',
-  'withdraw.reviewNote':
-    'Every withdrawal is reviewed by our team before any funds move. Nothing leaves your account automatically.',
+  /*
+   * `withdraw.reviewNote` is GONE — "every withdrawal is reviewed by our team
+   * before any funds move" no longer sits beside the payout field. The
+   * confirmation screen (`submittedBody` above) already says the request is with
+   * the team and that the amount is held, which is the moment that is worth
+   * telling a client; on the form it was a paragraph to read about something
+   * they had not done yet.
+   */
 
   // ── Deposit (CORE-06) ─────────────────────────────────────────────────────
   'deposit.title': 'Deposit',

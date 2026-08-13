@@ -142,6 +142,30 @@ export function NotificationsSheet() {
     verified,
   );
 
+  /*
+   * ⚠️ RE-SYNC WHENEVER THE SOCKET COMES BACK — the missing half of "realtime".
+   *
+   * A Socket.IO event is delivered only to a socket that is connected AT THAT
+   * MOMENT. There is no replay and no backlog, so everything that happened
+   * while this tab was closed, asleep, offline, or past the fifteen-minute
+   * token ceiling simply never arrives.
+   *
+   * That was the whole bug: a client whose withdrawal was approved while their
+   * portal tab was in the background got no toast, no chime and no badge — and
+   * then, because a CONNECTED socket backs the count poll off to five minutes,
+   * waited up to five minutes for it to appear. Opening the bell was the only
+   * thing that showed it promptly, because doing so invalidates the feed.
+   *
+   * Invalidating on every connect closes that window: reconnecting IS the
+   * moment to ask what was missed. It costs one small request per reconnect,
+   * and the first `connected === true` after mount is a normal cache
+   * revalidation of a query that has just been fetched anyway.
+   */
+  React.useEffect(() => {
+    if (!connected) return;
+    void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+  }, [connected, queryClient]);
+
   const count = useQuery({
     queryKey: COUNT_KEY,
     queryFn: ({ signal }) => notificationsApi.getUnreadCount(signal),

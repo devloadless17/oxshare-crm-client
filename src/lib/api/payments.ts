@@ -72,8 +72,11 @@ export interface TransactionQuery {
   limit?: number;
 }
 export type RequestWithdrawal = components['schemas']['RequestWithdrawalDto'];
-export type RequestWithdrawalOtp = components['schemas']['RequestWithdrawalOtpDto'];
-export type WithdrawalOtpResponse = components['schemas']['WithdrawalOtpResponseDto'];
+/*
+ * `RequestWithdrawalOtp` and `WithdrawalOtpResponse` are gone with the
+ * withdrawal confirmation code — the API no longer issues or verifies one, so
+ * the schemas they aliased no longer exist to alias.
+ */
 export type Transfer = components['schemas']['TransferDto'];
 export type RequestTransfer = components['schemas']['RequestTransferDto'];
 
@@ -139,41 +142,12 @@ export const paymentsApi = {
     return data;
   },
 
-  /**
-   * Sends the confirmation code for ONE specific withdrawal — FR-CORE-08.
-   *
-   * ## Currently UNUSED by the withdraw screen
-   *
-   * The form is one step now and submits without a code. This is kept because
-   * the control itself is not gone: `withdrawal_otp` is still a real switch in
-   * Settings → Security, and the API still refuses a codeless withdrawal while
-   * it is ON (it is seeded OFF). Restoring the confirm step means calling this
-   * again rather than rebuilding it.
-   *
-   * The payload is the withdrawal itself, and that is load-bearing rather than
-   * convenient: the server binds the code to these exact fields, so a code
-   * obtained here cannot authorise a withdrawal with a different amount or a
-   * different destination. Sending anything less than the full intent would
-   * quietly give up that guarantee.
-   *
-   * Answers with a message either way — including when the operator has the OTP
-   * control switched off — so the caller's flow does not branch on whether the
-   * control is on. `required` is the BOOLEAN to read; the message is prose and
-   * will be translated.
+  /*
+   * `sendWithdrawalOtp` is GONE. `POST /payments/withdrawals/otp` no longer
+   * exists on the API — the confirmation code was removed from the withdrawal
+   * flow entirely, not merely switched off — so a client method for it would
+   * have been a 404 waiting to be called.
    */
-  async sendWithdrawalOtp(
-    body: RequestWithdrawalOtp,
-    signal?: AbortSignal,
-  ): Promise<WithdrawalOtpResponse> {
-    const { data } = await apiClient.post<WithdrawalOtpResponse>(
-      '/payments/withdrawals/otp',
-      body,
-      {
-        signal,
-      },
-    );
-    return data;
-  },
 
   /**
    * Request a withdrawal.
