@@ -55,11 +55,18 @@ beforeEach(() => {
 });
 
 describe('the preference', () => {
-  it('defaults to OFF for the portal — a client has this open incidentally', () => {
-    // The inverse of the console's default, and deliberately so: an unexpected
-    // noise from a page nobody was looking at is what gets a feature muted
-    // permanently on day one.
-    expect(soundEnabled()).toBe(false);
+  it('defaults to ON — these are events a client is waiting on', () => {
+    /*
+     * This reverses an earlier default of OFF, whose reasoning was that a
+     * client has the portal open incidentally and an unexpected noise is what
+     * gets a feature muted permanently on day one. What decided it the other
+     * way is what the portal's events actually are: a deposit landing, a
+     * withdrawal approved, an identity check passing — a handful of moments a
+     * client is explicitly waiting on, not a queue that ticks all day.
+     * Defaulting those to silent meant the feature existed only for the
+     * fraction of clients who found the toggle.
+     */
+    expect(soundEnabled()).toBe(true);
   });
 
   it('round-trips a choice through storage', () => {
@@ -72,11 +79,17 @@ describe('the preference', () => {
   });
 
   it('reports the DEFAULT as the server snapshot, never storage', () => {
-    // The value a server render must produce. Reading storage here is what
-    // makes the toggle flip after hydration — a mismatch React warns about and
-    // a reader sees as a flicker.
-    setSoundEnabled(true);
-    expect(soundEnabledOnServer()).toBe(false);
+    /*
+     * The value a server render must produce. Reading storage here is what
+     * makes the toggle flip after hydration — a mismatch React warns about and
+     * a reader sees as a flicker.
+     *
+     * Stored OFF against a default of ON, so this fails if the implementation
+     * ever consults storage: the two values differ, which is the only way this
+     * assertion can catch anything.
+     */
+    setSoundEnabled(false);
+    expect(soundEnabledOnServer()).toBe(true);
   });
 
   it('notifies subscribers in THIS tab, and unsubscribes cleanly', () => {

@@ -405,8 +405,17 @@ export const messages = {
   'withdraw.submit': 'Request withdrawal',
   'withdraw.submitting': 'Submitting…',
   'withdraw.needAmount': 'Enter an amount to withdraw.',
-  'withdraw.needDestination': 'Enter where the funds should be sent.',
+  'withdraw.needDestination': 'Enter the phone number the funds should be sent to.',
+  'withdraw.needMethod': 'Choose how you want to be paid.',
   'withdraw.failed': 'Could not submit your withdrawal request.',
+  'withdraw.method': 'Withdraw to',
+  'withdraw.phoneLabel': 'Phone number',
+  // Names the consequence rather than saying "double-check": a client who has
+  // just typed their own number needs to know WHOSE number it must be.
+  'withdraw.phoneHint':
+    'The number that will receive the money. Make sure it is registered with the method above — a payout sent to the wrong number cannot be recalled.',
+  'withdraw.noMethods':
+    'Withdrawals are unavailable at the moment. Please check back shortly or contact support.',
   'withdraw.submittedTitle': 'Withdrawal requested',
   'withdraw.submittedBody':
     'Your request is with our team for review. The amount is held against your balance until it is approved or declined, and you will be emailed either way.',
@@ -899,6 +908,22 @@ export const messages = {
     'Your partner account was suspended. Contact support for details.',
   'notifications.kindPartnerRestoredTitle': 'Partner account restored',
   'notifications.kindPartnerRestoredBody': 'Your partner account is active again.',
+  'notifications.kindTradingAccountOpenedTitle': 'Trading account ready',
+  // The login, because that is the number they will be asked for. The password
+  // is not here and is not anywhere in this app — it was emailed, and the body
+  // says so rather than leaving them looking for it on screen.
+  'notifications.kindTradingAccountOpenedBody':
+    'Your {environment} account {login} is open. The login details were emailed to you.',
+  'notifications.kindTransferCompletedTitle': 'Transfer complete',
+  'notifications.kindTransferCompletedBody': '{amount} was {direction}.',
+  // The two halves of the sentence above. Phrased as completed actions so they
+  // read correctly in it, and translated rather than interpolating the
+  // backend's `wallet_to_account` enum.
+  'notifications.transferToAccount': 'moved to your trading account',
+  'notifications.transferToWallet': 'returned to your wallet',
+  // The toast's action button. Short because it sits inside a toast, and a
+  // verb because it does something rather than describing where it goes.
+  'notifications.view': 'View',
   // ── Partner programme ─────────────────────────────────────────────────────
 
   // The pitch, shown only to somebody who is not yet a partner.
@@ -956,6 +981,10 @@ export const messages = {
   'partner.agencyProducts': 'Your clients can open: {products}',
   'partner.pendingSubmittedFor': 'Applied for {agency} on {date}',
   'partner.chooseAgency': 'Choose a programme',
+  // Not a validation error: an operator has configured nothing to apply for,
+  // and naming that is more useful than a message about an unshown field.
+  'partner.noAgenciesOffered':
+    'No partner programmes are open at the moment. Please check back, or contact support if you were invited to apply.',
   'partner.chooseAgencyHint':
     'Which programme you are appointed under decides the account types your clients can open. Pick the one you want to apply for — an administrator reviews it.',
   'partner.agencySells': 'Accounts: {products}',

@@ -77,8 +77,15 @@ export type WithdrawalOtpResponse = components['schemas']['WithdrawalOtpResponse
 export type Transfer = components['schemas']['TransferDto'];
 export type RequestTransfer = components['schemas']['RequestTransferDto'];
 
-/** The payout rails, from the schema — so a new one is a compile error here. */
-export type WithdrawalProvider = RequestWithdrawal['provider'];
+/**
+ * One payout rail on offer — `withdrawal_payment_methods`, via the API.
+ *
+ * This replaced `WithdrawalProvider`, which aliased a closed union
+ * (`'whish' | 'usdt'`) off the request DTO. The rails are DATA now, so there is
+ * no union left to alias: adding a method is a row, and the screen renders
+ * whatever the endpoint returns rather than whatever the build knew about.
+ */
+export type WithdrawalMethod = components['schemas']['WithdrawalMethodDto'];
 
 export const paymentsApi = {
   /**
@@ -119,7 +126,29 @@ export const paymentsApi = {
   },
 
   /**
+   * The payout rails currently on offer.
+   *
+   * Enabled ones only, in the operator's display order — the server decides
+   * both, so this screen never filters or sorts a list of payment methods on
+   * its own. Authenticated but not KYC-gated, unlike the withdrawal itself.
+   */
+  async getWithdrawalMethods(signal?: AbortSignal): Promise<WithdrawalMethod[]> {
+    const { data } = await apiClient.get<WithdrawalMethod[]>('/payments/withdrawal-methods', {
+      signal,
+    });
+    return data;
+  },
+
+  /**
    * Sends the confirmation code for ONE specific withdrawal — FR-CORE-08.
+   *
+   * ## Currently UNUSED by the withdraw screen
+   *
+   * The form is one step now and submits without a code. This is kept because
+   * the control itself is not gone: `withdrawal_otp` is still a real switch in
+   * Settings → Security, and the API still refuses a codeless withdrawal while
+   * it is ON (it is seeded OFF). Restoring the confirm step means calling this
+   * again rather than rebuilding it.
    *
    * The payload is the withdrawal itself, and that is load-bearing rather than
    * convenient: the server binds the code to these exact fields, so a code

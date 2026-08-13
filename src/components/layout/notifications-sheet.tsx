@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Bell, Volume2, VolumeX } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -23,12 +24,14 @@ import { relativeTime } from '@/lib/relative-time';
 import { useRealtime } from '@/hooks/use-realtime';
 import {
   playNotificationSound,
+  primeNotificationSound,
   setSoundEnabled,
   soundEnabled,
   soundEnabledOnServer,
   subscribeToSoundPreference,
 } from '@/lib/notification-sound';
 import { resolveKind } from './notification-kinds';
+import { toastNotification } from './notification-toast';
 
 /**
  * The notification bell, and the panel behind it — live since
@@ -63,6 +66,7 @@ const PAGE_SIZE = 30;
 
 export function NotificationsSheet() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { user } = useUser();
   const [open, setOpen] = React.useState(false);
 
@@ -99,6 +103,20 @@ export function NotificationsSheet() {
    * — and Socket.IO retries a refused connection by default, which turns one
    * rejection into a reconnect loop.
    */
+  /*
+   * Build the AudioContext on the client's first click or keypress, rather than
+   * on the first notification that wants it.
+   *
+   * Without this the first chime is inaudible even for somebody who has been
+   * using the app for an hour — `resume()` is asynchronous and the notes are
+   * already scheduled — so sound appeared to start working only from the second
+   * notification onward. See `lib/notification-sound.ts`.
+   *
+   * Here rather than in the root layout because this component is the only
+   * thing that plays the sound, and it mounts on every authenticated screen.
+   */
+  React.useEffect(() => primeNotificationSound(), []);
+
   const { connected } = useRealtime(
     {
       /*
@@ -106,9 +124,19 @@ export function NotificationsSheet() {
        * holds the handlers in a ref, so a fresh object per render does not
        * rebuild the socket.
        */
-      'notification.created': () => {
+      'notification.created': (payload) => {
         void queryClient.invalidateQueries({ queryKey: LIST_KEY });
         playNotificationSound();
+        /*
+         * The toast is the point of the socket for a client who is not looking
+         * at the bell — which is almost always. The badge behind it is the
+         * durable signal and the toast is the announcement; both are driven by
+         * this one event so they cannot disagree.
+         *
+         * `router.push` rather than a `<Link>`: a toast action is a button
+         * inside a portal-rendered overlay, not a row in the sheet.
+         */
+        toastNotification(payload, (href) => router.push(href));
       },
     },
     verified,

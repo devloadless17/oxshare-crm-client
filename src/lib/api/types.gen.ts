@@ -1030,6 +1030,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/ib/partners/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One partner’s standing, their line and their earnings
+         * @description The partner account joined to its level and agency, the partner above them, the partners directly beneath them, how many clients they introduced, and their confirmed and pending earnings. Answers `null` when the client is not a partner — every client profile asks, and most clients are not one, so that is an ordinary answer rather than a 404.
+         */
+        get: operations["AdminIbController_partnerDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/ib/partners/{userId}/level": {
         parameters: {
             query?: never;
@@ -1196,6 +1216,26 @@ export interface paths {
          * @description Creates a PENDING deposit. No balance changes until the operator confirms the money arrived. The returned reference is what reconciles the payment to this request.
          */
         post: operations["PaymentsController_requestDeposit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/withdrawal-methods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The withdrawal methods currently on offer
+         * @description Enabled rails only, in display order. The `key` is what POST /payments/withdrawals takes as `methodKey`.
+         */
+        get: operations["PaymentsController_listWithdrawalMethods"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3132,7 +3172,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Approve a pending withdrawal — funds stay on hold until settlement */
+        /**
+         * Approve a pending withdrawal and record it as paid
+         * @description One step: the withdrawal moves from pending to success with `settledAt` stamped. No balance changes — the debit posted when the client requested it. Requires `withdrawals.settle`, because this releases the payout.
+         */
         patch: operations["AdminMoneyController_approveWithdrawal"];
         trace?: never;
     };
@@ -3222,7 +3265,7 @@ export interface paths {
         };
         /**
          * Run reconciliation now and return the report (§12.2)
-         * @description The same check the hourly job runs: every wallet balance against the sum of its own ledger, and every confirmed accrual against the entry that should have credited it. Read-only — a discrepancy is reported, never repaired, because an automatic correction would write a compensating entry for a cause nobody has diagnosed.
+         * @description The same check the hourly job runs: every wallet balance against the sum of its own ledger, and every confirmed accrual against the entry that should have credited it. Read-only — a discrepancy is reported, never repaired, because an automatic correction would write a compensating entry for a cause nobody has diagnosed. Whole-platform: an admin scoped to a client territory is refused, because a reconciliation over a fragment is meaningless and the full report names clients outside their territory.
          */
         get: operations["AdminMoneyController_reconcile"];
         put?: never;
@@ -3362,6 +3405,46 @@ export interface paths {
          * @description The same filters as GET /admin/trading-accounts, over every matching row rather than one page. Balances are the exact decimal strings the column holds. Client scope applies exactly as it does to the list.
          */
         get: operations["AdminHoldingsController_exportTradingAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/clients/{id}/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One client’s positions, open or closed
+         * @description Newest first, joined to the account they were traded on. `profit` is the FLOATING result while a position is open and the REALISED one once it has closed — one column, disambiguated by `status`. Prices and money are strings (§6.1).
+         */
+        get: operations["AdminHoldingsController_listClientPositions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/clients/{id}/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One client’s money movements, all directions
+         * @description `amount` is a decimal string (§6.1), never a number.
+         */
+        get: operations["AdminHoldingsController_listClientTransactions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3824,9 +3907,9 @@ export interface components {
         CreateIbApplicationDto: {
             /**
              * Format: uuid
-             * @description Which agency the applicant wants to be appointed under.
+             * @description Which agency the applicant wants to be appointed under. Required — it decides what they may sell, and there is no "any" option.
              */
-            agencyId?: string;
+            agencyId: string;
             /** @description Why the client wants to introduce business. Shown to the reviewer verbatim. */
             motivation?: string;
             /** @description Self-reported and unverified. Labelled as such on the review screen. */
@@ -3840,7 +3923,7 @@ export interface components {
             parentIbUserId?: string | null;
             /**
              * Format: uuid
-             * @description Omitted grants the agency the applicant chose. Supply one to override it.
+             * @description Omitted grants the agency the applicant chose. Required when the application carries none — a partner cannot be approved without an agency.
              */
             agencyId?: string;
         };
@@ -3849,6 +3932,51 @@ export interface components {
             reason?: string;
             /** @description The reviewer's own words, appended to the label. */
             note?: string;
+        };
+        IbPartnerPersonDto: {
+            userId: string;
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+        };
+        IbSubPartnerRowDto: {
+            userId: string;
+            email: string;
+            firstName: string | null;
+            lastName: string | null;
+            level: number;
+            levelName: string;
+            referralCode: string;
+            active: boolean;
+            /** Format: date-time */
+            approvedAt: string;
+        };
+        IbPartnerEarningsDto: {
+            /** @example 73.50000000 */
+            confirmed: string;
+            /** @example 0.00000000 */
+            pending: string;
+        };
+        IbPartnerDetailDto: {
+            userId: string;
+            level: number;
+            levelName: string | null;
+            /** @description The rung’s percentage of the broker’s revenue. A decimal string, never a number. */
+            rateValue: string | null;
+            referralCode: string;
+            /** @description A suspended partner keeps their code and tree, and stops earning. */
+            active: boolean;
+            /** Format: date-time */
+            approvedAt: string;
+            agencyId: string | null;
+            agencyName: string | null;
+            /** @description What the agency lets them sell. Empty means the full catalogue. */
+            products: string[];
+            parent: components["schemas"]["IbPartnerPersonDto"] | null;
+            directPartners: components["schemas"]["IbSubPartnerRowDto"][];
+            /** @description How many clients they introduced. */
+            referredClientCount: number;
+            earnings: components["schemas"]["IbPartnerEarningsDto"];
         };
         ChangeIbLevelDto: {
             /** @description Must be an ENABLED level. */
@@ -3984,15 +4112,31 @@ export interface components {
              */
             paymentUrl: string | null;
         };
+        WithdrawalMethodDto: {
+            /**
+             * @description Send this back as `methodKey`.
+             * @example whish
+             */
+            key: string;
+            /**
+             * @description The operator's own name for the rail.
+             * @example Whish Money
+             */
+            name: string;
+            logoUrl?: string | null;
+        };
         RequestWithdrawalDto: {
             /** @example 300.00000000 */
             amount: string;
             /** @enum {string} */
             currency: "USD" | "USDT";
-            /** @description Payout target, e.g. an IBAN or a USDT address. */
+            /** @description Where the money goes, in the form the chosen method requires. For Whish Money this is the recipient's phone number, validated against Whish's own rules at request time. */
             destination: string;
-            /** @enum {string} */
-            provider: "whish" | "usdt";
+            /**
+             * @description A `withdrawal_payment_methods.key` from GET /payments/withdrawal-methods. Rejected if unknown or disabled.
+             * @example whish
+             */
+            methodKey: string;
             /**
              * @description Six-digit confirmation code. Required while the withdrawal OTP control is on.
              * @example 482913
@@ -4035,10 +4179,13 @@ export interface components {
             amount: string;
             /** @enum {string} */
             currency: "USD" | "USDT";
-            /** @description Payout target, e.g. an IBAN or a USDT address. */
+            /** @description Where the money goes, in the form the chosen method requires. For Whish Money this is the recipient's phone number, validated against Whish's own rules at request time. */
             destination: string;
-            /** @enum {string} */
-            provider: "whish" | "usdt";
+            /**
+             * @description A `withdrawal_payment_methods.key` from GET /payments/withdrawal-methods. Rejected if unknown or disabled.
+             * @example whish
+             */
+            methodKey: string;
         };
         WithdrawalOtpResponseDto: {
             /** @example A confirmation code has been sent to your email address. */
@@ -4669,6 +4816,7 @@ export interface components {
             maskedFields: string[];
             maskedFieldsOverride?: string[] | null;
             scopedTags: components["schemas"]["AdminScopeTagDto"][];
+            seesUntriaged: boolean;
             /** @example /uploads/avatars/6f1c.png */
             avatarUrl?: string | null;
             /** Format: date-time */
@@ -4692,6 +4840,8 @@ export interface components {
             maskedFields?: string[];
             /** @description Client tags this admin is scoped to. Omit or [] means UNRESTRICTED — every client. */
             scopedTagIds?: string[];
+            /** @description D-60 — sees the intake pool: clients with no tag assignments yet. Meaningful only for a scoped admin. DEFAULTS TO TRUE — restriction is the explicit act; an inviter who does not see the pool cannot grant it, and their default resolves to false. */
+            seesUntriaged?: boolean;
         };
         InviteResponseDto: {
             message: string;
@@ -4790,6 +4940,8 @@ export interface components {
             label: string;
             color?: string;
             description?: string;
+            /** @description A tag the platform itself assigns (new-client intake, D-60). Undeletable; label and colour editable; un-assigning from a client is how they are triaged out of it. */
+            isSystem: boolean;
             /** Format: date-time */
             createdAt: string;
         };
@@ -4917,6 +5069,8 @@ export interface components {
             label: string;
             color?: string;
             description?: string;
+            /** @description A tag the platform itself assigns (new-client intake, D-60). Undeletable; label and colour editable; un-assigning from a client is how they are triaged out of it. */
+            isSystem: boolean;
             /** Format: date-time */
             createdAt: string;
             /** @description How many clients carry this tag. */
@@ -5149,6 +5303,8 @@ export interface components {
             maskedFields?: string[] | null;
             /** @description Client tag ids. An EMPTY ARRAY means unrestricted (every client), not none — see D-10. */
             scopedTagIds?: string[];
+            /** @description D-60 — sees the intake pool: clients with no tag assignments yet. Meaningful only for a scoped admin. DEFAULTS TO TRUE — restriction is the explicit act; an inviter who does not see the pool cannot grant it, and their default resolves to false. */
+            seesUntriaged?: boolean;
         };
         AdminStatusDto: {
             /** @enum {string} */
@@ -5283,6 +5439,8 @@ export interface components {
             /** @enum {string} */
             state: "pending" | "approved" | "success" | "failure" | "rejected";
             provider: string;
+            /** @example Whish Money */
+            methodName: string;
             providerRef?: string | null;
             destination?: string | null;
             rejectionReason?: string | null;
@@ -5577,6 +5735,65 @@ export interface components {
         TradingAccountListResponseDto: {
             items: components["schemas"]["TradingAccountRowDto"][];
             nextCursor: string | null;
+            total: number;
+            page: number;
+            limit: number;
+        };
+        ClientPositionRowDto: {
+            id: string;
+            ticket: string;
+            symbol: string;
+            /** @enum {string} */
+            side: "buy" | "sell";
+            /**
+             * @description Lots.
+             * @example 0.2000
+             */
+            volume: string;
+            openPrice: string;
+            /** @description NULL while open. */
+            closePrice: string | null;
+            /** @description The FLOATING result while `status` is open, and the REALISED one once closed. One column, two meanings, disambiguated by `status` — label it accordingly. */
+            profit: string | null;
+            swap: string | null;
+            commission: string | null;
+            currency: string;
+            /** @enum {string} */
+            status: "open" | "closed";
+            /** Format: date-time */
+            openedAt: string;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** @description The account it was traded on. NULL until MT5 issues a login. */
+            login: string | null;
+        };
+        ClientPositionsPageDto: {
+            rows: components["schemas"]["ClientPositionRowDto"][];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        ClientTransactionRowDto: {
+            id: string;
+            /** @enum {string} */
+            direction: "deposit" | "withdrawal" | "transfer";
+            state: string;
+            /**
+             * @description A decimal string (§6.1).
+             * @example 250.00000000
+             */
+            amount: string;
+            currency: string;
+            methodKey: string | null;
+            provider: string | null;
+            providerRef: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            settledAt: string | null;
+        };
+        ClientTransactionsPageDto: {
+            rows: components["schemas"]["ClientTransactionRowDto"][];
             total: number;
             page: number;
             limit: number;
@@ -6914,6 +7131,27 @@ export interface operations {
             };
         };
     };
+    AdminIbController_partnerDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbPartnerDetailDto"];
+                };
+            };
+        };
+    };
     AdminIbController_changeLevel: {
         parameters: {
             query?: never;
@@ -7160,6 +7398,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DepositRequestDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_listWithdrawalMethods: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WithdrawalMethodDto"][];
                 };
             };
         };
@@ -10250,6 +10507,55 @@ export interface operations {
                 };
                 content: {
                     "text/csv": string;
+                };
+            };
+        };
+    };
+    AdminHoldingsController_listClientPositions: {
+        parameters: {
+            query?: {
+                status?: "open" | "closed";
+                page?: string;
+                limit?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientPositionsPageDto"];
+                };
+            };
+        };
+    };
+    AdminHoldingsController_listClientTransactions: {
+        parameters: {
+            query?: {
+                page?: string;
+                limit?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientTransactionsPageDto"];
                 };
             };
         };

@@ -5,6 +5,7 @@ import './globals.css';
 import { DEFAULT_LOCALE, direction } from '@/lib/i18n';
 import { LocaleDirection } from '@/components/locale-direction';
 import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/toaster';
 
 import { UserProvider } from '@/context/UserContext';
 import { QueryProvider } from '@/components/query-provider';
@@ -58,6 +59,10 @@ export default async function RootLayout({
           <QueryProvider>
             <UserProvider>{children}</UserProvider>
           </QueryProvider>
+          {/* INSIDE ThemeProvider — it reads `resolvedTheme` — but outside
+              QueryProvider, which it does not use. It is not a provider and
+              wraps nothing, so it takes no position in the tree beyond that. */}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

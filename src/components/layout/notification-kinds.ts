@@ -1,13 +1,15 @@
 import type * as React from 'react';
 import {
   ArrowDownToLine,
+  ArrowLeftRight,
   ArrowUpFromLine,
+  CandlestickChart,
   Handshake,
   Percent,
   ShieldCheck,
   Wallet,
 } from 'lucide-react';
-import type { MessageKey } from '@/lib/i18n';
+import { t, type MessageKey } from '@/lib/i18n';
 import { formatMoney } from '@/lib/money';
 import type { AppNotification } from '@/lib/api/notifications';
 
@@ -153,6 +155,52 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     titleKey: 'notifications.kindPartnerRestoredTitle',
     bodyKey: 'notifications.kindPartnerRestoredBody',
     href: '/partner',
+  },
+  /*
+   * The account is open and the credentials went to the client's MAILBOX, not
+   * into this app — which is the whole reason this row exists. The one screen
+   * that showed the confirmation renders it once, so a client who navigated
+   * away had no in-app record that the account existed at all.
+   *
+   * The login travels because it is the number they will be asked for; no
+   * password ever does.
+   */
+  'trading_account.opened': {
+    icon: CandlestickChart,
+    titleKey: 'notifications.kindTradingAccountOpenedTitle',
+    bodyKey: 'notifications.kindTradingAccountOpenedBody',
+    vars: (params) => ({ login: str(params.login), environment: str(params.environment) }),
+    href: '/accounts',
+  },
+  /*
+   * A transfer landed. TWO bodies, chosen by direction, because "transfer
+   * completed" is the vaguest possible answer to "where is my money" — and a
+   * transfer is the one movement here that is genuinely asynchronous from the
+   * client's side, so this message is what closes the window in which their
+   * money is visibly in neither place.
+   */
+  'transfer.completed': {
+    icon: ArrowLeftRight,
+    titleKey: 'notifications.kindTransferCompletedTitle',
+    bodyKey: 'notifications.kindTransferCompletedBody',
+    vars: (params) => ({
+      amount: formatMoney(str(params.amount), str(params.currency)),
+      /*
+       * The DIRECTION as a translated phrase, resolved here rather than
+       * interpolating the backend's enum. `wallet_to_account` is a database
+       * value and would be shown to a client verbatim — and it cannot be
+       * translated, which is the same reason no other raw slug reaches a
+       * screen in this app. An unknown value yields `undefined`, so `t()`
+       * leaves the placeholder visible instead of quietly saying nothing.
+       */
+      direction:
+        params.direction === 'wallet_to_account'
+          ? t('notifications.transferToAccount')
+          : params.direction === 'account_to_wallet'
+            ? t('notifications.transferToWallet')
+            : undefined,
+    }),
+    href: '/transactions',
   },
 };
 

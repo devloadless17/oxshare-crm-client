@@ -7,24 +7,22 @@ import { useResource } from '@/hooks/use-resource';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { walletApi, type Wallet } from '@/lib/api/wallet';
-import { paymentsApi } from '@/lib/api/payments';
+import { paymentsApi, type WithdrawalMethod } from '@/lib/api/payments';
 import { newIdempotencyKey } from '@/lib/api/client';
-import { clearWithdrawIntent, readWithdrawIntent, saveWithdrawIntent } from '@/lib/withdraw-intent';
 import { formatMoney, isZeroMoney } from '@/lib/money';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
 import {
   AmountField,
   AmountPresets,
   DestinationSelect,
   FormError,
+  MethodTile,
   MoneyFooter,
   MoneyHeader,
   MoneySection,
   MoneySheet,
-  StepRail,
-  SummaryRow,
 } from '@/components/money/money-shell';
 import { presetsWithin } from '@/components/money/amount-presets';
 import { t } from '@/lib/i18n';
@@ -44,26 +42,43 @@ import { t } from '@/lib/i18n';
  * "can this be withdrawn", and the two would drift.
  *
  * So the available balance below is shown for the human, and is not a gate.
- * The server enforces KYC level 1, the available balance, and the configured
- * minimum and maximum, and answers 422 with a message this screen displays.
+ * The server enforces KYC level 1, the available balance, the configured
+ * minimum and maximum, and whether the chosen method is real and enabled — and
+ * answers 422 with a message this screen displays.
  *
- * ── The confirmation step (FR-CORE-08 / FR-IND-05) ──────────────────────────
+ * ── ONE step, and what that replaced ────────────────────────────────────────
  *
- * Two steps, not one: state the withdrawal, then confirm it with a code emailed
- * to the account address. The code the server issues is bound to the EXACT
- * amount, currency, destination and provider sent in step one, so a code
- * obtained for a small transfer cannot be spent on a large one — which is why
- * this form locks those fields once a code has been sent, and returns to step
- * one if the client wants to change anything.
+ * This used to be two: state the withdrawal, then confirm it with a six-digit
+ * code emailed to the account address and bound by HMAC to the exact amount,
+ * currency, destination and provider. That step is gone at the operator's
+ * request.
  *
- * The operator can switch the control off (Settings → Security, master admin
- * only) for testing and before go-live. This screen does not branch on that: it
- * always asks the server to send a code, and the server answers "not required"
- * when the control is off, in which case the withdrawal submits without one. So
- * there is exactly one flow in this file, and the server decides what it means.
+ * The control behind it is NOT gone, and this is the part worth knowing about:
+ * `withdrawal_otp` is still a switch in the admin's Settings → Security, and
+ * `POST /payments/withdrawals` still refuses a codeless withdrawal while it is
+ * ON. It is seeded OFF, which is what makes this form work. Turning it on
+ * without restoring the confirm step would refuse every withdrawal from this
+ * screen — `paymentsApi.sendWithdrawalOtp` is kept for exactly that reason.
+ *
+ * ── The method decides what the destination MEANS ───────────────────────────
+ *
+ * The rails come from `withdrawal_payment_methods` rather than a union in the
+ * code, so this screen renders whatever the operator has enabled. Today that is
+ * Whish Money, whose destination is a phone number — which is why the field
+ * below is a phone input rather than a free-text box, and why the server
+ * validates it against Whish's own rules at request time instead of days later
+ * as a failed payout nobody can explain.
  */
 
-function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => void }) {
+function WithdrawForm({
+  wallets,
+  methods,
+  onDone,
+}: {
+  wallets: Wallet[];
+  methods: WithdrawalMethod[];
+  onDone: () => void;
+}) {
   const fundable = wallets.filter((w) => !isZeroMoney(w.available));
   // Typed off the generated schema, so the select can only ever hold a currency
   // the API actually accepts.
@@ -71,19 +86,15 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
   const [currency, setCurrency] = React.useState<Currency>(fundable[0]?.currency ?? 'USD');
   const [amount, setAmount] = React.useState('');
   const [destination, setDestination] = React.useState('');
+  /*
+   * Defaulted to the first rail the SERVER returned, which is its display
+   * order. With one method that makes the choice invisible and correct; with
+   * several it preselects the operator's preferred one rather than leaving a
+   * money form with nothing chosen.
+   */
+  const [methodKey, setMethodKey] = React.useState(methods[0]?.key ?? '');
   const [error, setError] = React.useState<string | null>(null);
   const [isSubmitting, setSubmitting] = React.useState(false);
-
-  /*
-   * `'details'` → `'confirm'`. The step is the ONLY thing that decides which
-   * fields are editable, so there is no way to be on the confirm step with a
-   * changed amount: leaving `confirm` is what re-enables them, and it clears the
-   * code with it.
-   */
-  const [step, setStep] = React.useState<'details' | 'confirm'>('details');
-  const [otp, setOtp] = React.useState('');
-  const [otpNotice, setOtpNotice] = React.useState<string | null>(null);
-  const [otpRequired, setOtpRequired] = React.useState(true);
 
   const selected = wallets.find((w) => w.currency === currency);
 
@@ -100,177 +111,56 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
    * submit rather than at mount so no value is generated during SSR, and the
    * form unmounts on success — so the next withdrawal is a new intent with a
    * new key.
+   *
+   * It is NOT persisted any more. The stored copy existed to survive a refresh
+   * on the confirm step, and there is no confirm step to refresh on: a reload
+   * now clears an unsubmitted form, which loses typing rather than money.
    */
   const idempotencyKey = React.useRef<string | null>(null);
 
-  /*
-   * Restore a withdrawal the client was part-way through — see lib/withdraw-intent.ts.
-   *
-   * A refresh on the confirm step used to drop back to `details` with every
-   * field cleared, which sounds like lost typing and is worse: the code already
-   * in their inbox is bound by HMAC to the intent it was issued for, so
-   * re-entering the same amount mints a NEW intent and the emailed code can
-   * never be accepted. They type the six digits they were sent, are told they
-   * are wrong, and nothing explains it.
-   *
-   * Restoring the intent makes that code valid again. Restoring the idempotency
-   * key with it is the money-path half: without it a client who submitted, lost
-   * the response, and reloaded would submit again under a new key, and the
-   * server would correctly treat that as a SECOND withdrawal.
-   *
-   * In an effect rather than a lazy `useState` initialiser, because
-   * `sessionStorage` does not exist during the server render and reading it in
-   * an initialiser is a hydration mismatch — the same reasoning, and the same
-   * exemption, as the KYC draft restore: this IS the case the rule's own docs
-   * allow — synchronising React state with an external system that the server
-   * render cannot read.
-   */
-  React.useEffect(() => {
-    const saved = readWithdrawIntent();
-    if (!saved) return;
-
-    /*
-     * The stored currency has to still be one this client can withdraw. It came
-     * from `sessionStorage`, so it is not trustworthy input, and a wallet can
-     * empty between the two visits. Restoring a currency absent from `fundable`
-     * would put the select on a value it does not offer — and on the confirm
-     * step, where the field is locked and cannot be corrected.
-     */
-    const currencyStillFundable = fundable.find((w) => w.currency === saved.currency);
-    if (!currencyStillFundable) {
-      clearWithdrawIntent();
-      return;
-    }
-
-    /* eslint-disable react-hooks/set-state-in-effect -- see note above */
-    setCurrency(currencyStillFundable.currency);
-    setAmount(saved.amount);
-    setDestination(saved.destination);
-    setOtpRequired(saved.otpRequired);
-    idempotencyKey.current = saved.idempotencyKey;
-    setStep('confirm');
-    setOtpNotice(t('withdraw.restoredNotice'));
-    /* eslint-enable react-hooks/set-state-in-effect */
-    // `fundable` is derived from props and stable for the life of this form;
-    // this restore must run once, on mount, and never re-run over what the
-    // client has since typed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /**
-   * The withdrawal, exactly as both the code request and the submission see it.
-   *
-   * One function, so the two calls cannot disagree about what is being
-   * authorised. If they could, the server's binding check would reject a code
-   * the client just requested and the failure would look like a bug in the OTP.
-   */
-  const intent = () => ({
-    amount: amount.trim(),
-    currency,
-    destination: destination.trim(),
-    // Derived from the currency rather than chosen by the client: a USDT
-    // balance cannot be paid out through the fiat rail, and offering that
-    // choice would invite a request the server must then refuse.
-    provider: currency === 'USDT' ? ('usdt' as const) : ('whish' as const),
-  });
-
-  /** Step one → ask the server to email a code for THIS withdrawal. */
-  const requestCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    // Presence only. Whether the amount is valid, affordable or above the
-    // minimum is the server's question — see the note at the top of this file.
-    if (!amount.trim()) return setError(t('withdraw.needAmount'));
-    if (!destination.trim()) return setError(t('withdraw.needDestination'));
-
-    setSubmitting(true);
-    try {
-      const { message, required } = await paymentsApi.sendWithdrawalOtp(intent());
-      // A BOOLEAN from the server, never inferred from the message: the operator
-      // can switch the OTP control off, and reading that out of prose would make
-      // a copy edit break the withdrawal flow.
-      setOtpRequired(required);
-      setOtpNotice(message);
-      setStep('confirm');
-      /*
-       * The intent begins HERE, not at submit — the server has just bound a code
-       * to it. Minting the idempotency key at the same moment is what lets it be
-       * persisted alongside, so a client who submits and loses the response can
-       * reload and retry as the SAME withdrawal rather than a second one.
-       */
-      idempotencyKey.current ??= newIdempotencyKey();
-      saveWithdrawIntent({
-        ...intent(),
-        idempotencyKey: idempotencyKey.current,
-        otpRequired: required,
-      });
-    } catch (err: unknown) {
-      setError(apiErrorMessage(err, t('withdraw.otpSendFailed')));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  /** Step two → submit, with the code when one is required. */
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (otpRequired && !/^\d{6}$/.test(otp)) return setError(t('withdraw.needOtp'));
+    /*
+     * Presence only. Whether the amount is valid, affordable or above the
+     * minimum is the server's question — see the note at the top of this file.
+     * The phone number's SHAPE is the server's question too: it holds Whish's
+     * own rules, and a second copy here would be a second thing to drift.
+     */
+    if (!amount.trim()) return setError(t('withdraw.needAmount'));
+    if (!methodKey) return setError(t('withdraw.needMethod'));
+    if (!destination.trim()) return setError(t('withdraw.needDestination'));
 
     idempotencyKey.current ??= newIdempotencyKey();
 
     setSubmitting(true);
     try {
       await paymentsApi.requestWithdrawal(
-        { ...intent(), ...(otpRequired ? { otp } : {}) },
+        {
+          amount: amount.trim(),
+          currency,
+          destination: destination.trim(),
+          methodKey,
+        },
         idempotencyKey.current,
       );
-      // The withdrawal exists now; nothing left to resume.
-      clearWithdrawIntent();
       onDone();
     } catch (err: unknown) {
       /*
-       * A rejected code must NOT reuse the idempotency key.
+       * The key is NOT reset here, deliberately, and this is the opposite of
+       * what the old confirm step did.
        *
-       * The key names one intended withdrawal, and none was created — the
-       * request never reached the money path. Keeping it would mean the retry
-       * with a correct code collides with the cached failure and the client can
-       * never complete the withdrawal they are entitled to.
+       * There, a refused OTP meant the request never reached the money path, so
+       * the key named an intent that had produced nothing and had to be
+       * discarded. Here a failure may well have created the withdrawal and lost
+       * the response — so keeping the key is what makes the client's retry
+       * resolve to the SAME withdrawal instead of a second one.
        */
-      idempotencyKey.current = null;
-      /*
-       * And drop the PERSISTED copy with it, for the same reason.
-       *
-       * Restoring a key the server has already answered under would collide the
-       * corrected retry with the cached failure, and the client could never
-       * complete a withdrawal they are entitled to. Losing the restore on a
-       * refused code is the safe side of that trade: the form is still on
-       * screen, and a refresh from here starts cleanly rather than resuming into
-       * a poisoned key.
-       */
-      clearWithdrawIntent();
-      setOtp('');
       setError(apiErrorMessage(err, t('withdraw.failed')));
     } finally {
       setSubmitting(false);
     }
-  };
-
-  /** Back to step one — the only way to change a locked field. */
-  const editDetails = () => {
-    setStep('details');
-    // Leaving the confirm step abandons the intent the code was bound to, so the
-    // stored copy would restore a withdrawal the client has just chosen to
-    // change.
-    clearWithdrawIntent();
-    // The code was bound to the OLD intent; keeping it on screen would invite
-    // the client to submit it against a changed withdrawal and be refused for a
-    // reason the message cannot explain well.
-    setOtp('');
-    setOtpNotice(null);
-    setError(null);
   };
 
   if (fundable.length === 0) {
@@ -288,6 +178,22 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
   }
 
   /*
+   * No enabled rail means no withdrawal is possible, and saying so is the whole
+   * point: an empty method list under a working form would let a client fill in
+   * an amount and be refused on submit for a reason the screen never showed.
+   */
+  if (methods.length === 0) {
+    return (
+      <MoneySheet>
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 p-6 text-center">
+          <AlertCircle className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
+          <p className="max-w-sm text-sm text-muted-foreground">{t('withdraw.noMethods')}</p>
+        </div>
+      </MoneySheet>
+    );
+  }
+
+  /*
    * Quick-pick amounts, capped at what is AVAILABLE — not `balance`, which
    * includes anything already held against another pending withdrawal. A preset
    * above that would fill the field with a value the server then refuses.
@@ -298,21 +204,8 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
   const presets = selected ? presetsWithin(null, selected.available) : [];
 
   return (
-    <form onSubmit={(e) => void (step === 'details' ? requestCode(e) : submit(e))}>
+    <form onSubmit={(e) => void submit(e)}>
       <MoneySheet>
-        {/*
-          Two steps, and the rail says which one. The second is not cosmetic: the
-          emailed code is bound by HMAC to the exact amount, currency,
-          destination and provider from step one, so "confirm" genuinely is a
-          different state with different editability.
-        */}
-        <div className="border-b border-border px-5 py-4 sm:px-6">
-          <StepRail
-            steps={[t('money.stepAmount'), t('money.stepConfirm')]}
-            active={step === 'details' ? 0 : 1}
-          />
-        </div>
-
         <MoneySection title={t('withdraw.amount')}>
           <div className="space-y-4">
             {/*
@@ -325,7 +218,6 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
                 label={t('withdraw.currency')}
                 value={currency}
                 onChange={(value) => setCurrency(value as Currency)}
-                disabled={step === 'confirm'}
                 groups={[
                   {
                     label: t('deposit.groupWallet'),
@@ -344,7 +236,6 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
               value={amount}
               onChange={setAmount}
               currency={currency}
-              disabled={step === 'confirm'}
               /*
                * "Use max" fills the AVAILABLE balance — not `balance`, which
                * includes whatever is already held against another pending
@@ -365,27 +256,56 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
               }
             />
 
-            {presets.length > 0 && step === 'details' && (
+            {presets.length > 0 && (
               <AmountPresets presets={presets} currency={currency} onPick={setAmount} />
             )}
           </div>
         </MoneySection>
 
+        {/*
+          Rendered even with a single rail, unlike the currency select above.
+          A payout METHOD is not an implementation detail the way a currency is
+          when only one wallet is funded: the client is being asked where their
+          money goes, and the answer determines what the field below means. A
+          form that collected a phone number without naming Whish would be
+          asking for a number with no stated purpose.
+        */}
+        <MoneySection title={t('withdraw.method')}>
+          <div className="space-y-2">
+            {methods.map((method) => (
+              <MethodTile
+                key={method.key}
+                name="withdraw-method"
+                value={method.key}
+                checked={methodKey === method.key}
+                onChange={setMethodKey}
+                title={method.name}
+                logoUrl={method.logoUrl}
+              />
+            ))}
+          </div>
+        </MoneySection>
+
         <MoneySection title={t('withdraw.destination')}>
           <div className="space-y-1.5">
-            <Label htmlFor="withdraw-destination" className="sr-only">
-              {t('withdraw.destination')}
-            </Label>
-            <Input
-              id="withdraw-destination"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              placeholder={t('withdraw.destinationPlaceholder')}
-              autoComplete="off"
-              disabled={step === 'confirm'}
-              className="h-12 font-mono text-sm"
-            />
-            <p className="text-[11px] text-muted-foreground">{t('withdraw.destinationHint')}</p>
+            {/*
+              A phone input, because today's only rail pays a phone number. It
+              is the same control the profile and KYC screens use, so the
+              country picker and formatting behave the way the client has
+              already seen elsewhere.
+
+              The value still goes to the server as a plain string and the
+              server validates it against Whish's own rules — this control
+              shapes the typing, it does not decide whether the number is good.
+
+              A plain `<Label>` with no `htmlFor`: `PhoneInput` owns its own
+              markup and exposes no id to point at, so a `htmlFor` here would
+              name an element that does not exist — worse than no association,
+              because it looks like one.
+            */}
+            <Label>{t('withdraw.phoneLabel')}</Label>
+            <PhoneInput value={destination} onChange={setDestination} />
+            <p className="text-[11px] text-muted-foreground">{t('withdraw.phoneHint')}</p>
           </div>
 
           <p className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/5 p-3 text-[11px] leading-relaxed text-muted-foreground">
@@ -394,69 +314,11 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
           </p>
         </MoneySection>
 
-        {step === 'confirm' && (
-          <MoneySection title={t('withdraw.otpLabel')}>
-            <div className="space-y-4">
-              {otpNotice && <p className="text-xs text-muted-foreground">{otpNotice}</p>}
-
-              {/* A summary of what the code is BOUND to. The client is
-                  confirming these exact values, and showing them is what makes
-                  "confirm" meaningful rather than a second button press. */}
-              <dl className="divide-y divide-border">
-                <SummaryRow
-                  label={t('withdraw.amount')}
-                  value={formatMoney(amount, currency)}
-                  strong
-                />
-                <SummaryRow
-                  label={t('withdraw.destination')}
-                  value={<span className="font-mono text-xs break-all">{destination}</span>}
-                />
-              </dl>
-
-              {otpRequired && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="withdraw-otp">{t('withdraw.otpLabel')}</Label>
-                  <Input
-                    id="withdraw-otp"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                    placeholder="000000"
-                    className="h-14 text-center text-2xl font-bold tracking-[0.4em] tabular-nums"
-                  />
-                  <p className="text-[11px] text-muted-foreground">{t('withdraw.otpHint')}</p>
-                </div>
-              )}
-
-              {/* The only way to change a locked field. Re-entering step one
-                  clears the code, because it was bound to the previous intent. */}
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                onClick={editDetails}
-                className="h-auto justify-start p-0 text-[11px]"
-              >
-                {t('withdraw.editDetails')}
-              </Button>
-            </div>
-          </MoneySection>
-        )}
-
         <MoneyFooter className="space-y-4">
           <FormError message={error} />
 
           <Button type="submit" size="lg" loading={isSubmitting} className="h-12 w-full">
-            {isSubmitting
-              ? step === 'details'
-                ? t('withdraw.sendingCode')
-                : t('withdraw.submitting')
-              : step === 'details'
-                ? t('withdraw.continue')
-                : t('withdraw.submit')}
+            {isSubmitting ? t('withdraw.submitting') : t('withdraw.submit')}
           </Button>
         </MoneyFooter>
       </MoneySheet>
@@ -467,6 +329,17 @@ function WithdrawForm({ wallets, onDone }: { wallets: Wallet[]; onDone: () => vo
 export default function WithdrawPage() {
   const [submitted, setSubmitted] = React.useState(false);
   const wallets = useResource(['wallets'], (signal) => walletApi.getWallets(signal));
+  const methods = useResource(['withdrawal-methods'], (signal) =>
+    paymentsApi.getWithdrawalMethods(signal),
+  );
+
+  /*
+   * ONE boundary over BOTH resources, rather than a form that renders while its
+   * method list is still loading. The method decides what the destination field
+   * asks for, so a form drawn without it would be asking for a value whose
+   * meaning has not been established yet.
+   */
+  const status = wallets.status === 'ready' ? methods.status : wallets.status;
 
   return (
     <div className="w-full space-y-6">
@@ -479,10 +352,10 @@ export default function WithdrawPage() {
               <CheckCircle2 className="h-7 w-7" aria-hidden="true" />
             </span>
             {/*
-              Says the funds are HELD, not sent. The backend puts the amount on
-              hold and writes no ledger entry until an admin settles it — telling
-              the client "sent" would be a different, wrong story about their
-              money.
+              Says the request is WITH the desk, not that the money has been
+              sent. The backend debits the wallet on request and an operator
+              releases the payout; telling the client "sent" would be a
+              different, wrong story about their money.
 
               `role="status"` so the outcome is announced: this replaces the form
               after an async submit, and a screen-reader user would otherwise be
@@ -508,14 +381,21 @@ export default function WithdrawPage() {
         </MoneySheet>
       ) : (
         <AsyncBoundary
-          status={wallets.status}
+          status={status}
           label={t('withdraw.loading')}
-          endpoints={['GET /wallet', 'POST /payments/withdrawals']}
-          onRetry={() => void wallets.refetch()}
-          errorMessage={apiErrorMessage(wallets.error, t('withdraw.loadFailed'))}
-          error={wallets.error}
+          endpoints={['GET /wallet', 'GET /payments/withdrawal-methods']}
+          onRetry={() => {
+            void wallets.refetch();
+            void methods.refetch();
+          }}
+          errorMessage={apiErrorMessage(wallets.error ?? methods.error, t('withdraw.loadFailed'))}
+          error={wallets.error ?? methods.error}
         >
-          <WithdrawForm wallets={wallets.data ?? []} onDone={() => setSubmitted(true)} />
+          <WithdrawForm
+            wallets={wallets.data ?? []}
+            methods={methods.data ?? []}
+            onDone={() => setSubmitted(true)}
+          />
         </AsyncBoundary>
       )}
     </div>

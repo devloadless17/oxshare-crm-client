@@ -26,11 +26,14 @@ import { t } from '@/lib/i18n';
  * Which programme (وكالة) somebody wants to be appointed under is not
  * something a reviewer can read off the account — it decides what the partner
  * may sell, and getting it wrong means approving somebody onto terms they did
- * not ask for. So it is asked, and it is required WHEN THERE IS A CHOICE.
+ * not ask for. So it is asked, and it is REQUIRED.
  *
- * A deployment with no agencies configured falls back to exactly the previous
- * screen: one card, one button. The API takes an application with no agency
- * for that reason, so a broker who has not set them up can still recruit.
+ * Not "required when there is a choice", which is what this said and did. A
+ * deployment with no agencies configured used to submit without one, and the
+ * API appointed the partner under none — whose clients are then offered the
+ * entire catalogue, the broadest grant in the system, reached by leaving a
+ * field blank. The API refuses that now, so an empty list means there is
+ * nothing to apply for and the panel says so.
  */
 export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
   const [submitting, setSubmitting] = React.useState(false);
@@ -40,13 +43,21 @@ export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
   const agencies = useResource(['partner', 'agencies'], (signal) => partnerApi.agencies(signal));
 
   /*
-   * Offered only when the list has ARRIVED and is non-empty. While it is
-   * loading the button stays disabled rather than the choice being skipped —
-   * submitting in that window would send no agency and quietly appoint them
-   * under none.
+   * A programme is now REQUIRED, not required-when-there-happens-to-be-one.
+   *
+   * `mustChoose` was `options.length > 0`, so a deployment with no agencies
+   * configured submitted without one and the API appointed the partner under
+   * none — which grants their clients the entire product catalogue. The API
+   * refuses that outright now, so the old branch would send a request that can
+   * only 400.
+   *
+   * With the list empty there is nothing to apply FOR, and the panel says so
+   * rather than offering a button whose only outcome is a refusal. That is an
+   * operator's missing configuration, and naming it is more useful to the
+   * client than a validation error about a field they were never shown.
    */
   const options = agencies.data ?? [];
-  const mustChoose = options.length > 0;
+  const noneOffered = agencies.status === 'ready' && options.length === 0;
 
   /*
    * ── The gate in front of the button ────────────────────────────────────────
@@ -83,7 +94,9 @@ export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
     setSubmitting(true);
     setError(null);
     try {
-      await partnerApi.apply(agencyId ? { agencyId } : {});
+      // Never the empty shape: the API refuses an application with no agency,
+      // and the button below cannot be reached without one selected.
+      await partnerApi.apply({ agencyId });
       /*
        * Refetch rather than assume the shape of success. The next render is
        * driven by what the server says — which is the difference between this
@@ -125,7 +138,7 @@ export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
           )}
         </ol>
 
-        {mustChoose && (
+        {options.length > 0 && (
           <div className="mt-8 space-y-3">
             <h3 className="text-sm font-semibold">{t('partner.chooseAgency')}</h3>
             <p className="text-xs leading-relaxed text-muted-foreground">
@@ -188,6 +201,21 @@ export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
           </p>
         )}
 
+        {noneOffered && (
+          /*
+             An operator has configured no agencies, so there is nothing to
+             apply for. Named as what it is — the alternative is a live button
+             whose only outcome is a validation error about a field the client
+             was never shown.
+          */
+          <p
+            role="note"
+            className="mt-8 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs leading-relaxed text-foreground"
+          >
+            {t('partner.noAgenciesOffered')}
+          </p>
+        )}
+
         <div className="mt-8 space-y-3">
           <Button
             type="button"
@@ -195,10 +223,13 @@ export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
             className="w-full"
             loading={submitting}
             /*
-             * Disabled until a programme is picked, AND while the list is still
-             * in flight — see the note above `mustChoose`.
+             * Disabled until a programme is picked, and while the list is still
+             * in flight — submitting in that window would send no agency, which
+             * the API refuses. `!agencyId` is now unconditional rather than
+             * gated on the list being non-empty: there is no valid application
+             * without one.
              */
-            disabled={agencies.status === 'loading' || (mustChoose && !agencyId)}
+            disabled={agencies.status === 'loading' || !agencyId}
             onClick={() => void submit()}
           >
             {submitting ? t('partner.submitting') : t('partner.submit')}

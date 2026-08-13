@@ -11,8 +11,9 @@ import { NotificationsSheet } from './notifications-sheet';
  * draws only from a counted answer (zero/unknown → no badge), an unknown kind
  * renders a generic row rather than a raw slug, money copy goes through
  * formatMoney with no `{placeholder}` residue, and nothing is marked read as a
- * side effect of opening. Mark-all failure lands as an INLINE error line —
- * this app has no toast, deliberately.
+ * side effect of opening. Mark-all failure lands as an INLINE error line: form
+ * and mutation errors stay inline in this app, and the toast host added for
+ * real-time notifications is deliberately not used for them.
  */
 
 const { getNotifications, getUnreadCount, markRead, markAllRead } = vi.hoisted(() => ({
@@ -24,6 +25,20 @@ const { getNotifications, getUnreadCount, markRead, markAllRead } = vi.hoisted((
 
 vi.mock('@/lib/api/notifications', () => ({
   notificationsApi: { getNotifications, getUnreadCount, markRead, markAllRead },
+}));
+
+/*
+ * The bell reaches for the app router so a toast raised by an incoming
+ * notification can offer a "View" action. `useRouter` throws outside a mounted
+ * router ("invariant expected app router to be mounted"), and these tests render
+ * the component directly rather than through a route — so it is stubbed.
+ *
+ * Only `push` is exercised here. The navigation itself belongs to the toast's
+ * own coverage; what this file asserts is the sheet, and it must not fail to
+ * render because of a dependency it never calls.
+ */
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
 }));
 
 /*

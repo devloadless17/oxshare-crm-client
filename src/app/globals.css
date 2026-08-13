@@ -285,20 +285,6 @@
   }
 }
 
-/*
- * ── Enter animations ────────────────────────────────────────────────────────
- *
- * `animate-in`, `fade-in-0`, `zoom-in-95`, `slide-in-from-top-2` and friends are
- * used by the shadcn Select and by data-table, and NONE of them resolved:
- * they come from `tailwindcss-animate`, which is neither installed nor imported.
- * So every dropdown and empty-state has been appearing instantly, with markup
- * that says it should fade and slide.
- *
- * Defined here rather than by adding the plugin. The set actually used is small,
- * this is a money system where a dependency is a supply-chain decision, and the
- * composition is simple: `animate-in` runs the keyframe, and each modifier sets
- * one custom property the keyframe reads. Adding a variant means adding a line.
- */
 @layer utilities {
   /*
    * A scroll container with no visible scrollbar.
@@ -319,111 +305,132 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none; /* WebKit/Blink */
   }
+}
 
-  @keyframes enter {
-    from {
-      opacity: var(--tw-enter-opacity, 1);
-      transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0)
-        scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), 1);
-    }
+/*
+ * ── Enter/exit animation utilities ──────────────────────────────────────────
+ *
+ * `@utility`, NOT `@layer utilities { .foo { … } }`, and the difference is the
+ * whole reason the sheet's exit animation never ran.
+ *
+ * A class written by hand inside `@layer utilities` is just CSS. Tailwind v4
+ * does not know it is a utility, so it cannot build VARIANTS of it — and the
+ * sheet asks for exactly that: `data-[state=closed]:animate-out`,
+ * `data-[state=closed]:slide-out-to-right-full`,
+ * `data-[state=closed]:fade-out-0`. None of those three selectors existed in
+ * the compiled stylesheet. The bare classes did, which is why the panel slid IN
+ * correctly and then vanished on close: the enter classes are unconditional,
+ * the exit ones are all variants, and the variants compiled to nothing.
+ *
+ * That is a silent failure by construction — the markup reads as though it
+ * animates both ways, the build reports no error, and the only evidence is a
+ * panel that disappears. Declaring these with `@utility` registers them with
+ * Tailwind, so every variant (`data-*`, `sm:`, `motion-safe:`) generates.
+ *
+ * Defined here rather than by adding `tw-animate-css`: the set actually used is
+ * small, this is a money system where a dependency is a supply-chain decision,
+ * and the composition is simple — the `animate-in`/`animate-out` utility runs
+ * the keyframe and each modifier sets one custom property the keyframe reads.
+ * Adding a variant means adding one `@utility` block.
+ *
+ * Keyframes stay outside: `@keyframes` is not a utility and is not layered.
+ */
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0)
+      scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), 1);
   }
+}
 
-  .animate-in {
-    animation-name: enter;
-    animation-duration: 150ms;
-    animation-fill-mode: both;
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+@keyframes exit {
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0)
+      scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), 1);
   }
+}
 
-  .fade-in,
-  .fade-in-0 {
-    --tw-enter-opacity: 0;
-  }
-  .fade-in-50 {
-    --tw-enter-opacity: 0.5;
-  }
+@utility animate-in {
+  animation-name: enter;
+  animation-duration: 150ms;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-  .zoom-in-95 {
-    --tw-enter-scale: 0.95;
-  }
+/*
+ * Radix is what makes an exit animation possible at all — it holds the element
+ * mounted until the animation ends rather than unmounting on the click, so
+ * `data-[state=closed]` has something to style. Without a defined exit
+ * animation there is nothing to wait for and the element simply goes.
+ */
+@utility animate-out {
+  animation-name: exit;
+  /* Faster than the 150ms enter, deliberately. A panel the user has just
+     dismissed should get out of the way; matching the entry speed makes a
+     closed panel feel like it is arguing. */
+  animation-duration: 120ms;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
 
-  .slide-in-from-top-1 {
-    --tw-enter-translate-y: -0.25rem;
-  }
-  .slide-in-from-top-2 {
-    --tw-enter-translate-y: -0.5rem;
-  }
-  .slide-in-from-top-4 {
-    --tw-enter-translate-y: -1rem;
-  }
-  .slide-in-from-bottom-2 {
-    --tw-enter-translate-y: 0.5rem;
-  }
-  .slide-in-from-left-2 {
-    --tw-enter-translate-x: -0.5rem;
-  }
-  .slide-in-from-right-2 {
-    --tw-enter-translate-x: 0.5rem;
-  }
-  /* Edge panels (components/ui/sheet.tsx) travel their own width rather than a
-     fixed nudge, so the sheet starts fully off-screen at any breakpoint. */
-  .slide-in-from-left-full {
-    --tw-enter-translate-x: -100%;
-  }
-  .slide-in-from-right-full {
-    --tw-enter-translate-x: 100%;
-  }
+@utility fade-in {
+  --tw-enter-opacity: 0;
+}
+@utility fade-in-0 {
+  --tw-enter-opacity: 0;
+}
+@utility fade-in-50 {
+  --tw-enter-opacity: 0.5;
+}
+@utility fade-out {
+  --tw-exit-opacity: 0;
+}
+@utility fade-out-0 {
+  --tw-exit-opacity: 0;
+}
 
-  /*
-   * ── EXIT ──────────────────────────────────────────────────────────────────
-   *
-   * There were no exit animations at all, and their absence was not neutral:
-   * the notification sheet ENTERED with a slide and then vanished on close,
-   * which reads as the panel breaking rather than closing. A one-way animation
-   * is worse than none, because the first half sets an expectation the second
-   * half denies.
-   *
-   * Radix drives these through `data-[state=closed]`, and it is what makes them
-   * possible at all — it holds the element mounted until the animation ends
-   * rather than unmounting on the click. Without a defined exit animation there
-   * is nothing to wait for, so the element simply goes.
-   *
-   * Same composition as the enter set above: `animate-out` runs the keyframe,
-   * each modifier sets one custom property the keyframe reads.
-   */
-  @keyframes exit {
-    to {
-      opacity: var(--tw-exit-opacity, 1);
-      transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0)
-        scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), 1);
-    }
-  }
+@utility zoom-in-95 {
+  --tw-enter-scale: 0.95;
+}
+@utility zoom-out-95 {
+  --tw-exit-scale: 0.95;
+}
 
-  .animate-out {
-    animation-name: exit;
-    /* Faster than the 150ms enter, deliberately. A panel the user has just
-       dismissed should get out of the way; matching the entry speed makes a
-       closed panel feel like it is arguing. */
-    animation-duration: 120ms;
-    animation-fill-mode: both;
-    animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
-  }
+@utility slide-in-from-top-1 {
+  --tw-enter-translate-y: -0.25rem;
+}
+@utility slide-in-from-top-2 {
+  --tw-enter-translate-y: -0.5rem;
+}
+@utility slide-in-from-top-4 {
+  --tw-enter-translate-y: -1rem;
+}
+@utility slide-in-from-bottom-2 {
+  --tw-enter-translate-y: 0.5rem;
+}
+@utility slide-in-from-left-2 {
+  --tw-enter-translate-x: -0.5rem;
+}
+@utility slide-in-from-right-2 {
+  --tw-enter-translate-x: 0.5rem;
+}
 
-  .fade-out,
-  .fade-out-0 {
-    --tw-exit-opacity: 0;
-  }
-
-  .zoom-out-95 {
-    --tw-exit-scale: 0.95;
-  }
-
-  .slide-out-to-left-full {
-    --tw-exit-translate-x: -100%;
-  }
-  .slide-out-to-right-full {
-    --tw-exit-translate-x: 100%;
-  }
+/* Edge panels (components/ui/sheet.tsx) travel their own width rather than a
+   fixed nudge, so the sheet starts fully off-screen at any breakpoint — and
+   returns the whole way on close, which is what says it went back to the edge
+   it came from rather than the page beneath it being replaced. */
+@utility slide-in-from-left-full {
+  --tw-enter-translate-x: -100%;
+}
+@utility slide-in-from-right-full {
+  --tw-enter-translate-x: 100%;
+}
+@utility slide-out-to-left-full {
+  --tw-exit-translate-x: -100%;
+}
+@utility slide-out-to-right-full {
+  --tw-exit-translate-x: 100%;
 }
 
 /*
