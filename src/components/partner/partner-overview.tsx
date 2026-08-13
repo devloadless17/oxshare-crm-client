@@ -133,22 +133,18 @@ function DashboardBody({ data }: { data: IbOverview }) {
               </div>
               <div className="rounded-xl border border-border bg-muted/30 p-3">
                 {/*
-                  The rate's UNIT depends on the payout model — "70" means 70%
-                  under revenue_share and $70 per lot under per_lot. Rendering
-                  the number without reading the model is exactly the ambiguity
-                  the DTO comment warns about.
+                  ALWAYS a percentage now. This branched on `payoutModel`,
+                  because "70" meant 70% under revenue_share and $70 per lot
+                  under per_lot — the backend dropped that column (migration
+                  0055), so the rate has one unit and there is no model to read
+                  before rendering it.
+
+                  `maxDirectPartners` went with it, and the recruiting-limit line
+                  beneath went with that: it said "Unlimited direct partners" on
+                  every partner who ever saw it, because the cap was never set.
                 */}
                 <p className="text-sm font-semibold">
-                  {level.payoutModel === 'revenue_share'
-                    ? t('partner.levelRateRevenue', { rate: trimRate(level.rateValue) })
-                    : t('partner.levelRatePerLot', {
-                        rate: formatMoney(level.rateValue, earnings.currency),
-                      })}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {level.maxDirectPartners === null
-                    ? t('partner.levelDirectUnlimited')
-                    : t('partner.levelDirectLimit', { max: level.maxDirectPartners })}
+                  {t('partner.levelRateRevenue', { rate: trimRate(level.rateValue) })}
                 </p>
               </div>
             </div>

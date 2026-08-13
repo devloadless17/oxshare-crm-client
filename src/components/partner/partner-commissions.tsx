@@ -20,11 +20,22 @@ import { t } from '@/lib/i18n';
  * wildly different facts to somebody waiting to be paid, so every row carries
  * its status and the two numbers explain each other.
  *
- * ## The base and the rate are columns, not a tooltip
+ * ## What the broker earned, and the partner's own rate, are NOT shown
  *
- * A partner reading "2.80" cannot check it. Reading "4.00 × 70%" they can, and
- * the first question support gets — "why is this so small" — is answered on the
- * row instead of by an email.
+ * Both were columns here — "Broker earned" (the base) beside "Your rate", on the
+ * reasoning that a partner reading "2.80" cannot check it while one reading
+ * "4.00 × 70%" can.
+ *
+ * They are gone at the operator's request, and the trade is worth stating: the
+ * base column published the broker's own revenue on every trade to every
+ * partner, which is commercially sensitive in a way the partner's share is not,
+ * and the rate belongs to the LEVEL rather than to the row — it is already shown
+ * once, on the overview tab, where it cannot disagree with itself.
+ *
+ * What a partner loses is the ability to re-derive their own figure from the
+ * row. `amount` is still authoritative and still carries its status, so the
+ * question this answers is "what am I owed and is it released", not "how was it
+ * computed" — that one now goes to support.
  *
  * `DataTable` rather than a hand-rolled table, so this sorts, pages and scrolls
  * exactly like the transactions screen. A partner should not have to learn a
@@ -69,21 +80,6 @@ export function PartnerCommissions() {
           {row.depth > 1 && <span className="ml-1 text-[10px]">{t('partner.viaSubPartner')}</span>}
         </span>
       ),
-    },
-    {
-      header: t('partner.colBase'),
-      cell: (row) => formatMoney(row.baseAmount, row.currency),
-      align: 'right',
-      cellClassName: 'tabular text-muted-foreground',
-      sortable: true,
-      sortKey: 'baseAmount',
-      sortType: 'money',
-    },
-    {
-      header: t('partner.colRate'),
-      cell: (row) => trimRate(row.rateValue),
-      align: 'right',
-      cellClassName: 'tabular text-muted-foreground',
     },
     {
       header: t('partner.colAmount'),
@@ -156,12 +152,6 @@ function StatusPill({ status }: { status: string }) {
       {label}
     </span>
   );
-}
-
-/** `'70.0000'` → `'70%'`. The stored scale is for arithmetic, not for reading. */
-function trimRate(rate: string): string {
-  const value = rate.includes('.') ? rate.replace(/0+$/, '').replace(/\.$/, '') : rate;
-  return `${value}%`;
 }
 
 function formatDate(value: string): string {

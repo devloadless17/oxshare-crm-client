@@ -830,6 +830,11 @@ export const messages = {
   'kycGate.verifyCta': 'Verify my account',
   'kycGate.statusCta': 'View verification',
   'kycGate.dismiss': 'Not now',
+  // The step BEFORE identity, and the only one whose fix is not at /kyc.
+  'kycGate.emailTitle': 'Confirm your email address first',
+  'kycGate.emailBody':
+    'We sent a link to your inbox. Confirm your address to unlock identity verification and the partner programme.',
+  'kycGate.emailCta': 'Resend the link',
 
   // ── Notifications ─────────────────────────────────────────────────────────
   //
@@ -914,13 +919,15 @@ export const messages = {
   'partner.commissionsLoading': 'Loading your commission',
   'partner.commissionsFailed': 'Could not load your commission.',
   'partner.commissionsEmpty': 'No commission yet',
+  // No longer promises "what the broker made on it": the base and rate columns
+  // were removed from this table, and an empty state that describes columns the
+  // table does not have is the first thing a partner reads and the last thing
+  // anybody updates.
   'partner.commissionsEmptyBody':
-    'You earn when a client you introduced closes a trade. Each entry shows what the broker made on it and your share.',
+    'You earn when a client you introduced closes a trade. Each entry shows your share and whether it has been released.',
   'partner.colDate': 'Date',
   'partner.colClient': 'Client',
   'partner.colSource': 'From',
-  'partner.colBase': 'Broker earned',
-  'partner.colRate': 'Your rate',
   'partner.colAmount': 'Your share',
   'partner.colStatus': 'Status',
   'partner.sourceTrade': 'Closed trade',
@@ -987,6 +994,10 @@ export const messages = {
   // Not eligible yet.
   'partner.ineligibleHeading': 'Verify your identity first',
   'partner.verifyNow': 'Verify my identity',
+  // The other ineligibility: the ladder has no rung left beneath the partner who
+  // introduced them. A heading only — the sentence under it is the API's, so
+  // there is no second copy of the explanation here to drift from it.
+  'partner.ineligibleChainFullHeading': 'The programme is full beneath your introducer',
 
   'partner.loadFailed': 'Could not load your partner status.',
   'partner.loading': 'Loading your partner status…',

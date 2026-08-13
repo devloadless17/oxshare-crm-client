@@ -35,8 +35,22 @@ import { t } from '@/lib/i18n';
  * gating the screen in front of it would hide a client's own balance from them
  * for a reason the API does not hold. A gate copied from a guess is how a list
  * like this drifts past the rule it mirrors.
+ *
+ * `/partner` is here by that same check, not by analogy: `EmailVerifiedGuard`
+ * sits on `ib.controller.ts` as a CLASS decorator, so every endpoint the screen
+ * needs — status, overview, commissions, positions, agencies — answers 403 to an
+ * unverified client. Without this entry the page rendered its own error card
+ * over five simultaneous refusals, which reads as an outage rather than as an
+ * unfinished step.
  */
-const EMAIL_VERIFIED_PATHS = ['/kyc', '/deposit', '/withdraw', '/transfer', '/transactions'];
+const EMAIL_VERIFIED_PATHS = [
+  '/kyc',
+  '/deposit',
+  '/withdraw',
+  '/transfer',
+  '/transactions',
+  '/partner',
+];
 
 /** Where an unverified client is sent to finish verifying. */
 const VERIFY_EMAIL_PATH = '/verify-email/pending';

@@ -3,7 +3,10 @@
 import * as React from 'react';
 import { Handshake } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { KycGateDialog } from '@/components/kyc/kyc-gate-dialog';
+import { useKycAccess } from '@/hooks/use-kyc-access';
 import { useResource } from '@/hooks/use-resource';
+import { useUser } from '@/context/UserContext';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi } from '@/lib/api/partner';
 import { t } from '@/lib/i18n';
@@ -45,7 +48,38 @@ export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
   const options = agencies.data ?? [];
   const mustChoose = options.length > 0;
 
+  /*
+   * ── The gate in front of the button ────────────────────────────────────────
+   *
+   * A partner is PAID and the referral code is the instrument, so both steps
+   * have to be done before an application is worth taking: a confirmed address
+   * and an approved identity.
+   *
+   * This is NOT the enforcement, and it is important that it reads that way.
+   * `IbController` carries `EmailVerifiedGuard`, `apply()` refuses an
+   * unverified address and an unverified identity in the service itself, and
+   * `RequireAuth` bounces an unverified client off /partner on arrival. This is
+   * the half that EXPLAINS the refusal before the click, the same relationship
+   * `MoneyAction` has with the money routes — and it reuses that dialog rather
+   * than growing a second one that would drift from it.
+   *
+   * Blocked until proven cleared, INCLUDING while the profile is still loading:
+   * prompting somebody who turns out to be verified costs one extra click,
+   * while letting an unverified client through means a refusal after the effort.
+   */
+  const { user } = useUser();
+  const kyc = useKycAccess();
+  const [gateOpen, setGateOpen] = React.useState(false);
+
+  const emailUnverified = user?.emailVerified !== true;
+  const blocked = emailUnverified || !kyc.approved;
+
   const submit = async () => {
+    if (blocked) {
+      setGateOpen(true);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -174,6 +208,18 @@ export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
           </p>
         </div>
       </div>
+
+      {/*
+        `emailUnverified` wins inside the dialog, because it is the earlier step
+        and the only one whose way out is not /kyc — see the dialog's own note.
+      */}
+      <KycGateDialog
+        open={gateOpen}
+        onOpenChange={setGateOpen}
+        emailUnverified={emailUnverified}
+        pending={kyc.pending}
+        rejected={kyc.rejected}
+      />
     </div>
   );
 }

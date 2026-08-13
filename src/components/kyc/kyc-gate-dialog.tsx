@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Clock, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Clock, MailWarning, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -48,21 +48,41 @@ export function KycGateDialog({
   onOpenChange,
   pending = false,
   rejected = false,
+  emailUnverified = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pending?: boolean;
   rejected?: boolean;
+  /**
+   * The address has not been confirmed yet — the step BEFORE identity.
+   *
+   * Highest precedence of the four, because it is the earliest thing blocking
+   * them and the only one whose fix is not at `/kyc`. Sending someone into the
+   * identity wizard before they have clicked the link in their inbox hands them
+   * a form the API refuses for a different reason than the one on screen.
+   */
+  emailUnverified?: boolean;
 }) {
-  const state = pending ? 'pending' : rejected ? 'rejected' : 'todo';
+  const state = emailUnverified ? 'email' : pending ? 'pending' : rejected ? 'rejected' : 'todo';
 
-  const { Icon, tone, title, body, cta } = {
+  const { Icon, tone, title, body, cta, href } = {
+    email: {
+      Icon: MailWarning,
+      tone: 'bg-warning/10 text-warning',
+      title: t('kycGate.emailTitle'),
+      body: t('kycGate.emailBody'),
+      cta: t('kycGate.emailCta'),
+      // NOT /kyc — the only state whose way out is somewhere else.
+      href: '/verify-email/pending',
+    },
     pending: {
       Icon: Clock,
       tone: 'bg-info/10 text-info',
       title: t('kycGate.reviewTitle'),
       body: t('kycGate.reviewBody'),
       cta: t('kycGate.statusCta'),
+      href: '/kyc',
     },
     rejected: {
       Icon: ShieldAlert,
@@ -70,6 +90,7 @@ export function KycGateDialog({
       title: t('kycGate.rejectedTitle'),
       body: t('kycGate.rejectedBody'),
       cta: t('kycGate.statusCta'),
+      href: '/kyc',
     },
     todo: {
       Icon: ShieldCheck,
@@ -77,6 +98,7 @@ export function KycGateDialog({
       title: t('kycGate.title'),
       body: t('kycGate.body'),
       cta: t('kycGate.verifyCta'),
+      href: '/kyc',
     },
   }[state];
 
@@ -106,7 +128,7 @@ export function KycGateDialog({
             a client who has done nothing and for one who stopped at step four.
           */}
           <Button asChild>
-            <Link href="/kyc">{cta}</Link>
+            <Link href={href}>{cta}</Link>
           </Button>
         </DialogFooter>
       </DialogContent>
