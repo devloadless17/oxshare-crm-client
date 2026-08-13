@@ -261,7 +261,10 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
           <MoneySection title={t('money.stepAmount')}>
             <div className="space-y-4">
               <AmountField
+                // The MoneySection above is already titled "Amount"; the label
+                // stays for assistive tech only. See `labelHidden`.
                 label={t('deposit.amountLabel')}
+                labelHidden
                 value={amount}
                 onChange={setAmount}
                 currency={account.currency}

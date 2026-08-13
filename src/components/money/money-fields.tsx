@@ -34,6 +34,7 @@ export function AmountField({
   onChange,
   currency,
   label,
+  labelHidden = false,
   hint,
   max,
   disabled,
@@ -43,6 +44,19 @@ export function AmountField({
   onChange: (value: string) => void;
   currency: string;
   label: string;
+  /**
+   * Hide the label VISUALLY, keeping it for assistive technology.
+   *
+   * Every money form puts this field inside a `MoneySection` already titled
+   * "Amount", so the field's own label repeated the word directly underneath —
+   * "AMOUNT" then "Amount", on three screens.
+   *
+   * The label is not removed, because it is the input's accessible NAME: an
+   * unlabelled money input announces as "edit text" and a screen-reader user
+   * has to infer what they are typing into. `sr-only` is the difference between
+   * deleting information and deleting a repetition.
+   */
+  labelHidden?: boolean;
   hint?: React.ReactNode;
   /** "Use everything available" — omitted when there is no such figure. */
   max?: { amount: string; label: string };
@@ -53,7 +67,9 @@ export function AmountField({
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between gap-3">
-        <Label htmlFor={id}>{label}</Label>
+        <Label htmlFor={id} className={labelHidden ? 'sr-only' : undefined}>
+          {label}
+        </Label>
         {max && (
           <button
             type="button"
@@ -75,7 +91,16 @@ export function AmountField({
           placeholder="0.00"
           disabled={disabled}
           autoFocus={autoFocus}
-          className="h-14 pe-16 text-2xl font-bold tabular-nums"
+          /*
+           * `h-12`/`text-xl`, down from `h-14`/`text-2xl`.
+           *
+           * The amount KEEPS being the largest control on the form — it is the
+           * primary input and should read that way. What changed is the size of
+           * the step: at 56px and 24px type it towered over the 40px fields
+           * beside it and made the whole screen feel scaled up. One step above
+           * its neighbours is emphasis; two is a different design.
+           */
+          className="h-12 pe-16 text-xl font-bold tabular-nums"
         />
         <span className="pointer-events-none absolute inset-y-0 end-4 flex items-center text-sm font-semibold text-muted-foreground">
           {currency}

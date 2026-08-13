@@ -353,7 +353,10 @@ function WithdrawForm({
             ) : null}
 
             <AmountField
+              // The enclosing MoneySection is already titled "Amount"; the
+              // label stays for assistive tech only. See `labelHidden`.
               label={t('withdraw.amount')}
+              labelHidden
               value={amount}
               onChange={setAmount}
               currency={currency}

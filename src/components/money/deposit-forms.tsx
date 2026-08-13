@@ -213,6 +213,7 @@ export function DepositForm({
         <div className="space-y-4">
           <AmountField
             label={t('deposit.amountLabel')}
+            labelHidden
             value={amount}
             onChange={onAmountChange}
             currency={method.currency}
