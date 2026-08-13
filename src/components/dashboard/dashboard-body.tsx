@@ -23,6 +23,7 @@ import { useUser } from '@/context/UserContext';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { dashboardApi, type Dashboard } from '@/lib/api/trading';
 import { formatMoney } from '@/lib/money';
+import { SignedAmount } from '@/components/money/signed-amount';
 import { t, type MessageKey } from '@/lib/i18n';
 
 /**
@@ -202,7 +203,7 @@ function TransactionRow({ tx }: { tx: Dashboard['recentTransactions'][number] })
     <li className="flex items-center gap-3 px-5 py-3">
       <span
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-          isDeposit ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+          isDeposit ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
         }`}
       >
         {isDeposit ? (
@@ -220,19 +221,12 @@ function TransactionRow({ tx }: { tx: Dashboard['recentTransactions'][number] })
         </p>
       </div>
       <div className="text-end">
-        {/*
-          Signed for the reader, not by arithmetic: `amount` is stored unsigned
-          with the direction in its own column, so the prefix is a display
-          concern. A subtraction would put a number where §6.1 requires a string.
-        */}
-        <p
-          className={`font-mono text-sm font-semibold whitespace-nowrap ${
-            isDeposit ? 'text-success' : 'text-foreground'
-          }`}
-        >
-          {isDeposit ? '+' : '−'}
-          {formatMoney(tx.amount, tx.currency)}
-        </p>
+        <SignedAmount
+          direction={tx.direction}
+          amount={tx.amount}
+          currency={tx.currency}
+          className="block text-sm whitespace-nowrap"
+        />
         <StateBadge state={tx.state} />
       </div>
     </li>

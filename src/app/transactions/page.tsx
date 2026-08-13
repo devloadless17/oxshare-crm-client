@@ -21,7 +21,7 @@ import {
   type Transaction,
   type TransactionQuery,
 } from '@/lib/api/payments';
-import { formatMoney } from '@/lib/money';
+import { SignedAmount } from '@/components/money/signed-amount';
 import { t, type MessageKey } from '@/lib/i18n';
 
 /**
@@ -175,21 +175,11 @@ export default function TransactionsPage() {
        */
       sortType: 'money',
       align: 'right',
+      // Sign, colour and formatting all live in `SignedAmount` — this cell, the
+      // wallet's activity list and the dashboard's rendered the same ternary
+      // three times, which is how a colour ends up changed in two of them.
       cell: (tx) => (
-        <span
-          className={`font-mono font-semibold ${
-            tx.direction === 'deposit' ? 'text-success' : 'text-foreground'
-          }`}
-        >
-          {/*
-            Signed for the reader, not by arithmetic: `amount` is stored unsigned
-            with the direction in its own column, and the prefix is a display
-            concern. Doing this with a subtraction would put a number where §6.1
-            requires a string.
-          */}
-          {tx.direction === 'deposit' ? '+' : '−'}
-          {formatMoney(tx.amount, tx.currency)}
-        </span>
+        <SignedAmount direction={tx.direction} amount={tx.amount} currency={tx.currency} />
       ),
     },
     {
@@ -388,16 +378,23 @@ export default function TransactionsPage() {
  *
  * Three cases, in the order they are decided:
  *
- *  1. `methodName` — the operator's own name for the method ("Whish Money").
- *     Resolved server-side from `payment_methods`, so it is never a key and
- *     never translated: it is a brand, and the client saw exactly these words on
- *     the deposit screen when they chose it.
+ *  1. `methodName` — the operator's own name for the rail ("Whish Money").
+ *     Resolved server-side, so it is never a key and never translated: it is a
+ *     brand, and the client saw exactly these words when they chose it.
+ *
+ *     It covers BOTH directions. A deposit's name comes from `payment_methods`
+ *     and a withdrawal's from `withdrawal_payment_methods` — different columns
+ *     into different tables — and the API coalesces them into this one field.
+ *     The list query used to join only the deposit side, so every withdrawal
+ *     arrived with a null name and this cell fell through to case 3: an em dash
+ *     where "Whish Money" belonged, on the client's own statement.
  *  2. `manual_admin` — money the team placed by hand. The label is OURS and
  *     therefore translated, because it is a sentence rather than a name.
- *  3. Anything else — an em dash. A withdrawal has no method, and inventing one
- *     ("Unknown", "Other") would put a word where the honest answer is nothing.
- *     `provider` is deliberately NOT shown raw: `manual_bank_transfer` is an
- *     internal identifier, not something to put on a client's statement.
+ *  3. Anything else — an em dash. That is now genuinely "no rail was involved"
+ *     rather than "this is a withdrawal", and inventing a word ("Unknown",
+ *     "Other") would put one where the honest answer is nothing. `provider` is
+ *     deliberately NOT shown raw: `manual_bank_transfer` is an internal
+ *     identifier, not something to put on a client's statement.
  */
 function MethodCell({ tx }: { tx: Transaction }) {
   if (tx.methodName) return <span>{tx.methodName}</span>;
