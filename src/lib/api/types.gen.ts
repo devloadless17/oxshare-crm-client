@@ -3760,7 +3760,6 @@ export interface components {
             id: string;
             userId: string;
             motivation: string | null;
-            expectedVolume: string | null;
             website: string | null;
             /** @enum {string} */
             status: "pending" | "approved" | "rejected";
@@ -3912,8 +3911,6 @@ export interface components {
             agencyId: string;
             /** @description Why the client wants to introduce business. Shown to the reviewer verbatim. */
             motivation?: string;
-            /** @description Self-reported and unverified. Labelled as such on the review screen. */
-            expectedVolume?: string;
             website?: string;
         };
         ApproveIbApplicationDto: {

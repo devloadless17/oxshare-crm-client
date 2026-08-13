@@ -58,7 +58,6 @@ export interface ApplyToPartnerInput {
    */
   agencyId?: string;
   motivation?: string;
-  expectedVolume?: string;
   website?: string;
 }
 
