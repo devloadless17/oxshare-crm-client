@@ -29,7 +29,15 @@ import { t } from '@/lib/i18n';
  * somebody else's book, and listing them would hand one partner a view of
  * another's client list.
  */
-const PAGING = { noun: ['position', 'positions'] as [string, string] };
+/*
+ * TEN rows, against the table's own default of 25.
+ *
+ * This sits inside a tab on a page that already carries the figure row
+ * above it, so a full 25-row page pushes the pager below the fold and the
+ * partner has to scroll to reach the control that moves them on. Ten keeps
+ * the whole table — header, rows and pager — on one screen.
+ */
+const PAGING = { noun: ['position', 'positions'] as [string, string], pageSize: 10 };
 
 export function PartnerPositions() {
   const query = useResource<IbClientPosition[]>(['ib-positions'], (signal) =>

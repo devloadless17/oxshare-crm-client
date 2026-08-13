@@ -116,23 +116,22 @@ function DashboardBody({ data }: { data: IbOverview }) {
         </p>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      {/* `items-stretch` is what actually equalises the two cards — without it
+          each is only as tall as its own content and the row looks ragged. */}
+      <div className="grid items-stretch gap-6 xl:grid-cols-3">
         {/* The level card — narrow, because it is three facts. */}
-        <section className="rounded-2xl border border-border bg-card p-5 xl:col-span-1">
-          <div className="flex items-center gap-2">
-            <Award className="h-4 w-4 text-link" aria-hidden="true" />
-            <h2 className="text-sm font-bold">{t('partner.levelHeading')}</h2>
-          </div>
+        <section className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card xl:col-span-1">
+          <CardHeader icon={Award} title={t('partner.levelHeading')} />
 
           {level ? (
-            <div className="mt-4 space-y-3">
+            <div className="flex-1 space-y-3 p-5">
               <div>
                 <p className="text-2xl font-bold tracking-tight">{level.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {t('partner.subPartnerLevel', { level: level.level })}
                 </p>
               </div>
-              <div className="border-t border-border pt-3">
+              <div className="rounded-xl border border-border bg-muted/30 p-3">
                 {/*
                   The rate's UNIT depends on the payout model — "70" means 70%
                   under revenue_share and $70 per lot under per_lot. Rendering
@@ -156,24 +155,20 @@ function DashboardBody({ data }: { data: IbOverview }) {
           ) : (
             // The level row can be missing if the ladder was edited underneath
             // this partner. Saying so beats an empty card.
-            <p className="mt-4 text-xs text-muted-foreground">{t('partner.levelUnknown')}</p>
+            <p className="flex-1 p-5 text-xs text-muted-foreground">{t('partner.levelUnknown')}</p>
           )}
         </section>
 
         {/* The client list — wide, because it is the screen's real content. */}
-        <section className="rounded-2xl border border-border bg-card xl:col-span-2">
-          <div className="flex items-center justify-between gap-3 border-b border-border p-5">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-link" aria-hidden="true" />
-              <h2 className="text-sm font-bold">{t('partner.clientsHeading')}</h2>
-            </div>
-            <span className="text-[11px] font-semibold text-muted-foreground">
-              {t('partner.clientsCount', {
-                count: referredClients.length,
-                verified: verifiedReferredCount,
-              })}
-            </span>
-          </div>
+        <section className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card xl:col-span-2">
+          <CardHeader
+            icon={Users}
+            title={t('partner.clientsHeading')}
+            meta={t('partner.clientsCount', {
+              count: referredClients.length,
+              verified: verifiedReferredCount,
+            })}
+          />
 
           {referredClients.length === 0 ? (
             <div className="p-8 text-center">
@@ -181,7 +176,9 @@ function DashboardBody({ data }: { data: IbOverview }) {
               <p className="mt-1 text-xs text-muted-foreground">{t('partner.clientsEmptyBody')}</p>
             </div>
           ) : (
-            <div className="max-h-96 overflow-auto">
+            /* The same ceiling as the sub-partner list below, so a long client
+               table and a short one produce the same card. */
+            <div className="max-h-[22rem] flex-1 overflow-y-auto">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-card">
                   <tr className="border-b border-border text-left text-muted-foreground">
@@ -233,11 +230,12 @@ function DashboardBody({ data }: { data: IbOverview }) {
         table). Rendering a deep tree would show a structure the payout logic
         does not honour.
       */}
-      <section className="rounded-2xl border border-border bg-card">
-        <div className="flex items-center gap-2 border-b border-border p-5">
-          <Network className="h-4 w-4 text-link" aria-hidden="true" />
-          <h2 className="text-sm font-bold">{t('partner.subPartnersHeading')}</h2>
-        </div>
+      <section className="overflow-hidden rounded-2xl border border-border bg-card">
+        <CardHeader
+          icon={Network}
+          title={t('partner.subPartnersHeading')}
+          meta={String(subPartners.length)}
+        />
 
         {subPartners.length === 0 ? (
           <div className="p-8 text-center">
@@ -255,7 +253,7 @@ function DashboardBody({ data }: { data: IbOverview }) {
             headline figures are what the page is opened for. A fixed ceiling
             keeps the card a predictable size whatever the tree looks like.
           */
-          <ul className="max-h-96 divide-y divide-border overflow-y-auto">
+          <ul className="max-h-[22rem] divide-y divide-border overflow-y-auto">
             {subPartners.map((partner) => (
               <li
                 key={partner.userId}
@@ -291,6 +289,22 @@ function DashboardBody({ data }: { data: IbOverview }) {
   );
 }
 
+/**
+ * One figure, with a deliberate hierarchy between the four.
+ *
+ * ## The primary tile is not merely a different colour
+ *
+ * Lifetime earnings is what a partner opens this page to see; the other three
+ * are context for it. Four identically-weighted tiles make the reader do that
+ * ranking themselves every visit. The primary one gets the accent ring and the
+ * tinted chip, so the eye lands on it first and the rest read as support.
+ *
+ * ## The icon sits in a CHIP rather than loose beside the label
+ *
+ * A bare 16px glyph next to 11px text is visual noise at that size — it reads
+ * as a bullet. Inside a tinted rounded square it becomes a deliberate mark, and
+ * the four tiles line up on a consistent left edge whatever the icon's shape.
+ */
 function StatTile({
   icon: Icon,
   label,
@@ -304,18 +318,76 @@ function StatTile({
   hint?: string;
   tone?: 'primary';
 }) {
+  const primary = tone === 'primary';
+
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="flex items-center gap-2">
-        <Icon
-          className={`h-4 w-4 ${tone === 'primary' ? 'text-primary' : 'text-muted-foreground'}`}
-          aria-hidden="true"
-        />
-        <span className="text-[11px] font-semibold text-muted-foreground">{label}</span>
+    <div
+      className={`flex flex-col justify-between rounded-2xl border p-4 transition-colors ${
+        primary
+          ? 'border-primary/30 bg-primary/[0.04]'
+          : 'border-border bg-card hover:border-border'
+      }`}
+    >
+      <div className="flex items-center gap-2.5">
+        <span
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+            primary ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
+          }`}
+        >
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+          {label}
+        </span>
       </div>
+
       {/* `tabular-nums` so a refresh does not shift the digits sideways. */}
-      <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums">{value}</p>
-      {hint && <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>}
+      <p
+        className={`mt-3 font-bold tracking-tight tabular-nums ${
+          primary ? 'text-3xl text-primary' : 'text-2xl'
+        }`}
+      >
+        {value}
+      </p>
+      {/*
+        The hint keeps its line even when empty, so the four tiles stay the same
+        height and the row does not step up and down as data arrives.
+      */}
+      <p className="mt-0.5 min-h-[1rem] text-[11px] text-muted-foreground">{hint ?? ''}</p>
+    </div>
+  );
+}
+
+/**
+ * The header every card on this screen shares.
+ *
+ * Built once because the three sections had drifted: different icon colours,
+ * different weights, the count on one and not the others. A dashboard reads as
+ * professional when its panels are visibly the same KIND of object — that is
+ * mostly consistency, not decoration.
+ */
+function CardHeader({
+  icon: Icon,
+  title,
+  meta,
+}: {
+  icon: React.ElementType;
+  title: string;
+  meta?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-link">
+          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        </span>
+        <h2 className="text-sm font-bold tracking-tight">{title}</h2>
+      </div>
+      {meta && (
+        <span className="shrink-0 text-[11px] font-semibold text-muted-foreground tabular-nums">
+          {meta}
+        </span>
+      )}
     </div>
   );
 }
