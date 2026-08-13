@@ -11,6 +11,7 @@ import { useUser } from '@/context/UserContext';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { walletApi } from '@/lib/api/wallet';
+import { currenciesApi } from '@/lib/api/currencies';
 import { paymentsApi, type Transaction } from '@/lib/api/payments';
 import { SignedAmount } from '@/components/money/signed-amount';
 import { t, type MessageKey } from '@/lib/i18n';
@@ -55,16 +56,17 @@ import { t, type MessageKey } from '@/lib/i18n';
  * import and never again, so a constant built that way keeps the language it was
  * imported in for the life of the tab. `t()` is called at render instead.
  */
-const CURRENCIES: CarouselEntry[] = [
-  { code: 'USD', label: 'wallet.usdWallet' },
-  { code: 'USDT', label: 'wallet.usdtWallet' },
-];
-
 /** How many movements the activity list shows before "view all". */
 const RECENT_LIMIT = 6;
 
 export default function WalletPage() {
   const wallets = useResource(['wallets'], (signal) => walletApi.getWallets(signal));
+  /*
+   * The catalogue supplies each wallet's NAME. A failure here is not fatal —
+   * `held` falls back to the code, so the cards still render — which is why this
+   * is a separate resource rather than something the page blocks on.
+   */
+  const currencies = useResource(['currencies'], (signal) => currenciesApi.list(signal));
   const { user } = useUser();
 
   /*
@@ -92,7 +94,7 @@ export default function WalletPage() {
     { enabled: !emailUnverified },
   );
 
-  const byCurrency = new Map((wallets.data ?? []).map((w) => [w.currency as string, w]));
+  const byCurrency = new Map((wallets.data ?? []).map((w) => [w.currency, w]));
 
   /*
    * Only the currencies this client ACTUALLY holds a wallet in.
@@ -112,7 +114,37 @@ export default function WalletPage() {
    * deposit screen creates the wallet, and the operator can open one from the
    * admin console.
    */
-  const held = CURRENCIES.filter((entry) => byCurrency.has(entry.code));
+  /*
+   * ⚠️ Derived from the client's OWN wallets, never from a list in this file.
+   *
+   * This filtered a hardcoded `[USD, USDT]`, so a client holding six wallets saw
+   * two — while the dashboard, reading the same endpoint, counted six. Two
+   * screens disagreeing about the same client's money.
+   *
+   * Currencies are operator data: `GET /currencies` is the catalogue, and an
+   * operator adds one from the admin screen without either app redeploying. The
+   * name comes from there; the CODE is the fallback, because a wallet that
+   * exists must be shown even if the catalogue read failed or the currency was
+   * disabled after it was opened.
+   *
+   * Ordered by the catalogue's `sortOrder` — the operator's own ordering, so the
+   * default currency leads — with anything unknown to it last and alphabetical,
+   * rather than in whatever order the wallets query returned.
+   */
+  const catalogue = currencies.data ?? [];
+  const rank = new Map(catalogue.map((entry, index) => [entry.code, index]));
+  const nameOf = new Map(catalogue.map((entry) => [entry.code, entry.name]));
+
+  const held: CarouselEntry[] = (wallets.data ?? [])
+    .map((wallet) => ({
+      code: wallet.currency,
+      label: nameOf.get(wallet.currency) ?? wallet.currency,
+    }))
+    .sort((a, b) => {
+      const left = rank.get(a.code) ?? Number.MAX_SAFE_INTEGER;
+      const right = rank.get(b.code) ?? Number.MAX_SAFE_INTEGER;
+      return left === right ? a.code.localeCompare(b.code) : left - right;
+    });
 
   /*
    * The lone wallet, bound once rather than indexed at three call sites —
@@ -166,7 +198,7 @@ export default function WalletPage() {
             {only ? (
               <div className="w-full max-w-md">
                 <WalletCard
-                  label={t(only.label)}
+                  label={only.label}
                   currency={only.code}
                   wallet={byCurrency.get(only.code)}
                   holder={holder}

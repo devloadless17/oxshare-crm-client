@@ -3,12 +3,27 @@
 import * as React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { WalletCard } from './wallet-card';
-import type { Wallet as WalletRecord, WalletCurrency } from '@/lib/api/wallet';
-import { t, type MessageKey } from '@/lib/i18n';
+import type { Wallet as WalletRecord } from '@/lib/api/wallet';
+import { t } from '@/lib/i18n';
 
 export interface CarouselEntry {
-  code: WalletCurrency;
-  label: MessageKey;
+  /**
+   * A currency CODE, not a member of a fixed union.
+   *
+   * This was `WalletCurrency` — the generated `'USD' | 'USDT'` — which is how a
+   * client holding six wallets was shown two. Currencies are operator data;
+   * see the note in the wallet DTO.
+   */
+  code: string;
+  /**
+   * ALREADY-RESOLVED text, not a message key.
+   *
+   * The catalogue supplies the currency's name and an operator can add one at
+   * any time, so there is no key to look up: `t()` would need an entry per
+   * currency, written before the operator invented it. The caller resolves
+   * this — from `GET /currencies`, falling back to the code.
+   */
+  label: string;
 }
 
 /**
@@ -322,7 +337,7 @@ export function WalletCarousel({
            */
           <div key={code} className="w-full shrink-0 snap-center px-2">
             <WalletCard
-              label={t(label)}
+              label={label}
               currency={code}
               wallet={byCurrency.get(code)}
               holder={holder}

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Check, Copy, Eye, EyeOff, Wallet as WalletIcon } from 'lucide-react';
-import type { Wallet as WalletRecord, WalletCurrency } from '@/lib/api/wallet';
+import type { Wallet as WalletRecord } from '@/lib/api/wallet';
 import { formatMoney, isZeroMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
 
@@ -52,7 +52,9 @@ export function WalletCard({
   holder,
 }: {
   label: string;
-  currency: WalletCurrency;
+  /* A currency CODE. Not the generated union — currencies are operator data,
+     and typing this as one is what limited a six-wallet client to two cards. */
+  currency: string;
   wallet: WalletRecord | undefined;
   /** The signed-in client's name, for the card foot. Absent renders nothing. */
   holder?: string;

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useResource } from '@/hooks/use-resource';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { apiErrorMessage } from '@/lib/api/errors';
@@ -11,8 +11,7 @@ import { paymentsApi, type WithdrawalMethod } from '@/lib/api/payments';
 import { newIdempotencyKey } from '@/lib/api/client';
 import { formatMoney, isZeroMoney } from '@/lib/money';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { WithdrawalDestinationField } from '@/components/money/withdrawal-fields';
 import {
   AmountField,
   AmountPresets,
@@ -23,6 +22,7 @@ import {
   MoneyHeader,
   MoneySection,
   MoneySheet,
+  StepRail,
 } from '@/components/money/money-shell';
 import { presetsWithin } from '@/components/money/amount-presets';
 import { t } from '@/lib/i18n';
@@ -46,28 +46,31 @@ import { t } from '@/lib/i18n';
  * minimum and maximum, and whether the chosen method is real and enabled — and
  * answers 422 with a message this screen displays.
  *
- * ── ONE step, and what that replaced ────────────────────────────────────────
+ * ── ONE step, and the code is gone from the SERVER too ──────────────────────
  *
  * This used to be two: state the withdrawal, then confirm it with a six-digit
  * code emailed to the account address and bound by HMAC to the exact amount,
- * currency, destination and provider. That step is gone at the operator's
- * request.
+ * currency, destination and rail. That control was removed at the operator's
+ * request, and removed all the way down — the gate, `POST
+ * /payments/withdrawals/otp`, the DTO field, the service and the email template
+ * are all gone.
  *
- * The control behind it is NOT gone, and this is the part worth knowing about:
- * `withdrawal_otp` is still a switch in the admin's Settings → Security, and
- * `POST /payments/withdrawals` still refuses a codeless withdrawal while it is
- * ON. It is seeded OFF, which is what makes this form work. Turning it on
- * without restoring the confirm step would refuse every withdrawal from this
- * screen — `paymentsApi.sendWithdrawalOtp` is kept for exactly that reason.
+ * It could not simply be switched off. The gate read
+ * `security_settings.withdrawal_otp`, which DEFAULTS TO TRUE when no row exists
+ * (deliberately — a fresh deployment fails safe), and the admin Security tab
+ * that would have toggled it no longer exists. Any database whose seed had not
+ * run therefore refused every withdrawal from this form with "A confirmation
+ * code is required", correctable only by SQL.
  *
- * ── The method decides what the destination MEANS ───────────────────────────
+ * ── The rail decides what the form ASKS FOR ─────────────────────────────────
  *
- * The rails come from `withdrawal_payment_methods` rather than a union in the
- * code, so this screen renders whatever the operator has enabled. Today that is
- * Whish Money, whose destination is a phone number — which is why the field
- * below is a phone input rather than a free-text box, and why the server
- * validates it against Whish's own rules at request time instead of days later
- * as a failed payout nobody can explain.
+ * The rails come from `withdrawal_payment_methods` — data, so the desk can add
+ * one without a deploy — and `components/money/withdrawal-fields.tsx` decides
+ * what each one collects. Whish takes a phone number through the country-code
+ * input; a rail this build has not learned yet falls back to a text box labelled
+ * with that rail's own name. There is no generic "Destination" field any more:
+ * it named a database column rather than asking a question, and its placeholder
+ * advertised an IBAN to clients paying out over Whish.
  */
 
 function WithdrawForm({
@@ -93,8 +96,23 @@ function WithdrawForm({
    * money form with nothing chosen.
    */
   const [methodKey, setMethodKey] = React.useState(methods[0]?.key ?? '');
+  /*
+   * The chosen rail's row, for its display NAME — which labels the destination
+   * field when this build does not yet know the rail. `find` rather than an
+   * index because the picker is keyed, and the list can be reordered by the
+   * operator's `sort_order` between renders.
+   */
+  const selectedMethod = methods.find((m) => m.key === methodKey);
   const [error, setError] = React.useState<string | null>(null);
   const [isSubmitting, setSubmitting] = React.useState(false);
+
+  /*
+   * `'method'` → `'details'`. The step is the only thing deciding which half of
+   * the form is on screen, so there is no way to be entering an amount without
+   * a rail chosen: reaching `details` requires a `methodKey`, and going back is
+   * what allows it to change.
+   */
+  const [step, setStep] = React.useState<'method' | 'details'>('method');
 
   const selected = wallets.find((w) => w.currency === currency);
 
@@ -203,9 +221,112 @@ function WithdrawForm({
    */
   const presets = selected ? presetsWithin(null, selected.available) : [];
 
+  /*
+   * STEP ONE — the rail, on its own.
+   *
+   * The method is asked first because it decides what the rest of the form
+   * MEANS: the amount is the same question on every rail, but the field under
+   * it is a phone number on Whish and something else on the next one. Asking
+   * for a payout target before the client has said where it is going is asking
+   * a question whose answer they cannot know yet.
+   *
+   * It stays a step even with one rail on offer. A screen with a single option
+   * looks redundant today and is the shape that stays correct as rails are
+   * added — and the alternative, skipping the step whenever `methods.length`
+   * happens to be 1, means the flow the client learns changes under them the
+   * day a second method is enabled.
+   */
+  if (step === 'method') {
+    return (
+      /*
+       * `flex flex-col` with the method list growing: the sheet is now as tall
+       * as the screen, so without something claiming the slack the rail, the
+       * tiles and the button would bunch at the top of a mostly-empty card. The
+       * SECTION grows and the footer stays pinned to the bottom edge.
+       */
+      <MoneySheet className="flex min-h-0 flex-1 flex-col">
+        <div className="border-b border-border px-4 py-3 sm:px-5">
+          <StepRail steps={[t('withdraw.stepMethod'), t('withdraw.stepDetails')]} active={0} />
+        </div>
+
+        <MoneySection title={t('withdraw.method')} className="min-h-0 flex-1 overflow-y-auto">
+          <div className="space-y-2">
+            {methods.map((method) => (
+              <MethodTile
+                key={method.key}
+                name="withdraw-method"
+                value={method.key}
+                checked={methodKey === method.key}
+                onChange={(key) => {
+                  setMethodKey(key);
+                  /*
+                   * Changing the rail clears the payout target. The value that
+                   * was there was for a DIFFERENT rail — a Whish phone number
+                   * carried into a bank field would be submitted as an account
+                   * number, and the server would refuse it with a message about
+                   * a field the client thought they had filled in correctly.
+                   */
+                  setDestination('');
+                  setError(null);
+                }}
+                title={method.name}
+                logoUrl={method.logoUrl}
+              />
+            ))}
+          </div>
+        </MoneySection>
+
+        <MoneyFooter>
+          <Button
+            type="button"
+            onClick={() => {
+              if (!methodKey) return setError(t('withdraw.needMethod'));
+              setError(null);
+              setStep('details');
+            }}
+            className="h-10 w-full"
+          >
+            {t('withdraw.continue')}
+          </Button>
+        </MoneyFooter>
+      </MoneySheet>
+    );
+  }
+
   return (
-    <form onSubmit={(e) => void submit(e)}>
-      <MoneySheet>
+    // The form is the flex child now, so it has to carry the growth through to
+    // the sheet — a plain <form> wrapper would collapse to content height and
+    // the card inside it would never see the space.
+    <form onSubmit={(e) => void submit(e)} className="flex min-h-0 flex-1 flex-col">
+      <MoneySheet className="flex min-h-0 flex-1 flex-col">
+        <div className="border-b border-border px-4 py-3 sm:px-5">
+          <StepRail steps={[t('withdraw.stepMethod'), t('withdraw.stepDetails')]} active={1} />
+        </div>
+
+        {/*
+          What was chosen in step one, and the way back to change it. Without
+          this the second step asks for a phone number with nothing on screen
+          saying which account it is for — the client has to remember what they
+          tapped.
+        */}
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+          <span className="min-w-0 truncate text-xs font-semibold text-foreground">
+            {selectedMethod?.name ?? methodKey}
+          </span>
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            onClick={() => {
+              setStep('method');
+              setError(null);
+            }}
+            className="h-auto shrink-0 p-0 text-[11px]"
+          >
+            {t('withdraw.changeMethod')}
+          </Button>
+        </div>
+
         <MoneySection title={t('withdraw.amount')}>
           <div className="space-y-4">
             {/*
@@ -217,7 +338,7 @@ function WithdrawForm({
               <DestinationSelect
                 label={t('withdraw.currency')}
                 value={currency}
-                onChange={(value) => setCurrency(value as Currency)}
+                onChange={(value) => setCurrency(value)}
                 groups={[
                   {
                     label: t('deposit.groupWallet'),
@@ -263,61 +384,38 @@ function WithdrawForm({
         </MoneySection>
 
         {/*
-          Rendered even with a single rail, unlike the currency select above.
-          A payout METHOD is not an implementation detail the way a currency is
-          when only one wallet is funded: the client is being asked where their
-          money goes, and the answer determines what the field below means. A
-          form that collected a phone number without naming Whish would be
-          asking for a number with no stated purpose.
+          The destination control is chosen by the METHOD, not fixed by this
+          screen — see `withdrawal-fields.tsx`. Whish asks for a phone number;
+          a rail added later asks for whatever it needs, under its own label.
         */}
-        <MoneySection title={t('withdraw.method')}>
-          <div className="space-y-2">
-            {methods.map((method) => (
-              <MethodTile
-                key={method.key}
-                name="withdraw-method"
-                value={method.key}
-                checked={methodKey === method.key}
-                onChange={setMethodKey}
-                title={method.name}
-                logoUrl={method.logoUrl}
-              />
-            ))}
-          </div>
-        </MoneySection>
-
-        <MoneySection title={t('withdraw.destination')}>
-          <div className="space-y-1.5">
-            {/*
-              A phone input, because today's only rail pays a phone number. It
-              is the same control the profile and KYC screens use, so the
-              country picker and formatting behave the way the client has
-              already seen elsewhere.
-
-              The value still goes to the server as a plain string and the
-              server validates it against Whish's own rules — this control
-              shapes the typing, it does not decide whether the number is good.
-
-              A plain `<Label>` with no `htmlFor`: `PhoneInput` owns its own
-              markup and exposes no id to point at, so a `htmlFor` here would
-              name an element that does not exist — worse than no association,
-              because it looks like one.
-            */}
-            <Label>{t('withdraw.phoneLabel')}</Label>
-            <PhoneInput value={destination} onChange={setDestination} />
-            <p className="text-[11px] text-muted-foreground">{t('withdraw.phoneHint')}</p>
-          </div>
-
-          <p className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/5 p-3 text-[11px] leading-relaxed text-muted-foreground">
-            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-info" aria-hidden="true" />
-            <span>{t('withdraw.reviewNote')}</span>
-          </p>
+        {/* The last section takes the slack, so the footer sits on the bottom
+            edge of a full-height card instead of halfway up it. */}
+        <MoneySection title={t('withdraw.recipient')} className="min-h-0 flex-1">
+          {/*
+            The "every withdrawal is reviewed by our team before any funds move"
+            notice is GONE, on request. The confirmation screen already tells the
+            client their request is with the team, which is the moment that
+            statement is actually useful — repeating it beside the input made a
+            short form longer to read for something they had not asked about yet.
+          */}
+          <WithdrawalDestinationField
+            methodKey={methodKey}
+            methodName={selectedMethod?.name ?? methodKey}
+            value={destination}
+            onChange={setDestination}
+          />
         </MoneySection>
 
         <MoneyFooter className="space-y-4">
           <FormError message={error} />
 
-          <Button type="submit" size="lg" loading={isSubmitting} className="h-12 w-full">
+          {/*
+            `h-10`, not the `size="lg"` + `h-12` this had. A full-width 48px
+            button under a form of 40px controls read as a landing-page CTA
+            rather than as the submit of a short form — the whole screen was
+            scaled up a step from the rest of the portal.
+          */}
+          <Button type="submit" loading={isSubmitting} className="h-10 w-full">
             {isSubmitting ? t('withdraw.submitting') : t('withdraw.submit')}
           </Button>
         </MoneyFooter>
@@ -341,9 +439,32 @@ export default function WithdrawPage() {
    */
   const status = wallets.status === 'ready' ? methods.status : wallets.status;
 
+  /*
+   * The card FILLS the screen rather than sitting at its content height.
+   *
+   * `/withdraw` is two short steps — pick a rail, then amount and recipient —
+   * so on a laptop the sheet occupied about a third of the viewport with the
+   * rest empty below it, and the submit button floated in the middle of nothing.
+   *
+   * `flex-1` works here and would NOT have before: `portal-layout` is
+   * `h-dvh` with `<main>` as `flex min-h-0 flex-1 flex-col`, so this div is a
+   * flex child of a column with a resolved height. That is the unbroken chain
+   * `/transactions` and `/accounts` lack — which is why those two size their
+   * empty states in `vh` and this one does not have to.
+   *
+   * `min-h-0` on the wrapper is load-bearing: without it a flex child refuses to
+   * shrink below its content, so a long form on a short window would push the
+   * footer off-screen instead of scrolling.
+   */
   return (
-    <div className="w-full space-y-6">
-      <MoneyHeader title={t('withdraw.title')} subtitle={t('withdraw.subtitle')} />
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-4">
+      {/*
+        The `<h1>Withdraw</h1>` and its subtitle are GONE, on request — the step
+        rail inside the card already names where the client is, and the nav item
+        they clicked said "Withdraw". The back link stays: it is the only way out
+        that does not use the browser's own button.
+      */}
+      <MoneyHeader />
 
       {submitted ? (
         <MoneySheet>
@@ -381,6 +502,7 @@ export default function WithdrawPage() {
         </MoneySheet>
       ) : (
         <AsyncBoundary
+          fill
           status={status}
           label={t('withdraw.loading')}
           endpoints={['GET /wallet', 'GET /payments/withdrawal-methods']}
