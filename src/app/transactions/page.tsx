@@ -157,9 +157,26 @@ export default function TransactionsPage() {
     {
       header: t('transactions.colType'),
       sortKey: 'direction',
+      /*
+       * A TRANSFER is named as one, and never as a deposit or a withdrawal.
+       *
+       * The API states `direction` from the WALLET's side for every row, so a
+       * transfer that brought money back from a trading account arrives as
+       * `deposit` — true of where the money went, and the wrong word to print:
+       * a client reading "Deposit" looks for a payment they never made.
+       *
+       * `kind` is the field to branch on. Not "the method is empty", which is
+       * also true of a manual admin credit.
+       */
       cell: (tx) => (
         <span className="font-medium">
-          {tx.direction === 'deposit' ? t('transactions.deposit') : t('transactions.withdrawal')}
+          {tx.kind === 'transfer'
+            ? tx.direction === 'deposit'
+              ? t('transactions.transferIn')
+              : t('transactions.transferOut')
+            : tx.direction === 'deposit'
+              ? t('transactions.deposit')
+              : t('transactions.withdrawal')}
         </span>
       ),
     },
@@ -397,6 +414,20 @@ export default function TransactionsPage() {
  *     identifier, not something to put on a client's statement.
  */
 function MethodCell({ tx }: { tx: Transaction }) {
+  /*
+   * A transfer went through no payment method, and saying so is more useful
+   * than an em dash: it names the other end of the movement — the client's own
+   * trading account — which is the answer to "where did this come from" on the
+   * one row type that has no provider.
+   *
+   * Checked BEFORE `methodName`, not after. The field is null on a transfer
+   * today, and an em dash here would be indistinguishable from the manual-credit
+   * case below.
+   */
+  if (tx.kind === 'transfer') {
+    return <span className="text-muted-foreground">{t('transactions.tradingAccountMethod')}</span>;
+  }
+
   if (tx.methodName) return <span>{tx.methodName}</span>;
 
   if (tx.provider === MANUAL_ADMIN_PROVIDER) {

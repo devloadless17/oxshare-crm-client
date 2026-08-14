@@ -375,6 +375,15 @@ export const messages = {
   // where somebody actually needs to quote it.
   'transactions.deposit': 'Deposit',
   'transactions.withdrawal': 'Withdrawal',
+  // Wallet ⇄ trading account, named from the WALLET's side so the words match
+  // the sign on the amount beside them. Never "Deposit": a client reading that
+  // for a transfer goes looking for a payment they never made.
+  'transactions.transferIn': 'Transfer in',
+  'transactions.transferOut': 'Transfer out',
+  // What a transfer moved through, where a deposit would name its payment
+  // method. More useful than an em dash — it names the other end of the
+  // movement, which is the question the column asks.
+  'transactions.tradingAccountMethod': 'Trading account',
   'transactions.statePending': 'Pending review',
   'transactions.stateApproved': 'Approved',
   'transactions.stateSuccess': 'Completed',
@@ -386,7 +395,6 @@ export const messages = {
   'withdraw.subtitle': 'Request a withdrawal from your available balance',
   'withdraw.loading': 'Loading your balances',
   'withdraw.loadFailed': 'Could not load your balances.',
-  'withdraw.currency': 'Currency',
   'withdraw.amount': 'Amount',
   'withdraw.amountPlaceholder': '0.00',
   'withdraw.available': 'Available: {amount}',
@@ -418,9 +426,9 @@ export const messages = {
     'The {method} account that will receive the money. A payout sent to the wrong account cannot be recalled.',
   'withdraw.submit': 'Request withdrawal',
   'withdraw.submitting': 'Submitting…',
+  'withdraw.needMethod': 'Choose how you want to be paid.',
   'withdraw.needAmount': 'Enter an amount to withdraw.',
   'withdraw.needDestination': 'Enter where the funds should be sent.',
-  'withdraw.needMethod': 'Choose how you want to be paid.',
   'withdraw.failed': 'Could not submit your withdrawal request.',
   'withdraw.method': 'Withdraw with',
   /*
@@ -431,10 +439,15 @@ export const messages = {
    * this replaced asked for a payout target before the client had said where it
    * was going.
    */
-  'withdraw.stepMethod': 'Method',
   'withdraw.stepDetails': 'Details',
+  // Step one: WHICH BALANCE is being spent. It was a currency dropdown buried
+  // in the amount section that only appeared when more than one wallet was
+  // funded — so a client with one wallet never saw which balance they were
+  // spending from at all.
+  'withdraw.stepWallet': 'Which wallet?',
+  'withdraw.needWallet': 'Choose the wallet you want to withdraw from.',
+  'withdraw.fromWallet': '{currency} wallet · {amount}',
   'withdraw.continue': 'Continue',
-  'withdraw.changeMethod': 'Change',
   'withdraw.noMethods':
     'Withdrawals are unavailable at the moment. Please check back shortly or contact support.',
   'withdraw.submittedTitle': 'Withdrawal requested',
@@ -455,6 +468,10 @@ export const messages = {
   'deposit.title': 'Deposit',
   'deposit.subtitle': 'Tell us what you are sending, then transfer it quoting the reference.',
   'deposit.methodTitle': 'How are you sending it?',
+  // The STEP BAR's label for the same question. Short where the section title
+  // is a sentence: a bar has room for a word, and the section below it is
+  // already asking properly.
+  'deposit.stepMethod': 'Method',
   // The per-method labels and hints that used to sit here are GONE, not
   // orphaned: the methods come from `GET /payments/methods` now, and their
   // names and instructions are the operator's own words rendered verbatim.
@@ -527,6 +544,16 @@ export const messages = {
   'transfer.to': 'To',
   'transfer.walletLabel': '{currency} wallet',
   'transfer.accountLabel': 'Account {login}',
+  // Shown when a source has nowhere to send money — a wallet in a currency no
+  // live account is held in. Names the currency, because "no destinations" on
+  // its own reads as a broken screen rather than as a fact about this wallet.
+  'transfer.noDestination':
+    'You have no live trading account in {currency}, so there is nowhere to move this money to. ' +
+    'Open one, or go back and choose a different source.',
+  // A wallet the client has never held a balance in. NOT "0.00" — an unopened
+  // wallet is an absence, and the transfer is still allowed because the server
+  // decides that, not this screen.
+  'transfer.walletUnopened': 'Not opened yet',
   /*
    * The settlement caveat, stated on the confirmation. A transfer is asynchronous
    * — `wallet_to_account` HOLDS the amount and credits nothing until the bridge

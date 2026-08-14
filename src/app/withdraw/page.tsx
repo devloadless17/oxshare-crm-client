@@ -15,7 +15,6 @@ import { WithdrawalDestinationField } from '@/components/money/withdrawal-fields
 import {
   AmountField,
   AmountPresets,
-  DestinationSelect,
   FormError,
   MethodTile,
   MoneyFooter,
@@ -73,6 +72,20 @@ import { t } from '@/lib/i18n';
  * advertised an IBAN to clients paying out over Whish.
  */
 
+/**
+ * Three steps, and the last one is the OUTCOME.
+ *
+ * A withdrawal is not finished when the form is submitted: the wallet is debited
+ * on request and an operator releases the payout, so "Done" is a state the
+ * client arrives at rather than a screen that replaces the flow. Naming it in
+ * the rail is what makes the wait look like part of the process.
+ */
+const WITHDRAW_STEPS = [
+  t('withdraw.stepMethod'),
+  t('withdraw.stepWallet'),
+  t('withdraw.stepDetails'),
+];
+
 function WithdrawForm({
   wallets,
   methods,
@@ -107,12 +120,23 @@ function WithdrawForm({
   const [isSubmitting, setSubmitting] = React.useState(false);
 
   /*
-   * `'method'` → `'details'`. The step is the only thing deciding which half of
-   * the form is on screen, so there is no way to be entering an amount without
-   * a rail chosen: reaching `details` requires a `methodKey`, and going back is
-   * what allows it to change.
+   * `'method'` → `'wallet'` → `'details'`.
+   *
+   * The rail first, because it is the choice that constrains the others: a
+   * payout method has its own limits and its own recipient field, and picking it
+   * last would mean re-checking an amount that was entered before its bounds
+   * were known.
+   *
+   * Then WHICH BALANCE the money leaves. This used to be a currency dropdown
+   * buried inside the amount section, and it only appeared when more than one
+   * wallet was funded — so a client with a single wallet never saw which balance
+   * they were spending at all.
+   *
+   * Then the form itself. The OUTCOME is not a step here: three questions is
+   * already the whole of a withdrawal, and a fourth marker in the rail would be
+   * counting the confirmation as work the client has to do.
    */
-  const [step, setStep] = React.useState<'method' | 'details'>('method');
+  const [step, setStep] = React.useState<'method' | 'wallet' | 'details'>('method');
 
   const selected = wallets.find((w) => w.currency === currency);
 
@@ -183,8 +207,8 @@ function WithdrawForm({
 
   if (fundable.length === 0) {
     return (
-      <MoneySheet>
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 p-6 text-center">
+      <MoneySheet className="flex min-h-0 flex-1 flex-col">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <AlertCircle className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
           <p className="max-w-sm text-sm text-muted-foreground">{t('withdraw.noWallets')}</p>
           <Button asChild variant="outline" size="sm">
@@ -202,8 +226,8 @@ function WithdrawForm({
    */
   if (methods.length === 0) {
     return (
-      <MoneySheet>
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 p-6 text-center">
+      <MoneySheet className="flex min-h-0 flex-1 flex-col">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <AlertCircle className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
           <p className="max-w-sm text-sm text-muted-foreground">{t('withdraw.noMethods')}</p>
         </div>
@@ -236,51 +260,67 @@ function WithdrawForm({
    * happens to be 1, means the flow the client learns changes under them the
    * day a second method is enabled.
    */
-  if (step === 'method') {
+  if (step === 'wallet') {
     return (
       /*
-       * `flex flex-col` with the method list growing: the sheet is now as tall
-       * as the screen, so without something claiming the slack the rail, the
-       * tiles and the button would bunch at the top of a mostly-empty card. The
+       * `flex flex-col` with the list growing: the sheet is as tall as the
+       * screen, so without something claiming the slack the rail, the wallets
+       * and the button would bunch at the top of a mostly-empty card. The
        * SECTION grows and the footer stays pinned to the bottom edge.
        */
       <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <div className="border-b border-border px-4 py-3 sm:px-5">
-          <StepRail steps={[t('withdraw.stepMethod'), t('withdraw.stepDetails')]} active={0} />
-        </div>
+        <StepRail steps={WITHDRAW_STEPS} active={0} />
 
-        <MoneySection title={t('withdraw.method')} className="min-h-0 flex-1 overflow-y-auto">
+        {/*
+          WHICH BALANCE IS BEING SPENT, asked first and asked plainly.
+
+          This was a currency dropdown inside the amount section, and it appeared
+          only when more than one wallet was funded — so a client with two
+          wallets met it halfway through the form, and a client with one never
+          saw which balance they were spending at all.
+
+          Only FUNDED wallets are offered: a wallet with nothing in it cannot
+          fund a payout, and offering it produces a refusal after the client has
+          chosen a rail and typed an amount.
+        */}
+        <MoneySection title={t('withdraw.stepWallet')} className="min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-2">
-            {methods.map((method) => (
+            {fundable.map((w) => (
               <MethodTile
-                key={method.key}
-                name="withdraw-method"
-                value={method.key}
-                checked={methodKey === method.key}
-                onChange={(key) => {
-                  setMethodKey(key);
+                key={w.currency}
+                name="withdraw-wallet"
+                value={w.currency}
+                checked={currency === w.currency}
+                onChange={(value) => {
+                  setCurrency(value);
                   /*
-                   * Changing the rail clears the payout target. The value that
-                   * was there was for a DIFFERENT rail — a Whish phone number
-                   * carried into a bank field would be submitted as an account
-                   * number, and the server would refuse it with a message about
-                   * a field the client thought they had filled in correctly.
+                   * The amount goes with it. A figure checked against one
+                   * wallet's available balance is not valid against another's,
+                   * and leaving it would carry a number past the check that
+                   * approved it.
                    */
-                  setDestination('');
+                  setAmount('');
                   setError(null);
                 }}
-                title={method.name}
-                logoUrl={method.logoUrl}
+                title={t('deposit.toWallet', { currency: w.currency })}
+                badge={
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                    {t('money.availableBalance', {
+                      amount: formatMoney(w.available, w.currency),
+                    })}
+                  </span>
+                }
               />
             ))}
           </div>
         </MoneySection>
 
-        <MoneyFooter>
+        <MoneyFooter className="space-y-4">
+          <FormError message={error} />
           <Button
             type="button"
             onClick={() => {
-              if (!methodKey) return setError(t('withdraw.needMethod'));
+              if (!currency) return setError(t('withdraw.needWallet'));
               setError(null);
               setStep('details');
             }}
@@ -299,115 +339,128 @@ function WithdrawForm({
     // the card inside it would never see the space.
     <form onSubmit={(e) => void submit(e)} className="flex min-h-0 flex-1 flex-col">
       <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <div className="border-b border-border px-4 py-3 sm:px-5">
-          <StepRail steps={[t('withdraw.stepMethod'), t('withdraw.stepDetails')]} active={1} />
-        </div>
+        <StepRail steps={WITHDRAW_STEPS} active={1} />
 
         {/*
-          What was chosen in step one, and the way back to change it. Without
-          this the second step asks for a phone number with nothing on screen
-          saying which account it is for — the client has to remember what they
-          tapped.
+          WHICH WALLET this is coming out of, and the way back to change it.
+          Without it the second step asks for an amount with nothing on screen
+          saying which balance is being spent — the client has to remember what
+          they tapped, on the one decision that determines what they can afford.
         */}
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
           <span className="min-w-0 truncate text-xs font-semibold text-foreground">
-            {selectedMethod?.name ?? methodKey}
+            {selected
+              ? t('withdraw.fromWallet', {
+                  currency,
+                  amount: formatMoney(selected.available, currency),
+                })
+              : currency}
           </span>
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            onClick={() => {
-              setStep('method');
-              setError(null);
-            }}
-            className="h-auto shrink-0 p-0 text-[11px]"
-          >
-            {t('withdraw.changeMethod')}
-          </Button>
         </div>
 
-        <MoneySection title={t('withdraw.amount')}>
-          <div className="space-y-4">
-            {/*
-              The currency picker is only a QUESTION when there is more than one
-              funded wallet. With a single one it is a control with one option —
-              noise on a money form — so the currency is stated instead.
-            */}
-            {fundable.length > 1 ? (
-              <DestinationSelect
-                label={t('withdraw.currency')}
-                value={currency}
-                onChange={(value) => setCurrency(value)}
-                groups={[
-                  {
-                    label: t('deposit.groupWallet'),
-                    options: fundable.map((w) => ({
-                      value: w.currency,
-                      label: t('deposit.toWallet', { currency: w.currency }),
-                      hint: formatMoney(w.available, w.currency),
-                    })),
-                  },
-                ]}
-              />
-            ) : null}
-
-            <AmountField
-              // The enclosing MoneySection is already titled "Amount"; the
-              // label stays for assistive tech only. See `labelHidden`.
-              label={t('withdraw.amount')}
-              labelHidden
-              value={amount}
-              onChange={setAmount}
-              currency={currency}
-              /*
-               * "Use max" fills the AVAILABLE balance — not `balance`, which
-               * includes whatever is already held against another pending
-               * withdrawal. Offering that would produce a server refusal the
-               * client cannot explain.
-               *
-               * This is a convenience, NOT a gate: the value still goes to the
-               * server as a string and the server re-derives every constraint
-               * (R-5.1). No comparison happens on this side.
-               */
-              max={selected ? { amount: selected.available, label: t('money.useMax') } : undefined}
-              hint={
-                selected
-                  ? t('withdraw.available', {
-                      amount: formatMoney(selected.available, selected.currency),
-                    })
-                  : undefined
-              }
-            />
-
-            {presets.length > 0 && (
-              <AmountPresets presets={presets} currency={currency} onPick={setAmount} />
-            )}
-          </div>
-        </MoneySection>
-
         {/*
+          THE one scrolling region. The rail, the wallet summary and the footer
+          stay put, so the submit button is on screen whatever this step
+          contains — a method list, an amount and a recipient form is more than
+          fits on a phone, and it used to push the button off the bottom.
+        */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {/*
+          The rail, folded into this step.
+          
+          It was a step of its own, which made a withdrawal four screens once the
+          wallet question moved to the front. Choosing a rail and saying how much
+          to send it are one decision in the client's head, and the recipient
+          field below already changes with the rail.
+        */}
+          <MoneySection title={t('withdraw.method')}>
+            <div className="space-y-2">
+              {methods.map((method) => (
+                <MethodTile
+                  key={method.key}
+                  name="withdraw-method"
+                  value={method.key}
+                  checked={methodKey === method.key}
+                  onChange={(key) => {
+                    setMethodKey(key);
+                    /*
+                     * Changing the rail clears the payout target. The value that
+                     * was there was for a DIFFERENT rail — a Whish phone number
+                     * carried into a bank field would be submitted as an account
+                     * number, and the server would refuse it with a message about
+                     * a field the client thought they had filled in correctly.
+                     */
+                    setDestination('');
+                    setError(null);
+                  }}
+                  title={method.name}
+                  logoUrl={method.logoUrl}
+                />
+              ))}
+            </div>
+          </MoneySection>
+
+          <MoneySection title={t('withdraw.amount')}>
+            <div className="space-y-4">
+              <AmountField
+                // The enclosing MoneySection is already titled "Amount"; the
+                // label stays for assistive tech only. See `labelHidden`.
+                label={t('withdraw.amount')}
+                labelHidden
+                value={amount}
+                onChange={setAmount}
+                currency={currency}
+                /*
+                 * "Use max" fills the AVAILABLE balance — not `balance`, which
+                 * includes whatever is already held against another pending
+                 * withdrawal. Offering that would produce a server refusal the
+                 * client cannot explain.
+                 *
+                 * This is a convenience, NOT a gate: the value still goes to the
+                 * server as a string and the server re-derives every constraint
+                 * (R-5.1). No comparison happens on this side.
+                 */
+                max={
+                  selected ? { amount: selected.available, label: t('money.useMax') } : undefined
+                }
+                hint={
+                  selected
+                    ? t('withdraw.available', {
+                        amount: formatMoney(selected.available, selected.currency),
+                      })
+                    : undefined
+                }
+              />
+
+              {presets.length > 0 && (
+                <AmountPresets presets={presets} currency={currency} onPick={setAmount} />
+              )}
+            </div>
+          </MoneySection>
+
+          {/*
           The destination control is chosen by the METHOD, not fixed by this
           screen — see `withdrawal-fields.tsx`. Whish asks for a phone number;
           a rail added later asks for whatever it needs, under its own label.
         */}
-        {/* The last section takes the slack, so the footer sits on the bottom
+          {/* The last section takes the slack, so the footer sits on the bottom
             edge of a full-height card instead of halfway up it. */}
-        <MoneySection title={t('withdraw.recipient')} className="min-h-0 flex-1">
-          {/*
+          <MoneySection title={t('withdraw.recipient')} className="min-h-0 flex-1">
+            {/*
             The "every withdrawal is reviewed by our team before any funds move"
             notice is GONE, on request. The confirmation screen already tells the
             client their request is with the team, which is the moment that
             statement is actually useful — repeating it beside the input made a
             short form longer to read for something they had not asked about yet.
           */}
-          <WithdrawalDestinationField
-            methodKey={methodKey}
-            methodName={selectedMethod?.name ?? methodKey}
-            value={destination}
-            onChange={setDestination}
-          />
-        </MoneySection>
+            <WithdrawalDestinationField
+              methodKey={methodKey}
+              methodName={selectedMethod?.name ?? methodKey}
+              value={destination}
+              onChange={setDestination}
+            />
+          </MoneySection>
+        </div>
 
         <MoneyFooter className="space-y-4">
           <FormError message={error} />
@@ -418,9 +471,23 @@ function WithdrawForm({
             rather than as the submit of a short form — the whole screen was
             scaled up a step from the rest of the portal.
           */}
-          <Button type="submit" loading={isSubmitting} className="h-10 w-full">
-            {isSubmitting ? t('withdraw.submitting') : t('withdraw.submit')}
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10"
+              disabled={isSubmitting}
+              onClick={() => {
+                setStep('wallet');
+                setError(null);
+              }}
+            >
+              {t('money.back')}
+            </Button>
+            <Button type="submit" loading={isSubmitting} className="h-10 flex-1">
+              {isSubmitting ? t('withdraw.submitting') : t('withdraw.submit')}
+            </Button>
+          </div>
         </MoneyFooter>
       </MoneySheet>
     </form>
@@ -470,8 +537,16 @@ export default function WithdrawPage() {
       <MoneyHeader />
 
       {submitted ? (
-        <MoneySheet>
-          <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 p-6 text-center">
+        /*
+          The outcome is STEP THREE, and keeps the rail above it so the client
+          can see they reached the end of something rather than landing on an
+          unrelated confirmation card. The rail is the only part of this screen
+          that survives all three steps, which is what makes the last one read
+          as an arrival.
+        */
+        <MoneySheet className="flex min-h-0 flex-1 flex-col">
+          <StepRail steps={WITHDRAW_STEPS} active={2} />
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-success">
               <CheckCircle2 className="h-7 w-7" aria-hidden="true" />
             </span>

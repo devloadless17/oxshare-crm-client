@@ -304,8 +304,22 @@ function ActivityRow({ tx }: { tx: Transaction }) {
         )}
       </span>
       <div className="min-w-0 flex-1">
+        {/*
+          Named by `kind`, not by direction alone. This list reads the same
+          endpoint as /transactions, which now includes wallet ⇄ account
+          transfers — and a transfer back from an account arrives with
+          `direction: 'deposit'` because that is what it did to the WALLET.
+          Printing "Deposit" for it sends a client looking for a payment they
+          never made.
+        */}
         <p className="truncate text-sm font-medium">
-          {isDeposit ? t('transactions.deposit') : t('transactions.withdrawal')}
+          {tx.kind === 'transfer'
+            ? isDeposit
+              ? t('transactions.transferIn')
+              : t('transactions.transferOut')
+            : isDeposit
+              ? t('transactions.deposit')
+              : t('transactions.withdrawal')}
         </p>
         <p className="text-[11px] text-muted-foreground">
           {new Date(tx.createdAt).toLocaleString()}

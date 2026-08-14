@@ -11,6 +11,7 @@ import {
   MoneyHeader,
   MoneySection,
   MoneySheet,
+  StepRail,
 } from '@/components/money/money-shell';
 import {
   amountProblem,
@@ -78,11 +79,19 @@ export default function DepositPage() {
     tradingApi.getTransferableAccounts(signal),
   );
 
+  /*
+   * `flex min-h-0 flex-1` so the card is BOUNDED by the viewport rather than as
+   * tall as its contents. `<main>` is already a bounded flex column; this
+   * continues that chain to the sheet, whose body then scrolls inside it. Break
+   * any link in the chain and the card silently reverts to content height and
+   * the footer walks off the bottom of the screen.
+   */
   return (
-    <div className="w-full space-y-6">
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-4">
       <MoneyHeader title={t('deposit.title')} subtitle={t('deposit.subtitle')} />
 
       <AsyncBoundary
+        fill
         status={methods.status}
         label={t('deposit.loadingMethods')}
         endpoints={['GET /payments/methods', 'POST /payments/deposits']}
@@ -99,6 +108,17 @@ export default function DepositPage() {
     </div>
   );
 }
+
+/**
+ * Choose how to pay, say how much, then read what happens next.
+ *
+ * The third step is the OUTCOME and belongs in the bar: a deposit is not over
+ * when the form is submitted. A gateway method sends the client onward to pay;
+ * a manual one hands them a reference to quote to their bank. Which of the two
+ * it is comes from the SERVER's answer, so the flow genuinely has somewhere to
+ * arrive.
+ */
+const STEPS = [t('deposit.stepMethod'), t('money.stepAmount'), t('money.stepDone')];
 
 function DepositFlow({
   methods,
@@ -121,6 +141,7 @@ function DepositFlow({
   const [destination, setDestination] = React.useState<DepositDestination>({
     tradingAccountId: null,
   });
+  const [step, setStep] = React.useState<1 | 2>(1);
   const [amount, setAmount] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -151,8 +172,8 @@ function DepositFlow({
 
   if (methods.length === 0) {
     return (
-      <MoneySheet>
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 p-6 text-center">
+      <MoneySheet className="flex min-h-0 flex-1 flex-col">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <AlertCircle className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
           <p className="text-sm font-semibold">{t('deposit.noMethods')}</p>
           <p className="max-w-sm text-xs text-muted-foreground">{t('deposit.noMethodsBody')}</p>
@@ -161,17 +182,28 @@ function DepositFlow({
     );
   }
 
+  /*
+   * The outcome is STEP THREE, and keeps the step bar above it.
+   *
+   * A deposit does not finish when the form is submitted — a gateway sends the
+   * client onward, a manual method hands them a reference to quote — so this is
+   * an arrival rather than a screen that replaces the flow.
+   */
   if (created) {
     return (
-      <DepositCreated
-        deposit={created.deposit}
-        method={created.method}
-        onReset={() => {
-          setCreated(null);
-          setAmount('');
-          setError(null);
-        }}
-      />
+      <MoneySheet className="flex min-h-0 flex-1 flex-col">
+        <StepRail steps={STEPS} active={2} />
+        <DepositCreated
+          deposit={created.deposit}
+          method={created.method}
+          onReset={() => {
+            setCreated(null);
+            setStep(1);
+            setAmount('');
+            setError(null);
+          }}
+        />
+      </MoneySheet>
     );
   }
 
@@ -221,87 +253,127 @@ function DepositFlow({
   };
 
   return (
-    <form onSubmit={(event) => void submit(event)}>
-      <MoneySheet>
-        <MoneySection title={t('deposit.methodTitle')}>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {methods.map((method) => (
-              <MethodTile
-                key={method.key}
-                name="deposit-method"
-                value={method.key}
-                checked={method.key === methodKey}
-                onChange={(key) => {
-                  setMethodKey(key);
-                  /*
-                   * Reset the destination when the method changes: the options
-                   * are filtered by the method's CURRENCY, so an account chosen
-                   * under USD is not offered under USDT and would otherwise
-                   * remain selected but invisible — a deposit routed somewhere
-                   * the client can no longer see.
-                   */
-                  setDestination({ tradingAccountId: null });
-                }}
-                title={method.name}
-                logoUrl={method.logoUrl}
-                disabled={busy}
-                /*
-                 * NO BADGE. It read "Instant" or "Manual", from the method's
-                 * `kind` — a column dropped in migration 0043 and not replaced.
-                 *
-                 * It described OUR integration, printed on the one control the
-                 * client uses to choose how to pay. And it was wrong for a whole
-                 * release: the seeded Whish row said `manual` while the Whish
-                 * gateway was live, so the platform's only real method was
-                 * labelled the slow one. What the client actually needs to know
-                 * arrives with the outcome — a payment page, or a reference to
-                 * quote — and `DepositCreated` says it then, when it is true.
-                 */
-              />
-            ))}
-          </div>
-        </MoneySection>
+    <form onSubmit={(event) => void submit(event)} className="flex min-h-0 flex-1 flex-col">
+      <MoneySheet className="flex min-h-0 flex-1 flex-col">
+        <StepRail steps={STEPS} active={step - 1} />
 
-        {/* The selected method's own sections. Revealed, not navigated to. */}
-        {selected && (
-          <DepositForm
-            method={selected}
-            wallets={wallets}
-            accounts={accounts}
-            destination={destination}
-            onDestinationChange={setDestination}
-            amount={amount}
-            onAmountChange={setAmount}
-            disabled={busy}
-          />
-        )}
+        {/*
+          THE one scrolling region. The rail above and the footer below stay put,
+          so the submit button is on screen whatever the step contains — which is
+          the whole point of bounding the card rather than letting the page grow.
+        */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {step === 1 ? (
+            <MoneySection title={t('deposit.methodTitle')}>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {methods.map((method) => (
+                  <MethodTile
+                    key={method.key}
+                    name="deposit-method"
+                    value={method.key}
+                    checked={method.key === methodKey}
+                    onChange={(key) => {
+                      setMethodKey(key);
+                      /*
+                       * Reset the destination when the method changes: the options
+                       * are filtered by the method's CURRENCY, so an account chosen
+                       * under USD is not offered under USDT and would otherwise
+                       * remain selected but invisible — a deposit routed somewhere
+                       * the client can no longer see.
+                       */
+                      setDestination({ tradingAccountId: null });
+                      // The amount too: the bounds are per method, so a figure
+                      // valid under one can be refused by the next.
+                      setAmount('');
+                    }}
+                    title={method.name}
+                    logoUrl={method.logoUrl}
+                    disabled={busy}
+                    /*
+                     * NO BADGE. It read "Instant" or "Manual", from the method's
+                     * `kind` — a column dropped in migration 0043 and not replaced.
+                     *
+                     * It described OUR integration, printed on the one control the
+                     * client uses to choose how to pay. And it was wrong for a whole
+                     * release: the seeded Whish row said `manual` while the Whish
+                     * gateway was live, so the platform's only real method was
+                     * labelled the slow one. What the client actually needs to know
+                     * arrives with the outcome — a payment page, or a reference to
+                     * quote — and `DepositCreated` says it then, when it is true.
+                     */
+                  />
+                ))}
+              </div>
+            </MoneySection>
+          ) : (
+            /* The selected method's own sections — destination and amount. */
+            selected && (
+              <DepositForm
+                method={selected}
+                wallets={wallets}
+                accounts={accounts}
+                destination={destination}
+                onDestinationChange={setDestination}
+                amount={amount}
+                onAmountChange={setAmount}
+                disabled={busy}
+              />
+            )
+          )}
+        </div>
 
         <MoneyFooter className="space-y-4">
           {/* The bounds refusal, shown while the client is still on the field —
               the server's own check still runs and is authoritative. */}
-          <FormError message={error ?? problem} />
+          <FormError message={error ?? (step === 2 ? problem : null)} />
 
-          <Button
-            type="submit"
-            size="lg"
-            className="h-12 w-full"
-            loading={busy}
-            disabled={!selected || !amount || Boolean(problem)}
-          >
-            {/*
-              One busy label, because the screen cannot yet know which it is.
-              It said "Opening the payment page…" for a `gateway` method and
-              "Submitting…" otherwise — and the flow is now decided by the
-              server's answer, which has not arrived while this label is showing.
-              Guessing it here is how a client got told a payment page was
-              opening for a deposit that was never going to open one.
-            */}
-            {busy
-              ? t('deposit.submitting')
-              : selected && amount && !problem
-                ? t('deposit.pay', { amount: formatMoney(amount, selected.currency) })
-                : t('deposit.payNow')}
-          </Button>
+          {step === 1 ? (
+            /*
+             * `type="button"`. Inside a form a typeless button SUBMITS, which
+             * here would file a deposit with no amount the moment somebody
+             * pressed Enter on the method list.
+             */
+            <Button
+              type="button"
+              className="h-10 w-full"
+              disabled={!selected}
+              onClick={() => setStep(2)}
+            >
+              {t('money.continue')}
+            </Button>
+          ) : (
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10"
+                disabled={busy}
+                onClick={() => setStep(1)}
+              >
+                {t('money.back')}
+              </Button>
+              <Button
+                type="submit"
+                className="h-10 flex-1"
+                loading={busy}
+                disabled={!selected || !amount || Boolean(problem)}
+              >
+                {/*
+                  One busy label, because the screen cannot yet know which flow
+                  it is. It said "Opening the payment page…" for a `gateway`
+                  method and "Submitting…" otherwise — and the flow is decided by
+                  the server's answer, which has not arrived while this label is
+                  showing. Guessing it is how a client got told a payment page
+                  was opening for a deposit that was never going to open one.
+                */}
+                {busy
+                  ? t('deposit.submitting')
+                  : selected && amount && !problem
+                    ? t('deposit.pay', { amount: formatMoney(amount, selected.currency) })
+                    : t('deposit.payNow')}
+              </Button>
+            </div>
+          )}
         </MoneyFooter>
       </MoneySheet>
     </form>

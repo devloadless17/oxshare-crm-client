@@ -4247,6 +4247,12 @@ export interface components {
             settledAt?: string | null;
             /** Format: date-time */
             createdAt: string;
+            /**
+             * @description Branch on this, never on the absence of a payment field.
+             * @enum {string}
+             */
+            kind: "payment" | "transfer";
+            tradingAccountId?: string | null;
         };
         TransactionPageDto: {
             items: components["schemas"]["TransactionDto"][];

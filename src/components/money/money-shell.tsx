@@ -33,20 +33,41 @@ import { t } from '@/lib/i18n';
  */
 
 /**
- * A numbered progress rail.
+ * A numbered progress rail, and the HEADER OF THE CARD on every money flow.
  *
  * `aria-current="step"` rather than colour alone: the active step is otherwise
  * announced identically to every other, and this is a money flow where knowing
  * whether you have already committed matters.
+ *
+ * ## The border and padding belong HERE, not at the call site
+ *
+ * Each screen used to wrap this in its own bordered div, so deposit, withdraw
+ * and transfer drifted apart at the one element they all start with — different
+ * padding on each, and one of them a different component entirely. Owning the
+ * chrome means the three cards begin identically by construction rather than by
+ * three files agreeing to.
  */
 export function StepRail({ steps, active }: { steps: string[]; active: number }) {
   return (
-    <ol className="flex items-center gap-2">
+    <ol className="flex w-full items-center gap-2 border-b border-border px-4 py-3 sm:px-5">
       {steps.map((label, index) => {
         const done = index < active;
         const current = index === active;
+        const last = index === steps.length - 1;
         return (
-          <li key={label} className="flex flex-1 items-center gap-2">
+          /*
+           * `flex-1` on every step EXCEPT the last.
+           *
+           * With it everywhere, the three shared the width equally and the final
+           * step's circle sat left-aligned inside its own third — so the rail
+           * stopped a third of the way short of the card's right edge and read
+           * as a header that had failed to stretch.
+           *
+           * Only the steps that CARRY A CONNECTOR need to grow: the connector is
+           * what absorbs the slack, and the last step has none, so it shrinks to
+           * its content and lands flush against the right edge.
+           */
+          <li key={label} className={cn('flex items-center gap-2', !last && 'flex-1')}>
             <span
               aria-current={current ? 'step' : undefined}
               className={cn(
@@ -67,7 +88,7 @@ export function StepRail({ steps, active }: { steps: string[]; active: number })
               {label}
             </span>
             {/* The connector, decorative — the numbers already carry the order. */}
-            {index < steps.length - 1 && (
+            {!last && (
               <span
                 aria-hidden="true"
                 className={cn('h-px flex-1 rounded', done ? 'bg-success' : 'bg-border')}

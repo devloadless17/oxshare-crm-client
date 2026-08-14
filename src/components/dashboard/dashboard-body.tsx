@@ -235,8 +235,22 @@ function TransactionRow({ tx }: { tx: Dashboard['recentTransactions'][number] })
         )}
       </span>
       <div className="min-w-0 flex-1">
+        {/*
+          A transfer is named as one. `direction` is stated from the WALLET's
+          side for every row in this list, so a transfer back from a trading
+          account arrives as `deposit` — true of where the money went, and the
+          wrong word to print: a client reading "Deposit" looks for a payment
+          they never made. The arrow and colour above stay driven by direction,
+          which is the part that IS the same question.
+        */}
         <p className="truncate text-sm font-medium">
-          {isDeposit ? t('transactions.deposit') : t('transactions.withdrawal')}
+          {tx.kind === 'transfer'
+            ? isDeposit
+              ? t('transactions.transferIn')
+              : t('transactions.transferOut')
+            : isDeposit
+              ? t('transactions.deposit')
+              : t('transactions.withdrawal')}
         </p>
         <p className="text-[11px] text-muted-foreground">
           {new Date(tx.createdAt).toLocaleString()}
