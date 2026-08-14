@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { WalletCard } from './wallet-card';
+import { WalletCard } from '@/components/wallet/wallet-card';
 import type { Wallet as WalletRecord } from '@/lib/api/wallet';
 import { t } from '@/lib/i18n';
 
@@ -36,18 +36,36 @@ export interface CarouselEntry {
  * chrome around it. One at a time keeps the figure large, and matches how a
  * physical wallet actually works: you look at one card, then the next.
  *
- * ## Scroll-snap, not a JS slider
+ * ## ⚠️ A TRANSFORM, not a scroll container
  *
- * The track is a real horizontally-scrolling element with `snap-x snap-mandatory`
- * and one snap point per card. That gives native touch inertia, native
- * trackpad-swipe, keyboard scrolling and correct RTL behaviour for free — none of
- * which a transform-based slider gets without re-implementing all four, usually
- * badly.
+ * This was built on `overflow-x-auto` + `scroll-snap` + `scrollTo({ behavior:
+ * 'smooth' })`, and it would not animate. Three separate attempts are recorded
+ * in the history, each correct about its own cause and none of them enough:
  *
- * The arrows and dots then only need to call `scrollTo`, and the active index is
- * READ BACK from the scroll position rather than held as the source of truth. So
- * a swipe and a button press cannot disagree about which card is showing, which
- * is the classic carousel bug where the dots drift out of sync with the content.
+ *   - `scroll-snap-type: mandatory` applies to PROGRAMMATIC scrolls, and Chrome
+ *     resolves the snap on the first frame — so the smooth scroll never ran.
+ *   - Suspending snap through React state did nothing, because `setState` is
+ *     async and the scroll had already started under the old value.
+ *   - Suspending it by writing `style.scrollSnapType` directly fixed that, and
+ *     left the behaviour at the mercy of `scroll-behavior: auto !important`,
+ *     which this project's own reduced-motion block sets on `*`.
+ *
+ * The common thread is that native smooth scrolling is not something a
+ * component can rely on: it is CSS the page can override, a snap model that
+ * fights it, and browser heuristics on top. A transform with a transition is
+ * none of those. The animation is declared here, it cannot be resolved away on
+ * the first frame, and it behaves identically in every browser.
+ *
+ * What is given up is native touch INERTIA — a flick no longer coasts. In
+ * exchange a drag tracks the finger exactly and always settles with a visible
+ * glide, which is the behaviour that was actually missing.
+ *
+ * ## Reduced motion is honoured HERE, deliberately
+ *
+ * The global block cannot express this: killing the transition would leave the
+ * carousel jumping, which is the correct outcome for somebody who asked for no
+ * motion — but it must be a decision, not a side effect of a wildcard rule that
+ * also freezes spinners mid-arc (see the note beside it in globals.css).
  */
 export function WalletCarousel({
   entries,
@@ -58,130 +76,120 @@ export function WalletCarousel({
   byCurrency: Map<string, WalletRecord>;
   holder?: string;
 }) {
-  const trackRef = React.useRef<HTMLDivElement>(null);
+  const viewportRef = React.useRef<HTMLDivElement>(null);
   const [active, setActive] = React.useState(0);
 
   /**
-   * The distance from one card's left edge to the next — WIDTH PLUS THE GAP.
+   * How far the finger has pulled the track from its resting position, in px.
    *
-   * The index maths used to be `scrollLeft / clientWidth`, which was right only
-   * while the cards were flush against each other. With a gap between them each
-   * step is wider than a card, so dividing by the card width drifts further out
-   * with every slide: by the third card the arrows and the dots disagree with
-   * what is on screen.
-   *
-   * Measured from the DOM rather than hardcoded to match the `gap-` class, so
-   * the two cannot fall out of step — the layout is the source of truth. Falls
-   * back to the track width for a single card, where there is no second element
-   * to measure against and no stepping to do anyway.
+   * Zero whenever nothing is being dragged, which is also when the transition
+   * is allowed to run — the two are the same state, so they are one value
+   * rather than two that can disagree.
    */
-  const step = React.useCallback((): number => {
-    const track = trackRef.current;
-    if (!track) return 0;
-    const [first, second] = Array.from(track.children) as HTMLElement[];
-    if (first && second) {
-      const distance = Math.abs(second.offsetLeft - first.offsetLeft);
-      if (distance > 0) return distance;
-    }
-    return track.clientWidth;
-  }, []);
-
-  /*
-   * Snap is SUSPENDED during any scroll this component drives itself.
-   *
-   * `scroll-snap-type: mandatory` applies to programmatic scrolls too, and
-   * Chrome resolves the snap on the first frame rather than letting the smooth
-   * animation run — so `scrollTo({ behavior: 'smooth' })` under mandatory snap
-   * lands on the next card instantly. That is the "it only changes, there is no
-   * animation" on the arrows and the dots.
-   *
-   * A REF and a direct style write, deliberately NOT React state: `setState` is
-   * asynchronous, so a state-driven class would not be applied until after the
-   * `scrollTo` call had already started the scroll under the old value. The
-   * first version of this fix did exactly that and changed nothing.
-   *
-   * The timer holds the handle that restores snapping once the glide settles.
-   */
-  const glideTimer = React.useRef<number | null>(null);
-
-  /*
-   * ── Dragging with a MOUSE, which native scrolling does not give us ─────────
-   *
-   * The track is a real scroll container, so touch and trackpad already swipe it
-   * with correct inertia. A mouse cannot drag a scroll container at all — so on
-   * a laptop the only way to move between cards was the arrows, and the thing
-   * that looks and behaves like a swipeable carousel did not respond to being
-   * pulled. That is what "it should slide" is about.
-   *
-   * Only for `pointerType === 'mouse'`. Hijacking touch here would replace the
-   * browser's own inertia and snap with a worse hand-rolled version, and take
-   * vertical page scrolling with it — the classic carousel that traps a phone.
-   */
-  const drag = React.useRef<{ startX: number; startScroll: number; moved: boolean } | null>(null);
+  const [dragOffset, setDragOffset] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
 
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType !== 'mouse') return;
-    const track = trackRef.current;
-    if (!track) return;
+  const drag = React.useRef<{ startX: number; pointerId: number; moved: boolean } | null>(null);
+  /* Set on release, read by the click that follows it, cleared there. A drag
+     that ends on the copy button must not also press it. */
+  const suppressClick = React.useRef(false);
 
-    drag.current = { startX: event.clientX, startScroll: track.scrollLeft, moved: false };
+  const count = entries.length;
+  const single = count <= 1;
+
+  /*
+   * CLAMPED AT RENDER, not corrected afterwards in an effect.
+   *
+   * A card can disappear — a wallet closed from the admin console — leaving
+   * `active` past the end and the track parked on blank space with no way back.
+   * An effect that reset it would render the broken frame first and fix it on
+   * the next pass, which is both a visible flash and the cascading-render this
+   * project's lint rules refuse.
+   *
+   * Deriving it means the out-of-range value is never rendered at all. `active`
+   * stays whatever it was, so re-adding the card restores the reader's place.
+   */
+  const current = Math.min(active, Math.max(count - 1, 0));
+
+  const goTo = React.useCallback(
+    (index: number) => setActive(Math.min(Math.max(index, 0), Math.max(count - 1, 0))),
+    [count],
+  );
+
+  // ── Dragging ──────────────────────────────────────────────────────────────
+  //
+  // Pointer events, so one code path serves mouse, touch and pen. The previous
+  // version handled `pointerType === 'mouse'` only and left touch to the
+  // browser's scrolling, which is why the two behaved differently.
+
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (single) return;
+    drag.current = { startX: event.clientX, pointerId: event.pointerId, moved: false };
     setDragging(true);
+    /*
+     * CAPTURE, so a pointer dragged outside the track keeps delivering moves
+     * and — crucially — still delivers the `pointerup`. Without it a release
+     * beyond the edge strands the track mid-drag.
+     */
+    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const state = drag.current;
-    const track = trackRef.current;
-    if (!state || !track) return;
+    if (!state) return;
 
     const delta = event.clientX - state.startX;
     /*
      * A THRESHOLD before this counts as a drag, because a click is a tiny drag.
-     * Without it, pressing the copy button on a card with a two-pixel wobble
-     * would be swallowed as a swipe and the button would never fire.
+     * Without it, pressing the copy button on a card with a two-pixel wobble is
+     * swallowed as a swipe and the button never fires.
      */
     if (!state.moved && Math.abs(delta) < 4) return;
     state.moved = true;
 
-    // Native scrolling moves the content OPPOSITE the pointer, so the content
-    // follows the hand rather than running away from it.
-    track.scrollLeft = state.startScroll - delta;
+    /*
+     * RESISTANCE at the two ends. Past the first or last card the track still
+     * moves, at a third of the distance — so a pull that cannot go anywhere
+     * says so by feeling heavy, rather than by not responding at all, which
+     * reads as the control being broken.
+     */
+    const atStart = current === 0 && delta > 0;
+    const atEnd = current === count - 1 && delta < 0;
+    setDragOffset(atStart || atEnd ? delta / 3 : delta);
   };
 
-  /*
-   * Set on release, read by the click that follows it, cleared there.
-   *
-   * A separate ref from `drag`, because `drag` is already null by the time
-   * `click` fires — `pointerup` runs first and clears it, so checking it in the
-   * click handler would always see nothing and never suppress anything.
-   */
-  const suppressClick = React.useRef(false);
-
-  const endDrag = () => {
+  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     const state = drag.current;
     drag.current = null;
     setDragging(false);
+    setDragOffset(0);
+
+    if (state && event.currentTarget.hasPointerCapture(state.pointerId)) {
+      event.currentTarget.releasePointerCapture(state.pointerId);
+    }
     if (!state?.moved) return;
     suppressClick.current = true;
 
     /*
-     * Settle on the nearest card. `scroll-snap` does this for a NATIVE scroll,
-     * but a scroll driven by assigning `scrollLeft` is programmatic and gets no
-     * snap — so releasing mid-card would leave two half-cards on screen.
+     * A THIRD of the card commits the move, rather than half.
+     *
+     * Half means a deliberate-feeling pull that stops just short springs back,
+     * which reads as the drag having been ignored. A third matches what the
+     * hand intended: past a third, the next card is what somebody was reaching
+     * for.
      */
-    const track = trackRef.current;
-    if (!track || track.clientWidth === 0) return;
-    scrollToIndex(Math.round(Math.abs(track.scrollLeft) / track.clientWidth));
+    const width = viewportRef.current?.clientWidth ?? 0;
+    const travelled = event.clientX - state.startX;
+    if (width > 0 && Math.abs(travelled) > width / 3) {
+      goTo(current + (travelled < 0 ? 1 : -1));
+    }
+    /*
+     * Nothing else to do when it does not commit: `dragOffset` is already back
+     * to 0 and the transition below animates the spring-back, because the same
+     * flag that ends the drag re-enables it.
+     */
   };
 
-  /*
-   * Suppress the click that follows a drag.
-   *
-   * A pointer press, a move and a release still produce a `click` on whatever
-   * was underneath — so dragging a card that happens to start on the copy button
-   * would copy the wallet id. Captured on the way DOWN so it runs before the
-   * button's own handler.
-   */
   const onClickCapture = (event: React.MouseEvent) => {
     if (!suppressClick.current) return;
     suppressClick.current = false;
@@ -190,160 +198,100 @@ export function WalletCarousel({
   };
 
   /*
-   * The active card, derived from where the track has actually scrolled.
-   *
-   * Reading it back rather than storing it is what keeps a swipe and a button
-   * press in agreement. `scrollLeft / cardWidth`, rounded — the snap points are
-   * evenly spaced, so the ratio is the index.
-   *
-   * `Math.abs` on scrollLeft because in RTL the browser reports it as negative;
-   * without it every card past the first would resolve to index 0 in Arabic.
+   * Arrow keys move between cards once the track has focus, which is the
+   * keyboard equivalent of a swipe. The dots below are buttons and reachable by
+   * tab; this is for somebody already on the card.
    */
-  const syncActive = React.useCallback(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    const stride = step();
-    if (stride === 0) return;
-    setActive(Math.round(Math.abs(track.scrollLeft) / stride));
-  }, [step]);
-
-  const scrollToIndex = (index: number) => {
-    const track = trackRef.current;
-    if (!track) return;
-    const clamped = Math.min(Math.max(index, 0), entries.length - 1);
-
-    /*
-     * ⚠️ Snap is turned off ON THE ELEMENT, not through React state.
-     *
-     * This is why the first attempt at this did nothing. `setState` is
-     * asynchronous: `setGliding(true)` only schedules a re-render, so the
-     * `scrollTo` two lines below still ran while `scroll-snap-type: mandatory`
-     * was on the element, Chrome resolved the snap on the first frame, and the
-     * card teleported exactly as before. The class swapped in afterwards, when
-     * there was nothing left to animate.
-     *
-     * Writing the style directly takes effect before the next line runs, which
-     * is the whole requirement.
-     */
-    track.style.scrollSnapType = 'none';
-    if (glideTimer.current !== null) window.clearTimeout(glideTimer.current);
-    /*
-     * A timer rather than the `scrollend` event: Safari has only shipped
-     * `scrollend` recently, and a missed re-enable would leave snap off for the
-     * rest of the session — swipes would drift to a stop between two cards.
-     * 500ms comfortably outlasts a smooth scroll of this distance, and
-     * re-enabling snap a little late is invisible.
-     *
-     * Cleared to `''` rather than set to a value, so the class on the element
-     * stays the single source of truth for what snapping should be.
-     */
-    glideTimer.current = window.setTimeout(() => {
-      track.style.scrollSnapType = '';
-    }, 500);
-
-    /*
-     * `scrollTo` with a signed offset rather than `scrollIntoView`, which also
-     * scrolls the PAGE vertically to bring the card into view — so pressing
-     * "next" would jump the whole screen. The sign follows the document
-     * direction, matching how the browser reports `scrollLeft` in RTL.
-     *
-     * The offset is `index × stride`, where stride includes the gap between
-     * cards — not `index × clientWidth`, which lands short by one gap per card
-     * and leaves the third card visibly off-centre.
-     */
-    const direction = getComputedStyle(track).direction === 'rtl' ? -1 : 1;
-    track.scrollTo({ left: direction * clamped * step(), behavior: 'smooth' });
-    /*
-     * The dots update NOW rather than waiting for the scroll to report back.
-     * With snap suspended the settle is animated, so `onScroll` would trail the
-     * press by the length of the animation and the pressed dot would light up
-     * late.
-     */
-    setActive(clamped);
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    if (single) return;
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      goTo(current + 1);
+    } else if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      goTo(current - 1);
+    }
   };
-
-  // A pending re-enable must not fire after unmount — it would set state on a
-  // component that is gone.
-  React.useEffect(
-    () => () => {
-      if (glideTimer.current !== null) window.clearTimeout(glideTimer.current);
-    },
-    [],
-  );
-
-  const single = entries.length <= 1;
 
   return (
     <div className="w-full max-w-md">
       <div
-        ref={trackRef}
-        onScroll={syncActive}
+        ref={viewportRef}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
-        /* Also on LEAVE and CANCEL: a mouse dragged out of the track and
-           released elsewhere never fires `pointerup` here, and the carousel
-           would stay stuck in the dragging state until the next press. */
-        onPointerLeave={endDrag}
         onPointerCancel={endDrag}
         onClickCapture={onClickCapture}
+        onKeyDown={onKeyDown}
+        tabIndex={single ? -1 : 0}
+        role="group"
+        aria-roledescription="carousel"
+        aria-label={t('wallet.carouselLabel')}
         /*
-         * `scrollbar-none` is a project utility (globals.css). The scrollbar
-         * would sit under the card and read as part of it — and the dots below
-         * already say how many cards there are.
+         * `overflow-hidden` is what makes this a window onto the track rather
+         * than a scroll container — there is no scrolling here at all now.
          *
-         * `snap-x snap-mandatory` makes every scroll settle on a card rather
-         * than halfway between two.
-         *
-         * SNAP IS SUSPENDED WHILE DRAGGING. `scroll-snap-type` applies to
-         * programmatic scrolls too, so with it on, every `scrollLeft` assignment
-         * in `onPointerMove` is yanked back to the nearest snap point and the
-         * card judders instead of following the pointer. `endDrag` scrolls to
-         * the nearest index itself, so the settling behaviour is unchanged.
-         *
-         * The cursor says the track is draggable, and `select-none` stops a drag
-         * across the card from selecting the balance text instead of moving it.
-         *
-         * ## The gap is `px-2` on the SLIDE, not `gap-4` on this track
-         *
-         * `gap-4` was the obvious answer and it was invisible. Each slide is
-         * exactly the track's width, so the gap sits between two boxes only one
-         * of which is ever on screen — the space existed, entirely outside the
-         * viewport, and the cards still met at a hard seam while dragging.
-         *
-         * Padding inside the slide puts the space where it can be seen: the card
-         * is inset from both edges of its own slide, so any two adjacent cards
-         * are separated by the sum of their padding. `-mx-2` on the track then
-         * cancels the outer half, so the first and last cards still line up with
-         * everything else on the page instead of sitting 8px inboard.
-         *
-         * It also keeps the scroll geometry simple — with no gap, one step is
-         * exactly one slide width, which is what `step()` measures.
+         * `touch-action: pan-y` lets the page still scroll VERTICALLY under a
+         * finger while horizontal movement belongs to the carousel. Without it
+         * this is the carousel that traps a phone.
          */
-        className={`scrollbar-none -mx-2 flex overflow-x-auto ${
-          dragging ? 'cursor-grabbing select-none' : 'cursor-grab'
-        } ${
-          /* Snap off while DRAGGING so the card tracks the pointer. The GLIDE
-             case is handled by writing `scrollSnapType` on the element directly
-             — see `scrollToIndex` for why a class cannot do it. */
-          dragging ? '' : 'snap-x snap-mandatory'
-        }`}
+        className={`overflow-hidden ${single ? '' : 'touch-pan-y'} ${
+          dragging ? 'cursor-grabbing select-none' : single ? '' : 'cursor-grab'
+        } focus-outline rounded-2xl`}
       >
-        {entries.map(({ code, label }) => (
-          /*
-           * `w-full shrink-0` — each slide is exactly the track's width, which
-           * is what makes `scrollLeft / clientWidth` a valid index and keeps one
-           * card on screen at a time.
-           */
-          <div key={code} className="w-full shrink-0 snap-center px-2">
-            <WalletCard
-              label={label}
-              currency={code}
-              wallet={byCurrency.get(code)}
-              holder={holder}
-            />
-          </div>
-        ))}
+        <div
+          className={`flex ${
+            /*
+             * The transition runs whenever a drag is NOT in progress: on a
+             * button press, on a dot, on an arrow key, and on the settle after
+             * a release. During a drag it must be off, or the track lags the
+             * finger by the duration of the animation.
+             *
+             * `motion-reduce:transition-none` honours the reader's own setting
+             * here rather than through the global wildcard — see the header.
+             */
+            dragging
+              ? ''
+              : 'transition-transform duration-300 ease-out motion-reduce:transition-none'
+          }`}
+          style={{
+            /*
+             * `calc` mixes the two units this needs: whole cards in percent, so
+             * the geometry holds at any width without measuring, and the live
+             * drag in pixels, because that is what a pointer reports.
+             *
+             * RTL flips the direction of travel. `translateX` is physical, so
+             * without this the cards move away from the finger in Arabic.
+             */
+            transform: `translateX(calc(${-current * 100}% + ${dragOffset}px))`,
+          }}
+        >
+          {entries.map(({ code, label }, index) => (
+            /*
+             * `w-full shrink-0` — one slide is exactly the viewport, which is
+             * what makes `-active * 100%` land on a card every time.
+             *
+             * The gap is `px-2` INSIDE the slide rather than `gap-4` on the
+             * track: a gap between two full-width boxes sits entirely outside
+             * the window and is never seen, so the cards met at a hard seam
+             * while dragging. Padding inside puts the space where it shows.
+             */
+            <div
+              key={code}
+              className="w-full shrink-0 px-2"
+              /* Hidden from assistive tech unless it is the card on screen —
+                 otherwise every balance is announced, in order, as one list. */
+              aria-hidden={index !== current}
+            >
+              <WalletCard
+                label={label}
+                currency={code}
+                wallet={byCurrency.get(code)}
+                holder={holder}
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       {/*
@@ -354,8 +302,8 @@ export function WalletCarousel({
         <div className="mt-3 flex items-center justify-between gap-3">
           <button
             type="button"
-            onClick={() => scrollToIndex(active - 1)}
-            disabled={active === 0}
+            onClick={() => goTo(current - 1)}
+            disabled={current === 0}
             aria-label={t('wallet.previousCard')}
             className="focus-outline flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
           >
@@ -373,11 +321,11 @@ export function WalletCarousel({
               <button
                 key={code}
                 type="button"
-                onClick={() => scrollToIndex(index)}
+                onClick={() => goTo(index)}
                 aria-label={t('wallet.goToCard', { currency: code })}
-                aria-current={index === active ? 'true' : undefined}
+                aria-current={index === current ? 'true' : undefined}
                 className={`focus-outline h-1.5 rounded-full transition-all ${
-                  index === active ? 'w-5 bg-primary' : 'w-1.5 bg-border hover:bg-muted-foreground'
+                  index === current ? 'w-5 bg-primary' : 'w-1.5 bg-border hover:bg-muted-foreground'
                 }`}
               />
             ))}
@@ -385,8 +333,8 @@ export function WalletCarousel({
 
           <button
             type="button"
-            onClick={() => scrollToIndex(active + 1)}
-            disabled={active === entries.length - 1}
+            onClick={() => goTo(current + 1)}
+            disabled={current === entries.length - 1}
             aria-label={t('wallet.nextCard')}
             className="focus-outline flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
           >

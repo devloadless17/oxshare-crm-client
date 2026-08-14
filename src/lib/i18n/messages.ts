@@ -1121,6 +1121,8 @@ export const messages = {
   'wallet.cardHolder': 'Account holder',
   'wallet.cardOpened': 'Opened',
   'wallet.cardNotOpenedTitle': 'Not opened',
+  // Names the GROUP for assistive tech: "Your wallets, carousel".
+  'wallet.carouselLabel': 'Your wallets',
   'wallet.previousCard': 'Previous wallet',
   'wallet.nextCard': 'Next wallet',
   'wallet.goToCard': 'Show {currency} wallet',
