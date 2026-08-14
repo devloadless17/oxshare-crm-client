@@ -257,9 +257,51 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
+        {/*
+          `<main>` scrolls; the div inside it carries the page padding.
 
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 sm:p-5 md:p-6 lg:p-8">
-          {children}
+          ── The bug: NO BOTTOM PADDING on any page that overflows ─────────────
+
+          That inner div was `flex-1 min-h-0`, and `min-h-0` is what broke it.
+
+          A flex item's default `min-height: auto` is a FLOOR at its content
+          height — it is what stops an item shrinking smaller than what is inside
+          it. `min-h-0` removes that floor. Combined with `flex-1` (basis 0,
+          grow, shrink) inside a container of fixed height, the div computed to
+          exactly `<main>`'s height no matter how tall its content was.
+
+          Padding is drawn on the div's OWN box. So on a short page everything
+          looked right, and on a page taller than the viewport the content
+          overflowed the div's bottom edge — and the padding stayed up at that
+          edge, above the overflow. Scrolling to the end put the last row flush
+          against the window with the padding stranded somewhere in the middle.
+
+          ── The fix, and why `flex-1` alone is right ─────────────────────────
+
+          Dropping `min-h-0` restores `min-height: auto`, which makes the div
+          `max(content height, available height)`:
+
+            · short page  — `flex-1` grows it to fill `<main>`, as before.
+            · tall page   — the content floor wins, the div grows past `<main>`,
+                            `<main>` scrolls, and the bottom padding is at the
+                            bottom of the CONTENT where it belongs.
+
+          `min-h-full` would also have worked, but it resolves a percentage
+          against a flex parent and needs `<main>` to keep a definite height.
+          This does the same job with one class removed and no percentage.
+
+          ── Why this does NOT break the `fill` screens ───────────────────────
+
+          /transactions and /accounts put `flex-1 min-h-0` on their own root so
+          the table becomes the scroll container and the pager stays put. Such a
+          child has `flex-basis: 0` and its own `min-height: 0`, so it
+          contributes ZERO to this div's content height — the automatic floor is
+          0, the div is still exactly `<main>`'s height, and the table still
+          scrolls inside itself. The floor only bites for content that actually
+          has intrinsic height, which is precisely the case that was broken.
+        */}
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="flex flex-1 flex-col p-4 sm:p-5 md:p-6 lg:p-8">{children}</div>
         </main>
       </div>
     </div>

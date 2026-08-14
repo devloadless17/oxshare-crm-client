@@ -252,7 +252,10 @@ export default function WalletPage() {
           {/* Not rendered for an unverified client — the request behind it is
               never made, so there is nothing honest to show. */}
           {!emailUnverified && (
-            <section className="overflow-hidden rounded-2xl border border-border bg-card">
+            /* `shrink-0` for the reason `Panel` carries it: an
+               `overflow-hidden` card inside a filling flex column collapses to
+               its own border rather than overflowing, and reads as a line. */
+            <section className="shrink-0 overflow-hidden rounded-2xl border border-border bg-card">
               <div className="flex items-center justify-between gap-3 border-b border-border p-5">
                 <div className="flex items-center gap-2">
                   <Receipt className="h-4 w-4 text-link" aria-hidden="true" />

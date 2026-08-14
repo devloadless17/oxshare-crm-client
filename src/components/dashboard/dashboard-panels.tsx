@@ -33,7 +33,23 @@ export function Panel({
 }) {
   return (
     <section
-      className={`overflow-hidden rounded-2xl border border-border bg-card ${className ?? ''}`}
+      /*
+       * `shrink-0` is LOAD-BEARING, not spacing.
+       *
+       * A Panel is a flex child of a column that fills the viewport, and a flex
+       * item's default is `flex-shrink: 1` — so once the stack is taller than
+       * the space, the browser shrinks the items rather than overflowing. With
+       * `overflow-hidden` here that does not clip a little off the bottom: the
+       * panel collapses to its border and reads as a horizontal LINE.
+       *
+       * That is exactly what happened when the page root gained the fill chain.
+       * Before it, the column was content-height and nothing ever had to
+       * shrink; after it, the two panels below the fold became two lines.
+       *
+       * Refusing to shrink is what makes the page scroll instead — `<main>` is
+       * the `overflow-y-auto` element and always was.
+       */
+      className={`shrink-0 overflow-hidden rounded-2xl border border-border bg-card ${className ?? ''}`}
     >
       <div className="flex items-center justify-between gap-3 border-b border-border p-5">
         <div className="flex items-center gap-2">

@@ -95,7 +95,7 @@ function Panels({ data }: { data: Dashboard }) {
         "0 trading accounts" with no endpoint behind them, and a client holding
         three read zero.
       */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid shrink-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatTile
           icon={WalletIcon}
           label={t('dashboard.largestBalance')}
@@ -163,7 +163,7 @@ function Panels({ data }: { data: Dashboard }) {
         each one, so an unverified client gets an explanation instead of a form
         the API will refuse.
       */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex shrink-0 flex-wrap gap-2">
         <MoneyAction
           href="/deposit"
           icon="deposit"
@@ -189,7 +189,7 @@ function Panels({ data }: { data: Dashboard }) {
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid shrink-0 gap-6 xl:grid-cols-3">
         {/* A PREVIEW, capped server-side. The full history has its own screen
             with real filters, so paging here would imply otherwise. */}
         <Panel
