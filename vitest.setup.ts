@@ -78,6 +78,9 @@ if (!Element.prototype.scrollIntoView) {
  * checkbox that way — every call site is controlled via `onCheckedChange`.
  */
 if (typeof globalThis.ResizeObserver === 'undefined') {
+  // Cast for the reason `IntersectionObserver` below carries in full: a no-op
+  // stub should not have to track additions to a DOM interface it is only
+  // standing in for.
   globalThis.ResizeObserver = class {
     observe() {}
     unobserve() {}
@@ -97,17 +100,27 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
  * have to drive layout jsdom does not have anyway.
  */
 if (typeof globalThis.IntersectionObserver === 'undefined') {
+  /*
+   * CAST rather than a class that satisfies the interface member by member.
+   *
+   * The structural version listed `root`, `rootMargin`, `thresholds` and
+   * `takeRecords` to match `lib.dom.d.ts` — and broke the day TypeScript's DOM
+   * lib grew `scrollMargin`, with an error naming a property this stub has no
+   * opinion about. Every future addition to the interface breaks it again, in a
+   * file whose entire purpose is to stop a MISSING API from being an error.
+   *
+   * The four methods below are what a caller actually invokes, so a typo in one
+   * still fails at the call site. What the cast gives up is agreement with a
+   * spec this no-op is not trying to implement.
+   */
   globalThis.IntersectionObserver = class {
-    readonly root = null;
-    readonly rootMargin = '';
-    readonly thresholds: ReadonlyArray<number> = [];
     observe() {}
     unobserve() {}
     disconnect() {}
     takeRecords(): IntersectionObserverEntry[] {
       return [];
     }
-  };
+  } as unknown as typeof IntersectionObserver;
 }
 
 /*
