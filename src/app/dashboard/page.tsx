@@ -54,7 +54,7 @@ export default function DashboardPage() {
   const firstName = user?.firstName?.trim();
 
   return (
-    <div className="space-y-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
           {firstName ? t('dashboard.greeting', { name: firstName }) : t('dashboard.title')}

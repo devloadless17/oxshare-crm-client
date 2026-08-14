@@ -141,10 +141,20 @@ export function PageLoader({
        * has nothing to resolve against and silently collapses to its content.
        * Admin's layout does have that chain, but this is a TWIN file and one
        * expression has to be correct in both — `vh` is.
+       *
+       * `flex-1` BESIDE the min-height, so the spinner lands in the same place
+       * on every screen. `<main>` is a flex column, so a loader inside one takes
+       * the real remaining space and centres in it; `min-h-[60vh]` is what
+       * centres it when the parent is not a flex column and `flex-1` is inert.
+       *
+       * Without it the two cases disagreed visibly: a page passing `fill` to
+       * AsyncBoundary centred its spinner in the space actually available, while
+       * one that did not centred within 60vh — higher up, and by a different
+       * amount depending on the window. Same product, two loading screens.
        */
       className={cn(
         'flex flex-col items-center justify-center gap-3 text-center',
-        fullScreen ? 'min-h-screen bg-background' : 'min-h-[60vh]',
+        fullScreen ? 'min-h-screen bg-background' : 'min-h-[60vh] flex-1',
         className,
       )}
     >

@@ -61,7 +61,7 @@ export default function ProfilePage() {
   const fullName = `${user.firstName} ${user.lastName}`.trim();
 
   return (
-    <div className="space-y-8">
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
       <PageHeader
         name={fullName}
         email={user.email}

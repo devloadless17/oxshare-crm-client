@@ -19,7 +19,7 @@ export default function PartnerPage() {
   const query = useResource<IbStatus>(['ib-status'], (signal) => partnerApi.status(signal));
 
   return (
-    <div className="flex w-full flex-1 flex-col pb-6">
+    <div className="flex w-full flex-1 flex-col">
       <AsyncBoundary
         status={query.status}
         label={t('partner.loading')}

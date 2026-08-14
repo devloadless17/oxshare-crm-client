@@ -168,7 +168,7 @@ export default function WalletPage() {
   const recent = transactions.data?.items ?? [];
 
   return (
-    <div className="space-y-8">
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{t('wallet.heading')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('wallet.subtitle')}</p>
@@ -182,7 +182,7 @@ export default function WalletPage() {
         errorMessage={apiErrorMessage(wallets.error, t('wallet.loadFailed'))}
         error={wallets.error}
       >
-        <div className="space-y-8">
+        <div className="space-y-6">
           <div className="space-y-4">
             {/*
               ONE wallet renders the card ALONE — no track, no arrows, no dots.

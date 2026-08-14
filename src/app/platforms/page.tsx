@@ -60,7 +60,7 @@ export default function PlatformsPage() {
   const platforms = useResource(['platforms'], (signal) => platformsApi.list(signal));
 
   return (
-    <div className="space-y-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
       <header>
         <h1 className="text-2xl font-bold tracking-tight">{t('platforms.title')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('platforms.subtitle')}</p>
@@ -73,6 +73,9 @@ export default function PlatformsPage() {
         onRetry={() => void platforms.refetch()}
         errorMessage={apiErrorMessage(platforms.error, t('platforms.loadFailed'))}
         error={platforms.error}
+        // Centres the spinner in the space actually left below the header,
+        // rather than inside its own min-height.
+        fill
       >
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {(platforms.data ?? []).map((platform) => (

@@ -72,6 +72,9 @@ export function DashboardBody() {
       onRetry={() => void dashboard.refetch()}
       errorMessage={apiErrorMessage(dashboard.error, t('dashboard.loadFailed'))}
       error={dashboard.error}
+      // See the note on the page root: the fill chain is what lets the spinner
+      // centre in the remaining space instead of inside its own min-height.
+      fill
     >
       {dashboard.data ? <Panels data={dashboard.data} /> : null}
     </AsyncBoundary>
@@ -82,7 +85,7 @@ function Panels({ data }: { data: Dashboard }) {
   const { wallets, recentTransactions, tradingAccounts, openPositions, stats } = data;
 
   return (
-    <div className="space-y-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
       {/* The figure row — four counts, each from its own table. */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
