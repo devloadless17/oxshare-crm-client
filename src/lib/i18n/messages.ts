@@ -723,10 +723,6 @@ export const messages = {
   'accounts.creditLabel': 'Credit',
   'accounts.mt5BalanceLabel': 'Balance',
   'accounts.mt5BalanceHint': 'Cash on the account, excluding open profit.',
-  'accounts.crmBalanceLabel': 'Balance on record',
-  'accounts.crmBalanceHint':
-    'What this system has credited to the account. It does not move when you trade — the live ' +
-    'balance above does.',
   // The two reasons live figures are missing. They must not share a string: one
   // is permanent and about this account, the other is temporary and about the
   // platform.
@@ -739,17 +735,74 @@ export const messages = {
     'The trading server could not be reached just now. Your balance on record is shown below, ' +
     'and it is unaffected.',
 
-  // Positions. The panel says what is missing and why; it never says "you have
-  // no open trades", which would be false for a client holding one.
+  // ── Open positions, live from MT5 ─────────────────────────────────────────
+  //
+  // Every figure moves on every tick, so the panel states WHEN it was read. A
+  // trading number with no indication of its age gets treated as current
+  // however old it is.
   'accounts.positionsTitle': 'Open positions',
-  'accounts.positionsBody':
-    'Individual open trades are not carried in this portal — only the account totals above, ' +
-    'which include your open profit. Open the terminal to see position by position.',
+  'accounts.positionsLive': 'Live from MetaTrader 5.',
+  'accounts.positionsReadAt': 'Live from MetaTrader 5 · read at {time}',
+  'accounts.positionsLoading': 'Loading your open positions',
+  'accounts.positionsLoadFailed': 'We could not read your open positions.',
+  // Said flatly, because it is a real answer from the trading server rather
+  // than a missing feature.
+  'accounts.positionsEmpty': 'Nothing open on this account right now.',
+  'accounts.sideBuy': 'Buy',
+  'accounts.sideSell': 'Sell',
+  'accounts.colSide': 'Side',
+  'accounts.colOpenPrice': 'Open',
+  'accounts.colCurrentPrice': 'Current',
+  'accounts.colStopLoss': 'Stop loss',
+  'accounts.colTakeProfit': 'Take profit',
+  'accounts.colSwap': 'Swap',
+  'accounts.colFloating': 'Floating P/L',
+  'accounts.colOpened': 'Opened',
   'accounts.openTerminal': 'Open MetaTrader 5',
+
+  // ── Activity: statistics and history over one window ──────────────────────
+  'accounts.activityTitle': 'Activity',
+  'accounts.activityPeriod': '{from} — {to}',
+  'accounts.activityLoading': 'Loading this account activity',
+  'accounts.activityLoadFailed': 'We could not load this account activity.',
+  // The options stop at 30 days because the trading server truncates a longer
+  // request silently — offering "this year" would offer a quietly wrong number.
+  'accounts.period7': 'Last 7 days',
+  'accounts.period30': 'Last 30 days',
+  'accounts.colMetric': 'Metric',
+  'accounts.colValue': 'Value',
+  'accounts.statsWinLossLabel': 'Won / lost',
+
+  // ── Deposits and withdrawals on ONE account ───────────────────────────────
+  //
+  // "Deposits and withdrawals" from the ACCOUNT's point of view, which is the
+  // page the reader is on: money into this account is a deposit, whichever
+  // direction the API records it in.
+  //
+  // Rendered for LIVE accounts only — a demo account cannot receive a transfer,
+  // so the panel would be permanently empty and would invite a client to look
+  // for a button that does not apply to practice money.
+  'accounts.transactionsTitle': 'Deposits and withdrawals',
+  'accounts.transactionsNote': 'Transfers between your wallet and this account.',
+  'accounts.transactionsLoading': 'Loading this account transfers',
+  'accounts.transactionsLoadFailed': 'We could not load this account transfers.',
+  'accounts.transactionsEmpty': 'Nothing has moved in or out of this account yet.',
+  'accounts.transfer': 'transfer',
+  'accounts.transfersPlural': 'transfers',
+  'accounts.colDirection': 'Direction',
+  'accounts.colAmount': 'Amount',
+  'accounts.colState': 'Status',
+  'accounts.directionDeposit': 'Deposit',
+  'accounts.directionWithdrawal': 'Withdrawal',
+  // `pending` is the state that earns its place: a wallet→account transfer
+  // holds the amount while the bridge confirms, so a client who cannot see it
+  // has money that has left their wallet and not arrived.
+  'accounts.stateSettled': 'Settled',
+  'accounts.statePending': 'Pending',
+  'accounts.stateFailed': 'Failed',
 
   // ── Statistics ────────────────────────────────────────────────────────────
   'accounts.statsTitle': 'Trading statistics',
-  'accounts.statsNote': 'Closed trades only. Deposits and withdrawals are not counted.',
   'accounts.statsTrades': 'Closed trades',
   'accounts.statsWinRate': 'Win rate',
   'accounts.statsWinRateValue': '{rate}%',
@@ -768,7 +821,6 @@ export const messages = {
   'accounts.statsSwap': 'Swap',
   'accounts.statsFirstDeal': 'First activity',
   'accounts.statsLastDeal': 'Last activity',
-  'accounts.statsEmpty': 'No closed trades yet',
   'accounts.statsEmptyBody':
     'Statistics appear here once trades close on this account. Deposits and transfers show in ' +
     'the history below.',
@@ -779,15 +831,7 @@ export const messages = {
   // MT5, which is a different set from the wallet transactions on /transactions.
   // One word for one thing.
   'accounts.historyTitle': 'Account history',
-  'accounts.historyNote': 'Everything MetaTrader 5 has reported on this account.',
-  'accounts.historyAll': 'All',
-  'accounts.historyTrades': 'Trades',
-  'accounts.historyBalance': 'Money in and out',
-  'accounts.historyLoading': 'Loading account history',
-  'accounts.historyLoadFailed': 'We could not load this account history.',
   'accounts.historyEmptyBody': 'Deals appear here as they close on the trading server.',
-  'accounts.historyEmptyNoLogin':
-    'This account has no MetaTrader 5 login yet, so it has no history to show.',
   'accounts.colTime': 'When',
   'accounts.colType': 'Type',
   'accounts.colSymbol': 'Symbol',

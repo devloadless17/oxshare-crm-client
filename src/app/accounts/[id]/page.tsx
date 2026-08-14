@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, MonitorDown, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { Button } from '@/components/ui/button';
 import { useResource } from '@/hooks/use-resource';
@@ -11,8 +11,9 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { t, type MessageKey } from '@/lib/i18n';
 import { AccountLivePanel } from '@/components/accounts/account-live-panel';
-import { AccountStatsPanel } from '@/components/accounts/account-stats-panel';
-import { AccountHistory } from '@/components/accounts/account-history';
+import { AccountPositions } from '@/components/accounts/account-positions';
+import { AccountActivity } from '@/components/accounts/account-activity';
+import { AccountTransactions } from '@/components/accounts/account-transactions';
 
 /**
  * ONE trading account: what it holds now, what it has done, and what moved.
@@ -140,8 +141,18 @@ function AccountDetail({ account }: { account: TradingAccount }) {
     STATUS as Record<string, { key: MessageKey; className: string }>
   )[account.status];
 
-  const snapshot = useResource(['trading-account-live', account.id], (signal) =>
-    tradingApi.getAccountSnapshot(account.id, signal),
+  /*
+   * `retry: 0` — this crosses to MT5, and there is a Refresh button right here.
+   *
+   * The default three retries turned one failing page load into a dozen
+   * requests, each waiting out the full read timeout, all queued behind the
+   * bridge's single MT5 lock. A person looking at an error with a button beside
+   * it does not need the browser trying again on their behalf.
+   */
+  const snapshot = useResource(
+    ['trading-account-live', account.id],
+    (signal) => tradingApi.getAccountSnapshot(account.id, signal),
+    { retry: 0 },
   );
 
   return (
@@ -191,12 +202,14 @@ function AccountDetail({ account }: { account: TradingAccount }) {
             />
             {snapshot.isFetching ? t('accounts.liveRefreshing') : t('accounts.liveRefresh')}
           </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/platforms">
-              <MonitorDown className="h-4 w-4" aria-hidden="true" />
-              {t('accounts.openTerminal')}
-            </Link>
-          </Button>
+          {/*
+            No "Open MetaTrader 5" button here any more.
+
+            It existed when this screen could not show open positions and had to
+            send a client elsewhere for them. It can now, so the button was a
+            standing invitation to leave a page that answers the question — and
+            the terminal download still has its own screen in the rail.
+          */}
           {/*
             Funding is offered on LIVE, ACTIVE accounts only — the same pair the
             server's `/transferable` route narrows to, and the same rule the list
@@ -211,15 +224,33 @@ function AccountDetail({ account }: { account: TradingAccount }) {
         </div>
       </div>
 
-      <AccountLivePanel account={account} snapshot={snapshot} />
+      <AccountLivePanel snapshot={snapshot} />
 
-      <AccountStatsPanel accountId={account.id} currency={account.currency} />
+      <AccountActivity accountId={account.id} currency={account.currency} />
 
-      <AccountHistory
-        accountId={account.id}
-        currency={account.currency}
-        hasLogin={account.login !== null}
-      />
+      {/*
+        Deposits and withdrawals: LIVE accounts only.
+
+        A demo account cannot receive a transfer — `TransfersService` refuses a
+        demo destination and `/trading/accounts/transferable` never offers one —
+        so this panel would be permanently empty there. An empty
+        "Deposits and withdrawals" table on a practice account is not a neutral
+        blank: it invites a client to hunt for the control that would fill it, on
+        an account where real money is not the point.
+
+        Gated HERE rather than inside the component, so its absence from a demo
+        account is visible in this file rather than buried in a component that
+        silently renders nothing.
+      */}
+      {isLive && <AccountTransactions accountId={account.id} currency={account.currency} />}
+
+      {/*
+        Open positions last, and that ordering is deliberate rather than
+        leftover: it is the only panel on this page that changes while it is
+        being read. Everything above settles once loaded, so putting the moving
+        figures at the end lets the page come to rest from the top down.
+      */}
+      <AccountPositions accountId={account.id} currency={account.currency} />
     </div>
   );
 }

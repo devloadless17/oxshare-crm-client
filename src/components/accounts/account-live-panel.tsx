@@ -1,13 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
 import { CloudOff, Info } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/loader';
 import type { Resource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
-import type { AccountSnapshot, TradingAccount } from '@/lib/api/trading';
+import type { AccountSnapshot } from '@/lib/api/trading';
 import { formatDecimal, formatMoney } from '@/lib/money';
 import { moneySign } from '@/lib/account-stats';
 import { t } from '@/lib/i18n';
@@ -31,21 +29,19 @@ import { t } from '@/lib/i18n';
  * account is fine that their broker is down, and a client whose account was
  * never opened that it is a passing glitch. Both then wait for the wrong thing.
  *
- * ## The CRM balance stays on screen in every branch
+ * ## ONE balance on this screen, and it is MT5's
  *
- * It is not a fallback for the live figure — it is a different number with its
- * own meaning: what this system has credited, which is what a transfer moved.
- * Both are labelled. The one thing this panel must never do is show an
- * unlabelled balance, because two money figures that disagree and neither says
- * why is the failure the wallet's `$0.00` bug was a version of.
+ * The CRM's cached `trading_accounts.balance` was shown here beside the live
+ * one, each labelled, and it is gone. Labelling two money figures that disagree
+ * is better than not labelling them, but it still asks a client to hold two
+ * balances in mind and decide which applies — and the cached one is only ever
+ * the stale answer to "what do I have". MT5 is the authority, so it is the
+ * figure.
+ *
+ * The cached column still exists and still matters; it is what a wallet
+ * transfer credits, and the transfer screen is where that is worth saying.
  */
-export function AccountLivePanel({
-  account,
-  snapshot,
-}: {
-  account: TradingAccount;
-  snapshot: Resource<AccountSnapshot | null>;
-}) {
+export function AccountLivePanel({ snapshot }: { snapshot: Resource<AccountSnapshot | null> }) {
   return (
     <section className="rounded-2xl border border-border bg-card p-5">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
@@ -81,11 +77,6 @@ export function AccountLivePanel({
             icon={<CloudOff className="h-5 w-5" aria-hidden="true" />}
           />
         )}
-      </div>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <CrmBalance account={account} />
-        <Positions />
       </div>
     </section>
   );
@@ -228,55 +219,6 @@ function Notice({ title, body, icon }: { title: string; body: string; icon: Reac
       {icon}
       <p className="text-sm font-semibold text-foreground">{title}</p>
       <p className="max-w-md text-xs">{body}</p>
-    </div>
-  );
-}
-
-/**
- * The CRM's own figure, labelled as what it is.
- *
- * Present in every branch of the panel. When MT5 cannot be read this is the only
- * balance left, and it is a real number rather than a fallback — it is what a
- * transfer credited to this account.
- */
-function CrmBalance({ account }: { account: TradingAccount }) {
-  return (
-    <div className="rounded-xl border border-border bg-muted/30 p-4">
-      <p className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
-        {t('accounts.crmBalanceLabel')}
-      </p>
-      <p className="mt-1 text-xl font-bold tabular-nums">
-        {formatMoney(account.balance, account.currency)}
-      </p>
-      <p className="mt-1 text-xs text-muted-foreground">{t('accounts.crmBalanceHint')}</p>
-    </div>
-  );
-}
-
-/**
- * Why there is no list of open trades, said carefully.
- *
- * The copy states that individual positions are not CARRIED here and points at
- * the terminal — it never says "you have no open positions", which would be
- * false for a client holding three and reading this page. The same rule the
- * dashboard's positions panel follows, and for the same reason: a boundary is
- * readable, a wrong statement about someone's own trades is not.
- *
- * The account TOTALS above do include open trades, through equity and floating,
- * so this is a statement about granularity rather than about missing data. That
- * is worth the sentence: a client who can see their floating P/L will otherwise
- * reasonably assume the positions behind it are here somewhere.
- */
-function Positions() {
-  return (
-    <div className="rounded-xl border border-dashed border-border p-4">
-      <p className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
-        {t('accounts.positionsTitle')}
-      </p>
-      <p className="mt-1 text-xs text-muted-foreground">{t('accounts.positionsBody')}</p>
-      <Button asChild variant="outline" size="sm" className="mt-3">
-        <Link href="/platforms">{t('accounts.openTerminal')}</Link>
-      </Button>
     </div>
   );
 }

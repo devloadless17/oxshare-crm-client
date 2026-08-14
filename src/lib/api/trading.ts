@@ -11,10 +11,14 @@ import type { components } from './types.gen';
  * Render it through `formatMoney`; `Number()` and `parseFloat` are lint errors
  * on money paths.
  *
- * WHAT THIS ENDPOINT DOES NOT RETURN, and why the screen must not invent it:
- * equity, margin, free margin and open positions. Those are computed from live
- * prices against open trades and nothing in the CRM holds them — there is no
- * MT5 bridge. `balance` is the CRM-held figure a transfer actually credits.
+ * WHAT THIS ENDPOINT DOES NOT RETURN: equity, margin, free margin and open
+ * positions. `balance` is the CRM-held figure a transfer actually credits, and
+ * it stops moving the moment the client trades.
+ *
+ * Those figures are no longer unavailable — the MT5 bridge serves them, through
+ * `getAccountSnapshot` and `getAccountPositions`. They are simply not on the
+ * LIST, because each is a round trip to a server we do not own and the list
+ * would multiply it by the number of accounts. Fetch them on a detail screen.
  */
 export type TradingAccount = components['schemas']['TradingAccountDto'];
 
@@ -23,23 +27,26 @@ export type TradingEnvironment = TradingAccount['environment'];
 export type TradingAccountStatus = TradingAccount['status'];
 
 /**
- * One trade on a trading account.
+ * One row of the CRM's own `positions` table.
  *
- * ## `GET /trading/positions` returns an empty list today
+ * ## `GET /trading/positions` STILL returns an empty list for everyone
  *
- * Nothing writes to the `positions` table — there is no MT5 bridge, so no
- * ingestion path exists. The table and this endpoint exist ahead of the feed so
- * the portal renders against a REAL query returning zero rows.
+ * Nothing writes to that table. The bridge landing did not change this: it
+ * ingests CLOSED DEALS, and its position endpoint is a live read that is
+ * deliberately not persisted.
  *
- * That is the whole point, and it is worth not undoing: a screen showing a
- * hardcoded "nothing here" is indistinguishable from one whose query genuinely
- * found nothing, and this codebase has already told a client with three live
- * accounts that they had none. "No open positions" must stay something the
- * database said.
+ * **For a client's open trades, use `getAccountPositions`** — live, per account,
+ * with real floating P/L. This type is the stored shape and is what the
+ * dashboard's positions panel renders, which is why that panel is still empty.
  *
- * `profit` is the REALISED result and is null while a position is open.
- * Floating P/L is deliberately absent everywhere — it changes on every tick, so
- * a stored copy is stale the moment it is written.
+ * The table is kept rather than dropped for the reason it was created: a screen
+ * showing a hardcoded "nothing here" is indistinguishable from one whose query
+ * genuinely found nothing, and this codebase has already told a client with
+ * three live accounts that they had none.
+ *
+ * `profit` here is the REALISED result and is null while a position is open —
+ * unlike `AccountPosition.profit`, which is the live floating figure. Do not
+ * confuse the two: one is history, the other changes on every tick.
  */
 export type Position = components['schemas']['PositionDto'];
 export type PositionSide = Position['side'];
@@ -58,19 +65,37 @@ export type PositionStatus = Position['status'];
  * A screen showing both must LABEL which is which. Showing them as two
  * unlabelled money figures that disagree is worse than showing one.
  *
- * ## `floating` is the only floating figure this system has
+ * ## `floating` is the ACCOUNT total
  *
- * Equity minus balance minus credit — the unrealised total across every open
- * position, computed server-side from three numbers MT5 just sent. There is no
- * PER-POSITION floating anywhere: the bridge ingests closed deals and account
- * snapshots, and no open-position feed exists to attribute the total across
- * trades. Do not add a positions table to this screen and divide it up.
+ * Equity minus balance minus credit — the unrealised result across every open
+ * position, computed server-side from three numbers MT5 just sent. The
+ * per-position breakdown comes from `getAccountPositions`, read independently
+ * from the same server.
+ *
+ * The two can differ by a tick, and neither is derived from the other on
+ * purpose. Recomputing one from the other would mean picking a winner and
+ * hiding any real disagreement between two reads that are both true of slightly
+ * different instants.
  *
  * `marginLevel` is null when the account has no margin requirement at all — no
  * open positions. Zero and "not applicable" are different answers and must not
  * render the same way.
  */
 export type AccountSnapshot = components['schemas']['AccountSnapshotDto'];
+
+/**
+ * One OPEN position, live from MT5.
+ *
+ * `profit` is the FLOATING result and moves on every tick — it is read, never
+ * stored, and the screen showing it must be refreshable rather than presented
+ * as settled.
+ *
+ * `stopLoss` and `takeProfit` are null when unset: MT5 stores an absent stop as
+ * the price 0, and `0.00` in a stop-loss column reads as an order to close at
+ * zero. `commission` is null on the Manager protocol, which reports commission
+ * on deals rather than on the position — not the same claim as `'0'`.
+ */
+export type AccountPosition = components['schemas']['AccountPositionDto'];
 
 /**
  * One deal on an account — a trade, or money moving.
@@ -85,13 +110,17 @@ export type AccountSnapshot = components['schemas']['AccountSnapshotDto'];
  * amount is what generates the ticket.
  */
 export type AccountDeal = components['schemas']['AccountDealDto'];
-export type AccountDealPage = components['schemas']['AccountDealPageDto'];
 
 /**
- * An account's realised performance.
+ * An account's realised performance OVER THE REQUESTED WINDOW.
  *
- * Closed round trips only, summed in Postgres on NUMERIC. Balance operations
- * are excluded — a deposit is not a winning trade.
+ * Not all-time. The figures are computed from exactly the deals returned
+ * alongside them, so anything rendering `trades` without naming the period is
+ * making a claim the data does not support — `AccountHistory` echoes `from` and
+ * `to` for that reason.
+ *
+ * Closed round trips only; balance operations are excluded, because a deposit
+ * is not a winning trade.
  *
  * **`wins + losses` need not equal `trades`.** A trade closing at exactly zero
  * is neither, and that is ordinary rather than a rounding artefact. A win rate
@@ -103,14 +132,26 @@ export type AccountDealPage = components['schemas']['AccountDealPageDto'];
  */
 export type AccountStats = components['schemas']['AccountStatsDto'];
 
-/** The filters on an account's deal history. Dates are `YYYY-MM-DD`, INCLUSIVE. */
-export interface AccountDealsQuery {
-  kind?: 'trades' | 'balance';
-  symbol?: string;
+/**
+ * One window of an account's activity: the deals, and the statistics from them.
+ *
+ * One response rather than two because they are two views of a single live read.
+ * Two requests would mean two round trips to MT5 and two windows that can
+ * disagree — totals describing one set beside a list showing another.
+ */
+export type AccountHistory = components['schemas']['AccountHistoryDto'];
+
+/**
+ * The window to read. `YYYY-MM-DD`, INCLUSIVE at both ends.
+ *
+ * Omitted means the last 30 days. The server CAPS the span at 31 days and
+ * refuses more rather than truncating, because MT5 silently truncates a larger
+ * request — and a partial history that looks complete is the one answer this
+ * must never give.
+ */
+export interface AccountHistoryQuery {
   from?: string;
   to?: string;
-  page?: number;
-  limit?: number;
 }
 
 /**
@@ -272,37 +313,49 @@ export const tradingApi = {
   },
 
   /**
-   * One account's deal history — trades, money movements, or both.
+   * Every OPEN position on this account, live from MT5.
    *
-   * Paged SERVER-side, unlike `/transactions`, which filters a whole array in
-   * the browser. The difference is not a style choice: a deal history grows
-   * without bound, so a client-side filter over one page would silently
-   * under-report the client's own trading.
+   * An empty array means nothing is open — a real answer from the trading
+   * server, not an unbuilt feature. Render it as "no open positions", never as
+   * a gap.
+   *
+   * Every figure here moves on every tick, so a screen showing them needs a way
+   * to re-read rather than presenting them as settled.
    */
-  async getAccountDeals(
-    id: string,
-    query: AccountDealsQuery = {},
-    signal?: AbortSignal,
-  ): Promise<AccountDealPage> {
-    const params = new URLSearchParams();
-    if (query.kind) params.set('kind', query.kind);
-    if (query.symbol) params.set('symbol', query.symbol);
-    if (query.from) params.set('from', query.from);
-    if (query.to) params.set('to', query.to);
-    if (query.page) params.set('page', String(query.page));
-    if (query.limit) params.set('limit', String(query.limit));
-
-    const qs = params.toString();
-    const { data } = await apiClient.get<AccountDealPage>(
-      qs ? `/trading/accounts/${id}/deals?${qs}` : `/trading/accounts/${id}/deals`,
-      { signal },
-    );
+  async getAccountPositions(id: string, signal?: AbortSignal): Promise<AccountPosition[]> {
+    const { data } = await apiClient.get<AccountPosition[]>(`/trading/accounts/${id}/positions`, {
+      signal,
+    });
     return data;
   },
 
-  /** One account's realised performance, summed server-side. */
-  async getAccountStats(id: string, signal?: AbortSignal): Promise<AccountStats> {
-    const { data } = await apiClient.get<AccountStats>(`/trading/accounts/${id}/stats`, { signal });
+  /**
+   * One window of this account's activity: the deals and the statistics from
+   * exactly those deals.
+   *
+   * Live from MT5 rather than from the CRM's ingested table, so the history is
+   * what the trading server says right now instead of what a sweep has managed
+   * to copy.
+   *
+   * The window is CAPPED at 31 days server-side and rejected rather than
+   * truncated beyond that. Widening it is not a client-side decision: MT5
+   * silently truncates a larger request, and a short history that looks
+   * complete is worse than an error.
+   */
+  async getAccountHistory(
+    id: string,
+    query: AccountHistoryQuery = {},
+    signal?: AbortSignal,
+  ): Promise<AccountHistory> {
+    const params = new URLSearchParams();
+    if (query.from) params.set('from', query.from);
+    if (query.to) params.set('to', query.to);
+
+    const qs = params.toString();
+    const { data } = await apiClient.get<AccountHistory>(
+      qs ? `/trading/accounts/${id}/history?${qs}` : `/trading/accounts/${id}/history`,
+      { signal },
+    );
     return data;
   },
 
