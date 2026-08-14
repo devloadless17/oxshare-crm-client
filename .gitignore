@@ -50,3 +50,6 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 /e2e/.auth/
+
+# playwright-cli session artifacts (snapshots, screenshots, console logs)
+.playwright-cli/
