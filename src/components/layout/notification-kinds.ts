@@ -204,6 +204,26 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
   },
 };
 
+/**
+ * Which DATA a kind refreshes — what makes the portal live rather than merely
+ * chiming. A deposit settling or a withdrawal being decided changes the
+ * wallet, the transaction list and the dashboard's aggregates, and a client
+ * staring at a stale balance seconds after the "deposit confirmed" toast is
+ * the exact contradiction this map removes. Prefix-matched so new money kinds
+ * inherit the behaviour before this map learns their names.
+ */
+export function queryKeysFor(kind: string): string[][] {
+  if (
+    kind.startsWith('deposit.') ||
+    kind.startsWith('withdrawal.') ||
+    kind.startsWith('transfer.')
+  ) {
+    return [['wallets'], ['transactions'], ['dashboard']];
+  }
+  if (kind.startsWith('kyc.')) return [['kyc-status'], ['dashboard']];
+  return [];
+}
+
 export function resolveKind(kind: string): KindConfig | undefined {
   // `Object.hasOwn`, not a bare lookup: a hostile or accidental kind slug of
   // 'constructor' or 'toString' would otherwise return an inherited function —
