@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { LineChart, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Dashboard, Position } from '@/lib/api/trading';
-import { formatMoney } from '@/lib/money';
+import { formatDecimal, formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
 
 /**
@@ -175,10 +175,30 @@ function PositionRow({ position }: { position: Position }) {
           {isBuy ? t('dashboard.sideBuy') : t('dashboard.sideSell')}
         </span>
       </td>
-      {/* Volumes and prices are decimal STRINGS and are printed verbatim —
-          never coerced, and never re-rounded here. */}
-      <td className="px-5 py-3 text-right font-mono tabular-nums">{position.volume}</td>
-      <td className="px-5 py-3 text-right font-mono tabular-nums">{position.openPrice}</td>
+      {/*
+        Volumes and prices are decimal STRINGS and go through `formatDecimal`.
+
+        This used to print them VERBATIM, on the reasoning that they must never
+        be coerced — which is the right rule and the wrong conclusion, the same
+        confusion the admin wallets list had. Formatting is not coercion:
+        `formatDecimal` parses with decimal.js and returns a string, so the value
+        is never a float at any point. What it removes is the STORAGE SCALE —
+        `NUMERIC(28,10)` pads XAUUSD to `2351.3800000000`, and ten decimal places
+        of trailing zeros are the column's shape, not the price.
+
+        Deliberately NOT `formatMoney`: a price is not money. That helper fixes
+        two places and appends a currency, which would round EURUSD's `1.0851100`
+        to `1.09` and destroy the digits a trader reads the row for. This trims
+        trailing zeros, keeps every significant one, and groups the thousands —
+        so a JPY pair keeps its three places, a major keeps its five, and gold
+        reads `2,351.38`.
+      */}
+      <td className="px-5 py-3 text-right font-mono tabular-nums">
+        {formatDecimal(position.volume)}
+      </td>
+      <td className="px-5 py-3 text-right font-mono tabular-nums">
+        {formatDecimal(position.openPrice)}
+      </td>
       <td className="px-5 py-3 font-mono text-muted-foreground">
         {position.login ?? t('accounts.loginPending')}
       </td>

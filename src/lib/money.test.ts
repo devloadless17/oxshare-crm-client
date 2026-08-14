@@ -130,6 +130,27 @@ describe('formatDecimal — prices, lots and rates', () => {
     expect(formatDecimal('1000')).toBe('1,000');
   });
 
+  it('handles the open-positions row that prompted this — grouping AND trimming', () => {
+    /*
+     * The dashboard's positions table rendered these VERBATIM, so a client's
+     * open gold position read `2351.3800000000`.
+     *
+     * Both halves have to happen to one value, which is what the two cases
+     * above do not prove between them: the price needs its thousands separator
+     * AND its eight zeros of storage scale removed. A regression that fixed only
+     * the trimming would pass every other assertion in this block.
+     *
+     * The other three are the rest of that screenshot — a JPY pair keeping three
+     * places, a major keeping five, and a lot size — so a change that hard-coded
+     * a display scale fails here rather than silently rounding a trader's entry
+     * price.
+     */
+    expect(formatDecimal('2351.3800000000')).toBe('2,351.38');
+    expect(formatDecimal('157.1860000000')).toBe('157.186');
+    expect(formatDecimal('1.0851100000')).toBe('1.08511');
+    expect(formatDecimal('0.8600')).toBe('0.86');
+  });
+
   it('keeps EVERY significant decimal, unlike formatMoney', () => {
     /*
      * A price is not money. A JPY pair quotes to three places and most others
