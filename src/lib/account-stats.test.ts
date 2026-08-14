@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { moneySign, winRate } from './account-stats';
+import { moneySign, showsRealisedAmount, winRate } from './account-stats';
 
 /**
  * The two derivations on the trading-account statistics panel.
@@ -94,5 +94,54 @@ describe('moneySign — what colours a P/L figure', () => {
   it('reads ordinary gains and losses', () => {
     expect(moneySign('840.20000000')).toBe('positive');
     expect(moneySign('-449.80000000')).toBe('negative');
+  });
+});
+
+describe('showsRealisedAmount — which rows show an amount', () => {
+  /*
+   * THE regression: ten real movements rendered as no movement.
+   *
+   * Every row below is copied from the account that exposed this — login
+   * 6477978, whose history is entirely deposits and CRM transfers. The screen
+   * branched on `!closing` alone, and because a balance operation never closes a
+   * position, all ten showed the "pending" em dash. A $1,000 transfer displayed
+   * as a dash in the only column carrying a figure.
+   */
+  it('shows the amount on a balance operation, which never closes a position', () => {
+    expect(showsRealisedAmount({ actionLabel: 'balance', closing: false })).toBe(true);
+  });
+
+  it.each(['credit', 'charge', 'correction', 'bonus', 'commission', 'interest'])(
+    'shows the amount on a %s row, for the same reason',
+    (actionLabel) => {
+      // None of these close a position either, and every one of them is money
+      // that has already moved. A dash on any is the same bug in another costume.
+      expect(showsRealisedAmount({ actionLabel, closing: false })).toBe(true);
+    },
+  );
+
+  it('withholds the amount on a trade that has NOT closed', () => {
+    /*
+     * The half of the original rule that was right, and it must survive this
+     * fix. An open position carries `profit: '0'` as a placeholder; rendering it
+     * as `$0.00` tells a client their live trade broke even.
+     */
+    expect(showsRealisedAmount({ actionLabel: 'buy', closing: false })).toBe(false);
+    expect(showsRealisedAmount({ actionLabel: 'sell', closing: false })).toBe(false);
+  });
+
+  it('shows the amount on a trade that HAS closed', () => {
+    expect(showsRealisedAmount({ actionLabel: 'buy', closing: true })).toBe(true);
+    expect(showsRealisedAmount({ actionLabel: 'sell', closing: true })).toBe(true);
+  });
+
+  it('shows the amount for an action label this build has never heard of', () => {
+    /*
+     * A newer MT5 build sends an action this app does not know. Defaulting to
+     * "withhold" would hide a real figure behind a dash on every row of that
+     * type — silently, and only on the accounts that have them. Showing the
+     * number the server sent is the recoverable direction to fail in.
+     */
+    expect(showsRealisedAmount({ actionLabel: 'action 19', closing: false })).toBe(true);
   });
 });

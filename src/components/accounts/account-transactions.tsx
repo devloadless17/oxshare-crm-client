@@ -9,7 +9,8 @@ import { DataTable, EmptyState, type Column } from '@/components/data-table';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { paymentsApi, type Transfer } from '@/lib/api/payments';
-import { formatMoney } from '@/lib/money';
+import { SignedAmount } from '@/components/money/signed-amount';
+import { formatDealTime } from '@/lib/account-stats';
 import { t, type MessageKey } from '@/lib/i18n';
 
 /**
@@ -166,55 +167,71 @@ function buildColumns(currency: string): Column<Transfer>[] {
       // decimal.js ordering, so '9' does not outrank '100'.
       sortType: 'money',
       /*
-       * SIGNED from the account's side, and the sign is added here rather than
-       * stored: the API records a positive amount plus a direction, which is the
-       * right shape for a ledger and the wrong one for a column somebody scans.
+       * `SignedAmount`, the same component `/transactions`, the wallet's activity
+       * list and the dashboard use — not a fourth copy of the sign-and-colour
+       * ternary.
+       *
+       * This cell WAS that fourth copy, and it had already drifted in exactly the
+       * way `SignedAmount`'s own doc predicts: a deposit was green and a
+       * withdrawal inherited the table's foreground, so the only thing separating
+       * money leaving this account from money arriving was a `−` one character
+       * wide. Sharing the component is what stops the pair diverging again.
+       *
+       * `direction` is TRANSLATED, not passed through: a transfer's own field
+       * names the wallet's side (`wallet_to_account`), while `SignedAmount` takes
+       * the reader's side. On this page the reader is standing on the ACCOUNT, so
+       * `wallet_to_account` is the deposit — the same point of view the direction
+       * column above already commits to, and reversing one without the other
+       * would put a green `+` beside the word "Withdrawal".
+       *
        * `row.currency` rather than the account's, so a transfer that crossed
        * currencies is labelled with its own.
        */
       cell: (row) => (
-        <span
-          className={`font-semibold tabular-nums ${
-            row.direction === 'wallet_to_account' ? 'text-success' : ''
-          }`}
-        >
-          {row.direction === 'wallet_to_account' ? '+' : '−'}
-          {formatMoney(row.amount, row.currency || currency)}
-        </span>
+        <SignedAmount
+          direction={row.direction === 'wallet_to_account' ? 'deposit' : 'withdrawal'}
+          amount={row.amount}
+          currency={row.currency || currency}
+        />
       ),
     },
     {
       header: t('accounts.colState'),
+      /*
+       * The BADGE alone, matching `/transactions`.
+       *
+       * `failureReason` used to print underneath it. The intent was sound — a
+       * failed row that does not say why sends the client to support to ask a
+       * question the server already answered — but a provider's own sentence
+       * wrapped across two lines inside a status cell made this the widest column
+       * on the table and the state itself the hardest thing in it to read. The
+       * status column answers WHAT the state is; `/transactions` reached the same
+       * conclusion and dropped it for the same reason.
+       *
+       * Note this leaves the reason with nowhere to surface on this page. That is
+       * the accepted cost of the trade, not an oversight: if a failed transfer
+       * needs to explain itself, the place for it is a row detail or a tooltip —
+       * somewhere it can use a full line without competing with the badge.
+       */
       cell: (row) => {
         // Widened at the lookup, typed at the map: a backend that adds a state
         // before this app is redeployed must render something rather than throw.
         const state = STATES[row.state];
         return (
-          <div className="flex flex-col gap-0.5">
-            <span
-              className={`w-fit rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                state?.className ?? 'bg-muted text-muted-foreground border-border'
-              }`}
-            >
-              {state ? t(state.key) : row.state}
-            </span>
-            {/*
-              The reason a transfer failed, where there is one. Without it a
-              failed row is a dead end that sends the client to support to ask a
-              question the server already answered.
-            */}
-            {row.failureReason && (
-              <span className="text-[11px] text-muted-foreground">{row.failureReason}</span>
-            )}
-          </div>
+          <span
+            className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+              state?.className ?? 'bg-muted text-muted-foreground border-border'
+            }`}
+          >
+            {state ? t(state.key) : row.state}
+          </span>
         );
       },
     },
   ];
 }
 
-/** Locale-formatted, and guarded against an unparseable value from the API. */
+/** 24-hour and shared, so a day boundary stays visible — see `formatDealTime`. */
 function formatDateTime(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? t('accounts.unknownValue') : date.toLocaleString();
+  return formatDealTime(value, t('accounts.unknownValue'));
 }

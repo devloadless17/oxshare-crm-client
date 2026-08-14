@@ -263,7 +263,7 @@ function TransactionRow({ tx }: { tx: Dashboard['recentTransactions'][number] })
           currency={tx.currency}
           className="block text-sm whitespace-nowrap"
         />
-        <StateBadge state={tx.state} />
+        <StateBadge state={tx.state} kind={tx.kind} />
       </div>
     </li>
   );
@@ -278,8 +278,16 @@ const STATE: Record<string, { key: MessageKey; className: string }> = {
   failure: { key: 'transactions.stateFailure', className: 'text-destructive' },
 };
 
-function StateBadge({ state }: { state: string }) {
-  const meta = STATE[state];
+function StateBadge({ state, kind }: { state: string; kind?: string }) {
+  /*
+   * A pending TRANSFER is "Processing", not "Pending review" — see the note on
+   * the message key. The colour is unchanged: both are the same waiting state,
+   * and only the word about who is doing the waiting differs.
+   */
+  const meta =
+    state === 'pending' && kind === 'transfer'
+      ? { key: 'transactions.stateProcessing' as MessageKey, className: 'text-warning' }
+      : STATE[state];
   // An unrecognised state renders its raw value rather than nothing: a state
   // added server-side should look unfamiliar here, not invisible. Blank cells
   // are how a client concludes the screen is broken.

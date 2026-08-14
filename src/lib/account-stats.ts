@@ -81,3 +81,86 @@ export function moneySign(value: string): MoneySign {
   if (parsed.isNegative() && !parsed.isZero()) return 'negative';
   return 'zero';
 }
+
+/**
+ * Does this deal's amount column carry a FIGURE, or is it not yet decided?
+ *
+ * ## `closing` alone cannot answer this, and assuming it could hid real money
+ *
+ * `closing` comes from the server and means "a TRADE realised a result". It is
+ * correctly false for a deposit, a withdrawal, a credit or a CRM transfer —
+ * none of those close a position. The account screen branched on `!closing`
+ * alone and rendered the "pending" em dash for all of them, so an account funded
+ * by a $1,000 transfer showed a dash in the only column carrying an amount. Ten
+ * real movements, every one displayed as no movement.
+ *
+ * The two false cases need OPPOSITE treatment:
+ *
+ * - An OPEN trade has realised nothing. Its `profit: '0'` is a placeholder, and
+ *   formatting it as `$0.00` claims a live position broke even. Withhold it.
+ * - A BALANCE operation's amount is FINAL the moment the row exists. Nothing
+ *   later restates it, so withholding loses the only number the row has.
+ *
+ * Hence: withhold only for a trade that has not closed. A genuine `$0.00` on a
+ * funding row then prints as `$0.00`, which is honest — that row really moved
+ * nothing, a different claim from "not applicable yet".
+ *
+ * `actionLabel` rather than `closing` decides what a trade IS, because `closing`
+ * is exactly what cannot tell an open trade from a deposit. `buy` and `sell` are
+ * the only actions where the client is in the market, which is where the
+ * backend's own `isTradeAction` draws the line.
+ */
+export function showsRealisedAmount(deal: { actionLabel: string; closing: boolean }): boolean {
+  const isTrade = deal.actionLabel === 'buy' || deal.actionLabel === 'sell';
+  return !isTrade || deal.closing;
+}
+
+/**
+ * A timestamp on an account screen, in the reader's own zone, 24-hour clock.
+ *
+ * ## The bug this closes: an invisible day boundary
+ *
+ * A bare `toLocaleString()` gave `8/15/2026, 1:30:00 AM` directly above
+ * `8/14/2026, 11:41:21 PM`. Both correct, and the newest-first ordering correct
+ * — but read down the column, `11:41 PM` sits BELOW `1:30 AM` and looks like a
+ * sorting bug, because the only thing separating the two days is a date prefix
+ * in the same weight and colour as everything else. On the account that exposed
+ * this, seven of ten rows crossed midnight and the column read as scrambled.
+ *
+ * A 24-hour clock removes the AM/PM inversion outright: `01:30` and `23:41` sort
+ * visually the way they sort chronologically. The short month name does the rest
+ * — `15 Aug` is a different SHAPE from `14 Aug`, where `8/15` and `8/14` differ
+ * by one glyph buried in the middle of a number.
+ *
+ * ## The ZONE is deliberately not forced
+ *
+ * The API sends UTC and the browser renders in the reader's zone — `00:51Z` is
+ * `03:51` in Asia/Beirut. That is what a client wants: their deals stamped in
+ * the time they were placed, matching the clock on the wall and the MT5 terminal
+ * beside it. Forcing UTC would make every row disagree with both.
+ *
+ * ## Shared because it was three copies
+ *
+ * `account-activity`, `account-positions` and `account-transactions` each had
+ * this function, identical and private. Three copies of one formatting decision
+ * is how two screens keep the bug after the third is fixed.
+ *
+ * `hourCycle: 'h23'` rather than `hour12: false`, which yields `24:30` for
+ * midnight in several locales.
+ */
+const DEAL_TIME_FORMAT: Intl.DateTimeFormatOptions = {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+};
+
+export function formatDealTime(value: string, fallback: string): string {
+  const date = new Date(value);
+  // Guarded: an unparseable timestamp from the API must render as "unknown"
+  // rather than the literal string `Invalid Date` in a client's history.
+  return Number.isNaN(date.getTime()) ? fallback : date.toLocaleString(undefined, DEAL_TIME_FORMAT);
+}

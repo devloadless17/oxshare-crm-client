@@ -237,7 +237,7 @@ export default function TransactionsPage() {
        * provider's own opaque id, which a client has no use for in a list. It is
        * still on the deposit confirmation, where somebody needs to quote it.
        */
-      cell: (tx) => <StateBadge state={tx.state} />,
+      cell: (tx) => <StateBadge state={tx.state} kind={tx.kind} />,
     },
   ];
 
@@ -441,7 +441,7 @@ function MethodCell({ tx }: { tx: Transaction }) {
   );
 }
 
-function StateBadge({ state }: { state: string }) {
+function StateBadge({ state, kind }: { state: string; kind?: string }) {
   /*
    * `state` is a plain `string` here even though `STATE` is keyed by the
    * generated enum, and the two disagreeing on purpose is the point.
@@ -455,9 +455,15 @@ function StateBadge({ state }: { state: string }) {
    * So: unknown at compile time is an error, unknown at runtime is the raw
    * value below.
    */
-  const meta: { key: MessageKey; className: string } | undefined = (
-    STATE as Record<string, { key: MessageKey; className: string }>
-  )[state];
+  /*
+   * A pending TRANSFER reads "Processing". Nobody reviews one — it is waiting on
+   * the trading server — where a withdrawal genuinely is reviewed by an operator
+   * and keeps the original wording.
+   */
+  const meta: { key: MessageKey; className: string } | undefined =
+    state === 'pending' && kind === 'transfer'
+      ? { key: 'transactions.stateProcessing', className: STATE.pending.className }
+      : (STATE as Record<string, { key: MessageKey; className: string }>)[state];
   return (
     <span
       className={`inline-block rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${

@@ -1,29 +1,34 @@
 'use client';
 
 import * as React from 'react';
-import { ArrowRight, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { Button } from '@/components/ui/button';
 import {
   AmountField,
   AmountPresets,
   FormError,
-  MethodTile,
   MoneyFooter,
+  MoneyHeader,
   MoneySection,
   MoneySheet,
   StepRail,
   SummaryRow,
 } from '@/components/money/money-shell';
 import { presetsWithin } from '@/components/money/amount-presets';
-import { TransferSubmitted, TransferUnavailable } from '@/components/money/transfer-states';
+import {
+  TransferDestinations,
+  TransferSubmitted,
+  TransferUnavailable,
+} from '@/components/money/transfer-states';
+import { TileGroups } from '@/components/money/tile-groups';
 import { useResource } from '@/hooks/use-resource';
 import { newIdempotencyKey } from '@/lib/api/client';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { paymentsApi } from '@/lib/api/payments';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { walletApi, type Wallet } from '@/lib/api/wallet';
-import { formatMoney } from '@/lib/money';
+import { compareMoney, formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
 
 /**
@@ -80,7 +85,17 @@ export default function TransferPage() {
    * the card. Break any link and the card falls back to its content height.
    */
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col">
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-4">
+      {/*
+        The way back, which this screen was missing entirely.
+
+        Dropping the title and subtitle took the whole `MoneyHeader` with them,
+        and the back link lived inside it — so /transfer was the one money screen
+        with no exit but the browser's own button. The heading stays gone; the
+        link comes back, and all three flows now carry the identical one.
+      */}
+      <MoneyHeader />
+
       <AsyncBoundary
         status={accounts.status}
         label={t('transfer.loading')}
@@ -106,14 +121,18 @@ export default function TransferPage() {
 type Source = { kind: 'wallet'; currency: string } | { kind: 'account'; account: TradingAccount };
 
 /**
- * Named from the money's point of view: where it leaves, where it lands, and
- * what happened.
+ * Where the money leaves, where it lands, and how much.
  *
- * The third step is the OUTCOME. It earns a place in the bar because a transfer
- * does not finish when the form is submitted — it settles later — so "Done" is a
- * state the client arrives at rather than a screen that replaces the flow.
+ * Three QUESTIONS, and the outcome is not one of them: the confirmation is not a
+ * fourth thing the client has to do, and marking it as a step would make a
+ * finished request look unfinished. /withdraw draws the same line.
+ *
+ * Choosing the destination is its own step rather than sharing one with the
+ * amount because the amount depends on it — the balance a transfer is checked
+ * against is the source's, and the pairing has to be settled before a figure
+ * means anything.
  */
-const STEPS = [t('transfer.from'), t('transfer.to'), t('money.stepDone')];
+const STEPS = [t('transfer.from'), t('transfer.to'), t('money.stepAmount')];
 
 /** One row of the step-one list, with what it is worth beside it. */
 interface SourceOption {
@@ -124,7 +143,7 @@ interface SourceOption {
 }
 
 function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; wallets: Wallet[] }) {
-  const [step, setStep] = React.useState<1 | 2>(1);
+  const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const [sourceKey, setSourceKey] = React.useState('');
   const [accountId, setAccountId] = React.useState('');
   const [amount, setAmount] = React.useState('');
@@ -149,8 +168,23 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
    * statement from "this does not exist", and hiding it would leave somebody
    * hunting for a currency they hold.
    */
-  const sources: SourceOption[] = [
-    ...wallets.map((w): SourceOption => ({
+  /*
+   * Every source, RICHEST FIRST within its own kind.
+   *
+   * Wallets stay ahead of accounts — funding an account is the common direction,
+   * and a client arriving from "Fund account" is looking for their wallet — but
+   * within each group the largest balance leads, because that is the one most
+   * likely to cover what they came to move.
+   *
+   * `compareMoney` — decimal.js — never `Number()`. These are decimal STRINGS;
+   * the coercion is a lint error here and a text sort would put '9' above '100'.
+   * `.slice()` first, because the arrays are React Query's cached objects and
+   * sorting in place mutates what every other reader of those keys sees.
+   */
+  const walletSources: SourceOption[] = wallets
+    .slice()
+    .sort((a, b) => compareMoney(b.available, a.available))
+    .map((w) => ({
       key: `wallet:${w.currency}`,
       source: { kind: 'wallet', currency: w.currency },
       title: t('transfer.walletLabel', { currency: w.currency }),
@@ -160,14 +194,20 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
        * the client cannot explain.
        */
       hint: t('money.availableBalance', { amount: formatMoney(w.available, w.currency) }),
-    })),
-    ...accounts.map((a): SourceOption => ({
+    }));
+
+  const accountSources: SourceOption[] = accounts
+    .slice()
+    .sort((a, b) => compareMoney(b.balance, a.balance))
+    .map((a) => ({
       key: `account:${a.id}`,
       source: { kind: 'account', account: a },
       title: t('transfer.accountLabel', { login: a.login ?? t('accounts.loginPending') }),
       hint: t('money.availableBalance', { amount: formatMoney(a.balance, a.currency) }),
-    })),
-  ];
+    }));
+
+  /* Flat, only to resolve the selected key back to its source. */
+  const sources = [...walletSources, ...accountSources];
 
   const source = sources.find((s) => s.key === sourceKey)?.source;
 
@@ -177,12 +217,22 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
    * API cannot express.
    */
   const currency = source?.kind === 'wallet' ? source.currency : source?.account.currency;
-  const destinations =
+  const destinations = (
     source?.kind === 'wallet'
       ? accounts.filter((a) => a.currency === source.currency)
       : source
         ? accounts.filter((a) => a.id === source.account.id)
-        : [];
+        : []
+  )
+    /*
+     * RICHEST FIRST, as on the source list — one ordering rule across both
+     * halves of the screen, so a client does not meet the same accounts in two
+     * different orders on two consecutive steps.
+     *
+     * `filter` already returned a new array, so this sorts a copy and never
+     * React Query's cached one.
+     */
+    .sort((a, b) => compareMoney(b.balance, a.balance));
 
   /** The account the API needs, whichever end of the transfer it is on. */
   const account =
@@ -203,17 +253,12 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
   }
 
   /*
-   * The outcome is STEP THREE, not a screen that replaces the flow.
-   *
-   * It keeps the step bar, so the client can see they reached the end of
-   * something rather than landing on an unrelated confirmation card. The bar is
-   * the only part of this screen that survives all three steps, which is what
-   * makes the last one read as an arrival.
+   * NO step rail on the outcome — the three steps are the three questions, and
+   * the confirmation is not a fourth.
    */
   if (done) {
     return (
       <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <StepRail steps={STEPS} active={2} />
         <TransferSubmitted
           onAnother={() => {
             /*
@@ -283,91 +328,56 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
         <div className="min-h-0 flex-1 overflow-y-auto">
           {step === 1 ? (
             <MoneySection title={t('transfer.from')}>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {sources.map((option) => (
-                  <MethodTile
-                    key={option.key}
-                    name="transfer-source"
-                    value={option.key}
-                    checked={sourceKey === option.key}
-                    onChange={(value) => {
-                      setSourceKey(value);
-                      /*
-                       * Both cleared. A destination chosen for the previous
-                       * source is not valid for this one, and an amount checked
-                       * against the previous balance is not either.
-                       */
-                      setAccountId('');
-                      setAmount('');
-                    }}
-                    title={option.title}
-                    disabled={busy}
-                    badge={
-                      <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                        {option.hint}
-                      </span>
-                    }
-                  />
-                ))}
-              </div>
+              <TileGroups
+                name="transfer-source"
+                groups={[
+                  {
+                    label: t('deposit.groupWallet'),
+                    options: walletSources.map((o) => ({
+                      key: o.key,
+                      title: o.title,
+                      hint: o.hint,
+                    })),
+                  },
+                  {
+                    label: t('deposit.groupAccounts'),
+                    options: accountSources.map((o) => ({
+                      key: o.key,
+                      title: o.title,
+                      hint: o.hint,
+                    })),
+                  },
+                ]}
+                selected={sourceKey}
+                onSelect={(value) => {
+                  setSourceKey(value);
+                  /*
+                   * Both cleared. A destination chosen for the previous source
+                   * is not valid for this one, and an amount checked against the
+                   * previous balance is not either.
+                   */
+                  setAccountId('');
+                  setAmount('');
+                }}
+                disabled={busy}
+              />
             </MoneySection>
-          ) : (
+          ) : step === 2 ? (
             <>
               <MoneySection title={t('transfer.to')}>
-                {destinations.length === 0 ? (
-                  <p className="rounded-lg border border-border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
-                    {t('transfer.noDestination', { currency: currency ?? '' })}
-                  </p>
-                ) : toAccount ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {destinations.map((option) => (
-                      <MethodTile
-                        key={option.id}
-                        name="transfer-destination"
-                        value={option.id}
-                        checked={accountId === option.id}
-                        onChange={setAccountId}
-                        title={t('transfer.accountLabel', {
-                          login: option.login ?? t('accounts.loginPending'),
-                        })}
-                        disabled={busy}
-                        badge={
-                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                            {formatMoney(option.balance, option.currency)}
-                          </span>
-                        }
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  /*
-                   * Coming OUT of an account there is exactly one destination —
-                   * the wallet in that currency — so it is shown rather than
-                   * offered as a choice of one.
-                   *
-                   * The balance is an em dash when no wallet exists yet: a
-                   * currency the client has never held is not a zero, and the
-                   * transfer is still allowed because the server owns that
-                   * decision.
-                   */
-                  <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <WalletIcon className="h-4 w-4" aria-hidden="true" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">
-                        {t('transfer.walletLabel', { currency: currency ?? '' })}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {wallet
-                          ? formatMoney(wallet.available, wallet.currency)
-                          : t('transfer.walletUnopened')}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                <TransferDestinations
+                  destinations={destinations}
+                  toAccount={toAccount}
+                  currency={currency}
+                  wallet={wallet}
+                  accountId={accountId}
+                  onSelect={setAccountId}
+                  disabled={busy}
+                />
               </MoneySection>
-
+            </>
+          ) : (
+            <>
               {account && (
                 <MoneySection title={t('money.stepAmount')}>
                   <div className="space-y-4">
@@ -407,36 +417,56 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
                 </MoneySection>
               )}
 
-              {account && amount && (
-                <MoneySection title={t('transfer.confirmTitle')}>
-                  <dl className="divide-y divide-border">
-                    <SummaryRow
-                      label={t('transfer.from')}
-                      value={
-                        toAccount
-                          ? t('transfer.walletLabel', { currency: account.currency })
-                          : t('transfer.accountLabel', { login: account.login ?? '—' })
-                      }
-                    />
-                    <SummaryRow
-                      label={t('transfer.to')}
-                      value={
-                        toAccount
-                          ? t('transfer.accountLabel', { login: account.login ?? '—' })
-                          : t('transfer.walletLabel', { currency: account.currency })
-                      }
-                    />
-                    <SummaryRow
-                      label={t('deposit.amountLabel')}
-                      value={formatMoney(amount, account.currency)}
-                      strong
-                    />
-                  </dl>
-                  <p className="mt-3 rounded-lg border border-info/30 bg-info/5 p-3 text-[11px] leading-relaxed text-muted-foreground">
-                    {t('transfer.settlementNote')}
-                  </p>
-                </MoneySection>
-              )}
+              {/*
+                THE confirmation, and there is only one — at the BOTTOM, under
+                the field it describes.
+
+                It renders BEFORE an amount is entered rather than appearing when
+                one is: a summary that pops into existence mid-form moves
+                everything beneath it and reads as a new question, when it is
+                the same three facts becoming complete. From and to are known on
+                arrival, so they are shown on arrival, and the amount row fills
+                in as it is typed.
+              */}
+              <MoneySection title={t('transfer.confirmTitle')}>
+                <dl className="divide-y divide-border">
+                  <SummaryRow
+                    label={t('transfer.from')}
+                    value={
+                      toAccount
+                        ? t('transfer.walletLabel', { currency: currency ?? '' })
+                        : t('transfer.accountLabel', {
+                            login: source?.kind === 'account' ? (source.account.login ?? '—') : '—',
+                          })
+                    }
+                  />
+                  <SummaryRow
+                    label={t('transfer.to')}
+                    value={
+                      toAccount
+                        ? t('transfer.accountLabel', { login: account?.login ?? '—' })
+                        : t('transfer.walletLabel', { currency: currency ?? '' })
+                    }
+                  />
+                  <SummaryRow
+                    label={t('deposit.amountLabel')}
+                    /*
+                      An em dash until there is a figure — never a formatted
+                      zero, which would state that the client is transferring
+                      nothing rather than that they have not said yet.
+                    */
+                    value={
+                      account && amount
+                        ? formatMoney(amount, account.currency)
+                        : t('accounts.unknownValue')
+                    }
+                    strong
+                  />
+                </dl>
+                <p className="mt-3 rounded-lg border border-info/30 bg-info/5 p-3 text-[11px] leading-relaxed text-muted-foreground">
+                  {t('transfer.settlementNote')}
+                </p>
+              </MoneySection>
             </>
           )}
         </div>
@@ -459,6 +489,27 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
               {t('money.continue')}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Button>
+          ) : step === 2 ? (
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" className="h-10" onClick={() => setStep(1)}>
+                {t('money.back')}
+              </Button>
+              <Button
+                type="button"
+                className="h-10 flex-1"
+                /*
+                 * Needs a chosen destination, which for a wallet source means an
+                 * account and for an account source is the wallet the step
+                 * states rather than offers. `account` is the one value the API
+                 * needs either way, so it is the one thing to check.
+                 */
+                disabled={!account}
+                onClick={() => setStep(3)}
+              >
+                {t('money.continue')}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </div>
           ) : (
             <div className="flex gap-3">
               <Button
@@ -466,7 +517,7 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
                 variant="outline"
                 className="h-10"
                 disabled={busy}
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
               >
                 {t('money.back')}
               </Button>

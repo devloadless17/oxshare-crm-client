@@ -9,7 +9,7 @@ import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { tradingApi, type AccountPosition } from '@/lib/api/trading';
 import { formatDecimal, formatMoney } from '@/lib/money';
-import { moneySign } from '@/lib/account-stats';
+import { formatDealTime, moneySign } from '@/lib/account-stats';
 import { t } from '@/lib/i18n';
 
 /**
@@ -235,8 +235,7 @@ function Signed({
   );
 }
 
-/** Locale-formatted, and guarded against an unparseable value from the API. */
+/** 24-hour and shared, so a day boundary stays visible — see `formatDealTime`. */
 function formatDateTime(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? t('accounts.unknownValue') : date.toLocaleString();
+  return formatDealTime(value, t('accounts.unknownValue'));
 }

@@ -1,9 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckCircle2, LineChart } from 'lucide-react';
+import { CheckCircle2, LineChart, Wallet as WalletIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { MoneySheet } from '@/components/money/money-shell';
+import { MethodTile, MoneySheet } from '@/components/money/money-shell';
+import type { TradingAccount } from '@/lib/api/trading';
+import type { Wallet } from '@/lib/api/wallet';
+import { formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
 
 /**
@@ -80,5 +83,87 @@ export function TransferSubmitted({ onAnother }: { onAnother: () => void }) {
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * Where this transfer can land, given what it is leaving.
+ *
+ * Three shapes rather than one list, because the answer genuinely has three
+ * shapes: nothing reachable, a choice of accounts, or the single wallet an
+ * account's money must come back to.
+ */
+export function TransferDestinations({
+  destinations,
+  toAccount,
+  currency,
+  wallet,
+  accountId,
+  onSelect,
+  disabled,
+}: {
+  destinations: TradingAccount[];
+  toAccount: boolean;
+  currency: string | undefined;
+  wallet: Wallet | undefined;
+  accountId: string;
+  onSelect: (id: string) => void;
+  disabled?: boolean;
+}) {
+  if (destinations.length === 0) {
+    return (
+      <p className="rounded-lg border border-border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
+        {t('transfer.noDestination', { currency: currency ?? '' })}
+      </p>
+    );
+  }
+
+  if (toAccount) {
+    return (
+      <div className="grid gap-3 sm:grid-cols-2">
+        {destinations.map((option) => (
+          <MethodTile
+            key={option.id}
+            name="transfer-destination"
+            value={option.id}
+            checked={accountId === option.id}
+            onChange={onSelect}
+            title={t('transfer.accountLabel', {
+              login: option.login ?? t('accounts.loginPending'),
+            })}
+            disabled={disabled}
+            badge={
+              <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                {formatMoney(option.balance, option.currency)}
+              </span>
+            }
+          />
+        ))}
+      </div>
+    );
+  }
+
+  /*
+   * Coming OUT of an account there is exactly one destination — the wallet in
+   * that currency — so it is SHOWN rather than offered as a choice of one.
+   *
+   * The balance is "not opened yet" when no wallet exists: a currency the client
+   * has never held is not a zero, and the transfer is still allowed because the
+   * server owns that decision.
+   */
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <WalletIcon className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold">
+          {t('transfer.walletLabel', { currency: currency ?? '' })}
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          {wallet ? formatMoney(wallet.available, wallet.currency) : t('transfer.walletUnopened')}
+        </p>
+      </div>
+    </div>
   );
 }

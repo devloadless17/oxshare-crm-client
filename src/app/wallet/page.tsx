@@ -332,7 +332,7 @@ function ActivityRow({ tx }: { tx: Transaction }) {
           currency={tx.currency}
           className="block text-sm whitespace-nowrap"
         />
-        <StateBadge state={tx.state} />
+        <StateBadge state={tx.state} kind={tx.kind} />
       </div>
     </li>
   );
@@ -347,8 +347,19 @@ const STATE: Record<string, { key: MessageKey; className: string }> = {
   failure: { key: 'transactions.stateFailure', className: 'text-destructive' },
 };
 
-function StateBadge({ state }: { state: string }) {
-  const meta = STATE[state];
+function StateBadge({ state, kind }: { state: string; kind?: string }) {
+  /*
+   * A pending TRANSFER reads "Processing", not "Pending review".
+   *
+   * Nobody reviews a transfer — it is waiting on the trading server. Telling a
+   * client their own transfer is under review sends them looking for a desk that
+   * is holding it up, and there isn't one. A withdrawal genuinely is reviewed,
+   * so it keeps the original wording.
+   */
+  const meta =
+    state === 'pending' && kind === 'transfer'
+      ? { key: 'transactions.stateProcessing' as MessageKey, className: 'text-warning' }
+      : STATE[state];
   // An unrecognised state renders its raw value rather than nothing: a state
   // added server-side should look unfamiliar here, not invisible. Blank cells
   // are how a client concludes the screen is broken.

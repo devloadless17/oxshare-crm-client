@@ -308,7 +308,17 @@ export function MoneySection({
   children,
   className,
 }: {
-  title: string;
+  /**
+   * OPTIONAL, because a section is not always the right place for a label.
+   *
+   * A step whose content carries its own headings — grouped tiles saying
+   * "My wallets" and "Trading accounts" — gets a third label for one question if
+   * this is also set, and a heading nobody needs is one a reader learns to skip
+   * along with whatever sits beside it. Omitted renders no `<h2>` at all rather
+   * than an empty one, which would leave the margin and an unlabelled heading in
+   * the accessibility tree.
+   */
+  title?: string;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -321,9 +331,11 @@ export function MoneySection({
      * from feeling cramped at the edges.
      */
     <section className={cn('border-t border-border px-5 py-4 first:border-t-0 sm:px-6', className)}>
-      <h2 className="mb-2.5 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-        {title}
-      </h2>
+      {title ? (
+        <h2 className="mb-2.5 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+          {title}
+        </h2>
+      ) : null}
       {children}
     </section>
   );

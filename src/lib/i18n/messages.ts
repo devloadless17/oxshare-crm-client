@@ -385,6 +385,12 @@ export const messages = {
   // movement, which is the question the column asks.
   'transactions.tradingAccountMethod': 'Trading account',
   'transactions.statePending': 'Pending review',
+  // A TRANSFER's pending state. "Pending review" is accurate for a withdrawal —
+  // an operator really does review it — and wrong for a wallet ⇄ account
+  // transfer, which nobody reviews: it is waiting on the trading server. A
+  // client told their own transfer is under review goes looking for the desk
+  // that is holding it up, and there isn't one.
+  'transactions.stateProcessing': 'Processing',
   'transactions.stateApproved': 'Approved',
   'transactions.stateSuccess': 'Completed',
   'transactions.stateRejected': 'Rejected',
@@ -444,6 +450,7 @@ export const messages = {
   // in the amount section that only appeared when more than one wallet was
   // funded — so a client with one wallet never saw which balance they were
   // spending from at all.
+  'withdraw.stepMethod': 'Method',
   'withdraw.stepWallet': 'Which wallet?',
   'withdraw.needWallet': 'Choose the wallet you want to withdraw from.',
   'withdraw.fromWallet': '{currency} wallet · {amount}',
@@ -465,13 +472,21 @@ export const messages = {
    */
 
   // ── Deposit (CORE-06) ─────────────────────────────────────────────────────
-  'deposit.title': 'Deposit',
-  'deposit.subtitle': 'Tell us what you are sending, then transfer it quoting the reference.',
   'deposit.methodTitle': 'How are you sending it?',
+  // Step three's own heading, in the same voice as step one's. `money.stepAmount`
+  // is the STEP RAIL's word — one syllable, because a rail has room for a label
+  // and not a question.
+  'deposit.amountTitle': 'How much are you sending?',
   // The STEP BAR's label for the same question. Short where the section title
   // is a sentence: a bar has room for a word, and the section below it is
   // already asking properly.
   'deposit.stepMethod': 'Method',
+  // The step-bar label for 'where does this money land' — wallet, or straight
+  // on to a trading account.
+  'deposit.stepDestination': 'Destination',
+  // The RAIL's word for step three. One noun, where the section heading below it
+  // asks the question in full — a rail has room for a label, not a sentence.
+  'deposit.stepAmountShort': 'Amount',
   // The per-method labels and hints that used to sit here are GONE, not
   // orphaned: the methods come from `GET /payments/methods` now, and their
   // names and instructions are the operator's own words rendered verbatim.
@@ -851,6 +866,20 @@ export const messages = {
   'accounts.statsEmptyBody':
     'Statistics appear here once trades close on this account. Deposits and transfers show in ' +
     'the history below.',
+  /*
+   * Shown ABOVE the cards when the window has no closed trades but the account
+   * does have activity — the case `statsEmptyBody` cannot cover, because the
+   * cards render and every one of them reads zero.
+   *
+   * It names what is counted rather than apologising for the zeros: the reader's
+   * question is "why does this say nothing when the table below is full", and
+   * "these count closed trades" answers it in one line. Deliberately close in
+   * wording to `statsEmptyBody`, which answers the same question when there is
+   * nothing at all.
+   */
+  'accounts.statsNoTradesNote':
+    'These figures count closed trades only. This account has no closed trades in this period — ' +
+    'deposits, withdrawals and transfers are listed in the history below.',
 
   // ── History ───────────────────────────────────────────────────────────────
   //

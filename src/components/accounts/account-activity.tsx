@@ -8,8 +8,8 @@ import { Tabs, type TabDefinition } from '@/components/ui/tabs';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { tradingApi, type AccountDeal, type AccountStats } from '@/lib/api/trading';
-import { formatDecimal, formatMoney } from '@/lib/money';
-import { moneySign, winRate } from '@/lib/account-stats';
+import { formatDecimal, formatMoney, isZeroMoney } from '@/lib/money';
+import { formatDealTime, moneySign, showsRealisedAmount, winRate } from '@/lib/account-stats';
 import { todayIso } from '@/lib/date-range';
 import { t, type MessageKey } from '@/lib/i18n';
 
@@ -132,6 +132,24 @@ function StatsCards({
       <h3 className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
         {t('accounts.statsTitle')}
       </h3>
+
+      {/*
+        WHY every figure is zero, on an account that plainly has activity.
+
+        These statistics count CLOSED ROUND TRIPS only — that is what makes a win
+        rate meaningful — so an account funded by deposits and transfers but never
+        traded reports zero across the board. Correct, and unreadable without this
+        line: a full history table sits directly underneath, so a panel of zeros
+        above it reads as a broken screen rather than as "no trades yet", and the
+        first thing a client does about a broken screen is ask whether their money
+        is safe.
+
+        Shown only when the window really has no trades, so it never editorialises
+        over real figures.
+      */}
+      {stats && stats.trades === 0 && (
+        <p className="mb-2 text-xs text-muted-foreground">{t('accounts.statsNoTradesNote')}</p>
+      )}
 
       {cards.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-6 text-center">
@@ -334,17 +352,41 @@ function buildDealColumns(currency: string): Column<AccountDeal>[] {
       // A balance operation has no symbol worth showing — MT5 sends an empty
       // string. An em dash, so the column reads "not applicable" rather than
       // naming an instrument that was never traded.
-      cell: (deal) => deal.symbol || t('accounts.unknownValue'),
+      cell: (deal) => <Muted>{deal.symbol || t('accounts.unknownValue')}</Muted>,
     },
     {
       header: t('accounts.colVolume'),
       align: 'right',
-      cell: (deal) => <span className="tabular-nums">{formatDecimal(deal.volume)}</span>,
+      /*
+       * `0` on a funding row is NOISE, and it read as data.
+       *
+       * MT5 sends `volume: '0'` and `price: '0'` on every balance operation
+       * because neither concept applies — nothing was bought at no price. The
+       * table printed a bare `0` in both columns on all ten rows of an account
+       * whose history is entirely deposits and transfers, which says "zero lots
+       * were traded at a price of zero" rather than "this row is not a trade".
+       *
+       * An em dash is the same answer the Symbol column already gave, and the
+       * three now agree instead of two saying "not applicable" while a third
+       * asserts a quantity.
+       */
+      cell: (deal) =>
+        isZeroMoney(deal.volume) ? (
+          <Muted>{t('accounts.unknownValue')}</Muted>
+        ) : (
+          <span className="tabular-nums">{formatDecimal(deal.volume)}</span>
+        ),
     },
     {
       header: t('accounts.colPrice'),
       align: 'right',
-      cell: (deal) => <span className="tabular-nums">{formatDecimal(deal.price)}</span>,
+      // See Volume: a price of zero is "no price", not a price.
+      cell: (deal) =>
+        isZeroMoney(deal.price) ? (
+          <Muted>{t('accounts.unknownValue')}</Muted>
+        ) : (
+          <span className="tabular-nums">{formatDecimal(deal.price)}</span>
+        ),
     },
     {
       header: t('accounts.colProfit'),
@@ -365,18 +407,50 @@ function buildDealColumns(currency: string): Column<AccountDeal>[] {
 }
 
 /**
- * The P/L cell.
+ * The AMOUNT cell — realised P/L on a trade, the sum moved on a funding row.
  *
- * An opening deal shows an em dash, never `0.00`: `closing` comes from the
- * server and marks the deals that realised a result. An opening deal carries
- * `profit: '0'` because nothing has been realised yet, and rendering that as a
- * currency-formatted zero states that a still-open trade broke even.
+ * ## `!closing` is not one case, and treating it as one HID REAL MONEY
+ *
+ * `closing` answers "did a TRADE realise a result", which is correctly false for
+ * a deposit, a withdrawal, a credit or a CRM transfer — none of them close a
+ * position. This returned the "pending" em dash for everything that was not a
+ * closing trade, so an account funded with a $1,000 transfer showed a dash in
+ * the only column carrying an amount. Every row on the screenshot that prompted
+ * this fix was a real movement rendered as no movement.
+ *
+ * The two false cases need opposite treatment, which is why the branch is on
+ * `isTrade` first:
+ *
+ * - An OPEN trade has not realised anything. Its `profit: '0'` is a placeholder,
+ *   and formatting it as `$0.00` would claim a live position broke even. Em
+ *   dash — the original reasoning, and still right.
+ * - A BALANCE operation's amount is FINAL the moment it exists. There is no
+ *   later row that will restate it, so a dash here loses the only number the
+ *   row carries.
+ *
+ * A genuine zero on a funding row (a $0.00 correction) now prints as `$0.00`,
+ * which is honest: that row really did move nothing, and it is a different claim
+ * from "not applicable yet".
  */
 function Profit({ deal, currency }: { deal: AccountDeal; currency: string }) {
-  if (!deal.closing) {
+  // The rule itself lives in `lib/account-stats`, pure and tested — it decides
+  // whether a client sees an amount at all, which is not a decision worth
+  // leaving un-pinned inside a cell renderer.
+  if (!showsRealisedAmount(deal)) {
     return <span className="text-muted-foreground">{t('accounts.profitPending')}</span>;
   }
+
   return <Signed amount={deal.profit} currency={currency} />;
+}
+
+/**
+ * A cell that is deliberately not a value — "this column does not apply here".
+ *
+ * Muted rather than plain, so a column of em dashes reads as absence at a glance
+ * instead of competing with the figures beside it.
+ */
+function Muted({ children }: { children: React.ReactNode }) {
+  return <span className="text-muted-foreground">{children}</span>;
 }
 
 /**
@@ -431,7 +505,7 @@ function formatDate(value: string): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
 }
 
+/** 24-hour and shared, so a day boundary stays visible — see `formatDealTime`. */
 function formatDateTime(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? t('accounts.unknownValue') : date.toLocaleString();
+  return formatDealTime(value, t('accounts.unknownValue'));
 }

@@ -1,15 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useResource } from '@/hooks/use-resource';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { walletApi, type Wallet } from '@/lib/api/wallet';
 import { paymentsApi, type WithdrawalMethod } from '@/lib/api/payments';
 import { newIdempotencyKey } from '@/lib/api/client';
-import { formatMoney, isZeroMoney } from '@/lib/money';
+import { compareMoney, formatMoney, isZeroMoney } from '@/lib/money';
 import { Button } from '@/components/ui/button';
 import { WithdrawalDestinationField } from '@/components/money/withdrawal-fields';
 import {
@@ -23,6 +21,11 @@ import {
   MoneySheet,
   StepRail,
 } from '@/components/money/money-shell';
+import {
+  NoFundedWallets,
+  NoWithdrawMethods,
+  WithdrawalSubmitted,
+} from '@/components/money/withdraw-states';
 import { presetsWithin } from '@/components/money/amount-presets';
 import { t } from '@/lib/i18n';
 
@@ -95,7 +98,34 @@ function WithdrawForm({
   methods: WithdrawalMethod[];
   onDone: () => void;
 }) {
-  const fundable = wallets.filter((w) => !isZeroMoney(w.available));
+  /*
+   * EVERY wallet, richest first — not just the funded ones.
+   *
+   * This listed only wallets with something in them, so a client holding USD and
+   * an empty USDT wallet saw a single tile and no sign the other existed. A
+   * wallet the client holds is a fact about their account; hiding it because the
+   * balance is zero answers a question they did not ask and leaves them looking
+   * for a currency they know they have.
+   *
+   * `compareMoney` — decimal.js — and never `Number(b.available) - Number(...)`.
+   * These are decimal STRINGS: the coercion is a lint error on this path, and
+   * the default text sort puts '9.00000000' above '100.00000000', which would
+   * order the list almost backwards for anybody holding both.
+   *
+   * A COPY before sorting: `wallets` is React Query's cached array, and sorting
+   * in place mutates what every other reader of that key sees.
+   */
+  const ordered = wallets.slice().sort((a, b) => compareMoney(b.available, a.available));
+
+  /*
+   * The ones that can actually pay for a withdrawal.
+   *
+   * Still needed, and for two things: the default selection, and the "nothing to
+   * withdraw" state. An empty wallet is SHOWN above but cannot be chosen — a
+   * tile that leads to a guaranteed server refusal is a control that exists to
+   * disappoint.
+   */
+  const fundable = ordered.filter((w) => !isZeroMoney(w.available));
   // Typed off the generated schema, so the select can only ever hold a currency
   // the API actually accepts.
   type Currency = Wallet['currency'];
@@ -205,35 +235,14 @@ function WithdrawForm({
     }
   };
 
-  if (fundable.length === 0) {
-    return (
-      <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-          <AlertCircle className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
-          <p className="max-w-sm text-sm text-muted-foreground">{t('withdraw.noWallets')}</p>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/deposit">{t('wallet.deposit')}</Link>
-          </Button>
-        </div>
-      </MoneySheet>
-    );
-  }
+  if (fundable.length === 0) return <NoFundedWallets />;
 
   /*
    * No enabled rail means no withdrawal is possible, and saying so is the whole
    * point: an empty method list under a working form would let a client fill in
    * an amount and be refused on submit for a reason the screen never showed.
    */
-  if (methods.length === 0) {
-    return (
-      <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-          <AlertCircle className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
-          <p className="max-w-sm text-sm text-muted-foreground">{t('withdraw.noMethods')}</p>
-        </div>
-      </MoneySheet>
-    );
-  }
+  if (methods.length === 0) return <NoWithdrawMethods />;
 
   /*
    * Quick-pick amounts, capped at what is AVAILABLE — not `balance`, which
@@ -260,6 +269,56 @@ function WithdrawForm({
    * happens to be 1, means the flow the client learns changes under them the
    * day a second method is enabled.
    */
+  if (step === 'method') {
+    return (
+      <MoneySheet className="flex min-h-0 flex-1 flex-col">
+        <StepRail steps={WITHDRAW_STEPS} active={0} />
+
+        <MoneySection title={t('withdraw.method')} className="min-h-0 flex-1 overflow-y-auto">
+          <div className="space-y-2">
+            {methods.map((method) => (
+              <MethodTile
+                key={method.key}
+                name="withdraw-method"
+                value={method.key}
+                checked={methodKey === method.key}
+                onChange={(key) => {
+                  setMethodKey(key);
+                  /*
+                   * Changing the rail clears the payout target. The value that
+                   * was there was for a DIFFERENT rail — a Whish phone number
+                   * carried into a bank field would be submitted as an account
+                   * number, and the server would refuse it with a message about
+                   * a field the client thought they had filled in correctly.
+                   */
+                  setDestination('');
+                  setError(null);
+                }}
+                title={method.name}
+                logoUrl={method.logoUrl}
+              />
+            ))}
+          </div>
+        </MoneySection>
+
+        <MoneyFooter className="space-y-4">
+          <FormError message={error} />
+          <Button
+            type="button"
+            onClick={() => {
+              if (!methodKey) return setError(t('withdraw.needMethod'));
+              setError(null);
+              setStep('wallet');
+            }}
+            className="h-10 w-full"
+          >
+            {t('withdraw.continue')}
+          </Button>
+        </MoneyFooter>
+      </MoneySheet>
+    );
+  }
+
   if (step === 'wallet') {
     return (
       /*
@@ -269,7 +328,7 @@ function WithdrawForm({
        * SECTION grows and the footer stays pinned to the bottom edge.
        */
       <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <StepRail steps={WITHDRAW_STEPS} active={0} />
+        <StepRail steps={WITHDRAW_STEPS} active={1} />
 
         {/*
           WHICH BALANCE IS BEING SPENT, asked first and asked plainly.
@@ -285,12 +344,18 @@ function WithdrawForm({
         */}
         <MoneySection title={t('withdraw.stepWallet')} className="min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-2">
-            {fundable.map((w) => (
+            {ordered.map((w) => (
               <MethodTile
                 key={w.currency}
                 name="withdraw-wallet"
                 value={w.currency}
                 checked={currency === w.currency}
+                /*
+                 * Shown, but not selectable with nothing in it. The balance
+                 * beside it says why, which is the part that was missing when
+                 * the wallet was simply absent from the list.
+                 */
+                disabled={isZeroMoney(w.available)}
                 onChange={(value) => {
                   setCurrency(value);
                   /*
@@ -317,17 +382,30 @@ function WithdrawForm({
 
         <MoneyFooter className="space-y-4">
           <FormError message={error} />
-          <Button
-            type="button"
-            onClick={() => {
-              if (!currency) return setError(t('withdraw.needWallet'));
-              setError(null);
-              setStep('details');
-            }}
-            className="h-10 w-full"
-          >
-            {t('withdraw.continue')}
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10"
+              onClick={() => {
+                setStep('method');
+                setError(null);
+              }}
+            >
+              {t('money.back')}
+            </Button>
+            <Button
+              type="button"
+              className="h-10 flex-1"
+              onClick={() => {
+                if (!currency) return setError(t('withdraw.needWallet'));
+                setError(null);
+                setStep('details');
+              }}
+            >
+              {t('withdraw.continue')}
+            </Button>
+          </div>
         </MoneyFooter>
       </MoneySheet>
     );
@@ -339,7 +417,7 @@ function WithdrawForm({
     // the card inside it would never see the space.
     <form onSubmit={(e) => void submit(e)} className="flex min-h-0 flex-1 flex-col">
       <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <StepRail steps={WITHDRAW_STEPS} active={1} />
+        <StepRail steps={WITHDRAW_STEPS} active={2} />
 
         {/*
           WHICH WALLET this is coming out of, and the way back to change it.
@@ -537,47 +615,7 @@ export default function WithdrawPage() {
       <MoneyHeader />
 
       {submitted ? (
-        /*
-          The outcome is STEP THREE, and keeps the rail above it so the client
-          can see they reached the end of something rather than landing on an
-          unrelated confirmation card. The rail is the only part of this screen
-          that survives all three steps, which is what makes the last one read
-          as an arrival.
-        */
-        <MoneySheet className="flex min-h-0 flex-1 flex-col">
-          <StepRail steps={WITHDRAW_STEPS} active={2} />
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-success">
-              <CheckCircle2 className="h-7 w-7" aria-hidden="true" />
-            </span>
-            {/*
-              Says the request is WITH the desk, not that the money has been
-              sent. The backend debits the wallet on request and an operator
-              releases the payout; telling the client "sent" would be a
-              different, wrong story about their money.
-
-              `role="status"` so the outcome is announced: this replaces the form
-              after an async submit, and a screen-reader user would otherwise be
-              left on the button's last announcement.
-            */}
-            <div>
-              <h2 role="status" className="text-lg font-bold">
-                {t('withdraw.submittedTitle')}
-              </h2>
-              <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-                {t('withdraw.submittedBody')}
-              </p>
-            </div>
-            <div className="flex w-full max-w-xs flex-col gap-2">
-              <Button asChild size="sm">
-                <Link href="/transactions">{t('withdraw.viewTransactions')}</Link>
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link href="/wallet">{t('deposit.backToWallet')}</Link>
-              </Button>
-            </div>
-          </div>
-        </MoneySheet>
+        <WithdrawalSubmitted />
       ) : (
         <AsyncBoundary
           fill

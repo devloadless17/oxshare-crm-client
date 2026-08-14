@@ -31,14 +31,16 @@ import { t } from '@/lib/i18n';
 /**
  * Deposit — CORE-06.
  *
- * ## One screen, no steps
+ * ## Three steps: method, destination, amount
  *
- * Method, destination, amount, pay — all visible at once. A deposit is three
- * short decisions, and a wizard turns that into three screens with two
- * transitions and a back button: slower for the client, and a state machine for
- * us to maintain.
+ * This was one screen with everything visible at once, and the comment here
+ * argued for it — a deposit is three short decisions, and a wizard makes three
+ * screens out of them. That was changed on request, and the destination step is
+ * what earns the change: choosing a trading account turns one deposit into TWO
+ * movements (the credit into the wallet, then a transfer onward), which is worth
+ * asking plainly rather than burying in a dropdown above the amount field.
  *
- * Choosing a method reveals its form (`components/money/deposit-forms.tsx`).
+ * There is no fourth step for the outcome — see `STEPS`.
  *
  * ## Two flows behind it, and this screen names NEITHER
  *
@@ -50,8 +52,10 @@ import { t } from '@/lib/i18n';
  * Which one a method uses was a `kind` field on the method, dropped in migration
  * 0043 — it described our integration, not the client's choice, and this screen
  * printed it on every tile as "Instant" or "Manual". The distinction still
- * exists and still matters, but it is announced by `DepositCreated` from the
- * server's own answer (`paymentUrl`, or not), at the moment it becomes true.
+ * exists and still matters, but it is answered by the server (`paymentUrl`, or
+ * not) at the moment it becomes true: a gateway deposit navigates STRAIGHT to
+ * the provider, and only a manual one renders `DepositCreated` with its
+ * reference and pay-to details.
  *
  * Nothing here branches on `key` either, which `schema.ts` has always warned
  * about: a screen checking `key === 'whish'` needs editing every time a method
@@ -88,7 +92,20 @@ export default function DepositPage() {
    */
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col gap-4">
-      <MoneyHeader title={t('deposit.title')} subtitle={t('deposit.subtitle')} />
+      {/*
+        The back link alone — no `<h1>Deposit</h1>` and no subtitle.
+
+        The nav item the client just pressed said Deposit, and the card's own
+        step rail names where they are, so a heading plus a sentence above it was
+        the third thing on screen answering a question nobody had. It also cost
+        two lines of the height the card wants for its scrolling body.
+
+        The link is NOT dropped with them: it is the only way out of this screen
+        that is not the browser's own button, and it lives in `MoneyHeader` so
+        all three money flows keep the same one rather than each rendering its
+        own and drifting.
+      */}
+      <MoneyHeader />
 
       <AsyncBoundary
         fill
@@ -112,13 +129,29 @@ export default function DepositPage() {
 /**
  * Choose how to pay, say how much, then read what happens next.
  *
- * The third step is the OUTCOME and belongs in the bar: a deposit is not over
- * when the form is submitted. A gateway method sends the client onward to pay;
- * a manual one hands them a reference to quote to their bank. Which of the two
- * it is comes from the SERVER's answer, so the flow genuinely has somewhere to
- * arrive.
+ * Method, then WHERE the money lands, then how much.
+ *
+ * The destination is its own step rather than a dropdown above the amount,
+ * because it is the decision that changes what the deposit DOES: routed to a
+ * trading account it becomes two movements — the deposit into the wallet, then a
+ * transfer onward — and that is worth asking plainly rather than burying in a
+ * select.
+ *
+ * No outcome step. The three steps are the three questions; a confirmation is
+ * not a fourth thing the client has to do, and marking it as one makes a
+ * finished request look unfinished. /withdraw and /transfer draw the same line.
  */
-const STEPS = [t('deposit.stepMethod'), t('money.stepAmount'), t('money.stepDone')];
+const STEPS = [t('deposit.stepMethod'), t('deposit.stepDestination'), t('deposit.stepAmountShort')];
+
+/**
+ * How long to wait before deciding the redirect did not happen.
+ *
+ * Long enough that a working navigation always wins the race — the page unloads
+ * and the timer dies with it — and short enough that a client whose browser
+ * refused it is not left watching a spinner. It is a FALLBACK, not a delay:
+ * nobody sees this wait unless something went wrong.
+ */
+const REDIRECT_FALLBACK_MS = 2500;
 
 function DepositFlow({
   methods,
@@ -141,7 +174,7 @@ function DepositFlow({
   const [destination, setDestination] = React.useState<DepositDestination>({
     tradingAccountId: null,
   });
-  const [step, setStep] = React.useState<1 | 2>(1);
+  const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const [amount, setAmount] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -183,16 +216,12 @@ function DepositFlow({
   }
 
   /*
-   * The outcome is STEP THREE, and keeps the step bar above it.
-   *
-   * A deposit does not finish when the form is submitted — a gateway sends the
-   * client onward, a manual method hands them a reference to quote — so this is
-   * an arrival rather than a screen that replaces the flow.
+   * NO step rail on the outcome — the three steps are the three questions, and
+   * the confirmation is not a fourth.
    */
   if (created) {
     return (
       <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <StepRail steps={STEPS} active={2} />
         <DepositCreated
           deposit={created.deposit}
           method={created.method}
@@ -217,6 +246,13 @@ function DepositFlow({
     setError(null);
     idempotencyKey.current ??= newIdempotencyKey();
 
+    /*
+     * Set when the browser is on its way to the provider, so `finally` leaves
+     * the form disabled. Without it the button re-enables mid-navigation and a
+     * quick second press files a SECOND deposit against a fresh idempotency key.
+     */
+    let leaving = false;
+
     try {
       const deposit = await depositsApi.request(
         {
@@ -232,23 +268,48 @@ function DepositFlow({
       idempotencyKey.current = null;
 
       /*
-       * A GATEWAY deposit sends the client onward immediately.
+       * A GATEWAY deposit goes STRAIGHT to the provider — no card in between.
+       *
+       * This used to render the confirmation first and navigate second, so a
+       * client paying by Whish met a "your payment link is ready" screen with a
+       * button, and then the redirect. Two screens for one intention, and the
+       * first one asks them to press something they did not ask for.
        *
        * `location.assign` rather than `window.open`: a popup is blocked by
        * default when it is not the direct result of a click, and this is inside
        * an async submit. A blocked popup leaves the client on a screen that
        * looks like nothing happened, having already filed a deposit.
        *
-       * The confirmation renders behind the navigation carrying the same link,
-       * so a browser that refuses the redirect leaves a button rather than a
-       * dead end.
+       * ## The card is still the FALLBACK, just no longer the default
+       *
+       * If the navigation is refused — an extension, a hardened browser, a
+       * provider URL that will not load — the client would otherwise sit on a
+       * form that is spinning forever, having already filed a deposit. So the
+       * confirmation is scheduled rather than rendered: if this page is still
+       * here a moment later, the navigation did not happen and the card appears
+       * with its link. When the redirect works the page unloads first and the
+       * timer never fires.
        */
+      if (deposit.paymentUrl) {
+        const url = deposit.paymentUrl;
+        window.setTimeout(() => setCreated({ deposit, method: selected }), REDIRECT_FALLBACK_MS);
+        leaving = true;
+        window.location.assign(url);
+        // Deliberately left busy: the form stays disabled while the browser
+        // navigates, so a second submit cannot file a second deposit.
+        return;
+      }
+
+      // A MANUAL method has nowhere to send anybody — the reference and the
+      // pay-to details ARE the outcome.
       setCreated({ deposit, method: selected });
-      if (deposit.paymentUrl) window.location.assign(deposit.paymentUrl);
     } catch (err) {
       setError(apiErrorMessage(err, t('deposit.failed')));
     } finally {
-      setBusy(false);
+      // `finally` runs on the redirect path's `return` too, so it is guarded:
+      // re-enabling the form while the page is unloading is the double-submit
+      // window this whole flow is built to avoid.
+      if (!leaving) setBusy(false);
     }
   };
 
@@ -306,7 +367,7 @@ function DepositFlow({
               </div>
             </MoneySection>
           ) : (
-            /* The selected method's own sections — destination and amount. */
+            /* The selected method's own sections, one per step. */
             selected && (
               <DepositForm
                 method={selected}
@@ -317,6 +378,7 @@ function DepositFlow({
                 amount={amount}
                 onAmountChange={setAmount}
                 disabled={busy}
+                section={step === 2 ? 'destination' : 'amount'}
               />
             )
           )}
@@ -325,7 +387,7 @@ function DepositFlow({
         <MoneyFooter className="space-y-4">
           {/* The bounds refusal, shown while the client is still on the field —
               the server's own check still runs and is authoritative. */}
-          <FormError message={error ?? (step === 2 ? problem : null)} />
+          <FormError message={error ?? (step === 3 ? problem : null)} />
 
           {step === 1 ? (
             /*
@@ -341,6 +403,27 @@ function DepositFlow({
             >
               {t('money.continue')}
             </Button>
+          ) : step === 2 ? (
+            /*
+             * STEP TWO HAS ITS OWN BUTTONS, and their absence was a real bug:
+             * this branch did not exist, so the destination step fell through to
+             * the SUBMIT button below — which is disabled until an amount is
+             * entered, and the amount is asked for on the next step. A client
+             * who picked a destination found Continue permanently greyed out
+             * with nothing on screen explaining what was missing.
+             *
+             * Nothing to validate here. A destination is always selected: the
+             * wallet is the default and the tiles are a radio group, so there is
+             * no empty state to guard against.
+             */
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" className="h-10" onClick={() => setStep(1)}>
+                {t('money.back')}
+              </Button>
+              <Button type="button" className="h-10 flex-1" onClick={() => setStep(3)}>
+                {t('money.continue')}
+              </Button>
+            </div>
           ) : (
             <div className="flex gap-3">
               <Button
@@ -348,7 +431,7 @@ function DepositFlow({
                 variant="outline"
                 className="h-10"
                 disabled={busy}
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
               >
                 {t('money.back')}
               </Button>

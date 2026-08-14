@@ -101,10 +101,23 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
-        // Disabled BY the loading state, not merely alongside it. A button that
-        // shows a spinner and still accepts clicks is the double-submit bug
-        // wearing the costume of its own fix.
-        disabled={disabled ?? loading}
+        /*
+         * Disabled BY the loading state, not merely alongside it. A button that
+         * shows a spinner and still accepts clicks is the double-submit bug
+         * wearing the costume of its own fix.
+         *
+         * `||`, NOT `??` — and the difference is the whole bug this line once
+         * had. Nullish coalescing only falls back when `disabled` is null or
+         * undefined, so a caller passing a computed condition kept control of
+         * the value forever: `disabled={!amount}` is `false` the moment the form
+         * is valid, and `false ?? loading` is `false`. Every submit button on
+         * the money screens showed a spinner and stayed clickable, which is
+         * precisely what the sentence above says must not happen.
+         *
+         * With `||` the two reasons a button can be unavailable are ORed, which
+         * is what "and also disabled while loading" means.
+         */
+        disabled={disabled || loading}
         aria-busy={loading || undefined}
         {...props}
       >

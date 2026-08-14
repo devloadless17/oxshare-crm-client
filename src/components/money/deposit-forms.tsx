@@ -1,13 +1,8 @@
 'use client';
 
 import Decimal from 'decimal.js';
-import {
-  AmountField,
-  AmountPresets,
-  DestinationSelect,
-  MoneySection,
-  type DestinationGroup,
-} from '@/components/money/money-shell';
+import { TileGroups, type TileGroup } from '@/components/money/tile-groups';
+import { AmountField, AmountPresets, MoneySection } from '@/components/money/money-shell';
 import type { PaymentMethod } from '@/lib/api/deposits';
 import type { TradingAccount } from '@/lib/api/trading';
 import type { Wallet } from '@/lib/api/wallet';
@@ -126,6 +121,7 @@ export function DepositForm({
   amount,
   onAmountChange,
   disabled,
+  section,
 }: {
   method: PaymentMethod;
   wallets: Wallet[];
@@ -135,6 +131,15 @@ export function DepositForm({
   amount: string;
   onAmountChange: (amount: string) => void;
   disabled?: boolean;
+  /**
+   * WHICH STEP is being drawn.
+   *
+   * This rendered destination and amount together when the deposit screen was
+   * one page. They are separate steps now, and the split lives here rather than
+   * in the page because the method-specific knowledge — which accounts a method
+   * can fund, what its bounds are — is already here.
+   */
+  section: 'destination' | 'amount';
 }) {
   const { min, max } = bounds(method);
   const presets = PRESETS.filter((value) => {
@@ -169,37 +174,53 @@ export function DepositForm({
    * destination. A flat list of thirty entries makes the client read every one
    * to work out which is which.
    */
-  const groups: DestinationGroup[] = [
+  const groups: TileGroup[] = [
     {
       label: t('deposit.groupWallet'),
       options: [
         {
-          value: WALLET_VALUE,
-          label: t('deposit.toWallet', { currency: method.currency }),
-          hint: wallet ? formatMoney(wallet.available, wallet.currency) : undefined,
+          key: WALLET_VALUE,
+          title: t('deposit.toWallet', { currency: method.currency }),
+          /*
+           * "Not opened yet" rather than a zero when the client holds no wallet
+           * in this currency — depositing is what opens it, so the option must
+           * stay selectable. A formatted 0.00 would state a balance that does
+           * not exist, which is the rule /wallet was rewritten for.
+           */
+          hint: wallet
+            ? formatMoney(wallet.available, wallet.currency)
+            : t('transfer.walletUnopened'),
         },
       ],
     },
     {
       label: t('deposit.groupAccounts'),
       options: fundable.map((account) => ({
-        value: account.id,
-        label: t('deposit.toAccount', { login: account.login ?? '—' }),
+        key: account.id,
+        title: t('deposit.toAccount', { login: account.login ?? '—' }),
         hint: formatMoney(account.balance, account.currency),
       })),
     },
   ];
 
-  return (
-    <>
-      <MoneySection title={t('deposit.destinationTitle')}>
-        <DestinationSelect
-          label={t('deposit.destinationLabel')}
-          value={destination.tradingAccountId ?? WALLET_VALUE}
-          onChange={(value) =>
+  if (section === 'destination') {
+    /*
+     * NO section title.
+     *
+     * The tile groups below carry their own headings — "My wallets" and
+     * "Trading accounts" — and the step rail already says Destination. A third
+     * label over the same question is the one a reader stops seeing, along with
+     * whatever sits next to it.
+     */
+    return (
+      <MoneySection>
+        <TileGroups
+          name="deposit-destination"
+          groups={groups}
+          selected={destination.tradingAccountId ?? WALLET_VALUE}
+          onSelect={(value) =>
             onDestinationChange({ tradingAccountId: value === WALLET_VALUE ? null : value })
           }
-          groups={groups}
           disabled={disabled}
         />
         <p className="mt-2 text-[11px] text-muted-foreground">
@@ -208,28 +229,30 @@ export function DepositForm({
             : t('deposit.toAccountHint')}
         </p>
       </MoneySection>
+    );
+  }
 
-      <MoneySection title={t('money.stepAmount')}>
-        <div className="space-y-4">
-          <AmountField
-            label={t('deposit.amountLabel')}
-            labelHidden
-            value={amount}
-            onChange={onAmountChange}
+  return (
+    <MoneySection title={t('deposit.amountTitle')}>
+      <div className="space-y-4">
+        <AmountField
+          label={t('deposit.amountLabel')}
+          labelHidden
+          value={amount}
+          onChange={onAmountChange}
+          currency={method.currency}
+          disabled={disabled}
+          hint={boundsHint(method)}
+        />
+        {presets.length > 0 && (
+          <AmountPresets
+            presets={presets}
             currency={method.currency}
+            onPick={onAmountChange}
             disabled={disabled}
-            hint={boundsHint(method)}
           />
-          {presets.length > 0 && (
-            <AmountPresets
-              presets={presets}
-              currency={method.currency}
-              onPick={onAmountChange}
-              disabled={disabled}
-            />
-          )}
-        </div>
-      </MoneySection>
-    </>
+        )}
+      </div>
+    </MoneySection>
   );
 }
