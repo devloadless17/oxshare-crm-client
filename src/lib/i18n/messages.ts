@@ -1315,13 +1315,27 @@ export const messages = {
   'dashboard.greeting': 'Welcome back, {name}',
   'dashboard.loading': 'Loading your dashboard…',
   'dashboard.loadFailed': 'Could not load your dashboard.',
-  'dashboard.totalBalance': 'Total balance',
-  'dashboard.totalBalanceNote': 'Across your opened wallets',
+  /*
+   * "Largest", not "Total", and the distinction is the whole reason the figure
+   * is computed the way it is.
+   *
+   * Balances cannot be added across currencies without an exchange rate, and
+   * this platform holds none — so `largestBalance` reports the biggest SINGLE
+   * holding, labelled with its own currency. The old copy said "Total balance /
+   * Across your opened wallets" over exactly that number, which is a sentence
+   * claiming a sum nobody computed. A client holding $700 and €500 read "$700"
+   * under the word "total".
+   */
+  'dashboard.largestBalance': 'Largest balance',
+  'dashboard.largestBalanceNote': 'Your biggest single wallet',
+  'dashboard.statWallets': 'Wallets',
+  'dashboard.statWalletsNote': 'Currencies you hold',
+  'dashboard.statOpenPositionsNote': 'Trades running now',
+  'dashboard.statPendingTxNote': 'Waiting on our review',
+  'dashboard.statReferred': 'Clients introduced',
+  'dashboard.statReferredNote': 'Through your referral code',
   'dashboard.statOpenPositions': 'Open positions',
   'dashboard.statReferredClients': 'Clients referred',
-  'dashboard.walletsHeading': 'Your wallets',
-  'dashboard.walletsEmpty': 'No wallets opened yet',
-  'dashboard.walletsEmptyBody': 'A wallet opens with your first deposit in that currency.',
   'dashboard.positionsHeading': 'Open positions',
   'dashboard.positionsEmpty': 'No open positions',
   /*

@@ -3,9 +3,11 @@
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  Landmark,
   LineChart,
   Receipt,
   TrendingUp,
+  Users,
   Wallet as WalletIcon,
 } from 'lucide-react';
 import Decimal from 'decimal.js';
@@ -86,13 +88,31 @@ function Panels({ data }: { data: Dashboard }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6">
-      {/* The figure row — four counts, each from its own table. */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/*
+        The figure row. Every tile is a COUNT the API computed, or a balance the
+        API sent — nothing here is derived from a guess, which is the rule this
+        screen was emptied for once already: it used to carry tiles reading
+        "0 trading accounts" with no endpoint behind them, and a client holding
+        three read zero.
+      */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatTile
           icon={WalletIcon}
-          label={t('dashboard.totalBalance')}
+          label={t('dashboard.largestBalance')}
           value={largestBalance(wallets)}
-          hint={t('dashboard.totalBalanceNote')}
+          hint={t('dashboard.largestBalanceNote')}
+        />
+        {/*
+          The wallet COUNT, which is what survives of the wallets panel this
+          replaced. Balances belong on /wallet, where each has a card and room
+          for its own held figure; a second, thinner copy of that list here made
+          the dashboard a worse version of the page it links to.
+        */}
+        <StatTile
+          icon={Landmark}
+          label={t('dashboard.statWallets')}
+          value={String(wallets.length)}
+          hint={t('dashboard.statWalletsNote')}
         />
         <StatTile
           icon={LineChart}
@@ -104,79 +124,78 @@ function Panels({ data }: { data: Dashboard }) {
           icon={TrendingUp}
           label={t('dashboard.statOpenPositions')}
           value={String(stats.openPositions)}
+          hint={t('dashboard.statOpenPositionsNote')}
         />
         <StatTile
           icon={Receipt}
           label={t('dashboard.statPendingTx')}
           value={String(stats.pendingTransactions)}
+          hint={t('dashboard.statPendingTxNote')}
+        />
+        {/*
+          PARTNERS ONLY, and hidden rather than shown as zero.
+          `stats.referredClients` is 0 for everybody who is not a partner, so a
+          tile reading "0 clients introduced" would tell most of the client base
+          about a programme they are not in — and read as a failure rather than
+          an absence. It was the one figure the API already computed that this
+          screen never showed.
+        */}
+        {stats.referredClients > 0 && (
+          <StatTile
+            icon={Users}
+            label={t('dashboard.statReferred')}
+            value={String(stats.referredClients)}
+            hint={t('dashboard.statReferredNote')}
+          />
+        )}
+      </div>
+
+      {/*
+        The money actions, LIFTED OUT of the wallets panel rather than removed
+        with it.
+
+        They lived inside that card, so deleting it would have taken the
+        dashboard's primary calls to action with it — deposit and withdraw are
+        the two things most clients open this screen to do, and the request was
+        to drop a redundant balance list, not the buttons.
+
+        `MoneyAction` rather than plain links: it puts the KYC gate in front of
+        each one, so an unverified client gets an explanation instead of a form
+        the API will refuse.
+      */}
+      <div className="flex flex-wrap gap-2">
+        <MoneyAction
+          href="/deposit"
+          icon="deposit"
+          label={t('wallet.deposit')}
+          size="sm"
+          className="flex-1 basis-40"
+        />
+        <MoneyAction
+          href="/withdraw"
+          icon="withdraw"
+          label={t('wallet.withdraw')}
+          variant="outline"
+          size="sm"
+          className="flex-1 basis-40"
+        />
+        <MoneyAction
+          href="/transfer"
+          icon="transfer"
+          label={t('wallet.transfer')}
+          variant="outline"
+          size="sm"
+          className="flex-1 basis-40"
         />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        {/* Wallets as compact rows, not the full cards from /wallet — repeating
-            that treatment here would make the dashboard a second wallet page. */}
-        <Panel
-          heading={t('dashboard.walletsHeading')}
-          icon={WalletIcon}
-          action={{ href: '/wallet', label: t('nav.wallet') }}
-        >
-          {wallets.length === 0 ? (
-            <Empty title={t('dashboard.walletsEmpty')} body={t('dashboard.walletsEmptyBody')} />
-          ) : (
-            <ul className="divide-y divide-border">
-              {wallets.map((wallet) => (
-                <li key={wallet.id} className="flex items-center justify-between gap-3 px-5 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">{wallet.currency}</p>
-                    {/* `available`, not `balance` — the figure a client can act
-                        on, matching the wallet cards. */}
-                    <p className="text-[11px] text-muted-foreground">{t('wallet.available')}</p>
-                  </div>
-                  <p className="font-mono text-sm font-bold tabular-nums">
-                    {formatMoney(wallet.available, wallet.currency)}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {/* All three the same variant — no promoted "primary". A client
-              arriving here is as likely to be withdrawing as topping up, and a
-              filled button says "this is the one you want". */}
-          <div className="flex gap-2 border-t border-border p-4">
-            <MoneyAction
-              href="/deposit"
-              icon="deposit"
-              label={t('wallet.deposit')}
-              variant="outline"
-              size="sm"
-              className="flex-1 basis-0"
-            />
-            <MoneyAction
-              href="/withdraw"
-              icon="withdraw"
-              label={t('wallet.withdraw')}
-              variant="outline"
-              size="sm"
-              className="flex-1 basis-0"
-            />
-            <MoneyAction
-              href="/transfer"
-              icon="transfer"
-              label={t('wallet.transfer')}
-              variant="outline"
-              size="sm"
-              className="flex-1 basis-0"
-            />
-          </div>
-        </Panel>
-
         {/* A PREVIEW, capped server-side. The full history has its own screen
             with real filters, so paging here would imply otherwise. */}
         <Panel
           heading={t('dashboard.recentTitle')}
           icon={Receipt}
-          className="xl:col-span-2"
+          className="xl:col-span-3"
           action={{ href: '/transactions', label: t('dashboard.viewAllTransactions') }}
         >
           {recentTransactions.length === 0 ? (
