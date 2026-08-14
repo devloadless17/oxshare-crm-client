@@ -336,13 +336,26 @@ function AccountCard({ account, tone }: { account: TradingAccount; tone: 'live' 
       </dl>
 
       {/*
+        The card is not itself a link, and the button is not the only way in.
+
+        Wrapping the whole card in an anchor would swallow the copy-login button
+        inside it — a nested interactive element is invalid, and in practice the
+        copy press navigates instead of copying, which is the single action this
+        card exists for. So the detail route gets its own control, and the card
+        stays a card.
+      */}
+      <Button asChild variant="outline" size="sm" className="w-full">
+        <Link href={`/accounts/${account.id}`}>{t('accounts.viewDetail')}</Link>
+      </Button>
+
+      {/*
         Funding is offered on LIVE, ACTIVE accounts only — the same pair the
         server's `/transferable` route narrows to. A transfer to a demo account
         would be a real-money loss with no counterparty, and one to a suspended
         account is refused after the client has already committed to it.
       */}
       {isLive && account.status === 'active' && (
-        <Button asChild variant="outline" size="sm" className="w-full">
+        <Button asChild size="sm" className="w-full">
           <Link href="/transfer">{t('accounts.fundAccount')}</Link>
         </Button>
       )}

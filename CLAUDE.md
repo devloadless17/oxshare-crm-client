@@ -12,19 +12,23 @@ app: registration, email verification, KYC onboarding, wallet.
 
 ```
 src/app/auth/{login,register,forgot-password,reset-password,verify-email}/page.tsx
-src/app/kyc/{page,step/[step],submitted}/ · dashboard/ · wallet/ · accounts/ · transactions/ ·
+src/app/kyc/{page,step/[step],submitted}/ · dashboard/ · wallet/ · accounts/{page,[id]} ·
+                                          transactions/ ·
                                           partner/ · platforms/ · {deposit,withdraw,transfer}/
 src/components/kyc/                       DocumentUploader · DynamicStepRenderer · SelfieCamera
 src/components/                           async-boundary · backend-pending · query-provider ·
                                           theme-* · dashboard/* · layout/portal-layout · ui/*
 src/components/wallet/wallet-card         the balance card (see "Wallet cards" below)
 src/components/transactions/              transaction-filters — the toolbar AND `applyFilters`
+src/components/accounts/                  open-account-button · account-live-panel ·
+                                          account-stats-panel · account-history
 src/components/partner/partner-dashboard  earnings · referred clients · sub-partners
 src/context/UserContext.tsx
 src/hooks/                                use-resource · use-hydrated
 src/lib/api/                              client · auth · errors · wallet · trading · partner ·
                                           payments · index · types.gen.ts
-src/lib/                                  money · date-range · countries-data · route-guard · utils
+src/lib/                                  money · date-range · account-stats · countries-data ·
+                                          route-guard · utils
 src/proxy.ts                              route gate (session PRESENCE only — never reads a claim)
 ```
 
@@ -109,12 +113,50 @@ number.** Each carries the rule differently, and each has a specific bug it exis
   the real set. **If that endpoint ever grows paging, this must move server-side** — filtering one
   page and calling it a filter over the history would silently under-report a client's own money.
 
-- **`/accounts`** is live via `GET /trading/accounts` (new — see the backend note below). Live and
-  demo are separate SECTIONS rather than one list with a tag, because the distinction is whether
-  the money is real and a demo row between two live ones is what makes the wrong one plausible.
-  It shows `balance` and **never equity, margin or open positions** — there is no MT5 bridge, so
-  nothing here holds them. The screen says so in the UI, not only in a comment: a figure labelled
-  only "Balance" gets read as equity, and those differ by every open position.
+- **`/accounts`** is live via `GET /trading/accounts`. Live and demo are separate TABS rather than
+  one list with a tag, because the distinction is whether the money is real and a demo row between
+  two live ones is what makes the wrong one plausible. The LIST shows the CRM's cached `balance`
+  and nothing else — one network call to a server we do not own, multiplied by the number of
+  accounts, is not worth it for a summary card. Live figures live on the detail route.
+
+- **`/accounts/[id]`** is the one account: live MT5 figures, realised statistics, and the account's
+  own deal history. **The MT5 bridge now EXISTS** (`../bridge`, ASP.NET wrapping the Manager API),
+  so equity, margin and floating P/L are real reads rather than the forbidden inventions they were
+  when only the list existed. What has NOT changed is which figures are honest — see below.
+
+### `/accounts/[id]`: two balances, both labelled, and one floating figure
+
+The screen shows the CRM's cached `balance` beside MT5's live one, and they can legitimately
+disagree: the column is what a wallet transfer credited and stops moving the moment the client
+trades. **Both carry a label saying which is which.** Two unlabelled money figures that differ is
+worse than showing one — a client cannot tell which is theirs, and half the time acts on the wrong
+one. Same family as the wallet's `$0.00`.
+
+`floating` is `equity - balance - credit`, derived server-side in `TradingService.snapshotMine`.
+It is the **only** floating figure this system can state: the bridge exposes closed deals and
+account snapshots, and **no open-position feed exists**. So the account TOTAL is real and a
+per-trade breakdown is not. Do not add one by dividing the total across the `positions` table —
+nothing writes to that table, and a fabricated per-trade floating beside a real login is the most
+expensive kind of wrong number on a trading product.
+
+The open-positions panel therefore says individual trades are **not carried here** and links the
+terminal. It must never say "you have no open positions" — the client reading it may hold three,
+and their own floating P/L is on the same screen.
+
+Live figures have **three** outcomes and three different sentences: figures, `null` (no MT5 login —
+permanent, about this account), and an error (bridge unreachable — temporary, about the platform).
+Collapsing the last two into one "unavailable" tells a client whose account is fine that their
+broker is down, and both then wait for the wrong thing.
+
+Statistics count **closed round trips only** — `mt5/deal-codes.ts` on the backend decides what that
+means, and `AccountStatsDto` records why an opening deal (`profit: '0'`) must not be counted.
+`wins + losses` need NOT equal `trades`: a scratch exit is neither, so **a win rate divides by
+`trades`** — `lib/account-stats.ts` holds that rule and its test, because dividing by `wins +
+losses` gives a plausible percentage that is wrong only on accounts with flat exits.
+
+The deal history is **paged and filtered server-side**, unlike `/transactions`. That is not a style
+difference: a deal history grows without bound, so the client-side filtering that is bounded and
+correct on `/transactions` would silently under-report a client's own trading here.
 
 - **`/partner`** is full width on **every** state — no `max-w-*`, no `mx-auto` on the route. The
   four non-approved states were briefly capped, on the reasoning that a lone "apply" card stretched
@@ -139,10 +181,19 @@ has nothing to resolve against and silently collapses to its content.
 
 ### Positions are empty for everyone, and the copy says why carefully
 
-Nothing writes to the `positions` table until an MT5 bridge exists. The panel says trades are not
-**synced** — never "you have no trades" — because a client who opened a position this morning would
-still see zero, and the second sentence would be false. The terminal is named as the source of
-truth and linked, so the panel reads as a boundary rather than a broken feature.
+Nothing writes to the `positions` table. The bridge landing did **not** change this and it is worth
+being precise about why: the bridge ingests CLOSED DEALS (push plus a 5-minute sweep, into
+`mt5_deals`) and serves account snapshots. It has no open-position endpoint, so there is still no
+ingestion path and `GET /trading/positions` still returns zero rows for everyone.
+
+The panel says trades are not **synced** — never "you have no trades" — because a client who opened
+a position this morning would still see zero, and the second sentence would be false. The terminal
+is named as the source of truth and linked, so the panel reads as a boundary rather than a broken
+feature.
+
+Closing this gap is a change to `../bridge` first (a Manager API `PositionRequest` endpoint), then a
+backend passthrough — never a frontend one. Anything that makes per-position numbers appear without
+those two is inventing them.
 
 `largestBalance` on the dashboard is **not** a cross-currency sum: $500 + 200 USDT is not "700" of
 anything, and there is no FX source in this system. It reports the largest single holding with its
@@ -257,8 +308,9 @@ admin's.
   because a change to `/wallet`, `/deposit`, `/withdraw` or the KYC gate had no automated
   protection at all beyond `type-check`, `lint` and `build`.
 
-  What exists now is five files, chosen because they cover the rules that are expensive to get
-  wrong and cheap to break by accident:
+  What exists now is a small set, chosen because each covers a rule that is expensive to get wrong
+  and cheap to break by accident. The load-bearing ones (the count has grown past this list; these
+  are the ones whose rules are documented above):
 
   - `src/lib/money.test.ts` — §6.1. The assertions are the ugly values (`12345678901234567.89`,
     eight-decimal balances), so a refactor to `Number()` or `Intl.NumberFormat` FAILS rather than
@@ -274,8 +326,12 @@ admin's.
   - `src/components/transactions/transaction-filters.test.ts` — that amounts sort through
     decimal.js, so `'9'` does not outrank `'100'` and two amounts a float would collapse stay
     distinct; and that the filter does not mutate React Query's cached array.
+  - `src/lib/account-stats.test.ts` — that a win rate divides by `trades` and not by
+    `wins + losses` (the two agree on every account with no flat exits, which is what lets the
+    wrong one survive review), and that a P/L sign comes from decimal.js rather than from the
+    formatted string or a float — `'-0.00000001'` is a real loss.
 
-  All five were mutation-checked when written: the guarantee was deliberately broken and each test
+  All were mutation-checked when written: the guarantee was deliberately broken and each test
   failed on the right assertion. Add tests the same way — if you cannot describe the regression a
   test catches, it is not earning its run time.
 

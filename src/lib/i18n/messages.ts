@@ -690,6 +690,134 @@ export const messages = {
   'accounts.unknownValue': '—',
   'accounts.noneOfKind': 'None yet.',
 
+  // ── One account: /accounts/[id] ───────────────────────────────────────────
+  //
+  // The screen states WHERE each number came from, because it shows two that can
+  // legitimately disagree: the CRM's cached balance and MT5's live one. Two
+  // unlabelled money figures that differ is worse than one figure.
+  'accounts.viewDetail': 'View account',
+  'accounts.detailBack': 'All accounts',
+  'accounts.detailLoading': 'Loading this account',
+  'accounts.detailLoadFailed': 'We could not load this account.',
+  'accounts.detailNotFound': 'Account not found',
+  'accounts.detailNotFoundBody':
+    'This account does not exist, or it is not one of yours. Check the link and try again from ' +
+    'your accounts list.',
+
+  // The live panel. "Live figures" rather than "real-time": the numbers are read
+  // when the page loads, and calling them real-time promises a stream that is
+  // not there.
+  'accounts.liveFiguresTitle': 'Live from MetaTrader 5',
+  'accounts.liveFiguresNote': 'Read from the trading server when this page loaded.',
+  'accounts.liveRefresh': 'Refresh',
+  'accounts.liveRefreshing': 'Refreshing…',
+  'accounts.equityLabel': 'Equity',
+  'accounts.equityHint': 'Balance plus credit plus open profit — what you can act on.',
+  'accounts.floatingLabel': 'Floating P/L',
+  'accounts.floatingHint': 'Unrealised, across all open positions.',
+  'accounts.marginLabel': 'Margin used',
+  'accounts.freeMarginLabel': 'Free margin',
+  'accounts.marginLevelLabel': 'Margin level',
+  // Null margin level means "no margin requirement at all", which is not zero.
+  'accounts.marginLevelNone': 'No open positions',
+  'accounts.creditLabel': 'Credit',
+  'accounts.mt5BalanceLabel': 'Balance',
+  'accounts.mt5BalanceHint': 'Cash on the account, excluding open profit.',
+  'accounts.crmBalanceLabel': 'Balance on record',
+  'accounts.crmBalanceHint':
+    'What this system has credited to the account. It does not move when you trade — the live ' +
+    'balance above does.',
+  // The two reasons live figures are missing. They must not share a string: one
+  // is permanent and about this account, the other is temporary and about the
+  // platform.
+  'accounts.liveNoLogin': 'Not on the trading server yet',
+  'accounts.liveNoLoginBody':
+    'This account has no MetaTrader 5 login, so there are no live figures to read. It will ' +
+    'appear here once the login is issued.',
+  'accounts.liveUnavailable': 'Live figures unavailable',
+  'accounts.liveUnavailableBody':
+    'The trading server could not be reached just now. Your balance on record is shown below, ' +
+    'and it is unaffected.',
+
+  // Positions. The panel says what is missing and why; it never says "you have
+  // no open trades", which would be false for a client holding one.
+  'accounts.positionsTitle': 'Open positions',
+  'accounts.positionsBody':
+    'Individual open trades are not carried in this portal — only the account totals above, ' +
+    'which include your open profit. Open the terminal to see position by position.',
+  'accounts.openTerminal': 'Open MetaTrader 5',
+
+  // ── Statistics ────────────────────────────────────────────────────────────
+  'accounts.statsTitle': 'Trading statistics',
+  'accounts.statsNote': 'Closed trades only. Deposits and withdrawals are not counted.',
+  'accounts.statsTrades': 'Closed trades',
+  'accounts.statsWinRate': 'Win rate',
+  'accounts.statsWinRateValue': '{rate}%',
+  // Spelled out rather than shown as "8 / 2", which reads as a fraction of the
+  // total — and wins and losses do NOT add up to the total when a trade closes
+  // flat.
+  'accounts.statsWinLoss': '{wins} won · {losses} lost',
+  'accounts.statsVolume': 'Volume',
+  'accounts.statsVolumeUnit': '{lots} lots',
+  'accounts.statsNetProfit': 'Realised P/L',
+  'accounts.statsGrossProfit': 'Gross profit',
+  'accounts.statsGrossLoss': 'Gross loss',
+  'accounts.statsBest': 'Best trade',
+  'accounts.statsWorst': 'Worst trade',
+  'accounts.statsCommission': 'Commission',
+  'accounts.statsSwap': 'Swap',
+  'accounts.statsFirstDeal': 'First activity',
+  'accounts.statsLastDeal': 'Last activity',
+  'accounts.statsEmpty': 'No closed trades yet',
+  'accounts.statsEmptyBody':
+    'Statistics appear here once trades close on this account. Deposits and transfers show in ' +
+    'the history below.',
+
+  // ── History ───────────────────────────────────────────────────────────────
+  //
+  // "History" rather than "Transactions": this list is the account's deals from
+  // MT5, which is a different set from the wallet transactions on /transactions.
+  // One word for one thing.
+  'accounts.historyTitle': 'Account history',
+  'accounts.historyNote': 'Everything MetaTrader 5 has reported on this account.',
+  'accounts.historyAll': 'All',
+  'accounts.historyTrades': 'Trades',
+  'accounts.historyBalance': 'Money in and out',
+  'accounts.historyLoading': 'Loading account history',
+  'accounts.historyLoadFailed': 'We could not load this account history.',
+  'accounts.historyEmptyBody': 'Deals appear here as they close on the trading server.',
+  'accounts.historyEmptyNoLogin':
+    'This account has no MetaTrader 5 login yet, so it has no history to show.',
+  'accounts.colTime': 'When',
+  'accounts.colType': 'Type',
+  'accounts.colSymbol': 'Symbol',
+  'accounts.colVolume': 'Volume',
+  'accounts.colPrice': 'Price',
+  'accounts.colProfit': 'P/L',
+  'accounts.colTicket': 'Ticket',
+  // An opening deal has no realised result. An em dash, never '0.00', which
+  // would read as a trade that broke even.
+  'accounts.profitPending': '—',
+  // Two keys rather than one array — the catalogue is string-valued, and the
+  // pager takes a singular/plural pair. Matches `table.row` / `table.rows`.
+  'accounts.deal': 'deal',
+  'accounts.dealsPlural': 'deals',
+
+  // MT5 deal actions. Unknown codes fall through to the raw label from the API
+  // so support has something to quote.
+  'accounts.dealBuy': 'Buy',
+  'accounts.dealSell': 'Sell',
+  'accounts.dealBalance': 'Deposit / withdrawal',
+  'accounts.dealCredit': 'Credit',
+  'accounts.dealCharge': 'Charge',
+  'accounts.dealCorrection': 'Correction',
+  'accounts.dealBonus': 'Bonus',
+  'accounts.dealCommission': 'Commission',
+  'accounts.dealDividend': 'Dividend',
+  'accounts.dealTax': 'Tax',
+  'accounts.dealInterest': 'Interest',
+  'accounts.dealCanceled': 'Cancelled',
+
   'kyc.resumingTitle': 'Resuming Identity Verification',
   'kyc.resumingBody': 'Fetching your progress and loading your last active step…',
   'kyc.layoutTitle': 'Identity Verification',

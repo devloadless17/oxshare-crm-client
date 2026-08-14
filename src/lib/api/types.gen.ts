@@ -1500,6 +1500,100 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/trading/accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One of the signed-in client's trading accounts
+         * @description 404 when the account does not exist OR belongs to somebody else — the two are the same answer on purpose, because distinguishing them tells a caller which ids are real.
+         *
+         *     `balance` here is the CRM-held figure, as on the list. For what MT5 holds right now, including equity and floating P/L, call `/trading/accounts/:id/live`.
+         */
+        get: operations["TradingController_myAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/trading/accounts/{id}/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Balance, equity, margin and floating P/L for one account, read live from MT5
+         * @description The AUTHORITATIVE figures, read through the bridge to the MT5 server. Distinct from the `balance` column on the list endpoint, which is what a transfer credited and goes stale the moment the client opens a position.
+         *
+         *     `floating` is equity minus balance minus credit — the unrealised total across every open position. It is the ONLY floating figure this system can state: the bridge exposes no open-position feed, so a PER-TRADE floating number would have to be invented.
+         *
+         *     NULL when the account has no MT5 login yet, which is a different state from the bridge being unreachable — that raises EXTERNAL_SERVICE_ERROR. A screen must not render both as the same sentence.
+         */
+        get: operations["TradingController_myAccountLive"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/trading/accounts/{id}/deals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One account's deal history — trades and money movements, paged
+         * @description Every deal MT5 has reported for this account, newest first by the time MT5 says it happened. `kind=trades` narrows to market activity; `kind=balance` to deposits, withdrawals, credits, commissions and the rest. Absent returns everything.
+         *
+         *     These are CLOSED deals. Open positions are not here and are not anywhere: the bridge ingests deals, and nothing feeds the `positions` table.
+         *
+         *     An account with no MT5 login returns an empty page — deals are keyed by login, so it has none by definition rather than by a query that found nothing.
+         */
+        get: operations["TradingController_myAccountDeals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/trading/accounts/{id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One account's realised performance, summed in the database
+         * @description Closed round trips only — opening deals carry no realised result and counting them would drag every average toward zero. Balance operations are excluded: a deposit is not a winning trade.
+         *
+         *     `wins + losses` need NOT equal `trades`: a trade closing at exactly zero is neither. A win rate divides by `trades`.
+         *
+         *     Realised figures only. Floating P/L is on `/live`, because it belongs to MT5 and to this instant rather than to the history.
+         */
+        get: operations["TradingController_myAccountStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dashboard": {
         parameters: {
             query?: never;
@@ -4360,6 +4454,150 @@ export interface components {
             openedAt: string;
             /** Format: date-time */
             closedAt: string | null;
+        };
+        AccountSnapshotDto: {
+            /**
+             * @description The MT5 login these figures belong to.
+             * @example 5000002
+             */
+            login: string;
+            /** @example demo\Standard */
+            group: string;
+            /** @example USD */
+            currency: string;
+            /**
+             * @description The ratio denominator — 500 means 1:500.
+             * @example 500
+             */
+            leverage: number;
+            /**
+             * @description Cash balance, EXCLUDING floating profit. Decimal string (§6.1).
+             * @example 1250.00000000
+             */
+            balance: string;
+            /**
+             * @description Balance plus credit plus floating profit — what the client can act on.
+             * @example 1312.40000000
+             */
+            equity: string;
+            /** @example 0.00000000 */
+            credit: string;
+            /** @example 120.00000000 */
+            margin: string;
+            /** @example 1192.40000000 */
+            marginFree: string;
+            /**
+             * @description NULL when the account has no margin requirement at all — no open positions. Zero and "not applicable" are different answers and must render differently, so this is not defaulted to 0.
+             * @example 1093.66
+             */
+            marginLevel: string | null;
+            /**
+             * @description Unrealised profit across every open position: equity - balance - credit.
+             *
+             *     Derived here rather than stored, and derived from MT5 rather than from our own tables. It is the ONE floating figure this system can state honestly: the bridge exposes no per-position feed, so a per-trade floating column would have to be invented, but the account total falls straight out of two numbers the MT5 server just gave us.
+             *
+             *     Signed — a client underwater is negative.
+             * @example 62.40000000
+             */
+            floating: string;
+        };
+        AccountDealDto: {
+            /**
+             * @description MT5's ticket.
+             * @example 90210
+             */
+            ticket: string;
+            /** @example EURUSD */
+            symbol: string;
+            /**
+             * @description MT5's raw numeric action.
+             * @example 0
+             */
+            action: number;
+            /**
+             * @description A stable name for the action — "buy", "balance", "commission". Unknown codes render as "action <n>" rather than as a guess.
+             * @example buy
+             */
+            actionLabel: string;
+            /**
+             * @description MT5's raw numeric entry: 0 in, 1 out, 2 inout, 3 out_by.
+             * @example 1
+             */
+            entry: number;
+            /** @description True when this deal realised a result rather than opening a position. */
+            closing: boolean;
+            /** @example 1.00000000 */
+            volume: string;
+            /** @example 1.08542000 */
+            price: string;
+            /**
+             * @description Signed. A loss is negative.
+             * @example -12.50000000
+             */
+            profit: string;
+            /** @example -3.00000000 */
+            commission: string;
+            /** @example 0.00000000 */
+            swap: string;
+            comment?: string | null;
+            /**
+             * Format: date-time
+             * @description When MT5 says it happened — NOT when we ingested it.
+             */
+            dealtAt: string;
+        };
+        AccountDealPageDto: {
+            items: components["schemas"]["AccountDealDto"][];
+            /** @description Deals matching the filters, across every page. */
+            total: number;
+            page: number;
+            limit: number;
+        };
+        AccountStatsDto: {
+            /** @description Closed round trips. The denominator for a win rate. */
+            trades: number;
+            /** @description Closed trades with profit > 0. */
+            wins: number;
+            /** @description Closed trades with profit < 0. See the DTO note on scratch exits. */
+            losses: number;
+            /**
+             * @description Lots closed.
+             * @example 14.50000000
+             */
+            volume: string;
+            /**
+             * @description Realised profit and loss, net and signed. Excludes floating — see the snapshot.
+             * @example 840.20000000
+             */
+            netProfit: string;
+            /**
+             * @description Sum of winning trades.
+             * @example 1290.00000000
+             */
+            grossProfit: string;
+            /**
+             * @description Sum of losing trades. NEGATIVE, as stored — not an absolute value.
+             * @example -449.80000000
+             */
+            grossLoss: string;
+            /**
+             * @description Signed: a charge is negative.
+             * @example -38.00000000
+             */
+            commission: string;
+            /**
+             * @description Signed.
+             * @example -4.20000000
+             */
+            swap: string;
+            /** @description Best single closed trade. Null with no trades. */
+            bestTrade: string | null;
+            /** @description Worst single closed trade. Null with no trades. */
+            worstTrade: string | null;
+            /** Format: date-time */
+            firstDealAt: string | null;
+            /** Format: date-time */
+            lastDealAt: string | null;
         };
         DashboardStatsDto: {
             /** @description Trading accounts held, live and demo together. */
@@ -7745,6 +7983,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PositionDto"][];
+                };
+            };
+        };
+    };
+    TradingController_myAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradingAccountDto"];
+                };
+            };
+        };
+    };
+    TradingController_myAccountLive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountSnapshotDto"];
+                };
+            };
+        };
+    };
+    TradingController_myAccountDeals: {
+        parameters: {
+            query?: {
+                /** @description Narrow to market activity or to money movements. Absent returns everything, including the cancelled deals that are neither. */
+                kind?: "trades" | "balance";
+                symbol?: string;
+                /** @description Inclusive, YYYY-MM-DD. */
+                from?: string;
+                /** @description Inclusive, YYYY-MM-DD. */
+                to?: string;
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDealPageDto"];
+                };
+            };
+        };
+    };
+    TradingController_myAccountStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountStatsDto"];
                 };
             };
         };

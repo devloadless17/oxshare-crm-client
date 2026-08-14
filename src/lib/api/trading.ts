@@ -46,6 +46,74 @@ export type PositionSide = Position['side'];
 export type PositionStatus = Position['status'];
 
 /**
+ * What MT5 holds on ONE account, right now.
+ *
+ * ## This is the live figure and `TradingAccount.balance` is not
+ *
+ * The list endpoint's `balance` is the CRM's cached column — what a wallet
+ * transfer credited. It is correct until the client's first trade and stale
+ * afterwards, in the direction that matters: somebody who is down still sees
+ * the number from before the trade.
+ *
+ * A screen showing both must LABEL which is which. Showing them as two
+ * unlabelled money figures that disagree is worse than showing one.
+ *
+ * ## `floating` is the only floating figure this system has
+ *
+ * Equity minus balance minus credit — the unrealised total across every open
+ * position, computed server-side from three numbers MT5 just sent. There is no
+ * PER-POSITION floating anywhere: the bridge ingests closed deals and account
+ * snapshots, and no open-position feed exists to attribute the total across
+ * trades. Do not add a positions table to this screen and divide it up.
+ *
+ * `marginLevel` is null when the account has no margin requirement at all — no
+ * open positions. Zero and "not applicable" are different answers and must not
+ * render the same way.
+ */
+export type AccountSnapshot = components['schemas']['AccountSnapshotDto'];
+
+/**
+ * One deal on an account — a trade, or money moving.
+ *
+ * These are CLOSED deals from MT5. `closing` marks the ones that realised a
+ * result: an opening deal carries `profit: '0'` because nothing has been
+ * realised yet, so a P/L column must not treat the two alike.
+ *
+ * `actionLabel` is a stable slug (`buy`, `balance`, `commission`) with unknown
+ * MT5 codes rendered as `action <n>` rather than blanked. Render the unknown
+ * one AS IS — a client can quote it to support, where a blank row beside an
+ * amount is what generates the ticket.
+ */
+export type AccountDeal = components['schemas']['AccountDealDto'];
+export type AccountDealPage = components['schemas']['AccountDealPageDto'];
+
+/**
+ * An account's realised performance.
+ *
+ * Closed round trips only, summed in Postgres on NUMERIC. Balance operations
+ * are excluded — a deposit is not a winning trade.
+ *
+ * **`wins + losses` need not equal `trades`.** A trade closing at exactly zero
+ * is neither, and that is ordinary rather than a rounding artefact. A win rate
+ * divides by `trades`, and the two counts must not be presented as a complete
+ * partition of the total.
+ *
+ * `bestTrade` and `worstTrade` are null with no trades, deliberately not zero:
+ * `'0'` beside a currency symbol claims there was a trade that broke even.
+ */
+export type AccountStats = components['schemas']['AccountStatsDto'];
+
+/** The filters on an account's deal history. Dates are `YYYY-MM-DD`, INCLUSIVE. */
+export interface AccountDealsQuery {
+  kind?: 'trades' | 'balance';
+  symbol?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}
+
+/**
  * The landing page, in one response.
  *
  * One request rather than six because these panels are read in a single glance:
@@ -168,6 +236,73 @@ export const tradingApi = {
 
   async getAccounts(signal?: AbortSignal): Promise<TradingAccount[]> {
     const { data } = await apiClient.get<TradingAccount[]>('/trading/accounts', { signal });
+    return data;
+  },
+
+  /**
+   * One account the client owns.
+   *
+   * A 404 means "no such account of yours" and covers both a bad id and
+   * somebody else's — the server does not distinguish them, so neither can this.
+   * `useResource` maps 404 to `unavailable`, which the detail route renders as
+   * not-found rather than as an unbuilt endpoint.
+   */
+  async getAccount(id: string, signal?: AbortSignal): Promise<TradingAccount> {
+    const { data } = await apiClient.get<TradingAccount>(`/trading/accounts/${id}`, { signal });
+    return data;
+  },
+
+  /**
+   * Live balance, equity, margin and floating P/L, read from MT5.
+   *
+   * Returns null when the account has no MT5 login yet. That is NOT the same as
+   * a failure: the request succeeded and the answer is "this account was never
+   * provisioned on the trading server". An unreachable bridge throws instead,
+   * and the two must not render as the same sentence — one is a permanent state
+   * of this account, the other is temporary and about the platform.
+   *
+   * Called on the detail screen only. It crosses to a server we do not own, so
+   * it is not on the list where it would multiply by the number of accounts.
+   */
+  async getAccountSnapshot(id: string, signal?: AbortSignal): Promise<AccountSnapshot | null> {
+    const { data } = await apiClient.get<AccountSnapshot | null>(`/trading/accounts/${id}/live`, {
+      signal,
+    });
+    return data;
+  },
+
+  /**
+   * One account's deal history — trades, money movements, or both.
+   *
+   * Paged SERVER-side, unlike `/transactions`, which filters a whole array in
+   * the browser. The difference is not a style choice: a deal history grows
+   * without bound, so a client-side filter over one page would silently
+   * under-report the client's own trading.
+   */
+  async getAccountDeals(
+    id: string,
+    query: AccountDealsQuery = {},
+    signal?: AbortSignal,
+  ): Promise<AccountDealPage> {
+    const params = new URLSearchParams();
+    if (query.kind) params.set('kind', query.kind);
+    if (query.symbol) params.set('symbol', query.symbol);
+    if (query.from) params.set('from', query.from);
+    if (query.to) params.set('to', query.to);
+    if (query.page) params.set('page', String(query.page));
+    if (query.limit) params.set('limit', String(query.limit));
+
+    const qs = params.toString();
+    const { data } = await apiClient.get<AccountDealPage>(
+      qs ? `/trading/accounts/${id}/deals?${qs}` : `/trading/accounts/${id}/deals`,
+      { signal },
+    );
+    return data;
+  },
+
+  /** One account's realised performance, summed server-side. */
+  async getAccountStats(id: string, signal?: AbortSignal): Promise<AccountStats> {
+    const { data } = await apiClient.get<AccountStats>(`/trading/accounts/${id}/stats`, { signal });
     return data;
   },
 

@@ -1,0 +1,225 @@
+'use client';
+
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { ArrowLeft, MonitorDown, RefreshCw } from 'lucide-react';
+import { AsyncBoundary } from '@/components/async-boundary';
+import { Button } from '@/components/ui/button';
+import { useResource } from '@/hooks/use-resource';
+import { useUser } from '@/context/UserContext';
+import { apiErrorMessage } from '@/lib/api/errors';
+import { tradingApi, type TradingAccount } from '@/lib/api/trading';
+import { t, type MessageKey } from '@/lib/i18n';
+import { AccountLivePanel } from '@/components/accounts/account-live-panel';
+import { AccountStatsPanel } from '@/components/accounts/account-stats-panel';
+import { AccountHistory } from '@/components/accounts/account-history';
+
+/**
+ * ONE trading account: what it holds now, what it has done, and what moved.
+ *
+ * ## The rule this screen exists to keep
+ *
+ * It shows two balances that can legitimately disagree — MT5's live one and the
+ * CRM's cached column — and it LABELS both. Two unlabelled money figures that
+ * differ is worse than showing one: a client cannot tell which is theirs, and
+ * whichever they act on, half the time it is the wrong one. `/wallet` learned
+ * the same lesson from the other direction, where a plausible `$0.00` was shown
+ * to somebody holding $700.
+ *
+ * ## Live and demo share this page, and differ in exactly one way
+ *
+ * Demo drops the money-movement action. Everything else — the MT5 figures, the
+ * statistics, the history — is identical, because MT5 tracks a demo account the
+ * same way and a client practising deserves to see how they are doing. The demo
+ * badge from the list carries through, so the environment is never in doubt.
+ *
+ * ## Four requests, not one
+ *
+ * The account, the live snapshot, the statistics and the history are separate
+ * because they FAIL separately and one of them crosses to a server we do not
+ * own. A combined endpoint would mean an unreachable bridge blanking the
+ * statistics and the history too — which are database reads that were fine. The
+ * dashboard makes the opposite choice for the opposite reason: its panels are
+ * read in one glance and must agree about the instant they describe.
+ */
+export default function AccountDetailPage() {
+  /*
+   * `useParams` rather than a `params` prop. This is a client component — the
+   * whole screen is interactive — and in Next 16 the `params` handed to a page
+   * is a PROMISE that has to be unwrapped with `use()`. Reading it from the
+   * router avoids threading a server prop through a client tree for one string.
+   */
+  const params = useParams<{ id: string }>();
+  const id = typeof params.id === 'string' ? params.id : '';
+
+  const account = useResource(['trading-account', id], (signal) =>
+    tradingApi.getAccount(id, signal),
+  );
+
+  /*
+   * Same treatment `/accounts` gives an unverified client: `/trading/*` sits
+   * behind `EmailVerifiedGuard`, so the request is a guaranteed 403 and
+   * reporting it directly gives the same "not permitted" screen without asking
+   * a question whose answer is already known.
+   */
+  const { user } = useUser();
+  const emailUnverified = user !== null && user.emailVerified === false;
+  const status = emailUnverified ? 'forbidden' : account.status;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
+      <div>
+        <Button asChild variant="ghost" size="sm" className="-ms-2">
+          <Link href="/accounts">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            {t('accounts.detailBack')}
+          </Link>
+        </Button>
+      </div>
+
+      <AsyncBoundary
+        status={status}
+        label={t('accounts.detailLoading')}
+        endpoints={['GET /trading/accounts/:id']}
+        onRetry={() => void account.refetch()}
+        errorMessage={apiErrorMessage(account.error, t('accounts.detailLoadFailed'))}
+        error={account.error}
+      >
+        {/*
+          `unavailable` is a 404 here, and a 404 on this route means "no such
+          account of YOURS" — the server does not distinguish a bad id from
+          somebody else's account, deliberately. AsyncBoundary's own
+          `unavailable` branch says "this endpoint is not built yet", which is
+          the wrong sentence for a route that exists and answered. So the check
+          happens on the data instead: rendering starts only once there is an
+          account.
+        */}
+        {account.data ? <AccountDetail account={account.data} /> : <NotFound />}
+      </AsyncBoundary>
+    </div>
+  );
+}
+
+function NotFound() {
+  return (
+    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card p-8 text-center">
+      <p className="text-sm font-semibold">{t('accounts.detailNotFound')}</p>
+      <p className="max-w-sm text-xs text-muted-foreground">{t('accounts.detailNotFoundBody')}</p>
+      <Button asChild variant="outline" size="sm" className="mt-1">
+        <Link href="/accounts">{t('accounts.detailBack')}</Link>
+      </Button>
+    </div>
+  );
+}
+
+/** The four status values, mapped to copy and colour. Mirrors the list card. */
+const STATUS: Record<TradingAccount['status'], { key: MessageKey; className: string }> = {
+  active: {
+    key: 'accounts.statusActive',
+    className: 'bg-success/10 text-success border-success/20',
+  },
+  suspended: {
+    key: 'accounts.statusSuspended',
+    className: 'bg-warning/10 text-warning border-warning/20',
+  },
+  closed: {
+    key: 'accounts.statusClosed',
+    className: 'bg-muted text-muted-foreground border-border',
+  },
+};
+
+function AccountDetail({ account }: { account: TradingAccount }) {
+  const isLive = account.environment === 'live';
+
+  /*
+   * Widened at the lookup, typed at the map — the same split the list card uses.
+   * A backend returning a new status before this app is redeployed must render
+   * something rather than throw on a client's own account screen.
+   */
+  const status: { key: MessageKey; className: string } | undefined = (
+    STATUS as Record<string, { key: MessageKey; className: string }>
+  )[account.status];
+
+  const snapshot = useResource(['trading-account-live', account.id], (signal) =>
+    tradingApi.getAccountSnapshot(account.id, signal),
+  );
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
+                isLive
+                  ? 'border-primary/30 bg-primary/10 text-primary'
+                  : 'border-border bg-muted text-muted-foreground'
+              }`}
+            >
+              {isLive ? t('accounts.liveTag') : t('accounts.demoTag')}
+            </span>
+            {status && (
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${status.className}`}
+              >
+                {t(status.key)}
+              </span>
+            )}
+          </div>
+          <h1 className="mt-2 font-mono text-2xl font-bold tracking-wide">
+            {account.login ?? t('accounts.loginPending')}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {account.currency}
+            {account.leverage
+              ? ` · ${t('accounts.leverageValue', { ratio: account.leverage })}`
+              : ''}
+            {account.mt5Group ? ` · ${account.mt5Group}` : ''}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void snapshot.refetch()}
+            disabled={snapshot.isFetching}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${snapshot.isFetching ? 'animate-spin' : ''}`}
+              aria-hidden="true"
+            />
+            {snapshot.isFetching ? t('accounts.liveRefreshing') : t('accounts.liveRefresh')}
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/platforms">
+              <MonitorDown className="h-4 w-4" aria-hidden="true" />
+              {t('accounts.openTerminal')}
+            </Link>
+          </Button>
+          {/*
+            Funding is offered on LIVE, ACTIVE accounts only — the same pair the
+            server's `/transferable` route narrows to, and the same rule the list
+            card follows. A transfer to a demo account would be a real-money loss
+            with no counterparty.
+          */}
+          {isLive && account.status === 'active' && (
+            <Button asChild size="sm">
+              <Link href="/transfer">{t('accounts.fundAccount')}</Link>
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <AccountLivePanel account={account} snapshot={snapshot} />
+
+      <AccountStatsPanel accountId={account.id} currency={account.currency} />
+
+      <AccountHistory
+        accountId={account.id}
+        currency={account.currency}
+        hasLogin={account.login !== null}
+      />
+    </div>
+  );
+}
