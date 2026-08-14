@@ -1,22 +1,47 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { WalletCarousel, type CarouselEntry } from './wallet-carousel';
 import type { Wallet as WalletRecord } from '@/lib/api/wallet';
 
 /**
- * The carousel, which stopped animating three times before it was rebuilt.
+ * The wallet carousel — and an honest account of what this file can prove.
  *
- * Each earlier fix was correct about its own cause — snap resolving a
- * programmatic scroll on the first frame, `setState` landing too late to
- * suspend it, `scroll-behavior: auto !important` from the reduced-motion block
- * — and none was enough, because native smooth scrolling is CSS the page can
- * override and a snap model that fights it.
+ * ## What was here before, and why it is gone
  *
- * It is a transform with a transition now, which is testable in a way the
- * scroll version was not: jsdom reports no layout, so nothing about
- * `scrollLeft` could ever be asserted here. `transform` is a style this file
- * can read.
+ * The previous version of this file had eleven tests asserting the position of a
+ * CSS-transformed track: `transform` containing `-100%`, the presence of
+ * `transition-transform duration-300`, and so on. All eleven passed. The
+ * carousel did not animate for the person using it.
+ *
+ * That is the important part. One of those tests was called "keeps the
+ * transition class so the move is ANIMATED, not a jump" and it checked that a
+ * class name was in a string. The class WAS there. It was being neutralised at
+ * runtime by `globals.css`, which sets `transition-duration: 0.001ms !important`
+ * on `*` under `prefers-reduced-motion` — so on any machine with that OS setting
+ * every transition in the app finishes instantly. A green suite reported the
+ * feature working for as long as it was broken.
+ *
+ * The implementation is Embla now, which animates in JavaScript on
+ * `requestAnimationFrame` where no stylesheet can flatten it.
+ *
+ * ## ⚠️ MOVEMENT IS NOT TESTED HERE, AND CANNOT BE
+ *
+ * Embla derives its snap points from measured element widths. jsdom performs no
+ * layout, so every element reports a width of 0, and Embla resolves the whole
+ * track to a SINGLE snap: `canScrollNext()` and `canScrollPrev()` are both false
+ * whatever is rendered, and `scrollNext()` has nowhere to go. Clicking an arrow
+ * in this environment provably does nothing, so a test asserting it moved could
+ * only pass by asserting something that is not movement — which is exactly the
+ * mistake the old file made.
+ *
+ * So this file covers STRUCTURE and AFFORDANCES, which are real and which do
+ * regress: that every wallet gets a slide, that the dots match the wallets, that
+ * a lone card gets no controls, and that the accessibility contract holds.
+ * Sliding, momentum, snapping and the drag are Embla's, exercised by its own
+ * suite, and verified here by looking at the screen.
+ *
+ * If this ever needs real coverage, it needs a real browser — Playwright with a
+ * viewport — not a cleverer jsdom assertion.
  */
 const wallet = (currency: string): WalletRecord =>
   ({
@@ -36,144 +61,82 @@ const ENTRIES: CarouselEntry[] = [
 
 function setup(entries = ENTRIES) {
   const byCurrency = new Map(entries.map((e) => [e.code, wallet(e.code)]));
-  const view = render(
-    <WalletCarousel entries={entries} byCurrency={byCurrency} holder="A Client" />,
-  );
-  // The transformed element is the flex track — the viewport's only child.
-  const track = view.container.querySelector('[aria-roledescription="carousel"] > div');
-  if (!track) throw new Error('track not found');
-  return { ...view, track: track as HTMLElement };
+  return render(<WalletCarousel entries={entries} byCurrency={byCurrency} holder="A Client" />);
 }
 
-describe('moving between cards', () => {
-  it('starts on the first card', () => {
-    const { track } = setup();
-    expect(track.style.transform).toContain('calc(0%');
-  });
-
-  it('slides to the next card when Next is pressed', async () => {
-    const user = userEvent.setup();
-    const { track } = setup();
-
-    await user.click(screen.getByRole('button', { name: /next/i }));
+describe('the cards it renders', () => {
+  it('renders one slide per wallet, all of them mounted', () => {
+    const { container } = setup();
 
     /*
-     * The assertion that would have caught the original bug: the track's
-     * position CHANGED. Under the scroll implementation this was a `scrollTo`
-     * call that jsdom could not report and a real browser resolved instantly.
+     * ALL of them, not just the visible one. A carousel that mounted only the
+     * current card would lose the swipe entirely — there would be nothing to
+     * swipe to — and it is the failure mode a naive "render `entries[active]`"
+     * rewrite would introduce.
      */
-    expect(track.style.transform).toContain('-100%');
+    expect(container.querySelectorAll('[aria-roledescription="slide"]')).toHaveLength(3);
+    expect(screen.getByText('US Dollar')).toBeInTheDocument();
+    expect(screen.getByText('Euro')).toBeInTheDocument();
+    expect(screen.getByText('British Pound')).toBeInTheDocument();
   });
 
-  it('keeps the transition class so the move is ANIMATED, not a jump', () => {
-    const { track } = setup();
-    /*
-     * The whole complaint, as a test. A transform with no transition changes
-     * the card without sliding — which is exactly what the scroll version did
-     * once snap resolved it on the first frame.
-     */
-    expect(track.className).toContain('transition-transform');
-    expect(track.className).toContain('duration-300');
-  });
+  it('gives every wallet a dot that names its currency', () => {
+    setup();
 
-  it('goes back with Previous', async () => {
-    const user = userEvent.setup();
-    const { track } = setup();
-
-    await user.click(screen.getByRole('button', { name: /next/i }));
-    await user.click(screen.getByRole('button', { name: /previous/i }));
-
-    expect(track.style.transform).toContain('calc(0%');
-  });
-
-  it('jumps straight to a card from its dot', async () => {
-    const user = userEvent.setup();
-    const { track } = setup();
-
-    await user.click(screen.getByRole('button', { name: /GBP/i }));
-
-    expect(track.style.transform).toContain('-200%');
-  });
-
-  it('stops at both ends rather than wrapping', async () => {
-    const user = userEvent.setup();
-    const { track } = setup();
-
-    // A wallet list is not a loop: arriving back at USD after GBP would read as
-    // a fourth card that happens to look like the first.
-    expect(screen.getByRole('button', { name: /previous/i })).toBeDisabled();
-
-    await user.click(screen.getByRole('button', { name: /next/i }));
-    await user.click(screen.getByRole('button', { name: /next/i }));
-
-    expect(track.style.transform).toContain('-200%');
-    expect(screen.getByRole('button', { name: /next/i })).toBeDisabled();
-  });
-
-  it('moves with the arrow keys', async () => {
-    const user = userEvent.setup();
-    const { track } = setup();
-
-    screen.getByRole('group').focus();
-    await user.keyboard('{ArrowRight}');
-    expect(track.style.transform).toContain('-100%');
-
-    await user.keyboard('{ArrowLeft}');
-    expect(track.style.transform).toContain('calc(0%');
+    // The dots are the only way to reach a distant card without swiping past
+    // every one between, so one missing is a card that cannot be reached.
+    for (const code of ['USD', 'EUR', 'GBP']) {
+      expect(screen.getByRole('button', { name: new RegExp(code, 'i') })).toBeInTheDocument();
+    }
   });
 });
 
 describe('one card', () => {
   it('hides the controls rather than disabling them', () => {
     setup([{ code: 'USD', label: 'US Dollar' }]);
-    // Dimmed arrows either side of one card imply somewhere to go.
+
+    // Dimmed arrows either side of one card imply there is somewhere to go.
     expect(screen.queryByRole('button', { name: /next/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /previous/i })).not.toBeInTheDocument();
+    // The card itself still renders — hiding the chrome must not hide the money.
+    expect(screen.getByText('US Dollar')).toBeInTheDocument();
+  });
+
+  it('shows the controls again as soon as there are two', () => {
+    setup(ENTRIES.slice(0, 2));
+
+    expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /previous/i })).toBeInTheDocument();
   });
 });
 
-describe('when a wallet disappears', () => {
-  it('does not leave the track parked past the end', () => {
-    const { rerender, track } = setup();
-    const two = ENTRIES.slice(0, 2);
-
-    // An operator closing a wallet from the admin console must not strand the
-    // carousel on blank space with no way back.
-    rerender(
-      <WalletCarousel
-        entries={two}
-        byCurrency={new Map(two.map((e) => [e.code, wallet(e.code)]))}
-        holder="A Client"
-      />,
-    );
-
-    const offset = Number(/-(\d+)%/.exec(track.style.transform)?.[1] ?? '0');
-    expect(offset).toBeLessThanOrEqual(100);
-  });
-});
-
-describe('accessibility', () => {
-  it('announces only the card on screen', async () => {
-    const user = userEvent.setup();
+describe('affordances and accessibility', () => {
+  it('says it is a carousel, and that each card is a slide', () => {
     const { container } = setup();
 
-    const slides = () =>
-      Array.from(
-        container.querySelectorAll('[aria-roledescription="carousel"] > div > [aria-hidden]'),
-      ).map((el) => el.getAttribute('aria-hidden'));
-
-    // Every balance announced in order, as one list, is what `aria-hidden`
-    // prevents here.
-    expect(slides()).toEqual(['false', 'true', 'true']);
-
-    await user.click(screen.getByRole('button', { name: /next/i }));
-    expect(slides()).toEqual(['true', 'false', 'true']);
+    /*
+     * `aria-roledescription` is what tells a screen-reader user this is a
+     * carousel rather than an unexplained group of cards — without it the
+     * arrows and dots are buttons with no stated relationship to the content.
+     */
+    expect(container.querySelector('[aria-roledescription="carousel"]')).toBeInTheDocument();
+    expect(container.querySelectorAll('[aria-roledescription="slide"]').length).toBeGreaterThan(0);
   });
 
-  it('lets a finger still scroll the PAGE vertically', () => {
+  it('shows a grab cursor, so a mouse user knows the track is draggable', () => {
     const { container } = setup();
-    const viewport = container.querySelector('[aria-roledescription="carousel"]');
-    // Without `touch-action: pan-y` this is the carousel that traps a phone.
-    expect(viewport?.className).toContain('touch-pan-y');
+
+    /*
+     * The counterpart of the drag itself, and the half that IS assertable here.
+     * Nothing else on the card suggests it moves — without the cursor a mouse
+     * user has no reason to try, and the swipe may as well not exist for them.
+     *
+     * `select-none` is applied alongside `cursor-grabbing` only WHILE dragging
+     * (it stops the drag sweeping a selection across the balance). That state is
+     * driven by Embla's own pointer events, which need real layout to fire, so
+     * it is not reachable from here.
+     */
+    const viewport = container.querySelector('.overflow-hidden');
+    expect(viewport?.className).toContain('cursor-grab');
   });
 });

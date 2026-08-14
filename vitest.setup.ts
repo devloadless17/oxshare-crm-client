@@ -84,3 +84,63 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
     disconnect() {}
   };
 }
+
+/*
+ * `IntersectionObserver`, which jsdom also does not implement.
+ *
+ * Embla uses it to track which slides are in view. Same failure shape as
+ * `matchMedia` above — it throws during init, inside an effect, from a stack
+ * entirely within `node_modules`.
+ *
+ * The no-op never reports an intersection, so `slidesInView()` stays empty in
+ * tests. Nothing in this app renders from that, and a test that needs it would
+ * have to drive layout jsdom does not have anyway.
+ */
+if (typeof globalThis.IntersectionObserver === 'undefined') {
+  globalThis.IntersectionObserver = class {
+    readonly root = null;
+    readonly rootMargin = '';
+    readonly thresholds: ReadonlyArray<number> = [];
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
+  };
+}
+
+/*
+ * `window.matchMedia`, which jsdom does not implement at all.
+ *
+ * Embla (the wallet carousel) calls it during INITIALISATION to resolve its
+ * per-breakpoint options, so without this the constructor throws inside an
+ * effect and every test that renders a carousel dies with "undefined is not a
+ * function" pointing at `OptionsHandler` — a stack entirely inside
+ * `node_modules`, naming nothing in this repo. That reads as a broken
+ * dependency rather than a missing shim, which is the expensive way to find it.
+ *
+ * `matches: false` for every query is the right default, not an arbitrary one:
+ * it means "no media condition applies", so components take their base
+ * behaviour. For the carousel that resolves `prefers-reduced-motion` to false
+ * and the animation stays on, which is the state worth exercising — a test run
+ * under "reduced motion" would silently skip the movement it means to check.
+ *
+ * A test needing a specific answer should stub `window.matchMedia` itself for
+ * the duration; this only stops the absence of the API from being an error.
+ */
+if (typeof globalThis.matchMedia !== 'function') {
+  globalThis.matchMedia = (query: string): MediaQueryList =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      // Both APIs: the modern pair is what this app uses, and the deprecated
+      // pair is what some libraries still reach for on older browsers.
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
+}
