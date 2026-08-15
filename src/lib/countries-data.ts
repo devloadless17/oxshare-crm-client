@@ -256,3 +256,15 @@ export const ALL_NATIONALITIES: string[] = Array.from(
    */
   .filter((nationality) => !EXCLUDED_NATIONALITIES.has(nationality))
   .sort((a, b) => a.localeCompare(b));
+
+/**
+ * ISO2 code by country NAME, for putting a flag beside an option the server
+ * chose.
+ *
+ * The KYC country list is served now — see `common/kyc/country-options.ts` in
+ * the backend — so the portal receives names and nothing else. The flag is
+ * decoration on top of that, and a name with no match renders without one.
+ */
+export const COUNTRY_CODE_BY_NAME: ReadonlyMap<string, string> = new Map(
+  ALL_COUNTRIES.map((country) => [country.name, country.code]),
+);

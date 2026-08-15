@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ALL_COUNTRIES, ALL_NATIONALITIES } from '@/lib/countries-data';
+import { COUNTRY_CODE_BY_NAME } from '@/lib/countries-data';
 import { DocumentUploader } from './document-uploader';
 import { SelfieCamera } from './selfie-camera';
 import { t } from '@/lib/i18n';
@@ -153,19 +153,29 @@ export function StepField({
 
   // Select Dropdown Component
   if (field.type === 'select') {
-    let optionsList: { label: string; value: string; flagCode?: string }[] = [];
-
-    if (field.name === 'nationality') {
-      optionsList = ALL_NATIONALITIES.map((n) => ({ label: n, value: n }));
-    } else if (field.name === 'country') {
-      optionsList = ALL_COUNTRIES.map((c) => ({
-        label: c.name,
-        value: c.name,
-        flagCode: c.code,
-      }));
-    } else if (field.options && field.options.length > 0) {
-      optionsList = field.options.map((opt) => ({ label: opt, value: opt }));
-    }
+    /*
+     * OPTIONS COME FROM THE CONFIG, whatever the field is called.
+     *
+     * This branched on `field.name === 'nationality'` and `=== 'country'` and
+     * filled them from a 258-line local array. The config carried no options
+     * for either, so the admin builder showed both as "Dropdown with no
+     * choices" — an operator could not see the list, could not edit it, and a
+     * field they named anything else got an empty dropdown.
+     *
+     * The lists are served now (`common/kyc/country-options.ts`), so this
+     * renders what it is given.
+     */
+    const optionsList = (field.options ?? []).map((opt) => ({
+      label: opt,
+      value: opt,
+      /*
+       * The flag is looked up BY NAME rather than configured, and stays local:
+       * it is decoration on a value the server chose, and a country with no
+       * match simply renders without one. `ALL_COUNTRIES` is still the phone
+       * picker's source, so this adds no import that was not already here.
+       */
+      flagCode: COUNTRY_CODE_BY_NAME.get(opt),
+    }));
 
     return (
       <div key={field.id} className="space-y-1.5">

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
+import { withReviewStep } from '@/components/kyc/review-step';
 import { useUser } from '@/context/UserContext';
 import { PortalLayout } from '@/components/layout/portal-layout';
 import { RequireAuth } from '@/components/auth/require-auth';
@@ -146,16 +147,38 @@ function KycShell({ children }: { children: React.ReactNode }) {
     { enabled: kycReadable },
   );
 
-  const steps: StepItem[] =
-    config.data && config.data.length > 0
-      ? config.data.map((s) => ({
-          num: s.stepNumber,
-          label: s.title,
-          path: `/kyc/step/${s.stepNumber}`,
-        }))
-      : DEFAULT_STEPS;
+  /*
+   * `withReviewStep`, so the strip shows the SAME steps the form walks.
+   *
+   * This mapped `config.data` directly, and the review screen is appended by
+   * the client rather than configured — see `components/kyc/review-step.ts`.
+   * So the client stood on "Review & Submit" while the strip showed four steps
+   * that did not include it, and there was no way to tell you were on the last
+   * one.
+   */
+  const steps: StepItem[] = (() => {
+    const configured = withReviewStep(config.data ?? []);
+    if (configured.length === 0) return DEFAULT_STEPS;
+    return configured.map((s) => ({
+      num: s.stepNumber,
+      label: s.title,
+      path: `/kyc/step/${s.stepNumber}`,
+    }));
+  })();
 
-  const currentStep = steps.findIndex((s) => pathname.startsWith(s.path)) + 1 || 1;
+  /*
+   * Matched on the step NUMBER in the path, not with `startsWith`.
+   *
+   * `'/kyc/step/5'.startsWith('/kyc/step/1')` is false, but
+   * `'/kyc/step/10'.startsWith('/kyc/step/1')` is TRUE — and worse, the review
+   * step sat at a number no entry claimed, so `findIndex` returned -1 and the
+   * `|| 1` fallback highlighted step 1 while the client read "Review & Submit".
+   */
+  const stepFromPath = Number(pathname.match(/\/kyc\/step\/(\d+)/)?.[1]);
+  const currentStep =
+    Number.isInteger(stepFromPath) && stepFromPath >= 1 && stepFromPath <= steps.length
+      ? stepFromPath
+      : 1;
 
   // Synchronous on the first render, so the right chrome is painted once and
   // never replaced. See kycShellFor above for why that matters.
