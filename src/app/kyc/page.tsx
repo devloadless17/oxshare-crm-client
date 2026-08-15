@@ -1,79 +1,62 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { fetchKycStatus } from '@/lib/kyc-server-status';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ShieldCheck } from 'lucide-react';
-import { Spinner } from '@/components/ui/loader';
-import api from '@/lib/api';
-import type { components } from '@/lib/api/types.gen';
-import { useResource } from '@/hooks/use-resource';
-import { t } from '@/lib/i18n';
+/*
+ * NEVER PRERENDERED. This route's whole job is to read one client's KYC status
+ * and act on it, so a build-time snapshot would be somebody else's answer baked
+ * into HTML — and `cookies()` makes it dynamic at runtime regardless. Saying so
+ * explicitly also keeps the build from evaluating this module's config while
+ * collecting routes, which fails when NEXT_PUBLIC_API_BASE_URL is set at deploy
+ * time rather than at build time.
+ */
+export const dynamic = 'force-dynamic';
 
-type KycStatusDto = components['schemas']['KycStatusDto'];
-
-export default function KycPage() {
-  const router = useRouter();
+/**
+ * `/kyc` is a signpost, not a screen — it decides where the client belongs and
+ * sends them there.
+ *
+ * ## It caused an infinite redirect loop, and this is what fixed it
+ *
+ * The client-side version worked out a target step from how much data the
+ * client had SAVED — first name present means step 2, document uploaded means
+ * step 3, and so on — while the gate on the step route decided from their
+ * STATUS. For a rejected client the two disagreed permanently: every field is
+ * filled in, so this page said "step 5", and the step route said "you should be
+ * reading why it came back". The browser bounced between them without end.
+ *
+ * Two effects with two different notions of "where does this client belong" is
+ * the bug. There is one rule now and it lives in `lib/kyc-server-status.ts`:
+ * anything other than an unfinished submission goes to the terminal screen, and
+ * `canOpenKycForm` is the same predicate the step route uses. They cannot
+ * disagree because they are the same function.
+ *
+ * The second cause was mechanical and worth naming: that effect listed
+ * `statusQuery.data` in its dependencies. React Query hands back a fresh object
+ * identity on every render, so the effect re-ran on each one and called
+ * `router.replace` each time — a loop that would have fired even if the
+ * destination had been right.
+ *
+ * ## No spinner any more
+ *
+ * The old page rendered "Resuming your verification…" while it fetched. On the
+ * server there is nothing to wait for: the redirect is decided before any HTML
+ * is sent, so the client's browser goes straight to the destination.
+ */
+export default async function KycPage() {
+  const status = await fetchKycStatus();
 
   /*
-   * This screen's whole job is to resume the client at the right step, so the
-   * fetch is a query and the NAVIGATION is the effect — which is what an effect is
-   * legitimately for. react-query owns cancellation, so the old `isMounted` flag
-   * is gone.
+   * `rejected` goes to the terminal screen deliberately, even though the form
+   * is open to them. They need the reason and the returned-field list before
+   * they start editing, or they resubmit the same mistake — the re-apply button
+   * there is what opens the form.
+   *
+   * A null status (the read failed, or there is no submission yet) falls
+   * through to the form, which is where a client who has never started belongs.
    */
-  const statusQuery = useResource(
-    ['kyc-status'],
-    async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
-  );
+  if (status !== null && status !== 'not_started' && status !== 'in_progress') {
+    redirect('/kyc/submitted');
+  }
 
-  useEffect(() => {
-    if (statusQuery.status === 'loading') return;
-
-    // A failed status read must not strand the client on a spinner. Step 1 is a
-    // safe destination: the steps are resumable and already-saved data comes back
-    // from the server when that page loads.
-    if (statusQuery.status === 'error' || statusQuery.status === 'unavailable') {
-      router.replace('/kyc/step/1');
-      return;
-    }
-
-    const data = statusQuery.data;
-    if (
-      data?.status === 'submitted' ||
-      data?.status === 'under_review' ||
-      data?.status === 'approved'
-    ) {
-      router.replace('/kyc/submitted');
-      return;
-    }
-
-    // Open the first step the client has not completed.
-    let targetStep = 1;
-    if (data?.personalInfo?.firstName && data?.personalInfo?.lastName) {
-      targetStep = 2;
-      if (data?.document?.frontFilePath) {
-        targetStep = 3;
-        if (data?.selfie?.filePath) {
-          targetStep = 4;
-          if (data?.addressProof?.filePath) {
-            targetStep = 5;
-          }
-        }
-      }
-    }
-    router.replace(`/kyc/step/${targetStep}`);
-  }, [statusQuery.status, statusQuery.data, router]);
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center space-y-4">
-      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-link border border-primary/20">
-        <ShieldCheck className="h-8 w-8 text-link" />
-        <Spinner size="xl" className="absolute text-primary/40" />
-      </div>
-
-      <div className="space-y-1">
-        <h2 className="text-lg font-bold text-foreground">{t('kyc.resumingTitle')}</h2>
-        <p className="text-xs text-muted-foreground">{t('kyc.resumingBody')}</p>
-      </div>
-    </div>
-  );
+  redirect('/kyc/step/1');
 }

@@ -2,8 +2,7 @@
 
 import './kyc-shell.css';
 
-import { useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/lib/api';
 import type { components } from '@/lib/api/types.gen';
@@ -14,7 +13,6 @@ import { RequireAuth } from '@/components/auth/require-auth';
 import { t } from '@/lib/i18n';
 
 type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
-type KycStatusDto = components['schemas']['KycStatusDto'];
 
 interface StepItem {
   num: number;
@@ -93,7 +91,6 @@ export default function KycLayout({ children }: { children: React.ReactNode }) {
 
 function KycShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   /*
    * KYC requires a verified email — FR-CORE-15 — and that gate now lives in
@@ -165,33 +162,29 @@ function KycShell({ children }: { children: React.ReactNode }) {
   const shell = kycShellFor(pathname);
 
   /*
-   * A verified client has no step to complete, so a step URL is a dead end —
-   * `saveStep` throws for an approved submission, which would render as a form
-   * that errors on submit.
+   * ── THIS LAYOUT NO LONGER REDIRECTS, AND THAT FIXED AN INFINITE LOOP ─────
    *
-   * Handled by REDIRECTING rather than by swapping chrome: the destination
-   * decides its own shell from its own pathname, so this cannot reintroduce the
-   * flash. The redirect goes wizard → portal, which ADDS the sidebar rather than
-   * removing it, so it stays on the right side of the rule above.
+   * It used to send a "verified" client off any step URL, deciding from
+   * `user.verificationLevel === 1 || status === 'approved'` — EITHER signal.
+   * The routes decide from KYC status alone, and the two disagree for a real
+   * account: `hazimehussein01@gmail.com` is verificationLevel 1 with a KYC
+   * submission still `not_started`.
    *
-   * Shares the ['kyc-status'] key with `/kyc` and the step pages, so react-query
-   * serves all of them from one request — same reason ['kyc-config'] is shared
-   * above.
+   * That is a permanent disagreement, not a race. The layout said "verified,
+   * nothing to do" and pushed to /kyc/submitted; that route said "no outcome to
+   * read" and pushed back to /kyc/step/1; the layout fired again. The client
+   * ping-ponged between the two pages until the browser gave up.
    *
-   * Either signal is enough, matching `kycNavBadge` in portal-layout.tsx so the
-   * sidebar badge and this cannot disagree about whether the client is done.
+   * Routing now lives in the route segments themselves — `app/kyc/page.tsx`,
+   * `app/kyc/step/[step]/page.tsx` and `app/kyc/submitted/page.tsx` — which
+   * decide on the SERVER from one predicate (`canOpenKycForm`) before any HTML
+   * is sent. A layout redirect cannot beat them and cannot disagree with them,
+   * because it no longer exists.
+   *
+   * `verificationLevel` is still the right signal for the sidebar badge, which
+   * is about what the client has ACHIEVED. It is the wrong signal for "may this
+   * form be opened", which is about what the API will accept.
    */
-  const statusQuery = useResource(
-    ['kyc-status'],
-    async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
-    { enabled: kycReadable },
-  );
-  const nothingLeftToDo = user?.verificationLevel === 1 || statusQuery.data?.status === 'approved';
-  const strandedOnAStep = nothingLeftToDo && shell === 'wizard';
-
-  useEffect(() => {
-    if (strandedOnAStep) router.replace('/kyc/submitted');
-  }, [strandedOnAStep, router]);
 
   /*
    * Render NOTHING while bouncing an unverified client to the verify page.

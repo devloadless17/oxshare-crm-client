@@ -760,6 +760,54 @@ export interface paths {
         patch: operations["AdminCurrenciesController_update"];
         trace?: never;
     };
+    "/v1/admin/leverages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The whole ladder, operator order first
+         * @description Includes DISABLED rungs, unlike `GET /leverages` — an operator has to see what they have withdrawn in order to put it back.
+         */
+        get: operations["AdminLeveragesController_list"];
+        put?: never;
+        /**
+         * Add a rung
+         * @description The ratio is the identity — 500 means 500:1 — so adding one that already exists is a conflict rather than an update.
+         */
+        post: operations["AdminLeveragesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/leverages/{ratio}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a rung nobody is trading on
+         * @description Refused while any trading account is open at this leverage. Disable it instead — that takes it off the menu and leaves those accounts alone.
+         */
+        delete: operations["AdminLeveragesController_remove"];
+        options?: never;
+        head?: never;
+        /**
+         * Rename, reorder, or withdraw a rung
+         * @description The RATIO cannot be changed: it is the identity of the rung, and renumbering it would leave accounts opened at the old value pointing at a leverage the ladder no longer explains. Refuses to disable the last enabled rung — an empty ladder is an account-opening form with no options.
+         */
+        patch: operations["AdminLeveragesController_update"];
+        trace?: never;
+    };
     "/v1/ib/status": {
         parameters: {
             query?: never;
@@ -2792,6 +2840,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/kyc-config/document-catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Documents a `document` field may accept */
+        get: operations["AdminComplianceController_getDocumentCatalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/kyc-config/steps": {
         parameters: {
             query?: never;
@@ -3529,6 +3594,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/bridge/outbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The bridge's deal delivery queue
+         * @description Whether each closed deal reached this API, and when. `failing` in the summary is the number worth acting on: a pending row may simply be new, while a failing one has been attempted and rejected — `lastError` says why.
+         */
+        get: operations["AdminBridgeController_outbox"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/bridge/operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Balance operations, including the ones stuck mid-flight
+         * @description A row with a null `completedAt` is an operation whose outcome the bridge never learned — it told MT5 to move money and did not find out whether it did. Those need reconciling against MT5's deal history by a person; they do not resolve on their own.
+         */
+        get: operations["AdminBridgeController_operations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/bridge/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The tail of the bridge's log for today
+         * @description `exists: false` is a normal answer on the first run of a day, and names the file that was looked for so the next guess is informed.
+         */
+        get: operations["AdminBridgeController_logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3818,6 +3943,41 @@ export interface components {
             enabled?: boolean;
             sortOrder?: number;
             isDefault?: boolean;
+        };
+        LeverageDto: {
+            /**
+             * @description 500 means 500:1.
+             * @example 500
+             */
+            ratio: number;
+            /** @description What the client reads. Null renders as `1:<ratio>`. */
+            label: string | null;
+            /** @description A disabled rung is not offered. Accounts already on it are kept. */
+            enabled: boolean;
+            /** @description The operator’s order, which is the order a client sees. */
+            sortOrder: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateLeverageDto: {
+            /**
+             * @description 500 means 500:1.
+             * @example 500
+             */
+            ratio: number;
+            /** @description Omitted renders as `1:<ratio>`. */
+            label?: string;
+            /** @default true */
+            enabled: boolean;
+            /** @description Omitted appends to the end of the ladder. */
+            sortOrder?: number;
+        };
+        UpdateLeverageDto: {
+            label?: string;
+            enabled?: boolean;
+            sortOrder?: number;
         };
         IbAccountDto: {
             userId: string;
@@ -4711,6 +4871,33 @@ export interface components {
         Mt5LiveBalancesDto: {
             accountIds: string[];
         };
+        KycDocumentPartDto: {
+            /**
+             * @description Slot identifier, unique within the type.
+             * @example back
+             */
+            key: string;
+            /**
+             * @description What the client is asked to upload.
+             * @example Back Side
+             */
+            label: string;
+            required: boolean;
+            /** @example Both sides must be readable. */
+            hint?: string;
+        };
+        KycDocumentTypeDto: {
+            /**
+             * @description Stored in document.docType. Never renamed.
+             * @example passport
+             */
+            value: string;
+            /** @example Passport */
+            label: string;
+            /** @enum {string} */
+            category: "identity" | "address";
+            parts: components["schemas"]["KycDocumentPartDto"][];
+        };
         KycFieldConfigDto: {
             /** @example f-1 */
             id: string;
@@ -4722,12 +4909,14 @@ export interface components {
             /** @example First Name */
             label: string;
             /** @enum {string} */
-            type: "text" | "date" | "phone" | "select" | "file" | "camera" | "checkbox";
+            type: "text" | "date" | "phone" | "select" | "file" | "camera" | "checkbox" | "doc:passport" | "doc:national_id" | "doc:driving_license" | "doc:residence_permit" | "doc:utility_bill" | "doc:bank_statement" | "doc:tenancy_agreement";
             required: boolean;
             /** @description Choices, for type: select. */
             options?: string[];
             /** @example As on your ID */
             hint?: string;
+            /** @description Resolved from the field type. Read-only — writes are ignored. */
+            document?: components["schemas"]["KycDocumentTypeDto"];
         };
         KycStepConfigDto: {
             /** @example step-1 */
@@ -4804,16 +4993,6 @@ export interface components {
         };
         TradingSettingsDto: {
             /**
-             * @description The leverage ladder offered to clients, in the order they see it.
-             * @example [
-             *       50,
-             *       100,
-             *       200,
-             *       500
-             *     ]
-             */
-            leverages: number[];
-            /**
              * @description Live accounts one client may open themselves.
              * @example 5
              */
@@ -4837,8 +5016,6 @@ export interface components {
             updatedAt?: string | null;
         };
         UpdateTradingSettingsDto: {
-            /** @example 50,100,200,500 */
-            leverages: string;
             /** @example 5 */
             maxLiveAccounts: number;
             /** @example 5 */
@@ -6075,6 +6252,104 @@ export interface components {
             page: number;
             limit: number;
         };
+        BridgeOutboxSummaryDto: {
+            /** @example 12 */
+            total: number;
+            /** @example 12 */
+            delivered: number;
+            /**
+             * @description Not yet delivered. Includes rows that are simply new.
+             * @example 0
+             */
+            pending: number;
+            /**
+             * @description Undelivered AND already attempted — this API is rejecting them. This is the number worth alerting on; `pending` alone cries wolf on a healthy busy system.
+             * @example 0
+             */
+            failing: number;
+        };
+        BridgeOutboxRowDto: {
+            /**
+             * @description MT5's ticket, as a string — it is a 64-bit id and JavaScript rounds those.
+             * @example 56054592
+             */
+            dealId: string;
+            /**
+             * @description How the bridge learned of it. Always 'sweep' on this protocol — the MT5 Web API has no deal push.
+             * @example sweep
+             */
+            source: string;
+            /** @example 0 */
+            attempts: number;
+            /** @description When delivery will next be tried. Far in the future on an undelivered row means the queue is backing off, not stuck. */
+            nextAttempt: string;
+            /** @description Null while undelivered. This field answers "did it arrive"; the value answers "when". */
+            deliveredAt: string | null;
+            /** @example HTTP 400: VALIDATION_FAILED ... */
+            lastError: string | null;
+            createdAt: string;
+        };
+        BridgeOutboxDto: {
+            summary: components["schemas"]["BridgeOutboxSummaryDto"];
+            rows: components["schemas"]["BridgeOutboxRowDto"][];
+        };
+        BridgeOperationsSummaryDto: {
+            /** @example 19 */
+            total: number;
+            /** @example 19 */
+            completed: number;
+            /**
+             * @description Claimed but never confirmed — the bridge told MT5 to move money and never learned whether it did. Any non-zero value needs a person, not a timer.
+             * @example 0
+             */
+            stuck: number;
+        };
+        BridgeOperationRowDto: {
+            /**
+             * @description The CRM's own transfer id, which is how this row joins back to a transaction.
+             * @example fb2e201a-5752-422c-a8c8-b43a228471dc
+             */
+            idempotencyKey: string;
+            /** @example 6477978 */
+            login: string;
+            /**
+             * @description A decimal STRING (§6.1), exactly as stored. Never a number — this is money on a screen somebody checks a client's balance against.
+             * @example 1000.00000000
+             */
+            amount: string;
+            /**
+             * @description MT5's operation type. `balance` is real money; `credit` is broker funds the client cannot withdraw.
+             * @example balance
+             */
+            type: string;
+            /**
+             * @description The resulting MT5 ticket. Null means the operation never confirmed.
+             * @example 56054592
+             */
+            dealId: string | null;
+            startedAt: string;
+            /** @description Null is the state that needs a human: claimed, and never confirmed. */
+            completedAt: string | null;
+        };
+        BridgeOperationsDto: {
+            summary: components["schemas"]["BridgeOperationsSummaryDto"];
+            rows: components["schemas"]["BridgeOperationRowDto"][];
+        };
+        BridgeLogsDto: {
+            /**
+             * @description The file that was read, named even when absent so the next guess is informed.
+             * @example C:\bridge\logs\bridge-20260815.log
+             */
+            file: string;
+            /** @description False is a normal answer on the first run of a day, not an error. */
+            exists: boolean;
+            /**
+             * @description How many lines matched before the tail was taken.
+             * @example 1284
+             */
+            matched?: number;
+            lines: string[];
+        };
         ErrorResponseDto: {
             /**
              * @description HTTP status, repeated in the body for convenience.
@@ -7119,6 +7394,92 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurrencyDto"];
+                };
+            };
+        };
+    };
+    AdminLeveragesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeverageDto"][];
+                };
+            };
+        };
+    };
+    AdminLeveragesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLeverageDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeverageDto"];
+                };
+            };
+        };
+    };
+    AdminLeveragesController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ratio: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminLeveragesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ratio: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLeverageDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeverageDto"];
                 };
             };
         };
@@ -9872,6 +10233,25 @@ export interface operations {
             };
         };
     };
+    AdminComplianceController_getDocumentCatalogue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KycDocumentTypeDto"][];
+                };
+            };
+        };
+    };
     AdminComplianceController_addKycStep: {
         parameters: {
             query?: never;
@@ -10903,6 +11283,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClientTransactionsPageDto"];
+                };
+            };
+        };
+    };
+    AdminBridgeController_outbox: {
+        parameters: {
+            query?: {
+                pending?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeOutboxDto"];
+                };
+            };
+        };
+    };
+    AdminBridgeController_operations: {
+        parameters: {
+            query?: {
+                stuck?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeOperationsDto"];
+                };
+            };
+        };
+    };
+    AdminBridgeController_logs: {
+        parameters: {
+            query?: {
+                lines?: number;
+                contains?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeLogsDto"];
                 };
             };
         };

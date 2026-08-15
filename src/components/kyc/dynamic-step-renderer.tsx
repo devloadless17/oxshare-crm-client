@@ -1,7 +1,8 @@
 'use client';
 
-import { DocumentUploader } from './document-uploader';
 import { CheckCircle2, User, FileText } from 'lucide-react';
+import { DocumentUploader } from './document-uploader';
+import { apiUploadField, documentChoiceKey, uploadSlotName } from './doc-type';
 import type { components } from '@/lib/api/types.gen';
 import { t } from '@/lib/i18n';
 import { StepField } from './step-field';
@@ -17,16 +18,19 @@ import { StepField } from './step-field';
 export type KycFieldConfig = components['schemas']['KycFieldConfigDto'];
 export type KycStepConfig = components['schemas']['KycStepConfigDto'];
 
+/*
+ * `docType`, `addressDocType` and their two setters are GONE from this
+ * interface. They existed because the type lived outside the config, so the
+ * page had to own it and hand it down. It is a `select` field now, which means
+ * it arrives in `formData` and is written by `onChange` exactly like every
+ * other answer — four props and two pieces of page state removed.
+ */
 interface DynamicStepRendererProps {
   currentStepConfig?: KycStepConfig;
   formData: Record<string, string>;
-  docType: string;
-  addressDocType: string;
   uploadsState: Record<string, boolean>;
   selfieUploaded: boolean;
   rejectedFields?: string[];
-  onDocTypeChange: (type: string) => void;
-  onAddressDocTypeChange: (type: string) => void;
   onChange: (key: string, value: string) => void;
   onUpload: (field: string, file: File) => Promise<void>;
   /** Threaded to the uploader so the step can tell 'nothing chosen' from 'chosen, not confirmed'. */
@@ -36,13 +40,9 @@ interface DynamicStepRendererProps {
 export function DynamicStepRenderer({
   currentStepConfig,
   formData,
-  docType,
-  addressDocType,
   uploadsState,
   selfieUploaded,
   rejectedFields = [],
-  onDocTypeChange,
-  onAddressDocTypeChange,
   onChange,
   onUpload,
   onPendingChange,
@@ -50,6 +50,40 @@ export function DynamicStepRenderer({
   if (!currentStepConfig) return null;
 
   const { slug, title, description, fields } = currentStepConfig;
+
+  /*
+   * THE STEP'S DOCUMENT FIELDS ARE THE CHOICES.
+   *
+   * Each is a field whose TYPE is the document it collects (`doc:passport`),
+   * so a step offering three ways to prove identity is three fields. They are
+   * alternatives — one is enough — so the client picks a field and uploads only
+   * that document's slots.
+   *
+   * The slots come from the catalogue via `field.document.parts`, which is why
+   * a passport asks for one photo page and a national ID for two sides without
+   * this component knowing either fact.
+   */
+  const documentFields = fields.filter((f) => f.document);
+  const plainFields = fields.filter((f) => !f.document);
+
+  /*
+   * Which document the client chose, stored under a key derived from the STEP
+   * rather than from any one field — the choice belongs to the step, and
+   * writing it into a field's own slot would make "chosen" and "this field's
+   * answer" the same thing.
+   */
+  const choiceKey = documentChoiceKey(slug);
+
+  const chosenFieldName = formData[choiceKey] ?? '';
+  const chosenField = documentFields.find((f) => f.name === chosenFieldName);
+
+  /*
+   * Uploads and long text get the full row; short inputs pair up. Derived from
+   * the field TYPE rather than from a per-step layout, so a step an operator
+   * builds looks like the seeded ones without them configuring anything.
+   */
+  const fieldSpan = (field: KycFieldConfig) =>
+    field.type === 'file' || field.type === 'camera' ? 'md:col-span-2' : '';
 
   // Review Summary Step
   if (slug === 'review') {
@@ -153,90 +187,104 @@ export function DynamicStepRenderer({
         <p className="text-xs text-muted-foreground mt-1">{description}</p>
       </div>
 
-      {/* Built-in Document Selector Cards for Document Step */}
-      {slug === 'document' && (
-        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {[
-            { value: 'passport', label: 'Passport' },
-            { value: 'national_id', label: t('kyc.docNationalId') },
-            { value: 'driving_license', label: t('kyc.docDrivingLicense') },
-          ].map((dt) => {
-            const isSelected = docType === dt.value;
-            return (
-              <button
-                key={dt.value}
-                type="button"
-                onClick={() => onDocTypeChange(dt.value)}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center focus-outline cursor-pointer ${
-                  isSelected
-                    ? 'border-ring bg-primary/10 text-link font-bold'
-                    : 'border-border bg-card/40 text-muted-foreground hover:bg-accent hover:text-foreground'
-                }`}
-              >
-                <span className="text-xs">{dt.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/*
+       * EVERY FIELD COMES FROM THE CONFIG. No slug branching, no hard-coded
+       * document types, no layout the builder cannot see.
+       *
+       * This block used to render three literal buttons for `document`
+       * (Passport / National ID / Driving License) and three more for
+       * `address`, none of which existed in the step's `fields`. Worse, the
+       * passport branch REPLACED the configured uploads with a single
+       * hard-coded one — so a step configured with "Front Side" and "Back
+       * Side" showed neither, and an operator adding a field saw nothing
+       * change.
+       *
+       * The type is now a `select` field like any other (migration 0071), so
+       * adding a fourth document type is an edit in the KYC builder rather
+       * than a code change here.
+       */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {plainFields.map((field) => (
+          <div key={field.id} className={fieldSpan(field)}>
+            <StepField
+              field={field}
+              slug={slug}
+              val={formData[field.name] || ''}
+              isErrored={rejectedFields.includes(field.name)}
+              selfieUploaded={selfieUploaded}
+              uploadsState={uploadsState}
+              onChange={onChange}
+              onUpload={onUpload}
+              onPendingChange={onPendingChange}
+            />
+          </div>
+        ))}
+      </div>
 
-      {/* Built-in Document Selector Cards for Address Step */}
-      {slug === 'address' && (
-        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {[
-            { value: 'utility_bill', label: t('kyc.docUtilityBill') },
-            { value: 'bank_statement', label: t('kyc.docBankStatement') },
-            { value: 'tenancy_agreement', label: t('kyc.docTenancyAgreement') },
-          ].map((dt) => {
-            const isSelected = addressDocType === dt.value;
-            return (
-              <button
-                key={dt.value}
-                type="button"
-                onClick={() => onAddressDocTypeChange(dt.value)}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center focus-outline cursor-pointer ${
-                  isSelected
-                    ? 'border-ring bg-primary/10 text-link font-bold'
-                    : 'border-border bg-card/40 text-muted-foreground hover:bg-accent hover:text-foreground'
-                }`}
-              >
-                <span className="text-xs">{dt.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {documentFields.length > 0 && (
+        <div className="space-y-4">
+          {/*
+           * Cards rather than a dropdown: the choice governs what is asked for
+           * next, so the client needs to see the options — and how many photos
+           * each costs them — before deciding. A collapsed select hides both.
+           */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {documentFields.map((field) => {
+              const isSelected = field.name === chosenFieldName;
+              const parts = field.document?.parts ?? [];
+              return (
+                <button
+                  key={field.id}
+                  type="button"
+                  onClick={() => onChange(choiceKey, field.name)}
+                  className={`focus-outline flex cursor-pointer flex-col items-center justify-center rounded-xl border p-4 text-center ${
+                    isSelected
+                      ? 'border-ring bg-primary/10 font-bold text-link'
+                      : 'border-border bg-card/40 text-muted-foreground hover:bg-accent hover:text-foreground'
+                  }`}
+                >
+                  <span className="text-xs">{field.label}</span>
+                  <span className="mt-0.5 text-[10px] opacity-70">
+                    {t('kyc.pageCount', { count: parts.length })}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-      {/* Special passport single upload handling in document step */}
-      {slug === 'document' && docType === 'passport' ? (
-        <div className="w-full my-4">
-          <DocumentUploader
-            label={t('kyc.passportLabel')}
-            field="doc_front"
-            hint={t('kyc.passportHint')}
-            uploaded={uploadsState['doc_front']}
-            onUpload={onUpload}
-            onPendingChange={onPendingChange}
-          />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {fields
-            .filter((field) => field.name !== 'docType')
-            .map((field) => (
-              <StepField
-                key={field.id}
-                field={field}
-                slug={slug}
-                val={formData[field.name] || ''}
-                isErrored={rejectedFields.includes(field.name)}
-                selfieUploaded={selfieUploaded}
-                uploadsState={uploadsState}
-                onChange={onChange}
+          {/*
+           * Only the CHOSEN document's slots. Nothing renders until a choice is
+           * made — an upload box for an unstated document is a request the
+           * client cannot act on, and it is what let somebody put a passport
+           * into a slot labelled "Back Side".
+           */}
+          {(chosenField?.document?.parts ?? []).map((part, partIndex) => {
+            /*
+             * The UI keys on the SLOT (unique per field); the API is posted the
+             * storage field it has always used (`doc_front`). `apiUploadField`
+             * is the single place that translation lives — see its note on why
+             * storage was not reshaped instead.
+             */
+            const slot = uploadSlotName(chosenField!.name, part.key);
+            const apiField = apiUploadField(
+              chosenField!.name,
+              partIndex,
+              chosenField!.document?.category,
+            );
+            if (!apiField) return null;
+
+            return (
+              <DocumentUploader
+                key={part.key}
+                field={apiField}
+                label={part.label}
+                hint={part.hint ?? (part.required ? undefined : t('kyc.optionalUpload'))}
+                uploaded={uploadsState[slot] || uploadsState[apiField]}
                 onUpload={onUpload}
                 onPendingChange={onPendingChange}
               />
-            ))}
+            );
+          })}
         </div>
       )}
     </div>

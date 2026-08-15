@@ -936,6 +936,24 @@ export const messages = {
   'kyc.backToDashboard': 'Back to Dashboard',
   'kyc.loadFailedShort': 'Could not load your verification details',
   'kyc.loadFailed': 'Could not load your verification details.',
+  'kyc.optionalUpload': 'Optional',
+  // Sets the expectation before they choose: a passport needs one photo, an ID
+  // card needs two. Plural handled by the count itself reading naturally.
+  'kyc.pageCount': '{count} photo(s)',
+  // Names the slot, because "please complete this step" leaves a client
+  // hunting for which of several uploads is missing.
+  'kyc.needUpload': 'Please upload: {label}',
+  // A rejected client needs to know WHY and be able to act on it. The screen
+  // previously said "review the requirements and re-submit" and offered neither
+  // the reason nor a route back to the form.
+  'kyc.reapply': 'Update and re-submit',
+  'kyc.rejectionReasonLabel': 'Why it was returned',
+  'kyc.rejectedFieldsLabel': 'What needs fixing',
+  // The review screen is appended by the client, not configured in the admin
+  // builder — see the note in kyc/step/[step]/page.tsx — so its copy lives here
+  // rather than arriving from /kyc/config like every other step's.
+  'kyc.reviewTitle': 'Review & Submit',
+  'kyc.reviewDescription': 'Confirm all details and submit your application for compliance review.',
   'kyc.statusLoadFailed': 'Could not load your verification status.',
   'kyc.uploadTooLarge':
     'That file is {size} MB. The limit is {limit} MB — please upload a smaller scan or photo.',
