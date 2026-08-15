@@ -56,7 +56,7 @@ export function KycOutcome() {
       errorMessage={apiErrorMessage(statusQuery.error, t('kyc.statusLoadFailed'))}
       error={statusQuery.error}
     >
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 max-w-lg mx-auto py-12 px-4 animate-in fade-in-0 zoom-in-95 duration-200">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] h-full text-center space-y-6 max-w-lg mx-auto py-12 px-4 animate-in fade-in-0 zoom-in-95 duration-200">
         {/* Icon Badge */}
         <div
           className={`flex h-24 w-24 items-center justify-center rounded-full border-4 ${

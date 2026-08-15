@@ -44,28 +44,50 @@ type KycStatusDto = components['schemas']['KycStatusDto'];
  * onboarding whenever this one call hiccuped.
  */
 /**
- * The API host, read at REQUEST time and deliberately not via `lib/env`.
+ * The API base for a SERVER-side call, mirroring the `/api` rewrite.
  *
- * Importing anything from `./env` evaluates its `API_BASE_URL` const, which
- * calls `resolveServerBaseUrl()` on module load and THROWS when
- * `NEXT_PUBLIC_API_BASE_URL` is unset in production. Next evaluates this module
- * while collecting route configuration at build time — where that variable is
- * legitimately absent for any deploy that supplies it at run time — so the
- * import alone failed the build with "Failed to collect configuration for
- * /kyc".
+ * ## Why this is not the browser's base URL
  *
- * The validation in `env.ts` is right and stays as it is for every client-side
- * caller. What is wrong is paying it during a build that is not serving
- * anything, so this reads the variable itself and falls back only in
- * development, matching what `resolveServerBaseUrl` does.
+ * Client code calls `/api/kyc/status` and `next.config.ts` rewrites it to
+ * `${API_ORIGIN}/v1/kyc/status`. A rewrite only applies to requests the browser
+ * makes, so a Server Component reaching the API directly gets none of it — and
+ * calling `/kyc/status` without the version produced exactly one symptom:
+ *
+ *   WARN [ExceptionFilter] GET /kyc/status → 404 NOT_FOUND
+ *
+ * which this module treats as "status unreadable", so the gate fell through to
+ * the form. A client who had just submitted was redirected to /kyc/submitted
+ * and bounced straight back to step 1.
+ *
+ * ## The version is still stated once
+ *
+ * The root instruction is "never reintroduce /v1 into a frontend base URL",
+ * from an incident where the frontends called `/api/v1/...` against a backend
+ * serving bare paths and every request 404'd. That rule is about the base URL
+ * client code uses, which is still `/api` and still knows nothing.
+ *
+ * This is the rewrite's DESTINATION, expressed once more because a server
+ * fetch cannot go through the rewrite itself. It reads the same `API_ORIGIN`
+ * and appends the same prefix, so the two move together.
  */
+const API_VERSION_PREFIX = 'v1';
+
 function apiBaseUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
-  if (configured) return configured;
+  /*
+   * `API_ORIGIN` first, because that is what the rewrite uses and what a deploy
+   * sets for server-to-server traffic — it may be an internal address the
+   * browser could not reach. `NEXT_PUBLIC_API_BASE_URL` is the fallback.
+   */
+  const origin = process.env.API_ORIGIN?.trim() || process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+  if (origin) return `${origin.replace(/\/+$/, '')}/${API_VERSION_PREFIX}`;
+
   // Same development convenience as `env.ts`, and the same refusal outside it:
   // a production server reaching localhost is the failure that rule exists for.
-  if (process.env.NODE_ENV !== 'production') return 'http://localhost:3001';
-  throw new Error('NEXT_PUBLIC_API_BASE_URL is required in production.');
+  if (process.env.NODE_ENV !== 'production') {
+    return `http://localhost:3001/${API_VERSION_PREFIX}`;
+  }
+  throw new Error('API_ORIGIN or NEXT_PUBLIC_API_BASE_URL is required in production.');
 }
 
 export async function fetchKycStatus(): Promise<KycStatusDto['status'] | null> {
@@ -83,11 +105,34 @@ export async function fetchKycStatus(): Promise<KycStatusDto['status'] | null> {
       // "submitted" would outlive the approval that replaced it.
       cache: 'no-store',
     });
-    if (!response.ok) return null;
+    /*
+     * A 404 here is a WIRING fault, not an answer.
+     *
+     * `/kyc/status` returns 200 with a null body for a client who has never
+     * started — "no submission" is a real response, not a missing route. So a
+     * 404 means this module is calling the wrong URL, and it did: the version
+     * prefix was missing, every call 404'd, the gate read that as "unknown" and
+     * fell through to the form. A client who had just submitted was redirected
+     * to /kyc/submitted and bounced straight back to step 1.
+     *
+     * Logged rather than swallowed, because the symptom (a redirect loop) is
+     * several steps from the cause and the server log is where somebody will
+     * look. Still returns null — failing OPEN is right, since the API refuses
+     * any write the client is not entitled to and a status endpoint that is
+     * briefly down must not lock anybody out of their own onboarding.
+     */
+    if (!response.ok) {
+      console.error(
+        `[kyc] GET /kyc/status → ${response.status}. ` +
+          'A 404 means the API base is wrong — see apiBaseUrl() above.',
+      );
+      return null;
+    }
 
     const body = (await response.json()) as KycStatusDto | null;
     return body?.status ?? null;
-  } catch {
+  } catch (error) {
+    console.error('[kyc] status read failed', error);
     return null;
   }
 }

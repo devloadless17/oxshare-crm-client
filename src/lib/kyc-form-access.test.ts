@@ -101,3 +101,37 @@ describe('REGRESSION: verificationLevel is not a KYC status', () => {
     expect(formRedirects('not_started')).toBe(false);
   });
 });
+
+describe('REGRESSION: the gate must not fall through on a wiring fault', () => {
+  /*
+   * The loop a client hit after pressing Submit.
+   *
+   * `kyc-server-status.ts` called `/kyc/status` without the `/v1` prefix — the
+   * browser gets it from the `/api` rewrite in next.config.ts, and a Server
+   * Component reaching the API directly gets none of that. Every call 404'd:
+   *
+   *   WARN [ExceptionFilter] GET /kyc/status → 404 NOT_FOUND
+   *
+   * A failed read returns null, null means "unknown", and unknown fails OPEN —
+   * so the just-submitted client was sent to /kyc/submitted and bounced
+   * straight back to step 1, forever.
+   *
+   * Failing open is still right: the API refuses any write the client is not
+   * entitled to, and a status endpoint that is briefly down must not lock
+   * somebody out of their own onboarding. What was wrong was the URL, and a
+   * 404 is now logged loudly rather than read as an answer — `/kyc/status`
+   * returns 200 with a null body for a client who has never started, so a 404
+   * can only mean the call itself is misaddressed.
+   */
+  it('opens the form when the status is unknown — deliberate, not accidental', () => {
+    expect(canOpenKycForm(null)).toBe(true);
+  });
+
+  it('closes the form for a submission that is with compliance', () => {
+    // The rule was always right. It was defeated by every read failing, not by
+    // this predicate — which is why the fix was the URL and not the rule.
+    expect(canOpenKycForm('submitted')).toBe(false);
+    expect(canOpenKycForm('under_review')).toBe(false);
+    expect(canOpenKycForm('approved')).toBe(false);
+  });
+});
