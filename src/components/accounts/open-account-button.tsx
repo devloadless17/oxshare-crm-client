@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { AccountTypeFields } from '@/components/accounts/account-type-fields';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import {
@@ -150,15 +151,50 @@ function OpenAccountDialog({
   const leverages = options.leverages;
 
   /*
-   * Defaults to the first offered type and the middle of the leverage ladder —
-   * the same choices the API makes when a field is omitted, so the form shows
-   * what would happen rather than leaving it blank and surprising them.
+   * ── The client picks a CURRENCY and a PRODUCT; the group falls out ────────
    *
-   * The median leverage rather than the maximum: a default should not hand
-   * somebody the riskiest option the broker allows.
+   * The MT5 group is an implementation detail — `real\Standard\USD` means
+   * nothing to a client — and it used to be the only thing this form asked
+   * about, so choosing an account meant reading a server path. The two
+   * questions behind it are the ones a person can actually answer: which
+   * currency do I want to trade in, and which product am I opening.
+   *
+   * The schema makes that resolvable: `trading_product_groups` is unique on
+   * (product, environment, currency), so the pair names exactly one group.
+   *
+   * ## Currencies come from what is OFFERED, not from the currency catalogue
+   *
+   * A currency with no group in this environment cannot open an account, so
+   * listing every enabled currency would offer choices that fail at MT5. The
+   * options are the distinct currencies across the groups this client is
+   * offered — which already carries the agency filter, so a client under a
+   * partner sees only what that partner sells.
    */
-  const [group, setGroup] = React.useState(types[0]?.group ?? '');
+  const currencies = React.useMemo(
+    () => [...new Set(types.map((type) => type.currency))].filter(Boolean).sort(),
+    [types],
+  );
+
+  const [currency, setCurrency] = React.useState(currencies[0] ?? '');
+
+  /*
+   * The products available IN THE CHOSEN CURRENCY, in the order the API sent
+   * them — `offeredTo` orders by the product's sort order then its name, so
+   * "first offered" is the broker's own preference rather than an accident of
+   * iteration.
+   */
+  const productsForCurrency = React.useMemo(
+    () => types.filter((type) => type.currency === currency),
+    [types, currency],
+  );
+
+  const [product, setProduct] = React.useState(productsForCurrency[0]?.product ?? '');
+
   const [leverage, setLeverage] = React.useState(
+    /*
+     * The median rung, not the maximum: a default should not hand somebody the
+     * riskiest leverage the broker allows.
+     */
     String(leverages[Math.floor(leverages.length / 2)] ?? leverages[0] ?? 100),
   );
   const [name, setName] = React.useState('');
@@ -167,10 +203,20 @@ function OpenAccountDialog({
   const [error, setError] = React.useState<string | null>(null);
   const [needsKyc, setNeedsKyc] = React.useState(false);
 
-  // The currency belongs to the GROUP, so it follows the choice rather than
-  // being a field of its own — offering a currency picker would imply the two
-  // are independent, and on MT5 they are not.
-  const currency = types.find((type) => type.group === group)?.currency ?? '';
+  /*
+   * The group, derived — never held in state.
+   *
+   * A stored group would survive a change of currency and send a pairing that
+   * no longer matches what the form shows, which is the class of bug the
+   * transfer screen's derived destination list exists to avoid.
+   *
+   * DEMO does not ask for a product, so it takes the first group offered in the
+   * chosen currency. With one product that is the only group; with several it is
+   * the broker's preferred one, by the ordering above.
+   */
+  const group = isDemo
+    ? (productsForCurrency[0]?.group ?? '')
+    : (productsForCurrency.find((type) => type.product === product)?.group ?? '');
 
   const create = useMutation({
     mutationFn: () =>
@@ -294,36 +340,28 @@ function OpenAccountDialog({
             </div>
           )}
 
-          {/*
-            ONE TYPE IS STILL A CHOICE WORTH SHOWING. A broker selling a single
-            account type gets a dropdown with one entry rather than a hidden
-            field — the client can see what they are opening and what it is
-            denominated in, which is the question the currency column answers.
-          */}
-          {types.length > 0 && (
-            <div className="space-y-1.5">
-              <Label htmlFor="account-type" className="text-xs">
-                {t('accounts.fieldType')}
-              </Label>
-              <Select value={group} onValueChange={setGroup}>
-                <SelectTrigger id="account-type" className="h-9 w-full text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {types.map((type) => (
-                    <SelectItem key={type.group} value={type.group}>
-                      {accountTypeLabel(type)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {currency && (
-                <p className="text-[11px] text-muted-foreground">
-                  {t('accounts.typeCurrencyHint', { currency })}
-                </p>
-              )}
-            </div>
-          )}
+          <AccountTypeFields
+            currencies={currencies}
+            currency={currency}
+            onCurrency={(next) => {
+              setCurrency(next);
+              /*
+                The product is re-chosen with the currency, never carried
+                across. Products are not offered in every currency, so a kept
+                selection can name a pairing that has no group, and the form
+                would look complete while resolving to nothing.
+              */
+              setProduct(types.find((type) => type.currency === next)?.product ?? '');
+              setError(null);
+            }}
+            productsForCurrency={productsForCurrency}
+            product={product}
+            onProduct={(next) => {
+              setProduct(next);
+              setError(null);
+            }}
+            isDemo={isDemo}
+          />
 
           <div className="space-y-1.5">
             <Label htmlFor="account-leverage" className="text-xs">
@@ -413,28 +451,12 @@ function OpenAccountDialog({
 }
 
 /**
- * A group path, as something a client can read.
- *
- * ## The currency leads
- *
- * MT5 groups are paths like `real\\Standard-USD`, and the leading segments are
- * the broker's filing system rather than the product name. The last one is the
- * closest thing to a product — but only as close as the broker chose to make
- * it: a demo group genuinely named `test\\API\\0-cl` reduces to `0-cl`, which
- * tells a client nothing.
- *
- * So the CURRENCY goes first, because it is the part that is always meaningful
- * and always true — it is read live from the server, not from our config. The
- * group leaf follows as the qualifier, which is what it is: the thing that
- * distinguishes two accounts denominated the same way.
- *
- * The leaf is not dropped. Two USD products would otherwise be one repeated
- * row, and a client comparing Standard against ECN needs to see which is which.
+/*
+ * `accountTypeLabel` is GONE. It rendered an MT5 group path readably because
+ * the form asked which GROUP to open — and a path is not a question anybody can
+ * answer: `test\API\0-cl` reduced to `0-cl`, which tells a client nothing. The
+ * form asks for the currency and product the group stood in for, and derives it.
  */
-function accountTypeLabel(type: AccountType): string {
-  const leaf = type.group.split(/[\\/]/).filter(Boolean).pop() ?? type.group;
-  return type.currency ? `${type.currency} · ${leaf}` : leaf;
-}
 
 /**
  * `'1000000.00000000'` → `'1,000,000'`, for the hint text.

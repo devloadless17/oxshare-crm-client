@@ -640,10 +640,20 @@ export const messages = {
   'accounts.opening': 'Opening…',
   'accounts.cancel': 'Cancel',
 
-  // "Account type" rather than "group": a group is MT5's word for the folder a
-  // login sits in, and the client is choosing a product.
-  'accounts.fieldType': 'Account type',
-  'accounts.typeCurrencyHint': 'This account will be held in {currency}.',
+  /*
+   * `accounts.fieldType` and `accounts.typeCurrencyHint` are GONE.
+   *
+   * They belonged to a single "Account type" dropdown that listed MT5 group
+   * paths and a hint saying which currency the chosen one was held in. The form
+   * asks the two real questions now — currency and product — and derives the
+   * group, so a label for the path and a hint restating the currency the client
+   * just picked are both answering questions nobody is asked any more.
+   */
+  'accounts.fieldCurrency': 'Currency',
+  'accounts.fieldProduct': 'Product',
+  // Stated rather than asked when a currency carries exactly one product: a
+  // select that cannot be changed is a label wearing a control's clothes.
+  'accounts.onlyProduct': 'Opening a {product} account.',
   'accounts.fieldLeverage': 'Leverage',
   'accounts.leverageHint':
     'How far your margin stretches. Higher leverage magnifies losses as much as gains.',
@@ -1254,6 +1264,16 @@ export const messages = {
   'partner.agencyProducts': 'Your clients can open: {products}',
   'partner.pendingSubmittedFor': 'Applied for {agency} on {date}',
   'partner.chooseAgency': 'Choose a programme',
+  /*
+   * Shown INSTEAD of the picker to an applicant introduced by an existing
+   * partner. It states the programme rather than asking, and says why: a client
+   * shown a fixed value with no explanation reads it as a control that is
+   * broken, and one shown nothing at all cannot tell what they will be selling.
+   */
+  'partner.inheritedAgency': 'Your programme',
+  'partner.inheritedAgencyHint':
+    'You were introduced by a partner, so you join their programme and sell the same products. ' +
+    'This is not something you choose.',
   // Not a validation error: an operator has configured nothing to apply for,
   // and naming that is more useful than a message about an unshown field.
   'partner.noAgenciesOffered':

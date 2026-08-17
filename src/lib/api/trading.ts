@@ -164,12 +164,28 @@ export interface AccountHistoryQuery {
 export type Dashboard = components['schemas']['DashboardDto'];
 export type DashboardStats = components['schemas']['DashboardStatsDto'];
 
-/** One account type the broker sells online. */
+/**
+ * One account type the broker sells online.
+ *
+ * HAND-DECLARED, and marked as such: `GET /trading/accounts/self-service`
+ * carries no `@ApiOkResponse`, so it generates no schema and there is nothing
+ * to alias (API-CONTRACTS Part C). That means backend drift on this shape
+ * reaches the portal as a runtime `undefined` rather than a compile error —
+ * worth fixing with a DTO on the API side, and worth knowing until then.
+ */
 export interface AccountType {
   /** The MT5 group path. Sent back on create and validated server-side. */
   group: string;
   /** Read live from MT5. Empty when the server could not be asked. */
   currency: string;
+  /**
+   * The product this group belongs to, by name.
+   *
+   * What the open-account form actually asks about: the client chooses a
+   * product and a currency, and the pair resolves to exactly one group —
+   * `trading_product_groups` is unique on (product, environment, currency).
+   */
+  product: string;
 }
 
 /** What a client may open themselves, and on what terms. */
