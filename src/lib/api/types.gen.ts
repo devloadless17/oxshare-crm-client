@@ -4032,6 +4032,10 @@ export interface components {
             /** Format: date-time */
             submittedAt: string;
         };
+        InheritedAgencyDto: {
+            id: string;
+            name: string;
+        };
         IbStatusDto: {
             account: components["schemas"]["IbAccountDto"] | null;
             application: components["schemas"]["IbApplicationDto"] | null;
@@ -4042,6 +4046,8 @@ export interface components {
              * @enum {string|null}
              */
             ineligibleCode: "unverified" | "chain_full" | null;
+            /** @description Set when the applicant was introduced by an existing partner and therefore inherits that partner's programme — the portal must not offer a choice in that case. Null when the applicant chooses: any client not introduced by a partner, or one whose introducer carries no programme. */
+            inheritedAgency: components["schemas"]["InheritedAgencyDto"] | null;
         };
         IbLevelSummaryDto: {
             /** @example 1 */

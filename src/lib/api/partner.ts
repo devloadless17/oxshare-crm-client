@@ -51,10 +51,13 @@ export interface ApplyToPartnerInput {
   /**
    * Which agency is being applied for.
    *
-   * Optional in the API, because a deployment with none configured must still
-   * take partners. Where agencies exist the form makes it a required choice —
-   * "which programme" is the question the applicant is best placed to answer
-   * and a reviewer is not.
+   * OMITTED when the applicant was introduced by an existing partner: they sell
+   * beneath that partner and inherit their programme, so the API resolves it
+   * from the introducer and ignores anything sent here. `IbStatus.inheritedAgency`
+   * is how the form knows which case it is in.
+   *
+   * Otherwise the form makes it a required choice — "which programme" is the
+   * question a direct applicant is best placed to answer and a reviewer is not.
    */
   agencyId?: string;
   motivation?: string;

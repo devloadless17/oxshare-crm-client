@@ -51,13 +51,27 @@ function PartnerState({ status, onChanged }: { status: IbStatus; onChanged: () =
     );
 
   if (application?.status === 'rejected') {
-    return <RejectedPanel reason={application.rejectionReason} onReapply={onChanged} />;
+    return (
+      <RejectedPanel
+        reason={application.rejectionReason}
+        onReapply={onChanged}
+        inherited={status.inheritedAgency ?? null}
+      />
+    );
   }
 
   if (!status.eligible)
     return <IneligiblePanel reason={status.ineligibleReason} code={status.ineligibleCode} />;
 
-  return <ApplyPanel onApplied={onChanged} />;
+  /*
+   * The inherited programme travels with the panel.
+   *
+   * A client introduced by an existing partner does not choose — they sell
+   * beneath their introducer and carry that introducer's programme. The API
+   * decides this (and ignores any agency such an applicant sends); the panel
+   * only needs to know whether to draw a picker or a statement.
+   */
+  return <ApplyPanel onApplied={onChanged} inherited={status.inheritedAgency ?? null} />;
 }
 
 function ApprovedPanel({ account }: { account: NonNullable<IbStatus['account']> }) {
@@ -195,10 +209,19 @@ function PendingPanel({
   );
 }
 
-function RejectedPanel({ reason, onReapply }: { reason: string | null; onReapply: () => void }) {
+function RejectedPanel({
+  reason,
+  onReapply,
+  inherited,
+}: {
+  reason: string | null;
+  onReapply: () => void;
+  /** Carried through to the form — a re-application inherits exactly as a first one does. */
+  inherited: IbStatus['inheritedAgency'];
+}) {
   const [reapplying, setReapplying] = React.useState(false);
 
-  if (reapplying) return <ApplyPanel onApplied={onReapply} />;
+  if (reapplying) return <ApplyPanel onApplied={onReapply} inherited={inherited} />;
 
   return (
     <div className="space-y-4">

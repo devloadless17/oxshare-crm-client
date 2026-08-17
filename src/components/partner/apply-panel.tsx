@@ -35,12 +35,35 @@ import { t } from '@/lib/i18n';
  * field blank. The API refuses that now, so an empty list means there is
  * nothing to apply for and the panel says so.
  */
-export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
+export function ApplyPanel({
+  onApplied,
+  inherited,
+}: {
+  onApplied: () => void;
+  /**
+   * The programme this applicant INHERITS, when the choice is not theirs.
+   *
+   * A client introduced by an existing partner sells beneath that partner and
+   * carries their programme — see `inheritedAgencyIdFor` on the API. Null means
+   * they choose, which is any client not introduced by a partner.
+   */
+  inherited: { id: string; name: string } | null;
+}) {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [agencyId, setAgencyId] = React.useState('');
 
-  const agencies = useResource(['partner', 'agencies'], (signal) => partnerApi.agencies(signal));
+  /*
+   * Not fetched at all when the programme is inherited.
+   *
+   * The list exists to be CHOSEN FROM, and there is no choice here — asking for
+   * it would spend a request on options that must not be offered, and a
+   * deployment whose agencies are all closed would then show "nothing to apply
+   * for" to somebody whose introducer's programme is waiting for them.
+   */
+  const agencies = useResource(['partner', 'agencies'], (signal) => partnerApi.agencies(signal), {
+    enabled: inherited === null,
+  });
 
   /*
    * A programme is now REQUIRED, not required-when-there-happens-to-be-one.
@@ -56,8 +79,13 @@ export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
    * operator's missing configuration, and naming it is more useful to the
    * client than a validation error about a field they were never shown.
    */
-  const options = agencies.data ?? [];
-  const noneOffered = agencies.status === 'ready' && options.length === 0;
+  const options = inherited ? [] : (agencies.data ?? []);
+  /*
+   * Never "nothing to apply for" when a programme is inherited: the catalogue
+   * is not consulted in that case, so an empty list means it was never asked
+   * for rather than that nothing is open.
+   */
+  const noneOffered = !inherited && agencies.status === 'ready' && options.length === 0;
 
   /*
    * ── The gate in front of the button ────────────────────────────────────────
@@ -94,9 +122,17 @@ export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
     setSubmitting(true);
     setError(null);
     try {
-      // Never the empty shape: the API refuses an application with no agency,
-      // and the button below cannot be reached without one selected.
-      await partnerApi.apply({ agencyId });
+      /*
+       * The inherited id is NOT sent, and that is deliberate rather than an
+       * omission: the API resolves it from the introducer and ignores whatever
+       * arrives in this field for such an applicant. Sending our copy would
+       * invite the two to disagree — a stale page proposing a programme the
+       * introducer has since moved off — and the API would silently win.
+       *
+       * When the choice IS the client's, the button cannot be reached without
+       * a selection, so this is never the empty shape.
+       */
+      await partnerApi.apply(inherited ? {} : { agencyId });
       /*
        * Refetch rather than assume the shape of success. The next render is
        * driven by what the server says — which is the difference between this
@@ -137,6 +173,27 @@ export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
             ),
           )}
         </ol>
+
+        {/*
+          INHERITED: a statement, not a control.
+
+          A client introduced by an existing partner sells beneath them and
+          carries their programme, so there is nothing to pick. Naming it is
+          the point — "a programme has been chosen for you" reads as an error
+          for something that is simply how a downline works, and a client who
+          is shown nothing at all is left wondering what they will be selling.
+        */}
+        {inherited && (
+          <div className="mt-8 space-y-3">
+            <h3 className="text-sm font-semibold">{t('partner.inheritedAgency')}</h3>
+            <div className="rounded-xl border border-border bg-muted/40 p-4">
+              <p className="text-sm font-semibold">{inherited.name}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {t('partner.inheritedAgencyHint')}
+              </p>
+            </div>
+          </div>
+        )}
 
         {options.length > 0 && (
           <div className="mt-8 space-y-3">
@@ -225,11 +282,16 @@ export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
             /*
              * Disabled until a programme is picked, and while the list is still
              * in flight — submitting in that window would send no agency, which
-             * the API refuses. `!agencyId` is now unconditional rather than
-             * gated on the list being non-empty: there is no valid application
-             * without one.
+             * the API refuses. `!agencyId` is unconditional rather than gated on
+             * the list being non-empty: there is no valid application without
+             * one.
+             *
+             * Neither clause applies when the programme is INHERITED. There is
+             * nothing to pick and nothing in flight — the list is never
+             * requested — so gating on either would leave the button dead for
+             * exactly the applicants who have the least to do.
              */
-            disabled={agencies.status === 'loading' || !agencyId}
+            disabled={!inherited && (agencies.status === 'loading' || !agencyId)}
             onClick={() => void submit()}
           >
             {submitting ? t('partner.submitting') : t('partner.submit')}
