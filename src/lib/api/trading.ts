@@ -218,6 +218,27 @@ export interface OpenedAccount {
   credentialsSentTo: string;
 }
 
+/**
+ * The outcome of a password reset. NO PASSWORDS, for the same reason
+ * `OpenedAccount` carries none — and one more that is specific to a reset.
+ *
+ * Whoever is asking has, by definition, lost control of a credential. Handing
+ * the replacement back to the browser that asked gives it to whoever is sitting
+ * at that browser, which is sometimes precisely the party the reset exists to
+ * shut out. The registered mailbox is the only channel already proven to belong
+ * to the account holder, so `credentialsSentTo` is all that comes back.
+ */
+export interface PasswordResetResult {
+  login: string;
+  credentialsSentTo: string;
+}
+
+/** The name MT5 now holds for the account, echoed back after a rename. */
+export interface RenameResult {
+  login: string;
+  name: string;
+}
+
 /** What the client gets to decide when opening an account. */
 export interface OpenAccountInput {
   environment: TradingEnvironment;
@@ -277,6 +298,33 @@ export const tradingApi = {
 
   async getAccounts(signal?: AbortSignal): Promise<TradingAccount[]> {
     const { data } = await apiClient.get<TradingAccount[]>('/trading/accounts', { signal });
+    return data;
+  },
+
+  /**
+   * Reset BOTH passwords on a trading account.
+   *
+   * The new passwords are NOT in the response and never will be — they go to
+   * the client's registered address, because the browser making this call is not
+   * necessarily theirs. What comes back is WHERE they were sent, which is what
+   * the screen should say instead of a bare "done".
+   *
+   * Not idempotent: every call invalidates the previous pair, so this must never
+   * be retried automatically. The API throttles it to five an hour.
+   */
+  async resetAccountPassword(id: string): Promise<PasswordResetResult> {
+    const { data } = await apiClient.post<PasswordResetResult>(`/trading/accounts/${id}/password`);
+    return data;
+  },
+
+  /**
+   * Rename a trading account.
+   *
+   * The name is the account HOLDER's as MT5 records it, so this changes what the
+   * client sees in their own terminal. Nothing is stored portal-side.
+   */
+  async renameAccount(id: string, name: string): Promise<RenameResult> {
+    const { data } = await apiClient.patch<RenameResult>(`/trading/accounts/${id}`, { name });
     return data;
   },
 

@@ -23,6 +23,7 @@ import {
 } from '@/components/money/transfer-states';
 import { TileGroups } from '@/components/money/tile-groups';
 import { useResource } from '@/hooks/use-resource';
+import { usePreselectedTransfer } from '@/hooks/use-preselected-transfer';
 import { newIdempotencyKey } from '@/lib/api/client';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { paymentsApi } from '@/lib/api/payments';
@@ -66,7 +67,25 @@ import { t } from '@/lib/i18n';
  * checks their platform, finds nothing, and files a support ticket about money
  * that is exactly where it should be.
  */
+/**
+ * The `<Suspense>` is required, not stylistic — same rule as `auth/login`.
+ * `usePreselectedTransfer` calls `useSearchParams()`, and Next fails
+ * `next build` on a page that does so outside a boundary. The tree is dynamic
+ * today only because `app/layout.tsx` reads `headers()` for the CSP nonce; this
+ * is what keeps the page building if the nonce ever moves.
+ *
+ * The fallback holds the LAYOUT and nothing else — `AsyncBoundary` renders the
+ * real loading state a tick later, and a spinner here would flash ahead of it.
+ */
 export default function TransferPage() {
+  return (
+    <React.Suspense fallback={<div className="flex min-h-0 w-full flex-1" />}>
+      <TransferPageContent />
+    </React.Suspense>
+  );
+}
+
+function TransferPageContent() {
   const accounts = useResource(['transferable-accounts'], (signal) =>
     tradingApi.getTransferableAccounts(signal),
   );
@@ -160,21 +179,14 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
   const idempotencyKey = React.useRef<string | null>(null);
 
   /*
-   * Every place money can come from, as one list.
-   *
-   * Wallets first: funding an account is the common direction, and a client who
-   * came here from "Fund account" is looking for their wallet. A wallet with
-   * nothing in it is still listed — "you have no money here" is a different
-   * statement from "this does not exist", and hiding it would leave somebody
-   * hunting for a currency they hold.
-   */
-  /*
    * Every source, RICHEST FIRST within its own kind.
    *
    * Wallets stay ahead of accounts — funding an account is the common direction,
    * and a client arriving from "Fund account" is looking for their wallet — but
    * within each group the largest balance leads, because that is the one most
-   * likely to cover what they came to move.
+   * likely to cover what they came to move. A wallet with nothing in it is still
+   * listed: "you have no money here" differs from "this does not exist", and
+   * hiding it would leave somebody hunting for a currency they hold.
    *
    * `compareMoney` — decimal.js — never `Number()`. These are decimal STRINGS;
    * the coercion is a lint error here and a text sort would put '9' above '100'.
@@ -208,6 +220,14 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
 
   /* Flat, only to resolve the selected key back to its source. */
   const sources = [...walletSources, ...accountSources];
+
+  /*
+  /*
+   * `/transfer?account=<id>` — opening on the account the client clicked
+   * "Transfer funds" from. See the hook for why it is an effect rather than a
+   * state seed, and why it applies only once.
+   */
+  usePreselectedTransfer(accounts, wallets, setSourceKey, setAccountId);
 
   const source = sources.find((s) => s.key === sourceKey)?.source;
 

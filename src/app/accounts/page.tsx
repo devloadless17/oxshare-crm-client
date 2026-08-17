@@ -286,6 +286,25 @@ function AccountCard({ account, tone }: { account: TradingAccount; tone: 'live' 
             )}
           </div>
 
+          {/*
+            The client's own name for the account, when they gave one.
+
+            Above the login rather than instead of it: the login is what every
+            statement, support ticket and MT5 terminal identifies this account
+            by, so it stays the prominent figure. The name is how the CLIENT
+            tells two of them apart, which only matters once they hold several —
+            exactly the case the open-account dialog offers it for.
+
+            Absent when unnamed, rather than falling back to the login here. A
+            caption repeating the number directly beneath it is noise, and it
+            would make "named 5001234" indistinguishable from unnamed.
+          */}
+          {account.name && (
+            <p className="mt-2 truncate text-sm font-semibold" title={account.name}>
+              {account.name}
+            </p>
+          )}
+
           <p className="mt-2 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
             {t('accounts.loginLabel')}
           </p>

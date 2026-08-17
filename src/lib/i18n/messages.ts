@@ -1484,6 +1484,49 @@ export const messages = {
    */
   'accounts.fundAccount': 'Transfer funds',
 
+  /*
+   * ── Account settings: the name, and the two passwords ────────────────────
+   *
+   * The reset copy carries three facts a client cannot recover on their own, so
+   * none of them is optional: BOTH passwords change (an investor password
+   * already shared with an analyst stops working), the new pair arrives by
+   * EMAIL and nowhere else, and open positions are untouched. A confirmation
+   * that said only "are you sure?" would leave every one of those to be found
+   * out afterwards.
+   */
+  'accounts.actionsLabel': 'Actions',
+  'accounts.renameAction': 'Change name',
+  'accounts.renameTitle': 'Change account name',
+  'accounts.nameLabel': 'Account name',
+  /*
+   * A SEPARATE key from `accounts.nameHint`, which belongs to the open-account
+   * form and says the name is optional and helps tell accounts apart. Here the
+   * name is neither optional nor cosmetic — it is written to MT5 — so reusing
+   * that string would describe the wrong thing on a control that changes the
+   * broker's own record. `accounts.namePlaceholder` IS shared: the example is
+   * as good in both places.
+   */
+  'accounts.nameMt5Hint': 'This is the name MetaTrader shows for this account.',
+  'accounts.nameSave': 'Save name',
+  'accounts.nameSaving': 'Saving…',
+  'accounts.nameSaved': 'Name updated.',
+  'accounts.nameFailed': 'Could not update the name.',
+  'accounts.passwordTitle': 'Trading passwords',
+  'accounts.passwordHint':
+    'Lost your password? We will issue a new master and investor password and email them to you.',
+  'accounts.passwordReset': 'Reset passwords',
+  'accounts.passwordResetting': 'Resetting…',
+  'accounts.passwordConfirmTitle': 'Reset both trading passwords?',
+  'accounts.passwordConfirmBody':
+    'Your master AND investor passwords will both be replaced. Anyone using your investor ' +
+    'password to watch this account will need the new one. Open positions and your balance ' +
+    'are not affected.',
+  'accounts.passwordConfirmCta': 'Yes, reset them',
+  'accounts.passwordCancel': 'Cancel',
+  'accounts.passwordSentTitle': 'New passwords sent',
+  'accounts.passwordSent': 'New passwords sent to {email}. They are not shown here.',
+  'accounts.passwordFailed': 'Could not reset the passwords.',
+
   // ── The money flows: shared steps and gateway payments ────────────────────
   'money.stepMethod': 'Method',
   'money.stepAmount': 'Amount',

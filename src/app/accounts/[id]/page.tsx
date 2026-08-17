@@ -14,6 +14,7 @@ import { AccountLivePanel } from '@/components/accounts/account-live-panel';
 import { AccountPositions } from '@/components/accounts/account-positions';
 import { AccountActivity } from '@/components/accounts/account-activity';
 import { AccountTransactions } from '@/components/accounts/account-transactions';
+import { AccountActions } from '@/components/accounts/account-actions';
 
 /**
  * ONE trading account: what it holds now, what it has done, and what moved.
@@ -177,10 +178,22 @@ function AccountDetail({ account }: { account: TradingAccount }) {
               </span>
             )}
           </div>
-          <h1 className="mt-2 font-mono text-2xl font-bold tracking-wide">
-            {account.login ?? t('accounts.loginPending')}
+          {/*
+            The client's NAME leads when there is one, with the login demoted to
+            the line below — and the login is never dropped, because it is what
+            every statement, support ticket and MT5 terminal identifies this
+            account by. Unnamed accounts keep the login as the heading, which is
+            exactly what this page showed before.
+          */}
+          <h1
+            className={`mt-2 text-2xl font-bold tracking-wide ${account.name ? '' : 'font-mono'}`}
+          >
+            {account.name ?? account.login ?? t('accounts.loginPending')}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
+            {account.name && account.login ? (
+              <span className="font-mono">{account.login} · </span>
+            ) : null}
             {account.currency}
             {account.leverage
               ? ` · ${t('accounts.leverageValue', { ratio: account.leverage })}`
@@ -211,16 +224,22 @@ function AccountDetail({ account }: { account: TradingAccount }) {
             the terminal download still has its own screen in the rail.
           */}
           {/*
-            Funding is offered on LIVE, ACTIVE accounts only — the same pair the
-            server's `/transferable` route narrows to, and the same rule the list
-            card follows. A transfer to a demo account would be a real-money loss
-            with no counterparty.
+            Funding, renaming and the password reset all live in ONE menu now,
+            rather than as a standalone "Fund account" button beside Refresh.
+
+            The three have nothing in common but their subject — one moves money,
+            one rewrites a label, one destroys credentials — and as separate
+            header buttons the destructive one sat exactly as close to the cursor
+            as the harmless one. `AccountActions` also owns which of them apply:
+            funding is still LIVE and ACTIVE only, matching the server's
+            `/transferable` route and the list card.
+
+            Only rendered once the account has an MT5 login. Every action inside
+            reaches the trading server, so on a half-provisioned row they would
+            each fail with "could not be found", which reads as a broken account
+            rather than one that is still being opened.
           */}
-          {isLive && account.status === 'active' && (
-            <Button asChild size="sm">
-              <Link href="/transfer">{t('accounts.fundAccount')}</Link>
-            </Button>
-          )}
+          {account.login && <AccountActions account={account} />}
         </div>
       </div>
 

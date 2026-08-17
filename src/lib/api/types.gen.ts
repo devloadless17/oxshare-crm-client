@@ -1475,13 +1475,59 @@ export interface paths {
         put?: never;
         /**
          * Open a trading account — live requires a verified identity, demo does not
-         * @description The MT5 group, leverage and currency are the broker's configuration, not the client's choice. Returns the master and investor passwords once; they are never stored.
+         * @description The MT5 group, leverage and currency are the broker's configuration, not the client's choice. Credentials are emailed to the client's registered address, never returned here.
          */
         post: operations["TradingController_openAccount"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/trading/accounts/{id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset a trading account's master and investor passwords
+         * @description Rotates BOTH passwords on MT5 and emails the new pair to the client’s registered address. They are never returned in the response — the browser asking is not necessarily the client’s. Not idempotent: each call invalidates the previous pair.
+         */
+        post: operations["TradingController_resetAccountPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/trading/accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One of the signed-in client's trading accounts
+         * @description 404 when the account does not exist OR belongs to somebody else — the two are the same answer on purpose, because distinguishing them tells a caller which ids are real.
+         *
+         *     `balance` here is the CRM-held figure, as on the list. For what MT5 holds right now, including equity and floating P/L, call `/trading/accounts/:id/live`.
+         */
+        get: operations["TradingController_myAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename a trading account
+         * @description Changes the account holder's name as MT5 records it, so it updates what the client sees in their terminal and on statements. Nothing is stored CRM-side.
+         */
+        patch: operations["TradingController_renameAccount"];
         trace?: never;
     };
     "/v1/trading/accounts/self-service": {
@@ -1540,28 +1586,6 @@ export interface paths {
          *     Prices and volumes are decimal STRINGS (§6.1). `profit` is the REALISED result and is null while a position is open — floating P/L is deliberately absent, because it changes on every tick and a stored copy is stale the moment it is written.
          */
         get: operations["TradingController_myPositions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/trading/accounts/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * One of the signed-in client's trading accounts
-         * @description 404 when the account does not exist OR belongs to somebody else — the two are the same answer on purpose, because distinguishing them tells a caller which ids are real.
-         *
-         *     `balance` here is the CRM-held figure, as on the list. For what MT5 holds right now, including equity and floating P/L, call `/trading/accounts/:id/live`.
-         */
-        get: operations["TradingController_myAccount"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4563,10 +4587,19 @@ export interface components {
              */
             startingBalance?: string;
         };
+        RenameOwnAccountDto: {
+            /**
+             * @description The account holder's name as MT5 will show it.
+             * @example Swing trading
+             */
+            name: string;
+        };
         TradingAccountDto: {
             id: string;
             /** @description The MT5 login, once there is an MT5 to issue one. Null until a bridge assigns it — a string rather than a number because leading zeros are significant. */
             login: string | null;
+            /** @description What the client calls this account. NULL means unnamed — the portal falls back to the login rather than inventing a name, so an account somebody named "5001234" stays distinguishable from one nobody named at all. */
+            name: string | null;
             mt5Group: string | null;
             /** @enum {string} */
             environment: "live" | "demo";
@@ -8354,6 +8387,69 @@ export interface operations {
             };
         };
     };
+    TradingController_resetAccountPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TradingController_myAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradingAccountDto"];
+                };
+            };
+        };
+    };
+    TradingController_renameAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameOwnAccountDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     TradingController_selfService: {
         parameters: {
             query?: never;
@@ -8408,27 +8504,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PositionDto"][];
-                };
-            };
-        };
-    };
-    TradingController_myAccount: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradingAccountDto"];
                 };
             };
         };
