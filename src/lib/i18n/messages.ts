@@ -380,10 +380,16 @@ export const messages = {
   // for a transfer goes looking for a payment they never made.
   'transactions.transferIn': 'Transfer in',
   'transactions.transferOut': 'Transfer out',
+  // A partner moving earnings into their spending wallet. NOT "Transfer in":
+  // that names a wallet ⇄ trading-account move, and one label for both would
+  // tell a partner their commission went to a trading account. Never has an
+  // "out" twin — the commission wallet's matching debit is not a row here.
+  'transactions.commissionTransfer': 'Commission transfer',
   // What a transfer moved through, where a deposit would name its payment
   // method. More useful than an em dash — it names the other end of the
   // movement, which is the question the column asks.
   'transactions.tradingAccountMethod': 'Trading account',
+  'transactions.commissionMethod': 'Commission wallet',
   'transactions.statePending': 'Pending review',
   // A TRANSFER's pending state. "Pending review" is accurate for a withdrawal —
   // an operator really does review it — and wrong for a wallet ⇄ account
@@ -1307,6 +1313,34 @@ export const messages = {
   'partner.referralLinkLabel': 'Your referral link',
   'partner.copy': 'Copy',
   'partner.copied': 'Copied',
+  // ── The commission wallet ─────────────────────────────────────────────────
+  // A partner's earnings sit in their own wallet and reach the spending wallet
+  // through one transfer. The wording carries the same rule the wallet screen
+  // does: no wallet is NOT a zero balance.
+  'partner.commissionHeading': 'Commission earnings',
+  // The "never credited" state. Says what has not happened and what will make it
+  // happen — never "$0.00", which claims a wallet that does not exist.
+  'partner.commissionEmpty': 'No commission credited yet',
+  'partner.commissionEmptyBody':
+    'Your commission wallet opens the first time a commission is confirmed. Earnings are held ' +
+    'here, separately from your deposits, until you move them across.',
+  'partner.commissionNote':
+    'Commission is held separately from your main balance so you can always tell what you have ' +
+    'earned from what you have deposited. Move it to your main wallet to withdraw it or fund a ' +
+    'trading account.',
+  'partner.commissionTransfer': 'Move to wallet',
+  'partner.commissionTransferTitle': 'Move commission to your wallet',
+  'partner.commissionTransferBody':
+    'The amount moves to your main {currency} wallet immediately, where you can withdraw it or ' +
+    'transfer it to a trading account. This does not change your lifetime earnings.',
+  'partner.commissionAmountLabel': 'Amount ({currency})',
+  'partner.commissionAvailable': '{amount} available',
+  'partner.commissionTransferAll': 'Transfer all',
+  'partner.commissionOverBalance': 'That is more than your commission balance.',
+  'partner.commissionCancel': 'Cancel',
+  'partner.commissionTransferConfirm': 'Transfer',
+  'partner.commissionTransferring': 'Transferring…',
+  'partner.commissionTransferFailed': 'Could not move your commission. Please try again.',
   'partner.copyFailed': 'Could not copy. Select the link and copy it manually.',
   'partner.suspendedNotice':
     'Your partner account is currently suspended. Your referral link still works, but you are not earning. Contact support for details.',

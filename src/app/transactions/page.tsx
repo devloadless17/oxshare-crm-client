@@ -23,6 +23,7 @@ import {
 } from '@/lib/api/payments';
 import { SignedAmount } from '@/components/money/signed-amount';
 import { t, type MessageKey } from '@/lib/i18n';
+import { movementLabelKey } from '@/lib/movement-label';
 
 /**
  * The client's own transaction history — CORE-13's state machine, client side.
@@ -167,18 +168,12 @@ export default function TransactionsPage() {
        *
        * `kind` is the field to branch on. Not "the method is empty", which is
        * also true of a manual admin credit.
+       *
+       * The branch itself lives in `lib/movement-label.ts` — this screen, /wallet
+       * and the dashboard all render the same names, and they carried three
+       * copies of it until a fourth kind arrived.
        */
-      cell: (tx) => (
-        <span className="font-medium">
-          {tx.kind === 'transfer'
-            ? tx.direction === 'deposit'
-              ? t('transactions.transferIn')
-              : t('transactions.transferOut')
-            : tx.direction === 'deposit'
-              ? t('transactions.deposit')
-              : t('transactions.withdrawal')}
-        </span>
-      ),
+      cell: (tx) => <span className="font-medium">{t(movementLabelKey(tx))}</span>,
     },
     {
       header: t('transactions.colAmount'),
@@ -426,6 +421,12 @@ function MethodCell({ tx }: { tx: Transaction }) {
    */
   if (tx.kind === 'transfer') {
     return <span className="text-muted-foreground">{t('transactions.tradingAccountMethod')}</span>;
+  }
+
+  /* The other end of a commission transfer is the partner's own commission
+     wallet — the same question this column answers for a trading transfer. */
+  if (tx.kind === 'commission_transfer') {
+    return <span className="text-muted-foreground">{t('transactions.commissionMethod')}</span>;
   }
 
   if (tx.methodName) return <span>{tx.methodName}</span>;

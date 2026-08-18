@@ -27,6 +27,7 @@ import { dashboardApi, type Dashboard } from '@/lib/api/trading';
 import { formatMoney } from '@/lib/money';
 import { SignedAmount } from '@/components/money/signed-amount';
 import { t, type MessageKey } from '@/lib/i18n';
+import { movementLabelKey } from '@/lib/movement-label';
 
 /**
  * The client's landing page, rendered from one request.
@@ -243,15 +244,7 @@ function TransactionRow({ tx }: { tx: Dashboard['recentTransactions'][number] })
           they never made. The arrow and colour above stay driven by direction,
           which is the part that IS the same question.
         */}
-        <p className="truncate text-sm font-medium">
-          {tx.kind === 'transfer'
-            ? isDeposit
-              ? t('transactions.transferIn')
-              : t('transactions.transferOut')
-            : isDeposit
-              ? t('transactions.deposit')
-              : t('transactions.withdrawal')}
-        </p>
+        <p className="truncate text-sm font-medium">{t(movementLabelKey(tx))}</p>
         <p className="text-[11px] text-muted-foreground">
           {new Date(tx.createdAt).toLocaleString()}
         </p>

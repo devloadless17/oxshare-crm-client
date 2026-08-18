@@ -918,6 +918,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ib/wallet/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The last few commission transfers, newest first
+         * @description A short list to sit beside the balance it explains. The FULL history is in `GET /payments/transactions`, which carries these rows alongside every other movement — a partner's own money should not be split across two histories that have to be reconciled against each other.
+         */
+        get: operations["IbController_myWalletTransfers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ib/wallet/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move commission earnings into the main wallet
+         * @description Same currency, same owner, both legs in one transaction — it commits whole or does not happen. There is no pending state to poll: unlike a wallet ⇄ trading-account transfer, nothing here crosses into a server this platform does not own.
+         *
+         *     Refuses a suspended partner, an amount above the available commission balance, and a currency the partner holds no commission wallet in — each with its own message, because "you have nothing to move" and "you have no such wallet" send a partner to different places.
+         *
+         *     Both legs are written to the ledger as `transfer`, NOT `commission`, so lifetime earnings are unchanged by moving money that was already earned.
+         */
+        post: operations["IbController_transferCommission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ib/apply": {
         parameters: {
             query?: never;
@@ -4079,6 +4123,37 @@ export interface components {
             /** @description FALSE means no commission engine has run — the totals are true but structurally zero, and must be labelled as such rather than shown as a computed result. See the DTO note. */
             engineLive: boolean;
         };
+        WalletDto: {
+            id: string;
+            userId: string;
+            /**
+             * @description A currency CODE from `GET /currencies`, not a fixed set — currencies are operator data.
+             * @example USD
+             */
+            currency: string;
+            /**
+             * @description `GET /wallet` returns `main` only — a commission wallet is a partner's earnings and appears solely on GET /ib/overview. It cannot be deposited to, withdrawn from, or moved to a trading account; POST /ib/wallet/transfer moves it into the main wallet first.
+             * @enum {string}
+             */
+            kind: "main" | "commission";
+            /**
+             * @description Decimal string (§6.1).
+             * @example 700.00000000
+             */
+            balance: string;
+            /**
+             * @description Reserved against pending withdrawals.
+             * @example 0.00000000
+             */
+            onHold: string;
+            /**
+             * @description balance − onHold, computed server-side so both sides agree.
+             * @example 700.00000000
+             */
+            available: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
         IbReferredClientDto: {
             userId: string;
             /** @description The client's display name. Their EMAIL is deliberately absent — a partner is owed attribution, not their referrals' contact details. */
@@ -4104,6 +4179,7 @@ export interface components {
         IbOverviewDto: {
             level: components["schemas"]["IbLevelSummaryDto"] | null;
             earnings: components["schemas"]["IbEarningsDto"];
+            commissionWallets: components["schemas"]["WalletDto"][];
             /** @description Newest first. The whole list — a partner may read every client they introduced. */
             referredClients: components["schemas"]["IbReferredClientDto"][];
             /** @description Partners directly beneath this one. */
@@ -4168,6 +4244,38 @@ export interface components {
              *     ]
              */
             products: string[];
+        };
+        IbWalletTransferResultDto: {
+            /** @description The `ib_wallet_transfers` row — its id in /transactions too. */
+            id: string;
+            /**
+             * @description Always positive.
+             * @example 250.00000000
+             */
+            amount: string;
+            /** @example USD */
+            currency: string;
+            /**
+             * @description The commission wallet AFTER this transfer. Absent on history rows — see the DTO.
+             * @example 50.00000000
+             */
+            commissionBalance?: string;
+            /**
+             * @description The main wallet AFTER this transfer. Absent on history rows — see the DTO.
+             * @example 950.00000000
+             */
+            mainBalance?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        IbWalletTransferDto: {
+            /** @example 250.00000000 */
+            amount: string;
+            /**
+             * @description WHICH commission wallet to draw from. The money lands in the main wallet of the SAME currency — there is no FX rate source in this system, so a cross-currency move is not something this endpoint can offer.
+             * @example USD
+             */
+            currency: string;
         };
         CreateIbApplicationDto: {
             /**
@@ -4441,7 +4549,7 @@ export interface components {
              * @description Branch on this, never on the absence of a payment field.
              * @enum {string}
              */
-            kind: "payment" | "transfer";
+            kind: "payment" | "transfer" | "commission_transfer";
             tradingAccountId?: string | null;
         };
         TransactionPageDto: {
@@ -4517,32 +4625,6 @@ export interface components {
              * @example /v1/uploads/payment-logos/8f2c….png
              */
             logoUrl: string;
-        };
-        WalletDto: {
-            id: string;
-            userId: string;
-            /**
-             * @description A currency CODE from `GET /currencies`, not a fixed set — currencies are operator data.
-             * @example USD
-             */
-            currency: string;
-            /**
-             * @description Decimal string (§6.1).
-             * @example 700.00000000
-             */
-            balance: string;
-            /**
-             * @description Reserved against pending withdrawals.
-             * @example 0.00000000
-             */
-            onHold: string;
-            /**
-             * @description balance − onHold, computed server-side so both sides agree.
-             * @example 700.00000000
-             */
-            available: string;
-            /** Format: date-time */
-            createdAt: string;
         };
         LedgerEntryDto: {
             id: string;
@@ -6188,6 +6270,11 @@ export interface components {
             onHold: string;
             /** @example USD */
             currency: string;
+            /**
+             * @description `main` is the client's own money — deposits, withdrawals, trading transfers. `commission` holds a partner's earnings until they move them across; it is invisible to GET /wallet and reachable only through POST /ib/wallet/transfer.
+             * @enum {string}
+             */
+            kind: "main" | "commission";
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -7614,6 +7701,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicAgencyDto"][];
+                };
+            };
+        };
+    };
+    IbController_myWalletTransfers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbWalletTransferResultDto"][];
+                };
+            };
+        };
+    };
+    IbController_transferCommission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IbWalletTransferDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IbWalletTransferResultDto"];
                 };
             };
         };

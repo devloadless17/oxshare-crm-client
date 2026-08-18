@@ -199,6 +199,44 @@ those two is inventing them.
 anything, and there is no FX source in this system. It reports the largest single holding with its
 own currency label.
 
+### A partner's commission lives in its OWN wallet, and `/wallet` cannot see it
+
+`wallets.kind` is `main` or `commission` (backend migration 0077). Commission credits land in the
+`commission` wallet; `GET /wallet` returns **`main` only**, and that exclusion is SERVER-SIDE
+rather than a filter this app applies.
+
+That matters because `/wallet`, `/deposit` and `/withdraw` all read that one endpoint. A filter in
+one of them would leave the other two to remember the rule; making it the shape of the response
+means a new money screen inherits it without knowing it exists. `/dashboard` is covered by the
+same call, so `largestBalance` cannot accidentally report a commission balance.
+
+The commission wallet appears in exactly one place: `GET /ib/overview` → `commissionWallets`,
+rendered by `components/partner/commission-wallet.tsx` on the partner screen. It is on the OVERVIEW
+response rather than an endpoint of its own for the reason that response exists at all — the
+balance is read beside the lifetime-earnings total, and two requests can straddle the hourly
+confirm loop, leaving a balance the figure above it does not explain.
+
+**The only exit is `POST /ib/wallet/transfer`** — same currency, into the main wallet, where
+withdraw and trading-account transfer already work unchanged. There is no pending state to poll:
+both legs commit in one database transaction, so a 200 IS the money having moved. Cross-currency is
+not offered because there is no FX source (the same constraint behind `largestBalance` above).
+
+**Both legs are written to the ledger as `transfer`, never `commission`** — that is what keeps
+lifetime earnings unchanged when a partner moves money they have already earned. Typing the debit
+as `commission` balances perfectly and is wrong only in the figure the partner opens the screen to
+read: their earnings would fall by the amount they moved, which reads as a clawback.
+`test/ib-commission-wallet.spec.ts` pins it, because nothing else would catch it.
+
+Historical commission credited BEFORE this change is still in the main wallet and is NOT migrated —
+it is settled money the partner may have spent. So `earningsFor` deliberately spans BOTH kinds;
+narrowing it to the commission wallet would drop every existing partner's lifetime total to zero.
+
+The movement shows in `/transactions` as `kind: 'commission_transfer'`, always `direction:
+'deposit'` (stated from the main wallet's side — the commission wallet's matching debit is not a
+second row, because a client cannot see that wallet). `kind` is an OPEN set: branch through
+`lib/movement-label.ts`, which three screens share, and which falls back to the direction for a
+kind this build has not heard of.
+
 ### `earnings.engineLive` is the field that matters most on the partner screen
 
 The commission engine now EXISTS (backend `modules/ib/commission*`): a client deposit accrues to

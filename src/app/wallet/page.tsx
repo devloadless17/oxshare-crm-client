@@ -15,6 +15,7 @@ import { currenciesApi } from '@/lib/api/currencies';
 import { paymentsApi, type Transaction } from '@/lib/api/payments';
 import { SignedAmount } from '@/components/money/signed-amount';
 import { t, type MessageKey } from '@/lib/i18n';
+import { movementLabelKey } from '@/lib/movement-label';
 
 /**
  * The client's balances, and the three things they can do with them.
@@ -312,15 +313,7 @@ function ActivityRow({ tx }: { tx: Transaction }) {
           Printing "Deposit" for it sends a client looking for a payment they
           never made.
         */}
-        <p className="truncate text-sm font-medium">
-          {tx.kind === 'transfer'
-            ? isDeposit
-              ? t('transactions.transferIn')
-              : t('transactions.transferOut')
-            : isDeposit
-              ? t('transactions.deposit')
-              : t('transactions.withdrawal')}
-        </p>
+        <p className="truncate text-sm font-medium">{t(movementLabelKey(tx))}</p>
         <p className="text-[11px] text-muted-foreground">
           {new Date(tx.createdAt).toLocaleString()}
         </p>

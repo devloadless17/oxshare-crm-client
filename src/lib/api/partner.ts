@@ -47,6 +47,26 @@ export type IbClientPosition = components['schemas']['IbClientPositionDto'];
 /** An agency (وكالة) a client may apply to be appointed under. */
 export type Agency = components['schemas']['PublicAgencyDto'];
 
+/**
+ * One completed commission transfer — earnings moved into the main wallet.
+ *
+ * `commissionBalance` and `mainBalance` are OPTIONAL on the type because the
+ * history endpoint cannot honestly fill them: they are the balances as they
+ * stood at that moment, and restating today's figures beside a three-week-old
+ * amount invites the reader to treat one row as current. They are present on
+ * the response to the transfer that produced them, which is the only moment
+ * they are true.
+ */
+export type IbWalletTransfer = components['schemas']['IbWalletTransferResultDto'];
+
+export interface TransferCommissionInput {
+  /** A decimal STRING (§6.1) — never a number, at any point on this path. */
+  amount: string;
+  /** WHICH commission wallet. The money lands in the main wallet of the same
+   *  currency; there is no FX source, so there is no other destination. */
+  currency: string;
+}
+
 export interface ApplyToPartnerInput {
   /**
    * Which agency is being applied for.
@@ -123,6 +143,31 @@ export const partnerApi = {
 
   async apply(input: ApplyToPartnerInput): Promise<IbApplication> {
     const { data } = await apiClient.post<IbApplication>('/ib/apply', input);
+    return data;
+  },
+
+  /**
+   * Move commission earnings into the main wallet.
+   *
+   * ## There is no polling to do afterwards
+   *
+   * Both legs commit in one database transaction, so a 200 IS the money having
+   * moved — unlike a wallet ⇄ trading-account transfer, which is pending until
+   * the trading server confirms it. The response carries both resulting
+   * balances, read inside that same transaction.
+   *
+   * The caller should still invalidate `['ib-overview']` and `['wallets']`:
+   * the balances come back here, but the transaction lists on other screens do
+   * not, and a partner who switches to /transactions expects to see it.
+   */
+  async transferCommission(input: TransferCommissionInput): Promise<IbWalletTransfer> {
+    const { data } = await apiClient.post<IbWalletTransfer>('/ib/wallet/transfer', input);
+    return data;
+  },
+
+  /** The last few commission transfers. The FULL history is /transactions. */
+  async walletTransfers(signal?: AbortSignal): Promise<IbWalletTransfer[]> {
+    const { data } = await apiClient.get<IbWalletTransfer[]>('/ib/wallet/transfers', { signal });
     return data;
   },
 };
