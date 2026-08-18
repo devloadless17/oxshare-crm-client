@@ -49,7 +49,7 @@ type KycStatusDto = components['schemas']['KycStatusDto'];
  * ## Why this is not the browser's base URL
  *
  * Client code calls `/api/kyc/status` and `next.config.ts` rewrites it to
- * `${API_ORIGIN}/v1/kyc/status`. A rewrite only applies to requests the browser
+ * `${API_BASE_URL}/v1/kyc/status`. A rewrite only applies to requests the browser
  * makes, so a Server Component reaching the API directly gets none of it — and
  * calling `/kyc/status` without the version produced exactly one symptom:
  *
@@ -67,18 +67,18 @@ type KycStatusDto = components['schemas']['KycStatusDto'];
  * client code uses, which is still `/api` and still knows nothing.
  *
  * This is the rewrite's DESTINATION, expressed once more because a server
- * fetch cannot go through the rewrite itself. It reads the same `API_ORIGIN`
+ * fetch cannot go through the rewrite itself. It reads the same `API_BASE_URL`
  * and appends the same prefix, so the two move together.
  */
 const API_VERSION_PREFIX = 'v1';
 
 function apiBaseUrl(): string {
   /*
-   * `API_ORIGIN` first, because that is what the rewrite uses and what a deploy
+   * `API_BASE_URL` first, because that is what the rewrite uses and what a deploy
    * sets for server-to-server traffic — it may be an internal address the
    * browser could not reach. `NEXT_PUBLIC_API_BASE_URL` is the fallback.
    */
-  const origin = process.env.API_ORIGIN?.trim() || process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  const origin = process.env.API_BASE_URL?.trim() || process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
 
   if (origin) return `${origin.replace(/\/+$/, '')}/${API_VERSION_PREFIX}`;
 
@@ -87,7 +87,7 @@ function apiBaseUrl(): string {
   if (process.env.NODE_ENV !== 'production') {
     return `http://localhost:3001/${API_VERSION_PREFIX}`;
   }
-  throw new Error('API_ORIGIN or NEXT_PUBLIC_API_BASE_URL is required in production.');
+  throw new Error('API_BASE_URL or NEXT_PUBLIC_API_BASE_URL is required in production.');
 }
 
 export async function fetchKycStatus(): Promise<KycStatusDto['status'] | null> {
