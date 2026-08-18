@@ -215,9 +215,15 @@ function TransferAction({ wallet, named }: { wallet: Wallet; named: boolean }) {
         moved their balance yesterday would come back to a card with nothing on
         it and no explanation.
       */}
+      {/*
+        The DEFAULT (filled) variant, unlike /wallet's three outline actions.
+        That screen deliberately promotes none of them, because a client arriving
+        at their wallet is as likely to be withdrawing as topping up. Here there
+        is exactly one thing to do with this balance, and a filled button says so
+        rather than leaving the reader to find it among equals.
+      */}
       <Button
         type="button"
-        variant="outline"
         size="sm"
         disabled={empty}
         onClick={openTransfer}
