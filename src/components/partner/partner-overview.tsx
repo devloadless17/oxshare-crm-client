@@ -5,7 +5,6 @@ import { Info, TrendingUp, Users, Network, Award } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
-import { CommissionWallet } from '@/components/partner/commission-wallet';
 import { partnerApi, type IbOverview } from '@/lib/api/partner';
 import { formatDecimal, formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
@@ -40,13 +39,13 @@ import { t } from '@/lib/i18n';
  * per-partner, so a brand-new partner on a fully working platform would be told
  * the calculation is not running.
  *
- * ## The commission WALLET is here, and it is the only place it appears
+ * ## The commission BALANCE is not here - it is the card at the top of /partner
  *
- * A partner's earnings are credited to a wallet of their own — `wallets.kind =
- * 'commission'` — which `GET /wallet` deliberately excludes. So /wallet,
- * /deposit and /withdraw cannot show it or offer it as a source, and moving the
- * money into the main wallet through `POST /ib/wallet/transfer` is what makes
- * every one of those rails work on it, unchanged.
+ * `commissionWallets` rides on this same `GET /ib/overview` response, but it is
+ * rendered above the tabs by the panel on /partner rather than in this tab.
+ * That is a LAYOUT decision and it costs the figures nothing: both read the one
+ * cached response under the `ib-overview` query key, so the card and the totals
+ * below can never come from two different instants.
  *
  * The BALANCE and the lifetime TOTAL are different figures and both are here:
  * the total is what has ever been earned and does not move when money is
@@ -77,14 +76,7 @@ export function PartnerOverview() {
 }
 
 function DashboardBody({ data }: { data: IbOverview }) {
-  const {
-    earnings,
-    commissionWallets,
-    level,
-    referredClients,
-    subPartners,
-    verifiedReferredCount,
-  } = data;
+  const { earnings, level, referredClients, subPartners, verifiedReferredCount } = data;
 
   return (
     <div className="space-y-6">
@@ -136,21 +128,6 @@ function DashboardBody({ data }: { data: IbOverview }) {
           <span>{t('partner.earningsNotLive')}</span>
         </p>
       )}
-
-      {/*
-        The commission WALLET, directly beneath the totals it belongs to.
-
-        Here rather than in its own tab because a partner reads "what have I
-        earned" and "what can I move" as one question — and both figures come
-        from the same `GET /ib/overview` response, so they cannot disagree by
-        being fetched a second apart.
-
-        It carries `commissionWallets` from that response rather than fetching
-        its own: the hourly confirm loop can credit a commission between two
-        requests, which would leave this balance unexplained by the earnings
-        figure printed directly above it.
-      */}
-      <CommissionWallet wallets={commissionWallets} />
 
       {/* `items-stretch` is what actually equalises the two cards — without it
           each is only as tall as its own content and the row looks ragged. */}

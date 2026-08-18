@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { WalletCard } from '@/components/wallet/wallet-card';
+import { WalletCarousel, type CarouselEntry } from '@/components/wallet/wallet-carousel';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi } from '@/lib/api/partner';
 import type { Wallet } from '@/lib/api/wallet';
@@ -21,9 +23,17 @@ import { compareMoney, formatMoney, isZeroMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
 
 /**
- * Where a partner's earnings sit, and the one control that moves them.
+ * A partner's earnings, as a CARD, and the one control that moves them.
  *
- * ## Why this is on /partner and nowhere else
+ * ## The same card component as /wallet, deliberately
+ *
+ * `WalletCard` is reused rather than restyled here. A commission balance IS a
+ * wallet — same shape, same rules, same em-dash-not-zero behaviour — and drawing
+ * it as a different kind of object would suggest it is a different kind of
+ * money. What distinguishes it is the LABEL on the card face, which reads
+ * "commission" where an ordinary card reads the currency's name.
+ *
+ * ## Why it is on /partner and nowhere else
  *
  * A commission wallet is deliberately absent from `GET /wallet`, so it cannot
  * appear on /wallet, /deposit or /withdraw — those screens read that endpoint
@@ -33,25 +43,23 @@ import { t } from '@/lib/i18n';
  *
  * What the partner does instead is move the money across, once, with the button
  * below. After that it is ordinary wallet money and every existing rail —
- * withdraw, transfer to a trading account — works on it unchanged. That is the
- * whole trade: one extra step, in exchange for not teaching three money screens
- * to ask which wallet they are acting on.
+ * withdraw, transfer to a trading account — works on it unchanged.
  *
  * ## NO WALLET IS NOT A ZERO, again
  *
  * The rule /wallet turns on, and it applies here for the same reason. A partner
  * with no commission wallet has never been credited — the wallet is opened by
  * the first confirmed accrual — which is a different sentence from "you have
- * earned nothing and spent it". An empty list renders as a statement, never as
- * `$0.00`.
+ * earned nothing and spent it". That state renders a flat placeholder at card
+ * size with a sentence, never `$0.00`.
  *
  * A wallet that EXISTS and holds zero is a third state and reads differently
  * again: they have been paid and have already moved it. That one does show a
  * zero, because it is a true balance rather than a missing one.
  */
-export function CommissionWallet({ wallets }: { wallets: Wallet[] }) {
+export function CommissionWallet({ wallets, holder }: { wallets: Wallet[]; holder?: string }) {
   /*
-   * Largest first, so the balance most worth acting on leads.
+   * Largest first, so the balance most worth acting on leads the carousel.
    *
    * `compareMoney`, never `Number(a) - Number(b)` — that loses precision before
    * comparing — and never `localeCompare`, which sorts '9.00' above '100.00'.
@@ -62,38 +70,72 @@ export function CommissionWallet({ wallets }: { wallets: Wallet[] }) {
     [wallets],
   );
 
+  const byCurrency = React.useMemo(
+    () => new Map(sorted.map((wallet) => [wallet.currency, wallet])),
+    [sorted],
+  );
+
+  /*
+   * The card face reads "COMMISSION" where an ordinary wallet card reads the
+   * currency's NAME ("US Dollar"). That is the one thing a partner needs to know
+   * at a glance about this card, and the currency code is already printed
+   * beneath it in bold — so spending the label on the currency too would say the
+   * same thing twice and leave the distinguishing fact unsaid.
+   */
+  const entries: CarouselEntry[] = sorted.map((wallet) => ({
+    code: wallet.currency,
+    label: t('partner.commissionCardLabel'),
+  }));
+
+  const only = sorted.length === 1 ? sorted[0] : undefined;
+
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-link">
-            <Coins className="h-3.5 w-3.5" aria-hidden="true" />
-          </span>
-          <h2 className="text-sm font-bold tracking-tight">{t('partner.commissionHeading')}</h2>
-        </div>
+    <section className="space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-link">
+          <Coins className="h-3.5 w-3.5" aria-hidden="true" />
+        </span>
+        <h2 className="text-sm font-bold tracking-tight">{t('partner.commissionHeading')}</h2>
       </div>
 
       {sorted.length === 0 ? (
-        /*
-         * The "never credited" state. It says what has not happened yet and what
-         * will make it happen — not "you have $0.00", which claims a wallet that
-         * does not exist and a history that has not occurred.
-         */
-        <div className="p-8 text-center">
-          <p className="text-sm font-semibold">{t('partner.commissionEmpty')}</p>
-          <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
-            {t('partner.commissionEmptyBody')}
-          </p>
+        <EmptyCommissionCard />
+      ) : only ? (
+        /* ONE wallet renders the card ALONE — no track, no arrows, no dots.
+           The carousel hides its controls for a single entry anyway, but it
+           still wraps the card in a scroll container with snap points, which is
+           machinery around something that cannot move. */
+        <div className="w-full max-w-md">
+          <WalletCard
+            label={t('partner.commissionCardLabel')}
+            currency={only.currency}
+            wallet={only}
+            holder={holder}
+          />
         </div>
       ) : (
-        <ul className="divide-y divide-border">
-          {sorted.map((wallet) => (
-            <CommissionRow key={wallet.id} wallet={wallet} />
-          ))}
-        </ul>
+        <WalletCarousel entries={entries} byCurrency={byCurrency} holder={holder} />
       )}
 
-      <p className="flex items-start gap-2 border-t border-border bg-muted/30 px-5 py-3 text-[11px] leading-relaxed text-muted-foreground">
+      {/*
+        The action sits BENEATH the card, matching /wallet — on the card it would
+        compete with the balance, which is the one thing the card exists to show.
+
+        One button PER CURRENCY when there are several, rather than one button
+        acting on "the card you can currently see". A carousel's visible slide is
+        not something the reader can be certain of after a swipe lands
+        mid-animation, and a money control must not be ambiguous about which
+        balance it moves. Named buttons cost a line and remove the question.
+      */}
+      {sorted.length > 0 && (
+        <div className="flex max-w-md flex-wrap gap-2">
+          {sorted.map((wallet) => (
+            <TransferAction key={wallet.id} wallet={wallet} named={sorted.length > 1} />
+          ))}
+        </div>
+      )}
+
+      <p className="flex max-w-md items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-link" aria-hidden="true" />
         <span>{t('partner.commissionNote')}</span>
       </p>
@@ -101,71 +143,27 @@ export function CommissionWallet({ wallets }: { wallets: Wallet[] }) {
   );
 }
 
-function CommissionRow({ wallet }: { wallet: Wallet }) {
-  const [open, setOpen] = React.useState(false);
-  /*
-   * The dialog's fields live HERE, not inside it, so they can be reset by the
-   * handler that opens it.
-   *
-   * Resetting in an effect keyed on `open` is the obvious alternative and is a
-   * lint error in this repo (`react-hooks/set-state-in-effect`) — rightly: it
-   * sets state during render-commit to correct state that was never right,
-   * where the open handler already knows the dialog is about to appear. Same
-   * shape as `openRename` in components/accounts/account-actions.tsx.
-   *
-   * It has to be a reset rather than nothing at all: re-opening after a transfer
-   * would otherwise show the amount just sent, one click from sending it again,
-   * on a control whose whole job is moving money.
-   */
-  const [amount, setAmount] = React.useState('');
-  const [error, setError] = React.useState<string | null>(null);
-  const empty = isZeroMoney(wallet.available);
-
-  const openTransfer = () => {
-    setAmount('');
-    setError(null);
-    setOpen(true);
-  };
-
+/**
+ * The never-credited state, drawn at CARD SIZE.
+ *
+ * Same footprint as a real card so the column does not resize the moment a
+ * partner is first paid, and flat and muted so it never reads as a funded card
+ * at a glance — the same treatment `WalletCard` gives an unopened wallet, and
+ * for the same reason.
+ *
+ * It says what has not happened yet and what will make it happen. It does NOT
+ * say `$0.00`: there is no wallet, and a zero would claim a balance that had
+ * been earned and spent.
+ */
+function EmptyCommissionCard() {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
-      <div className="min-w-0">
-        <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-          {wallet.currency}
-        </p>
-        {/* `available`, not `balance` — the figure a partner reads as "what I
-            have" is the one they can actually move. They are equal today (no
-            path places a hold on a commission wallet) and reading the same
-            field every other money screen reads is what keeps that true. */}
-        <p className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums">
-          {formatMoney(wallet.available, wallet.currency)}
-        </p>
-      </div>
-
-      {/*
-        Disabled on an empty wallet rather than hidden. The control disappearing
-        is indistinguishable from the feature not existing, and a partner who
-        moved their balance yesterday would come back to a card with nothing on
-        it and no explanation.
-      */}
-      <Button type="button" variant="outline" size="sm" disabled={empty} onClick={openTransfer}>
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        {t('partner.commissionTransfer')}
-      </Button>
-
-      {/* Kept MOUNTED while closed rather than rendered conditionally: the
-          dialog animates on close, and unmounting it the instant `open` flips
-          would cut that animation off mid-way. */}
-      <TransferDialog
-        wallet={wallet}
-        open={open}
-        onOpenChange={setOpen}
-        amount={amount}
-        onAmountChange={setAmount}
-        error={error}
-        onError={setError}
-      />
-    </li>
+    <div className="flex aspect-[1.586] w-full max-w-md flex-col justify-center rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-center sm:p-6">
+      <Coins className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
+      <p className="mt-3 text-sm font-semibold">{t('partner.commissionEmpty')}</p>
+      <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+        {t('partner.commissionEmptyBody')}
+      </p>
+    </div>
   );
 }
 
@@ -183,6 +181,70 @@ function CommissionRow({ wallet }: { wallet: Wallet }) {
  */
 const DECIMAL = /^\d+(\.\d+)?$/;
 
+function TransferAction({ wallet, named }: { wallet: Wallet; named: boolean }) {
+  const [open, setOpen] = React.useState(false);
+  /*
+   * The dialog's fields live HERE, not inside it, so they can be reset by the
+   * handler that opens it.
+   *
+   * Resetting in an effect keyed on `open` is the obvious alternative and is a
+   * lint error in this repo (`react-hooks/set-state-in-effect`) — rightly: it
+   * sets state during commit to correct state that was never right, where the
+   * open handler already knows the dialog is about to appear. Same shape as
+   * `openRename` in components/accounts/account-actions.tsx.
+   *
+   * It has to be a reset rather than nothing at all: re-opening after a transfer
+   * would otherwise show the amount just sent, one click from sending it again,
+   * on a control whose whole job is moving money.
+   */
+  const [amount, setAmount] = React.useState('');
+  const [error, setError] = React.useState<string | null>(null);
+  const empty = isZeroMoney(wallet.available);
+
+  const openTransfer = () => {
+    setAmount('');
+    setError(null);
+    setOpen(true);
+  };
+
+  return (
+    <>
+      {/*
+        Disabled on an empty wallet rather than hidden. The control disappearing
+        is indistinguishable from the feature not existing, and a partner who
+        moved their balance yesterday would come back to a card with nothing on
+        it and no explanation.
+      */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={empty}
+        onClick={openTransfer}
+        className={named ? undefined : 'flex-1'}
+      >
+        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        {named
+          ? t('partner.commissionTransferNamed', { currency: wallet.currency })
+          : t('partner.commissionTransfer')}
+      </Button>
+
+      {/* Kept MOUNTED while closed rather than rendered conditionally: the
+          dialog animates on close, and unmounting it the instant `open` flips
+          would cut that animation off mid-way. */}
+      <TransferDialog
+        wallet={wallet}
+        open={open}
+        onOpenChange={setOpen}
+        amount={amount}
+        onAmountChange={setAmount}
+        error={error}
+        onError={setError}
+      />
+    </>
+  );
+}
+
 function TransferDialog({
   wallet,
   open,
@@ -195,7 +257,7 @@ function TransferDialog({
   wallet: Wallet;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Controlled by the row, which resets it when opening — see `openTransfer`. */
+  /** Controlled by the action, which resets it when opening — see `openTransfer`. */
   amount: string;
   onAmountChange: (amount: string) => void;
   error: string | null;
@@ -213,8 +275,8 @@ function TransferDialog({
        * Three keys, because three screens show what just changed and none of
        * them refetches on its own.
        *
-       *  - `ib-overview` holds this very balance AND the earnings total beside
-       *    it, which the transfer deliberately does not move.
+       *  - `ib-overview` holds this very balance AND the earnings total, which
+       *    the transfer deliberately does not move.
        *  - `wallets` is the main balance the money landed in — a partner who
        *    goes straight to /withdraw must not be shown the pre-transfer figure.
        *  - `transactions` is where the movement now appears; it is a prefix
@@ -257,23 +319,24 @@ function TransferDialog({
 
         <form
           className="space-y-4"
-          // `void` because React types a submit handler as returning void and
-          // `no-misused-promises` is an error in this repo.
           onSubmit={(e) => {
             e.preventDefault();
             if (submittable) transfer.mutate();
           }}
         >
           <div className="space-y-1.5">
-            <Label htmlFor="commission-amount">
+            <Label htmlFor={`commission-amount-${wallet.id}`}>
               {t('partner.commissionAmountLabel', { currency: wallet.currency })}
             </Label>
             <Input
-              id="commission-amount"
-              // `inputMode` rather than `type="number"`: a number input hands
-              // back a value the browser has already parsed and re-serialised,
-              // which is a float round trip on a money field. The value stays a
-              // STRING from here to the API (§6.1).
+              /* Scoped to the wallet: with one button per currency there are
+                 several of these mounted at once, and a duplicated id would
+                 point every label at the first input. */
+              id={`commission-amount-${wallet.id}`}
+              /* `inputMode` rather than `type="number"`: a number input hands
+                 back a value the browser has already parsed and re-serialised,
+                 which is a float round trip on a money field. The value stays a
+                 STRING from here to the API (§6.1). */
               inputMode="decimal"
               autoComplete="off"
               value={amount}
@@ -287,8 +350,8 @@ function TransferDialog({
                 })}
               </p>
               {/*
-                "Transfer all" sets the field to the RAW string the API sent,
-                not a formatted one. `formatMoney` produces '$1,234.56' — with a
+                "Transfer all" sets the field to the RAW string the API sent, not
+                a formatted one. `formatMoney` produces '$1,234.56' — with a
                 currency symbol and a thousands separator — which is not a number
                 the API accepts, and pasting it back would refuse a partner their
                 own full balance.

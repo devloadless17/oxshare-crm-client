@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Check, Copy, Handshake, Network, ShieldCheck, Clock, XCircle } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { ApplyPanel } from '@/components/partner/apply-panel';
+import { CommissionWallet } from '@/components/partner/commission-wallet';
 import { PartnerDashboard } from '@/components/partner/partner-dashboard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +13,8 @@ import { Label } from '@/components/ui/label';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
-import { partnerApi, type IbStatus } from '@/lib/api/partner';
+import { partnerApi, type IbOverview, type IbStatus } from '@/lib/api/partner';
+import { useUser } from '@/context/UserContext';
 import { t } from '@/lib/i18n';
 
 export default function PartnerPage() {
@@ -74,70 +76,130 @@ function PartnerState({ status, onChanged }: { status: IbStatus; onChanged: () =
   return <ApplyPanel onApplied={onChanged} inherited={status.inheritedAgency ?? null} />;
 }
 
+/**
+ * The approved partner's screen: their commission CARD beside who they are.
+ *
+ * ## Why these two sit side by side
+ *
+ * The card is the only thing on this page a partner can ACT on, and the panel
+ * beside it is the identity that explains the card — their level, their agency,
+ * and the referral link that produces the balance in the first place. Stacked,
+ * the card pushed the referral link below the fold on a laptop, which is the one
+ * control a partner comes back to copy.
+ *
+ * The card takes ONE column of three. It is a fixed-ratio object (`aspect-[1.586]`,
+ * the real ID-1 card ratio) so a wider column makes it taller, not more useful —
+ * past about `max-w-md` it stops reading as a card and starts reading as a
+ * poster. The panel takes the remaining two because its content is text that
+ * genuinely benefits from width.
+ *
+ * `items-start`, so the shorter column does not stretch to match the taller one:
+ * these are two different objects, not two halves of a row.
+ *
+ * ## Where `commissionWallets` comes from
+ *
+ * `GET /ib/overview`, read here under the SAME `ib-overview` query key that
+ * `PartnerOverview` uses inside the tabs. React Query serves both from one
+ * cached response, so this is not a second request and — more importantly — the
+ * balance on the card and the lifetime-earnings total in the tab below can never
+ * be figures from two different instants. That guarantee is why the balance
+ * rides on the overview response rather than an endpoint of its own; moving the
+ * card up the page did not give it up.
+ *
+ * The query is only mounted for an APPROVED partner, which is what this
+ * component means — `GET /ib/overview` 404s for anyone else, and `useResource`
+ * would report that as `unavailable` ("not built"), which is the wrong sentence.
+ */
 function ApprovedPanel({ account }: { account: NonNullable<IbStatus['account']> }) {
   const hydrated = useHydrated();
   const referralLink = hydrated
     ? `${window.location.origin}/auth/register?ref=${account.referralCode}`
     : '';
 
+  const overview = useResource<IbOverview>(['ib-overview'], (signal) =>
+    partnerApi.overview(signal),
+  );
+  const { user } = useUser();
+
+  /*
+   * The name embossed on the card foot.
+   *
+   * Undefined rather than a placeholder when the profile has no name: this app
+   * once rendered the literal "Client User" for a null user on the
+   * customer-facing portal, which is fabricated identity in the same family as a
+   * fabricated balance. The card omits the line instead.
+   */
+  const holder = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || undefined;
+
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-border bg-card p-6">
-        <div className="flex items-start gap-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
-            <Handshake className="h-6 w-6" aria-hidden="true" />
-          </span>
-          <div className="min-w-0 space-y-1">
-            <h2 className="text-lg font-semibold">{t('partner.approvedHeading')}</h2>
-            <p className="text-sm text-muted-foreground">
-              {t('partner.approvedSince', { date: formatDate(account.approvedAt) })}
-            </p>
-          </div>
-        </div>
+      <div className="grid items-start gap-4 lg:grid-cols-3">
+        {/*
+          The card, top left. It renders from whatever the overview read
+          produced: an empty array is the "never credited" placeholder, and a
+          FAILED read renders nothing at all rather than an empty card — an
+          error is not the same as having no commission, and the tabs below
+          surface the failure with a retry through their own AsyncBoundary.
+        */}
+        <CommissionWallet wallets={overview.data?.commissionWallets ?? []} holder={holder} />
 
-        {!account.active && (
-          <p
-            role="status"
-            className="mt-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs leading-relaxed text-warning-foreground"
-          >
-            {t('partner.suspendedNotice')}
-          </p>
-        )}
-
-        {account.agencyName && (
-          <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
-            <p className="text-xs font-semibold text-muted-foreground">
-              {t('partner.agencyLabel')}
-            </p>
-            <p className="mt-1 text-sm font-semibold">{account.agencyName}</p>
-            {account.products.length > 0 && (
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                {t('partner.agencyProducts', { products: account.products.join(', ') })}
+        <div className="rounded-2xl border border-border bg-card p-6 lg:col-span-2">
+          <div className="flex items-start gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
+              <Handshake className="h-6 w-6" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <h2 className="text-lg font-semibold">{t('partner.approvedHeading')}</h2>
+              <p className="text-sm text-muted-foreground">
+                {t('partner.approvedSince', { date: formatDate(account.approvedAt) })}
               </p>
-            )}
+            </div>
           </div>
-        )}
 
-        <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs font-semibold text-muted-foreground">
-              {t('partner.levelLabel')}
-            </dt>
-            <dd className="mt-1 text-2xl font-bold tabular-nums">{account.level}</dd>
-          </div>
-          <div className="min-w-0">
-            <dt className="text-xs font-semibold text-muted-foreground">
-              {t('partner.referralCodeLabel')}
-            </dt>
-            <dd className="mt-1 font-mono text-2xl font-bold tracking-wider">
-              {account.referralCode}
-            </dd>
-          </div>
-        </dl>
+          {!account.active && (
+            <p
+              role="status"
+              className="mt-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs leading-relaxed text-warning-foreground"
+            >
+              {t('partner.suspendedNotice')}
+            </p>
+          )}
 
-        <div className="mt-6 space-y-1.5">
-          <Label htmlFor="referral-link">{t('partner.referralLinkLabel')}</Label>
-          <CopyableLink id="referral-link" value={referralLink} />
+          {account.agencyName && (
+            <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
+              <p className="text-xs font-semibold text-muted-foreground">
+                {t('partner.agencyLabel')}
+              </p>
+              <p className="mt-1 text-sm font-semibold">{account.agencyName}</p>
+              {account.products.length > 0 && (
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {t('partner.agencyProducts', { products: account.products.join(', ') })}
+                </p>
+              )}
+            </div>
+          )}
+
+          <dl className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-semibold text-muted-foreground">
+                {t('partner.levelLabel')}
+              </dt>
+              <dd className="mt-1 text-2xl font-bold tabular-nums">{account.level}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-xs font-semibold text-muted-foreground">
+                {t('partner.referralCodeLabel')}
+              </dt>
+              <dd className="mt-1 font-mono text-2xl font-bold tracking-wider">
+                {account.referralCode}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="mt-6 space-y-1.5">
+            <Label htmlFor="referral-link">{t('partner.referralLinkLabel')}</Label>
+            <CopyableLink id="referral-link" value={referralLink} />
+          </div>
         </div>
       </div>
       <PartnerDashboard />
