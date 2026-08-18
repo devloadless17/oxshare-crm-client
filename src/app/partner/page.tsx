@@ -2,15 +2,12 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Check, Copy, Handshake, Network, ShieldCheck, Clock, XCircle } from 'lucide-react';
+import { Network, ShieldCheck, Clock, XCircle } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { ApplyPanel } from '@/components/partner/apply-panel';
-import { PartnerDashboard } from '@/components/partner/partner-dashboard';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useHydrated } from '@/hooks/use-hydrated';
+import { ApprovedPanel } from '@/components/partner/partner-identity';
 import { useResource } from '@/hooks/use-resource';
+import { Button } from '@/components/ui/button';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbStatus } from '@/lib/api/partner';
 import { t } from '@/lib/i18n';
@@ -72,119 +69,6 @@ function PartnerState({ status, onChanged }: { status: IbStatus; onChanged: () =
    * only needs to know whether to draw a picker or a statement.
    */
   return <ApplyPanel onApplied={onChanged} inherited={status.inheritedAgency ?? null} />;
-}
-
-function ApprovedPanel({ account }: { account: NonNullable<IbStatus['account']> }) {
-  const hydrated = useHydrated();
-  const referralLink = hydrated
-    ? `${window.location.origin}/auth/register?ref=${account.referralCode}`
-    : '';
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-border bg-card p-6">
-        <div className="flex items-start gap-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
-            <Handshake className="h-6 w-6" aria-hidden="true" />
-          </span>
-          <div className="min-w-0 space-y-1">
-            <h2 className="text-lg font-semibold">{t('partner.approvedHeading')}</h2>
-            <p className="text-sm text-muted-foreground">
-              {t('partner.approvedSince', { date: formatDate(account.approvedAt) })}
-            </p>
-          </div>
-        </div>
-
-        {!account.active && (
-          <p
-            role="status"
-            className="mt-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs leading-relaxed text-warning-foreground"
-          >
-            {t('partner.suspendedNotice')}
-          </p>
-        )}
-
-        {account.agencyName && (
-          <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
-            <p className="text-xs font-semibold text-muted-foreground">
-              {t('partner.agencyLabel')}
-            </p>
-            <p className="mt-1 text-sm font-semibold">{account.agencyName}</p>
-            {account.products.length > 0 && (
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                {t('partner.agencyProducts', { products: account.products.join(', ') })}
-              </p>
-            )}
-          </div>
-        )}
-
-        <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs font-semibold text-muted-foreground">
-              {t('partner.levelLabel')}
-            </dt>
-            <dd className="mt-1 text-2xl font-bold tabular-nums">{account.level}</dd>
-          </div>
-          <div className="min-w-0">
-            <dt className="text-xs font-semibold text-muted-foreground">
-              {t('partner.referralCodeLabel')}
-            </dt>
-            <dd className="mt-1 font-mono text-2xl font-bold tracking-wider">
-              {account.referralCode}
-            </dd>
-          </div>
-        </dl>
-
-        <div className="mt-6 space-y-1.5">
-          <Label htmlFor="referral-link">{t('partner.referralLinkLabel')}</Label>
-          <CopyableLink id="referral-link" value={referralLink} />
-        </div>
-      </div>
-      <PartnerDashboard />
-    </div>
-  );
-}
-
-function CopyableLink({ id, value }: { id: string; value: string }) {
-  const [copied, setCopied] = React.useState(false);
-  const [failed, setFailed] = React.useState(false);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setFailed(false);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setFailed(true);
-    }
-  };
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex gap-2">
-        <Input id={id} readOnly value={value} className="font-mono text-xs" />
-        <Button type="button" variant="outline" onClick={() => void copy()} disabled={!value}>
-          {copied ? (
-            <>
-              <Check className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              {t('partner.copied')}
-            </>
-          ) : (
-            <>
-              <Copy className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              {t('partner.copy')}
-            </>
-          )}
-        </Button>
-      </div>
-      {failed && (
-        <p role="alert" className="text-xs text-destructive">
-          {t('partner.copyFailed')}
-        </p>
-      )}
-    </div>
-  );
 }
 
 function PendingPanel({

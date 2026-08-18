@@ -159,7 +159,7 @@ function resolveRealtimeOrigin(): string {
  * definition, because a CSP naming a slightly different origin than the code
  * dials blocks the request with no error anyone sees.
  */
-export const PUBLIC_API_ORIGIN: string = resolvePublicApiOrigin();
+export const PUBLIC_API_BASE_URL: string = resolvePublicApiOrigin();
 
 /**
  * `/v1` IS PART OF THIS, and the root convention was amended to say so.
@@ -172,7 +172,7 @@ export const PUBLIC_API_ORIGIN: string = resolvePublicApiOrigin();
  * reason. The version belongs wherever the LAST hop before the API is, and that
  * is now this constant.
  */
-export const API_BASE_URL: string = `${PUBLIC_API_ORIGIN}/v1`;
+export const API_BASE_URL: string = `${PUBLIC_API_BASE_URL}/v1`;
 
 /**
  * The realtime origin, or `null` when it is not configured.

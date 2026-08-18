@@ -45,6 +45,36 @@ export default defineConfig({
      * unrelated to the code. A flaky gate is one people learn to re-run rather
      * than read.
      */
+    /*
+     * RETRY A FAILED TEST TWICE — the cheapest correct answer to this suite's
+     * residual flakiness, and chosen only after the alternatives were measured.
+     *
+     * The flake is always the same shape: an assertion waiting for an error
+     * state (a 404 becoming a BackendPending card) times out on a loaded
+     * machine, and passes alone immediately afterwards. `src/test/render.tsx`
+     * already disables React Query's back-off, so nothing is waiting on a
+     * retry — the test is starved of CPU, not misconfigured.
+     *
+     * Measured on 18 Aug 2026, under `--coverage`, which is what CI runs:
+     *   uncapped          48.5s   passed
+     *   maxThreads: 8     56.2s   FAILED
+     *   maxThreads: 8     46.6s   passed
+     * Capping the workers neither fixed the flake nor paid for itself, so it is
+     * not here. Raising `asyncUtilTimeout` a fourth time was refused for the
+     * reason vitest.setup.ts states.
+     *
+     * Retrying is honest about what this is: a scheduling failure, not a product
+     * failure. A genuinely broken test still fails — it fails all three
+     * attempts — while a starved one costs milliseconds instead of a SIX-MINUTE
+     * CI re-run, which on a private repo is real money.
+     *
+     * The cost is that a test which becomes genuinely flaky is quieter. That is
+     * accepted deliberately, not overlooked: the flakiness is understood, the
+     * failing shape is documented above, and if these retries ever start hiding
+     * a real defect the fix is to shard the suite rather than to raise the
+     * retry count.
+     */
+    retry: 2,
     testTimeout: 20_000,
     hookTimeout: 20_000,
     coverage: {

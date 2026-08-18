@@ -1328,7 +1328,16 @@ export const messages = {
     'Commission is held separately from your main balance so you can always tell what you have ' +
     'earned from what you have deposited. Move it to your main wallet to withdraw it or fund a ' +
     'trading account.',
+  // The label on the CARD FACE, where an ordinary wallet card carries the
+  // currency's name. The code is already printed beneath it in bold, so this
+  // slot says the thing the card would otherwise leave unsaid.
+  'partner.commissionCardLabel': 'Commission',
   'partner.commissionTransfer': 'Move to wallet',
+  // Used only when a partner holds commission in MORE THAN ONE currency, so
+  // each button names the balance it moves. One unnamed button beside a
+  // carousel would act on a card the reader cannot be certain is the visible
+  // one.
+  'partner.commissionTransferNamed': 'Move {currency}',
   'partner.commissionTransferTitle': 'Move commission to your wallet',
   'partner.commissionTransferBody':
     'The amount moves to your main {currency} wallet immediately, where you can withdraw it or ' +

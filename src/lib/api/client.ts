@@ -5,7 +5,7 @@
 // the token casing (the admin API answers camelCase, the portal snake_case, which
 // is frozen). Diff the two by hand when changing either.
 
-import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 // Resolved and validated in `lib/env.ts`, which refuses a production build with
 // no NEXT_PUBLIC_API_BASE_URL rather than silently falling back to localhost.
@@ -505,100 +505,150 @@ function endDeadSession(): void {
   window.location.href = loginPathFor(window.location.pathname, window.location.search);
 }
 
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as RetriableRequest | undefined;
-    const url = originalRequest?.url ?? '';
-    const isAuthEndpoint = AUTH_ENDPOINT_PATTERN.test(url);
+/**
+ * AN HTML BODY IS NEVER AN API RESPONSE.
+ *
+ * This exists because a deployment pointed `NEXT_PUBLIC_API_BASE_URL` at the
+ * FRONTEND's own origin instead of the API's. Every call then resolved against
+ * this Next app: `POST /v1/auth/login` matched no route, the route gate answered
+ * `307 -> /auth/login?next=...`, the browser followed the redirect transparently,
+ * and axios reported 200 OK carrying the sign-in page's HTML.
+ *
+ * Nothing anywhere said otherwise. Sign-in "succeeded", the profile call
+ * "succeeded" and "returned data", and the next navigation bounced back to the
+ * sign-in screen — because no session had ever been created. 200 is the most
+ * misleading status a misrouted API call can return, and a followed redirect is
+ * precisely how a request stops being the one that was sent.
+ *
+ * So the content type is checked on the SUCCESS path. A response the caller
+ * expected to be JSON and which is HTML did not come from the API, whatever the
+ * status line says — and the operator is told that instead of being signed out
+ * for no visible reason.
+ *
+ * `apiErrorMessage` falls back to `error.message`, so this text is what the
+ * sign-in form actually shows rather than a generic failure.
+ */
+export class NotAnApiResponseError extends Error {
+  constructor(url: string, contentType: string) {
+    super(
+      `Expected JSON from the API for "${url}" and received ${contentType || 'no content type'}. ` +
+        'The configured API origin (NEXT_PUBLIC_API_BASE_URL) is answering with a web page, ' +
+        'which means it points at a frontend rather than at the API.',
+    );
+    this.name = 'NotAnApiResponseError';
+  }
+}
 
-    if (error.response?.status === 401 && originalRequest && !isAuthEndpoint) {
-      /*
-       * `outcome` is threaded through rather than collapsed to a boolean,
-       * because "the API refused this token" and "we could not ask" have to end
-       * differently. Collapsing them is what wiped a half-filled KYC form on a
-       * dropped connection: the two were indistinguishable here, so the
-       * transport failure took the dead-session path and cleared the draft.
-       */
-      let outcome: RefreshOutcome = 'dead';
+/**
+ * Only requests that ASKED for JSON can conclude anything from the content type:
+ * `export.ts` requests a blob and is answered `text/csv`, and a download must not
+ * be second-guessed on its type. `undefined` is axios's default, which is json.
+ */
+function assertApiResponse(response: AxiosResponse): AxiosResponse {
+  const responseType = response.config?.responseType;
+  if (responseType !== undefined && responseType !== 'json') return response;
 
-      /*
-       * On a public page there is nothing to renew, so do not ask.
-       *
-       * `UserContext` asks `/auth/me` on mount everywhere, including
-       * `/auth/login`, `/auth/register` and `/verify-email/pending`, and a
-       * signed-out visitor's 401 there is the correct answer to "is anyone
-       * here". Answering it with a real `POST /auth/refresh` meant TWO
-       * guaranteed-to-fail requests on every cold load of the most-visited pages
-       * in the portal — visible in the API log as a `/auth/me 401` immediately
-       * followed by a `/auth/refresh 401 SESSION_REVOKED`, over and over.
-       *
-       * It is not only noise: that route is throttled at 20/min, and a shared
-       * office or mobile-carrier IP reaches that on ordinary traffic.
-       *
-       * THE CSRF COOKIE IS PART OF THE CONDITION, and leaving it out was a
-       * regression I nearly shipped. A signed-in client whose access token has
-       * lapsed — the ordinary state of anyone returning after fifteen minutes —
-       * may well land on `/auth/login` from a bookmark. Skipping the renewal
-       * there resolves their profile to null, so `RedirectIfAuthenticated` never
-       * fires and they are shown a sign-in form over a live session: exactly the
-       * defect the reverse gate exists to prevent.
-       *
-       * The cookie is a sound signal HERE, unlike in `endDeadSession`, because
-       * this is an optimisation rather than a correctness decision. A false
-       * negative costs one wasted request — the old behaviour. A false positive
-       * costs one renewal attempt, which is what should happen anyway.
-       */
-      if (
-        typeof window !== 'undefined' &&
-        isPublicPath(window.location.pathname) &&
-        readCsrfCookie() === undefined
-      ) {
-        return Promise.reject(error);
-      }
+  // Narrowed rather than coerced: axios types the header bag loosely, and
+  // `String(value)` on a non-string would quietly produce '[object Object]',
+  // which matches no branch below — disarming this check instead of failing it.
+  const raw: unknown = (response.headers as Record<string, unknown> | undefined)?.['content-type'];
+  const contentType = typeof raw === 'string' ? raw : '';
+  if (!/^\s*text\/html/i.test(contentType)) return response;
 
-      if (!originalRequest._retry) {
-        originalRequest._retry = true;
-        outcome = await refreshPortalSession();
-        if (outcome === 'renewed') {
-          // No header to re-attach: the rotated session cookie travels on its own.
-          // The CSRF header is rebuilt by the request interceptor on the retry,
-          // which matters because refresh ROTATES the token — replaying the old
-          // one would fail the binding check.
-          return apiClient(originalRequest);
-        }
-      }
-      /*
-       * Reached by BOTH ways a 401 can turn out to be terminal, which it was
-       * not before: the `_retry` check used to guard the whole branch, so a
-       * request that refreshed successfully and then 401'd again fell straight
-       * through to the rethrow with no `clearSession()` and no redirect.
-       *
-       * That second 401 is not a hypothetical. It is what the API answers when
-       * the rotation succeeded but the account behind it no longer passes —
-       * deleted, suspended (`jwt.strategy.ts` rejects a suspended user on the
-       * next request, live token or not), or logged out from another device
-       * between the two calls. The client sat on a fully rendered portal with a
-       * dead session and no way to find out, because every subsequent request
-       * took the same path and stopped in the same place.
-       *
-       * A second 401 after a SUCCESSFUL rotation is genuinely dead — the server
-       * answered, and its answer was no. Only a refresh that never got an answer
-       * is `unreachable`, which is why the default above is `dead`.
-       *
-       * And an `unreachable` refresh ends nothing at all. We do not know the
-       * session is over; we know we could not ask. Signing the client out on that
-       * basis is a network blip logging somebody out — reachable mid-KYC on a
-       * phone, which is this portal's primary device. The 401 propagates instead,
-       * the page renders its own error with a retry, and the session, the timer
-       * and the half-filled form all survive.
-       */
-      if (outcome !== 'unreachable') endDeadSession();
+  throw new NotAnApiResponseError(response.config?.url ?? '', contentType);
+}
+
+apiClient.interceptors.response.use(assertApiResponse, async (error: AxiosError) => {
+  const originalRequest = error.config as RetriableRequest | undefined;
+  const url = originalRequest?.url ?? '';
+  const isAuthEndpoint = AUTH_ENDPOINT_PATTERN.test(url);
+
+  if (error.response?.status === 401 && originalRequest && !isAuthEndpoint) {
+    /*
+     * `outcome` is threaded through rather than collapsed to a boolean,
+     * because "the API refused this token" and "we could not ask" have to end
+     * differently. Collapsing them is what wiped a half-filled KYC form on a
+     * dropped connection: the two were indistinguishable here, so the
+     * transport failure took the dead-session path and cleared the draft.
+     */
+    let outcome: RefreshOutcome = 'dead';
+
+    /*
+     * On a public page there is nothing to renew, so do not ask.
+     *
+     * `UserContext` asks `/auth/me` on mount everywhere, including
+     * `/auth/login`, `/auth/register` and `/verify-email/pending`, and a
+     * signed-out visitor's 401 there is the correct answer to "is anyone
+     * here". Answering it with a real `POST /auth/refresh` meant TWO
+     * guaranteed-to-fail requests on every cold load of the most-visited pages
+     * in the portal — visible in the API log as a `/auth/me 401` immediately
+     * followed by a `/auth/refresh 401 SESSION_REVOKED`, over and over.
+     *
+     * It is not only noise: that route is throttled at 20/min, and a shared
+     * office or mobile-carrier IP reaches that on ordinary traffic.
+     *
+     * THE CSRF COOKIE IS PART OF THE CONDITION, and leaving it out was a
+     * regression I nearly shipped. A signed-in client whose access token has
+     * lapsed — the ordinary state of anyone returning after fifteen minutes —
+     * may well land on `/auth/login` from a bookmark. Skipping the renewal
+     * there resolves their profile to null, so `RedirectIfAuthenticated` never
+     * fires and they are shown a sign-in form over a live session: exactly the
+     * defect the reverse gate exists to prevent.
+     *
+     * The cookie is a sound signal HERE, unlike in `endDeadSession`, because
+     * this is an optimisation rather than a correctness decision. A false
+     * negative costs one wasted request — the old behaviour. A false positive
+     * costs one renewal attempt, which is what should happen anyway.
+     */
+    if (
+      typeof window !== 'undefined' &&
+      isPublicPath(window.location.pathname) &&
+      readCsrfCookie() === undefined
+    ) {
+      return Promise.reject(error);
     }
-    // Rethrow the original AxiosError, never a wrapped one: every caller reads
-    // `error.response.data.message` through apiErrorMessage, and the 401 branch
-    // above depends on `error.response.status`. AxiosError extends Error, which
-    // is what prefer-promise-reject-errors wants.
-    return Promise.reject(error);
-  },
-);
+
+    if (!originalRequest._retry) {
+      originalRequest._retry = true;
+      outcome = await refreshPortalSession();
+      if (outcome === 'renewed') {
+        // No header to re-attach: the rotated session cookie travels on its own.
+        // The CSRF header is rebuilt by the request interceptor on the retry,
+        // which matters because refresh ROTATES the token — replaying the old
+        // one would fail the binding check.
+        return apiClient(originalRequest);
+      }
+    }
+    /*
+     * Reached by BOTH ways a 401 can turn out to be terminal, which it was
+     * not before: the `_retry` check used to guard the whole branch, so a
+     * request that refreshed successfully and then 401'd again fell straight
+     * through to the rethrow with no `clearSession()` and no redirect.
+     *
+     * That second 401 is not a hypothetical. It is what the API answers when
+     * the rotation succeeded but the account behind it no longer passes —
+     * deleted, suspended (`jwt.strategy.ts` rejects a suspended user on the
+     * next request, live token or not), or logged out from another device
+     * between the two calls. The client sat on a fully rendered portal with a
+     * dead session and no way to find out, because every subsequent request
+     * took the same path and stopped in the same place.
+     *
+     * A second 401 after a SUCCESSFUL rotation is genuinely dead — the server
+     * answered, and its answer was no. Only a refresh that never got an answer
+     * is `unreachable`, which is why the default above is `dead`.
+     *
+     * And an `unreachable` refresh ends nothing at all. We do not know the
+     * session is over; we know we could not ask. Signing the client out on that
+     * basis is a network blip logging somebody out — reachable mid-KYC on a
+     * phone, which is this portal's primary device. The 401 propagates instead,
+     * the page renders its own error with a retry, and the session, the timer
+     * and the half-filled form all survive.
+     */
+    if (outcome !== 'unreachable') endDeadSession();
+  }
+  // Rethrow the original AxiosError, never a wrapped one: every caller reads
+  // `error.response.data.message` through apiErrorMessage, and the 401 branch
+  // above depends on `error.response.status`. AxiosError extends Error, which
+  // is what prefer-promise-reject-errors wants.
+  return Promise.reject(error);
+});

@@ -216,6 +216,15 @@ response rather than an endpoint of its own for the reason that response exists 
 balance is read beside the lifetime-earnings total, and two requests can straddle the hourly
 confirm loop, leaving a balance the figure above it does not explain.
 
+**Approving a partner OPENS their commission wallet** — `WalletProvisioningService.openCommissionWallet`,
+called after the approval transaction, fire-and-forget, in the DEFAULT currency only. That is a
+SCREEN concern, not a money one: `WalletService.post` still opens it lazily on the first confirmed
+accrual, and that lazy path is what covers partners approved before this existed and commission
+arriving in a currency this never opened. What eager creation buys is that a partner approved today
+opens `/partner` and finds a commission card rather than a placeholder for one. It opens EMPTY — a
+balance nobody earned is the one outcome this whole separation exists to prevent, and
+`ib-applications.spec.ts` asserts the zero rather than only the row.
+
 **The only exit is `POST /ib/wallet/transfer`** — same currency, into the main wallet, where
 withdraw and trading-account transfer already work unchanged. There is no pending state to poll:
 both legs commit in one database transaction, so a 200 IS the money having moved. Cross-currency is

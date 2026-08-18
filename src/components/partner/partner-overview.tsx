@@ -5,7 +5,6 @@ import { Info, TrendingUp, Users, Network, Award } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
-import { CommissionWallet } from '@/components/partner/commission-wallet';
 import { partnerApi, type IbOverview } from '@/lib/api/partner';
 import { formatDecimal, formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
@@ -40,13 +39,13 @@ import { t } from '@/lib/i18n';
  * per-partner, so a brand-new partner on a fully working platform would be told
  * the calculation is not running.
  *
- * ## The commission WALLET is here, and it is the only place it appears
+ * ## The commission BALANCE is not here - it is the card at the top of /partner
  *
- * A partner's earnings are credited to a wallet of their own — `wallets.kind =
- * 'commission'` — which `GET /wallet` deliberately excludes. So /wallet,
- * /deposit and /withdraw cannot show it or offer it as a source, and moving the
- * money into the main wallet through `POST /ib/wallet/transfer` is what makes
- * every one of those rails work on it, unchanged.
+ * `commissionWallets` rides on this same `GET /ib/overview` response, but it is
+ * rendered above the tabs by the panel on /partner rather than in this tab.
+ * That is a LAYOUT decision and it costs the figures nothing: both read the one
+ * cached response under the `ib-overview` query key, so the card and the totals
+ * below can never come from two different instants.
  *
  * The BALANCE and the lifetime TOTAL are different figures and both are here:
  * the total is what has ever been earned and does not move when money is
@@ -77,17 +76,10 @@ export function PartnerOverview() {
 }
 
 function DashboardBody({ data }: { data: IbOverview }) {
-  const {
-    earnings,
-    commissionWallets,
-    level,
-    referredClients,
-    subPartners,
-    verifiedReferredCount,
-  } = data;
+  const { earnings, level, referredClients, subPartners, verifiedReferredCount } = data;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/*
         The figure row. Four tiles, because these are the four numbers a partner
         opens this screen to read — and they are read together, which is why the
@@ -137,24 +129,9 @@ function DashboardBody({ data }: { data: IbOverview }) {
         </p>
       )}
 
-      {/*
-        The commission WALLET, directly beneath the totals it belongs to.
-
-        Here rather than in its own tab because a partner reads "what have I
-        earned" and "what can I move" as one question — and both figures come
-        from the same `GET /ib/overview` response, so they cannot disagree by
-        being fetched a second apart.
-
-        It carries `commissionWallets` from that response rather than fetching
-        its own: the hourly confirm loop can credit a commission between two
-        requests, which would leave this balance unexplained by the earnings
-        figure printed directly above it.
-      */}
-      <CommissionWallet wallets={commissionWallets} />
-
       {/* `items-stretch` is what actually equalises the two cards — without it
           each is only as tall as its own content and the row looks ragged. */}
-      <div className="grid items-stretch gap-6 xl:grid-cols-3">
+      <div className="grid items-stretch gap-5 xl:grid-cols-3">
         {/* The level card — narrow, because it is three facts. */}
         <section className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card xl:col-span-1">
           <CardHeader icon={Award} title={t('partner.levelHeading')} />
@@ -328,14 +305,22 @@ function DashboardBody({ data }: { data: IbOverview }) {
  *
  * Lifetime earnings is what a partner opens this page to see; the other three
  * are context for it. Four identically-weighted tiles make the reader do that
- * ranking themselves every visit. The primary one gets the accent ring and the
- * tinted chip, so the eye lands on it first and the rest read as support.
+ * ranking themselves on every visit. The primary one gets the accent ring, the
+ * tinted chip and a larger figure, so the eye lands on it first and the rest
+ * read as support.
  *
  * ## The icon sits in a CHIP rather than loose beside the label
  *
- * A bare 16px glyph next to 11px text is visual noise at that size — it reads
- * as a bullet. Inside a tinted rounded square it becomes a deliberate mark, and
- * the four tiles line up on a consistent left edge whatever the icon's shape.
+ * A bare 16px glyph next to 11px text is visual noise at that size — it reads as
+ * a bullet. Inside a tinted rounded square it becomes a deliberate mark, and the
+ * four tiles line up on a consistent left edge whatever the icon's shape.
+ *
+ * ## The primary tile carries a GLOW, the others a hover border
+ *
+ * The glow is one soft radial behind the figure, clipped by the tile. It is what
+ * makes the row read as designed rather than as four divs — but only on the tile
+ * that ranks: four glows is a gradient soup, and the ranking it exists to
+ * express would be gone.
  */
 function StatTile({
   icon: Icon,
@@ -354,13 +339,21 @@ function StatTile({
 
   return (
     <div
-      className={`flex flex-col justify-between rounded-2xl border p-4 transition-colors ${
+      className={`relative flex flex-col justify-between overflow-hidden rounded-2xl border p-4 transition-colors ${
         primary
-          ? 'border-primary/30 bg-primary/[0.04]'
-          : 'border-border bg-card hover:border-border'
+          ? 'border-primary/30 bg-primary/[0.05]'
+          : 'border-border bg-card hover:border-primary/25'
       }`}
     >
-      <div className="flex items-center gap-2.5">
+      {primary && (
+        /* Decorative, and clipped by the tile's own `overflow-hidden`. */
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-16 -end-10 h-40 w-40 rounded-full bg-primary/15 blur-3xl"
+        />
+      )}
+
+      <div className="relative flex items-center gap-2.5">
         <span
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
             primary ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
@@ -375,7 +368,7 @@ function StatTile({
 
       {/* `tabular-nums` so a refresh does not shift the digits sideways. */}
       <p
-        className={`mt-3 font-bold tracking-tight tabular-nums ${
+        className={`relative mt-3 font-bold tracking-tight tabular-nums ${
           primary ? 'text-3xl text-primary' : 'text-2xl'
         }`}
       >
@@ -385,7 +378,7 @@ function StatTile({
         The hint keeps its line even when empty, so the four tiles stay the same
         height and the row does not step up and down as data arrives.
       */}
-      <p className="mt-0.5 min-h-[1rem] text-[11px] text-muted-foreground">{hint ?? ''}</p>
+      <p className="relative mt-0.5 min-h-[1rem] text-[11px] text-muted-foreground">{hint ?? ''}</p>
     </div>
   );
 }
