@@ -420,10 +420,25 @@ function AccountCard({ account, tone }: { account: TradingAccount; tone: 'live' 
         server's `/transferable` route narrows to. A transfer to a demo account
         would be a real-money loss with no counterparty, and one to a suspended
         account is refused after the client has already committed to it.
+
+        It carries `?account=`, because the client has already told us WHICH
+        account by pressing the button on it. Without that the transfer screen
+        opened with nothing selected and made them find the same account again
+        among every wallet and account they hold — the step this button exists to
+        skip. The machinery was already there: `use-preselected-transfer.ts`
+        seeds the account as the destination and the wallet in its currency as
+        the source, and its comment says in as many words that it is for "the
+        client clicked Transfer funds ON an account". Only the detail screen's
+        menu was passing it.
+
+        The id is not trusted from the URL at the other end — it is matched
+        against the accounts the client actually holds, and ignored when no
+        wallet in the matching currency exists. So a stale link degrades to the
+        empty form rather than to a half-filled one that cannot be completed.
       */}
       {isLive && account.status === 'active' && (
         <Button asChild size="sm" className="w-full">
-          <Link href="/transfer">{t('accounts.fundAccount')}</Link>
+          <Link href={`/transfer?account=${account.id}`}>{t('accounts.fundAccount')}</Link>
         </Button>
       )}
     </div>
