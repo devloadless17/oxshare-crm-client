@@ -28,12 +28,42 @@ src/hooks/                                use-resource · use-hydrated
 src/lib/api/                              client · auth · errors · wallet · trading · partner ·
                                           payments · index · types.gen.ts
 src/lib/                                  money · date-range · account-stats · countries-data ·
-                                          route-guard · utils
-src/proxy.ts                              route gate (session PRESENCE only — never reads a claim)
+                                          route-guard · session-hint · utils
+src/proxy.ts                              route gate (a MARKER only — never a session, never a claim)
 ```
 
 **Never create `middleware.ts`** — it will not run. The gate is `src/proxy.ts`, which also
 delegates to the pure `lib/route-guard.ts`.
+
+**The gate reads a MARKER, and it is not a session.** `lib/session-hint.ts` is a non-sensitive
+cookie this app writes on its OWN host whenever `/auth/me` answers "signed in", and clears when it
+answers 401. The session cookie itself stays structurally invisible here, for the reason `proxy.ts`
+gives at length.
+
+It exists for one bug: `/` redirected to `/auth/login` unconditionally, and `/` is the URL clients
+type and the one their bookmark points at. So every returning client with a valid thirty-day
+session was shown a fully painted sign-in form and moved off it a round trip later. That reads as
+having been logged out, and the response it invites is typing a password that was not needed —
+minting a second session over the first.
+
+**The marker decides what to PAINT, never who may ENTER.** Any visitor can write it in a console,
+so it only moves people between PUBLIC screens; a forged one buys a redirect to /dashboard that
+`RequireAuth` reverses on the first `/auth/me`. Building a real gate on it would be the failure
+this file records twice, wearing a new cookie.
+
+Redirecting off the sign-in screens uses `AUTH_ONLY_PATHS`, **not** `PUBLIC_PATHS` — /verify-email,
+/forgot-password and /reset-password must work WITH a session, and `public-paths.ts` explains what
+collapsing the two lists locks people out of. `src/proxy.test.ts` pins every branch, and
+`decideRoute` takes the marker as an ARGUMENT so it stays a table test.
+
+A stale marker cannot loop, and the line that guarantees it is `clearSessionHint()` inside
+`clearSession`: it runs in the axios interceptor, before React Query settles and long before any
+navigation, so the 401 eviction reaches `/auth/login` with the marker already gone.
+
+`RedirectIfAuthenticated` no longer paints the form first. It used to, on the reasoning that most
+visitors to sign-in have no session and should not wait — which was sound, and wrong, because the
+"rare" case was every returning client. The marker is what lets both be right: no marker paints
+immediately, a marker holds the paint.
 
 **The gate never reads a claim.** It used to base64-decode the JWT payload to bounce unverified
 users off `/kyc`, and that check was deleted — `route-guard.ts:45-61` records why. When gating

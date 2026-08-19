@@ -4,6 +4,8 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/context/UserContext';
 import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/return-to';
+import { PageLoader } from '@/components/ui/loader';
+import { t } from '@/lib/i18n';
 
 /**
  * Keeps a signed-in client off the screens that only exist for signed-out ones.
@@ -22,29 +24,50 @@ import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/return-to';
  *     under an existing session, inviting credentials to be typed into a page
  *     that will happily replace whoever is currently signed in.
  *
- * `proxy.ts` is the primary gate for this and answers it before any JavaScript
- * runs. This component is the backstop for the case the proxy structurally
- * cannot see — a cookie that has expired or been cleared out of step with the
- * session, and any future deployment where the cookie name and the session
- * disagree.
+ * ## It no longer paints the form first
  *
- * ## Why this one renders children while it waits
+ * It used to, and the comment here defended it: the sign-in screen is the
+ * most-loaded page in the app, almost every visitor to it has no session, and
+ * making all of them watch a spinner while `/auth/me` returns a 401 taxes the
+ * common case to correct a rare one.
  *
- * `RequireAuth` withholds the first paint; this deliberately does not, and the
- * asymmetry is the point.
+ * The reasoning was sound and the conclusion was wrong, because the "rare" case
+ * is what a returning client sees EVERY time they open the portal. `/` redirects
+ * here, so a client with a live thirty-day session met a fully painted sign-in
+ * form, held for a whole round trip, before being moved to their dashboard. That
+ * is not a flicker — it is long enough to read, long enough to start typing a
+ * password, and it teaches people the portal logs them out overnight.
  *
- * The sign-in screen is the most-loaded page in the app and the overwhelming
- * majority of its visitors have no session. Making all of them watch a spinner
- * while `/auth/me` returns a 401 would tax the common case to correct a rare
- * one that the proxy has already handled. The harm is also not symmetric:
- * showing the sign-in form for a moment to someone already signed in is a
- * cosmetic flicker, while showing the portal shell to a stranger is the bug
- * this whole change exists to fix.
+ * What was missing was a way to tell the two visitors apart before asking. There
+ * is one now: `lib/session-hint.ts` — a non-sensitive marker cookie written on
+ * THIS host whenever `/auth/me` says "signed in", read server-side in
+ * `app/layout.tsx` so it is known before the first byte of HTML. So the trade
+ * does not have to be made at all:
  *
- * So: paint immediately, and correct the moment the authoritative answer lands.
+ *   - no marker  → paint the form immediately, exactly as before. The signed-out
+ *                  visitor, who is still the overwhelming majority, waits for
+ *                  nothing.
+ *   - marker     → hold the paint. This browser has been signed in; showing it
+ *                  the form is either wrong or about to be.
+ *
+ * A marker that turns out to be stale costs a spinner and then the form — the
+ * old behaviour, for the one visitor in a thousand whose session died between
+ * loads.
+ *
+ * ## Why the loader and not the form once `signedIn` is known
+ *
+ * `router.replace` is not instantaneous, and returning `children` during it puts
+ * the sign-in form on screen for precisely the client this component exists to
+ * keep away from it — the bug, one line further down. `RequireAuth` holds its
+ * paint through its own redirect for the same reason.
+ *
+ * This remains the BACKSTOP rather than the gate. `proxy.ts` reads the same
+ * marker and sends `/` straight to the dashboard, so most signed-in clients
+ * never reach this component; it covers the ones who arrive by bookmark, by
+ * link, or with a marker and a session that disagree.
  */
 export function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useUser();
+  const { user, isLoading, hadSession } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -58,6 +81,21 @@ export function RedirectIfAuthenticated({ children }: { children: React.ReactNod
   React.useEffect(() => {
     if (signedIn) router.replace(destination);
   }, [signedIn, destination, router]);
+
+  /*
+   * `hadSession` is the marker while the answer is in flight and the answer once
+   * it lands, so this stops holding the moment `/auth/me` says 401 — a browser
+   * with a stale marker gets the form, not a spinner with no end.
+   */
+  if (signedIn || (isLoading && hadSession)) {
+    return (
+      // srOnly: this is painted for someone who is about to be moved to their
+      // dashboard, and a visible "Checking your session" on a screen they never
+      // asked for reads as an error. The label is there for screen readers,
+      // which otherwise get an unannounced page that changes under them.
+      <PageLoader label={t('session.checking')} srOnly fullScreen />
+    );
+  }
 
   return <>{children}</>;
 }
