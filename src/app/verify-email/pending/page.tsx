@@ -75,7 +75,7 @@ export default function VerifyPendingPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
+    <main className="flex h-dvh items-center justify-center overflow-y-auto bg-background p-4 text-foreground">
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-sm sm:p-10">
         {/* Decorative: the heading beneath already says what this is. */}
         <div className="mb-5 text-6xl leading-none" aria-hidden="true">

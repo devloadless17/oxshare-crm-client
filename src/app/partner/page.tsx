@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Network, ShieldCheck, Clock, XCircle } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { ApplyPanel } from '@/components/partner/apply-panel';
-import { ApprovedPanel } from '@/components/partner/partner-identity';
+import { ApprovedPanel } from '@/components/partner/partner-workspace';
 import { useResource } from '@/hooks/use-resource';
 import { Button } from '@/components/ui/button';
 import { apiErrorMessage } from '@/lib/api/errors';

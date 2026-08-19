@@ -12,7 +12,7 @@ import { t } from '@/lib/i18n';
  */
 export default function PortalNotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+    <div className="flex h-dvh flex-col items-center justify-center gap-4 overflow-y-auto bg-background px-6 text-center">
       <FileQuestion className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
       <h1 className="text-lg font-bold text-foreground">{t('notFound.title')}</h1>
       <p className="max-w-md text-sm text-muted-foreground">{t('notFound.body')}</p>

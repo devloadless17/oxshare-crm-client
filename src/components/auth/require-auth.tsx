@@ -260,7 +260,7 @@ function SessionUnreachable({ onRetry }: { onRetry: () => void }) {
   return (
     <div
       role="alert"
-      className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center"
+      className="flex h-dvh flex-col items-center justify-center gap-4 overflow-y-auto bg-background px-6 text-center"
     >
       <h1 className="text-lg font-semibold text-foreground">{t('session.unreachableTitle')}</h1>
       <p className="max-w-sm text-sm text-muted-foreground">{t('session.unreachableBody')}</p>

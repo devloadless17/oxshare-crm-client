@@ -3,21 +3,27 @@
 import { LineChart } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { DataTable, EmptyState, type Column } from '@/components/data-table';
+import {
+  Pill,
+  TABLE_FRAME,
+  TABLE_PAGE_SIZE,
+  formatDateTime,
+} from '@/components/partner/partner-ui';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbClientPosition } from '@/lib/api/partner';
-import { t } from '@/lib/i18n';
 import { compareMoney, formatDecimal } from '@/lib/money';
+import { t } from '@/lib/i18n';
 
 /**
  * What this partner's clients have open right now.
  *
  * ## Why a partner sees this at all
  *
- * Their income depends on it, and until now the only signal they had was a
- * commission total arriving after the fact. "Is my book actually trading" is
- * the question behind most partner support messages, and it is answerable from
- * data the platform already holds.
+ * Their income depends on it, and the only other signal they have is a
+ * commission total arriving after the fact. "Is my book actually trading" is the
+ * question behind most partner support messages, and it is answerable from data
+ * the platform already holds.
  *
  * ## What is deliberately NOT here
  *
@@ -30,15 +36,7 @@ import { compareMoney, formatDecimal } from '@/lib/money';
  * somebody else's book, and listing them would hand one partner a view of
  * another's client list.
  */
-/*
- * TEN rows, against the table's own default of 25.
- *
- * This sits inside a tab on a page that already carries the figure row
- * above it, so a full 25-row page pushes the pager below the fold and the
- * partner has to scroll to reach the control that moves them on. Ten keeps
- * the whole table — header, rows and pager — on one screen.
- */
-const PAGING = { noun: ['position', 'positions'] as [string, string], pageSize: 10 };
+const PAGING = { noun: ['position', 'positions'] as [string, string], pageSize: TABLE_PAGE_SIZE };
 
 export function PartnerPositions() {
   const query = useResource<IbClientPosition[]>(['ib-positions'], (signal) =>
@@ -62,16 +60,12 @@ export function PartnerPositions() {
     {
       header: t('partner.colSide'),
       cell: (row) => (
-        <span
-          className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
-            row.side === 'buy'
-              ? 'border-success/30 bg-success/10 text-success'
-              : 'border-destructive/30 bg-destructive/10 text-destructive'
-          }`}
-        >
+        <Pill tone={row.side === 'buy' ? 'success' : 'destructive'}>
           {row.side === 'buy' ? t('partner.sideBuy') : t('partner.sideSell')}
-        </span>
+        </Pill>
       ),
+      sortable: true,
+      sortKey: 'side',
     },
     {
       header: t('partner.colVolume'),
@@ -93,32 +87,11 @@ export function PartnerPositions() {
     {
       /*
        * FLOATING, and coloured — the one number on the row that moves while
-       * nobody is watching. A partner reading it as settled would misjudge
-       * their own pipeline, so it is styled as a live figure rather than a
-       * total.
+       * nobody is watching. A partner reading it as settled would misjudge their
+       * own pipeline, so it is styled as a live figure rather than a total.
        */
       header: t('partner.colFloating'),
-      cell: (row) => (
-        <span
-          /*
-           * `compareMoney`, never `Number(row.profit)`. The coercion this repo
-           * bans on money paths was here twice — and a float is wrong before the
-           * comparison happens, which on a P/L column decides whether a partner
-           * sees red or green.
-           */
-          className={
-            row.profit === null || row.profit === undefined
-              ? 'text-muted-foreground'
-              : compareMoney(row.profit, '0') > 0
-                ? 'text-success'
-                : compareMoney(row.profit, '0') < 0
-                  ? 'text-destructive'
-                  : 'text-muted-foreground'
-          }
-        >
-          {row.profit === null || row.profit === undefined ? '—' : formatDecimal(row.profit)}
-        </span>
-      ),
+      cell: (row) => <Floating profit={row.profit} />,
       align: 'right',
       cellClassName: 'tabular',
       sortable: true,
@@ -127,10 +100,11 @@ export function PartnerPositions() {
     },
     {
       header: t('partner.colOpened'),
-      cell: (row) => formatDate(row.openedAt),
+      cell: (row) => formatDateTime(row.openedAt),
       cellClassName: 'whitespace-nowrap text-muted-foreground',
       sortable: true,
       sortKey: 'openedAt',
+      sortType: 'date',
     },
   ];
 
@@ -142,24 +116,42 @@ export function PartnerPositions() {
       onRetry={() => query.refetch()}
       errorMessage={apiErrorMessage(query.error, t('partner.positionsFailed'))}
       error={query.error}
-      fill
     >
-      <DataTable
-        caption={t('partner.tabPositions')}
-        columns={columns}
-        rows={query.data ?? []}
-        rowKey={(row) => row.id}
-        dimmed={query.isFetching}
-        clientPagination={PAGING}
-        fill
-        empty={<EmptyState icon={LineChart} message={t('partner.positionsEmpty')} />}
-      />
+      <div className={TABLE_FRAME}>
+        <DataTable
+          caption={t('partner.tabPositions')}
+          columns={columns}
+          rows={query.data ?? []}
+          rowKey={(row) => row.id}
+          dimmed={query.isFetching}
+          clientPagination={PAGING}
+          fill
+          empty={
+            <EmptyState
+              icon={LineChart}
+              message={`${t('partner.positionsEmpty')} — ${t('partner.positionsEmptyBody')}`}
+            />
+          }
+        />
+      </div>
     </AsyncBoundary>
   );
 }
 
-/** `'0.5000'` → `'0.5'`. Lots are read, not summed, at this scale. */
-function formatDate(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+/**
+ * A floating P/L, coloured by its sign.
+ *
+ * `compareMoney`, never `Number(row.profit)`. The coercion this repo bans on
+ * money paths was here twice — and a float is wrong before the comparison
+ * happens, which on a P/L column decides whether a partner sees red or green.
+ * `'-0.00000001'` is a real loss.
+ */
+function Floating({ profit }: { profit?: string | null }) {
+  if (profit === null || profit === undefined)
+    return <span className="text-muted-foreground">—</span>;
+
+  const sign = compareMoney(profit, '0');
+  const tone = sign > 0 ? 'text-success' : sign < 0 ? 'text-destructive' : 'text-muted-foreground';
+
+  return <span className={tone}>{formatDecimal(profit)}</span>;
 }

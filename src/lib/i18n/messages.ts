@@ -1290,7 +1290,6 @@ export const messages = {
   'partner.sideSell': 'Sell',
 
   'partner.agencyLabel': 'Your programme',
-  'partner.agencyProducts': 'Your clients can open: {products}',
   'partner.pendingSubmittedFor': 'Applied for {agency} on {date}',
   'partner.chooseAgency': 'Choose a programme',
   /*
@@ -1329,20 +1328,23 @@ export const messages = {
   'partner.reapply': 'Apply again',
 
   // Approved — the partner dashboard.
-  'partner.approvedHeading': 'You are a partner',
   'partner.approvedSince': 'Partner since {date}',
   'partner.levelLabel': 'Your level',
   'partner.referralCodeLabel': 'Your referral code',
   'partner.referralLinkLabel': 'Your referral link',
   'partner.copy': 'Copy',
   'partner.copied': 'Copied',
-  // ── The commission wallet ─────────────────────────────────────────────────
-  // A partner's earnings sit in their own wallet and reach the spending wallet
-  // through one transfer. The wording carries the same rule the wallet screen
-  // does: no wallet is NOT a zero balance.
-  'partner.commissionHeading': 'Commission earnings',
-  // The "never credited" state. Says what has not happened and what will make it
-  // happen — never "$0.00", which claims a wallet that does not exist.
+  // ── Commission balances ───────────────────────────────────────────────────
+  // A partner's earnings sit in their own wallet, PER CURRENCY, and reach the
+  // spending wallet through one transfer each. The wording carries the same rule
+  // the wallet screen does: no wallet is NOT a zero balance.
+  'partner.balancesHeading': 'Commission balances',
+  'partner.balanceAvailable': 'Available to move',
+  'partner.balancesCount': '{count} currencies',
+  'partner.balanceOpened': 'Opened {date}',
+  // The "never credited" state — no wallet in ANY currency. Says what has not
+  // happened and what will make it happen, never "$0.00", which would claim a
+  // wallet that does not exist.
   'partner.commissionEmpty': 'No commission credited yet',
   'partner.commissionEmptyBody':
     'Your commission wallet opens the first time a commission is confirmed. Earnings are held ' +
@@ -1354,13 +1356,10 @@ export const messages = {
   // The label on the CARD FACE, where an ordinary wallet card carries the
   // currency's name. The code is already printed beneath it in bold, so this
   // slot says the thing the card would otherwise leave unsaid.
-  'partner.commissionCardLabel': 'Commission',
-  'partner.commissionTransfer': 'Move to wallet',
-  // Used only when a partner holds commission in MORE THAN ONE currency, so
-  // each button names the balance it moves. One unnamed button beside a
-  // carousel would act on a card the reader cannot be certain is the visible
-  // one.
-  'partner.commissionTransferNamed': 'Move {currency}',
+  // Every button names the balance it moves, even when there is only one. The
+  // cells are otherwise identical, and a money control that reads the same
+  // beside two different balances is ambiguous about which one it acts on.
+  'partner.commissionTransferNamed': 'Move {currency} to wallet',
   'partner.commissionTransferTitle': 'Move commission to your wallet',
   'partner.commissionTransferBody':
     'The amount moves to your main {currency} wallet immediately, where you can withdraw it or ' +
@@ -1376,8 +1375,6 @@ export const messages = {
   'partner.copyFailed': 'Could not copy. Select the link and copy it manually.',
   'partner.suspendedNotice':
     'Your partner account is currently suspended. Your referral link still works, but you are not earning. Contact support for details.',
-  'partner.earningsPending':
-    'Earnings reporting is not available yet. Your introductions are being recorded.',
 
   // Not eligible yet.
   'partner.ineligibleHeading': 'Verify your identity first',
@@ -1396,35 +1393,25 @@ export const messages = {
   'partner.overviewLoading': 'Loading your partner dashboard…',
   'partner.overviewLoadFailed': 'Could not load your partner dashboard.',
 
-  'partner.earningsHeading': 'Earnings',
   'partner.earningsLifetime': 'Lifetime earnings',
   'partner.earningsRecent': 'Last 30 days',
-  /*
-   * THE honesty line, and the reason `engineLive` crosses the wire at all.
-   *
-   * Shown beside a zero total whenever no commission engine has run. Without it
-   * a structural zero is indistinguishable from "you earned nothing", which on a
-   * screen about money somebody expects to be paid reads as a dispute rather
-   * than as a feature that has not shipped.
-   */
-  /*
-   * Shown only until the engine has confirmed its FIRST payout platform-wide.
-   *
-   * It no longer says "not live yet" — the engine exists and runs hourly. What
-   * it says now is the narrower and still-true thing: nothing has been credited
-   * so far, so a zero here is an empty history rather than an uncalculated one.
-   */
-  'partner.earningsNotLive':
-    'No commission has been credited yet. Earnings are calculated when a client you introduced ' +
-    'makes a deposit, and are paid into your wallet shortly afterwards.',
   'partner.earningsLiveNote': 'Credited to your wallet as it is earned.',
-  'partner.earningsPendingLabel': 'Awaiting payout',
+  /*
+   * THE MULTI-CURRENCY LINE.
+   *
+   * `IbOverviewService` sums earnings in ONE currency, because there is no FX
+   * source in this system — so a partner whose clients trade in a second
+   * currency accrues real commission that these totals do not cover. It sits in
+   * its own commission wallet and is shown in full below.
+   *
+   * Without this line the screen puts a zero lifetime total directly above a
+   * funded balance and explains neither.
+   */
+  'partner.earningsCurrencyScope':
+    'These totals cover {currency} only — there is no exchange rate in this system to combine ' +
+    'currencies with. You also hold commission in {others}; see the balances below.',
 
-  'partner.levelHeading': 'Your level',
   'partner.levelRateRevenue': '{rate}% revenue share',
-  'partner.levelRatePerLot': '{rate} per lot',
-  'partner.levelDirectLimit': 'Up to {max} direct partners',
-  'partner.levelDirectUnlimited': 'Unlimited direct partners',
   'partner.levelUnknown': 'Your level is being configured.',
 
   'partner.clientsHeading': 'Clients you introduced',
@@ -1445,6 +1432,100 @@ export const messages = {
   'partner.subPartnerLevel': 'Level {level}',
   'partner.subPartnerSuspended': 'Suspended',
   'partner.subPartnerActive': 'Active',
+
+  // ── The partner area, continued ───────────────────────────────────────────
+  // The referral toolkit sits in the header band, above everything else on the
+  // screen: it is what a returning partner comes back to copy.
+  'partner.referralHint':
+    'Anyone who registers through this link is attributed to you permanently.',
+
+  // Two more tabs. The client list and the sub-partner tree used to be capped,
+  // scrollable boxes inside the overview; both are unbounded lists and now have
+  // a tab each, where they can be sorted, filtered and paged.
+  'partner.tabClients': 'Clients',
+  'partner.tabNetwork': 'Network',
+
+  'partner.networkActive': '{count} active',
+  'partner.viewAll': 'View all',
+  'partner.noMatches': 'Nothing matches your filters',
+  'partner.searchClients': 'Search by name',
+  'partner.filterAll': 'All',
+  'partner.colPartner': 'Partner',
+  'partner.colLevel': 'Level',
+  'partner.colSince': 'Since',
+
+  'partner.termsHeading': 'Your terms',
+  'partner.levelRateNote': 'Your share of the broker’s revenue on the trades your clients close.',
+  'partner.programmeProductsLabel': 'Account types your clients can open',
+  // An EMPTY product list means unrestricted (see `IbAccountDto`), which is a
+  // different fact from having no programme — so it gets its own sentence
+  // rather than an empty list rendered as nothing.
+  'partner.programmeUnrestricted': 'Your clients can open any account type the broker offers.',
+  'partner.programmeNone': 'No programme',
+  'partner.programmeNoneBody':
+    'You are not appointed under a specific programme. Contact support if you expected one.',
+
+  'partner.subPartnersNote':
+    'You earn on their clients too, at the difference between your rate and theirs. Only the ' +
+    'partners directly beneath you are listed — that is as far as a payout resolves.',
+  'partner.clientsVerifiedNote':
+    'Only a verified client can fund an account, so only a verified client can earn you commission.',
+
+  // ── How the money actually reaches the partner ────────────────────────────
+  // Four steps, because the gap between "earned" and "spendable" is what most
+  // partner support messages are about: an accrual is pending until the confirm
+  // job credits it, and it sits in the commission wallet until they move it.
+  'partner.howHeading': 'How you are paid',
+  'partner.howStepOne': 'Share your link',
+  'partner.howStepOneBody':
+    'Clients who register through your referral link are attributed to you permanently.',
+  'partner.howStepTwo': 'They trade',
+  'partner.howStepTwoBody':
+    'Commission accrues at your level’s rate and appears in your commission list as pending.',
+  'partner.howStepThree': 'It is released',
+  'partner.howStepThreeBody':
+    'Shortly afterwards it is credited to your commission wallet, held separately from your deposits.',
+  'partner.howStepFour': 'You move it across',
+  'partner.howStepFourBody':
+    'Transfer it to your main wallet to withdraw it or fund a trading account.',
+
+  // ── The commission summary ────────────────────────────────────────────────
+  /*
+   * These totals are summed IN THE BROWSER from the entries in the list, and
+   * `GET /ib/commissions` returns the most recent entries rather than all of
+   * them. So the scope line is not decoration: it is the difference between a
+   * true statement and a lifetime total that quietly under-reports.
+   *
+   * The lifetime figure above is the server's own sum over the whole ledger.
+   * Both are labelled, for the reason the account screen labels its two
+   * balances — two money figures that differ and neither says which is which is
+   * worse than showing one.
+   */
+  'partner.summaryHeading': 'Commission summary',
+  'partner.summaryScope': 'Totals cover the {count} entries listed below, newest first.',
+  'partner.summaryCurrency': 'In {currency}',
+  'partner.totalReleased': 'Released',
+  'partner.totalReleasedHint': 'Credited to your commission wallet',
+  'partner.totalAwaiting': 'Awaiting release',
+  'partner.totalAwaitingHint': 'Earned, not credited yet',
+  'partner.totalReversed': 'Reversed',
+  'partner.totalReversedHint': 'Withdrawn before it was released',
+  'partner.sourceDirect': 'Your own clients',
+  'partner.sourceNetwork': 'Your partners’ clients',
+  'partner.colReleasedAt': 'Released',
+
+  // ── Commission transfers (GET /ib/wallet/transfers) ───────────────────────
+  // The short list that explains the balance beside it. The FULL history is
+  // /transactions, which carries these rows alongside every other movement.
+  'partner.transfersHeading': 'Moved to your wallet',
+  'partner.transfersLoading': 'Loading your commission transfers…',
+  'partner.transfersFailed': 'Could not load your commission transfers.',
+  'partner.transfersEmpty': 'You have not moved any commission yet',
+  'partner.transfersEmptyBody':
+    'When you move commission into your main wallet, the most recent moves are listed here.',
+  'partner.transfersAll': 'All transactions',
+  'partner.transfersNote':
+    'The full record is on your transactions page, alongside every other movement.',
 
   // ── Wallet cards ──────────────────────────────────────────────────────────
   // The credit-card presentation. `walletIdLabel` is shown with a truncated id

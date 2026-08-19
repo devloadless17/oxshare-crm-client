@@ -67,7 +67,27 @@ export default async function RootLayout({
 
   return (
     <html lang={DEFAULT_LOCALE} dir={direction(DEFAULT_LOCALE)} suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      {/*
+        THE ONE SCROLL CAP.
+
+        `h-dvh` + `overflow-hidden` on the body, so the DOCUMENT can never
+        scroll. Every screen underneath owns its own scroll container — the
+        portal's `<main>`, the auth shell, the full-screen states — and without
+        this cap the document scrolls behind whichever of those is already
+        scrolling, which the reader sees as two scrollbars side by side on the
+        same screen.
+
+        `dvh` rather than `vh`: on mobile `100vh` is the viewport with the
+        browser chrome RETRACTED, so a `vh` cap is taller than what is actually
+        visible and reintroduces the very overflow this removes.
+
+        The consequence is a rule, not a preference: any screen whose content can
+        exceed the viewport must carry its own `overflow-y-auto`, because
+        anything past this box is now clipped rather than reachable by scrolling.
+      */}
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} h-dvh overflow-hidden antialiased`}
+      >
         {/* `defaultTheme` is NOT passed. It used to be `"light"` here, which
             overrode the provider's own default via the `{...props}` spread — so
             changing the default in theme-provider.tsx alone would have looked
