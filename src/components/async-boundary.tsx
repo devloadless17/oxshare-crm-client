@@ -11,10 +11,15 @@ import { Button } from '@/components/ui/button';
  * The loading / not-built-yet / error / ready branch, in one place.
  *
  * NEAR-TWIN of the same path in oxshare-crm-admin: same props, same four
- * branches. Excluded from scripts/check-twins.sh because the loading state uses a
- * different component in each app — admin renders its own components/ui/loader,
- * this app uses lucide's Loader2. Keep the props and the branch behaviour in step
- * by hand.
+ * branches. Keep the props and the branch behaviour in step by hand.
+ *
+ * The exclusion from scripts/check-twins.sh is now HISTORICAL rather than
+ * structural: it was excluded because the loading state used a different
+ * component in each app — admin its own components/ui/loader, this app lucide's
+ * `Loader2` — and both have rendered `PageLoader` from the twin
+ * `components/ui/loader` since that file landed. This comment claimed otherwise
+ * long after it stopped being true, which is the stale-literal class that has
+ * disarmed a check in this system three times.
  */
 export function AsyncBoundary({
   status,

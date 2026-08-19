@@ -221,12 +221,25 @@ function AccountDetail({ account }: { account: TradingAccount }) {
             variant="outline"
             size="sm"
             onClick={() => void snapshot.refetch()}
-            disabled={snapshot.isFetching}
+            loading={snapshot.isFetching}
           >
-            <RefreshCw
-              className={`h-4 w-4 ${snapshot.isFetching ? 'animate-spin' : ''}`}
-              aria-hidden="true"
-            />
+            {/*
+            The refresh mark while idle, the shared `Spinner` while in flight.
+
+            This was a `RefreshCw` carrying `animate-spin` only sometimes — named
+            in `ui/loader.tsx` as one of the fourteen spellings of "please wait"
+            that file replaced. It froze mid-rotation for every user with
+            reduce-motion on, because the blanket rule in globals.css cuts every
+            animation to 0.001ms and `animate-spin` obeys it; `loader-spin`,
+            which the shared Spinner uses, re-asserts the rotation past that
+            rule.
+
+            `loading` on the Button also disables it and sets `aria-busy`, which
+            is why the hand-written `disabled` is gone rather than kept beside
+            it. The icon is HIDDEN rather than spun so the two marks never stack —
+            Button renders its Spinner ahead of the children.
+          */}
+            {!snapshot.isFetching && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
             {snapshot.isFetching ? t('accounts.liveRefreshing') : t('accounts.liveRefresh')}
           </Button>
           {/*

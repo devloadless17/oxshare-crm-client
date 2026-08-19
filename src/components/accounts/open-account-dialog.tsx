@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, MailCheck, ShieldAlert } from 'lucide-react';
+import { MailCheck, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -446,12 +446,31 @@ export function OpenAccountDialog({
               keyboard submit meets. Only one of them is reachable at a time,
               which is why neither is redundant.
             */}
+            {/*
+              `loading`, not a hand-placed icon.
+
+              This rendered lucide's `Loader2` at `h-4 w-4 animate-spin` — one of
+              the fourteen spellings of "please wait" that `ui/loader.tsx` exists
+              to have replaced, and its comment names this one. Three things were
+              wrong with it and none were visible in isolation: it took its
+              colour from the icon rather than from `currentColor`, so it did not
+              follow the button's foreground; it was sized by hand, so it drifted
+              from every other spinner; and `animate-spin` FREEZES under
+              `prefers-reduced-motion`, because the blanket rule in globals.css
+              cuts every animation to 0.001ms. A user with reduce-motion on
+              watched a stationary arc while their account was being opened.
+
+              `Button` already knows how to do this: it renders the shared
+              `Spinner`, disables itself, and sets `aria-busy`. The remaining
+              `disabled` is the two reasons that are NOT loading — Button ORs
+              them.
+            */}
             <Button
               type="submit"
               size="sm"
-              disabled={create.isPending || !trimmedName || nameTaken}
+              loading={create.isPending}
+              disabled={!trimmedName || nameTaken}
             >
-              {create.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
               {create.isPending ? t('accounts.opening') : t('accounts.openConfirm')}
             </Button>
           </div>
