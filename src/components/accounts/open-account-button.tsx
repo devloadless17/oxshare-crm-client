@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, MailCheck, Plus, ShieldAlert } from 'lucide-react';
+import { Loader2, MailCheck, Plus, RefreshCw, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -45,6 +45,26 @@ import { t } from '@/lib/i18n';
  * switched on. A tab whose environment is off shows no button rather than one
  * that fails: offering something the API will refuse teaches a client that a
  * feature is not for them by making them press it.
+ *
+ * ## While that request is in flight, this says so
+ *
+ * It used to render NOTHING, on the reasoning that "a button that appears a
+ * second late beats one that appears and then vanishes". The second half is
+ * right and the first half is what a client actually experienced: the accounts
+ * list resolves on its own request, so the page finished loading — heading,
+ * tabs, cards, all settled — with a blank space where the only control on it
+ * belongs. There is nothing on screen to say another request is still running,
+ * so the honest reading of a finished page with no button is that opening an
+ * account is not offered.
+ *
+ * A disabled button carrying a spinner fixes both halves at once: it reserves
+ * the space, so nothing shifts when the answer lands, and it says the delay is
+ * ours rather than a refusal. It cannot be pressed, so it cannot open a dialog
+ * whose options have not arrived.
+ *
+ * The vanishing the old comment feared is real and is handled where it happens —
+ * `explainWhenClosed` replaces the button with a sentence, and the cap replaces
+ * it with the limit. Both are answers. Neither is a blank.
  */
 export function OpenAccountButton({
   environment,
@@ -80,8 +100,52 @@ export function OpenAccountButton({
     (signal) => tradingApi.getSelfServiceAvailability(signal),
   );
 
-  // Nothing while we do not yet know: a button that appears a second late beats
-  // one that appears and then vanishes.
+  const label = environment === 'live' ? t('accounts.openLive') : t('accounts.openDemo');
+
+  /*
+   * Still asking. The button is present, reserved and inert — see the note
+   * above. `loading` disables it in the Button itself, so there is no state in
+   * which this shows a spinner and still opens the dialog.
+   */
+  if (availability.status === 'loading') {
+    return (
+      <Button variant={variant} size="sm" loading>
+        {label}
+      </Button>
+    );
+  }
+
+  /*
+   * The request FAILED, which is not the same as the broker having switched
+   * this off — and rendering nothing would say the second.
+   *
+   * A retry rather than a message, because the client can act on it and because
+   * the alternative is a screen that quietly stops offering accounts until
+   * somebody reloads. Same rule as `AsyncBoundary` applies to the list itself:
+   * a failed request shows an error with a retry, never an empty success state.
+   */
+  if (availability.status === 'error') {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => void availability.refetch()}
+        disabled={availability.isFetching}
+      >
+        <RefreshCw
+          className={`h-4 w-4 ${availability.isFetching ? 'animate-spin' : ''}`}
+          aria-hidden="true"
+        />
+        {t('accounts.availabilityRetry')}
+      </Button>
+    );
+  }
+
+  /*
+   * `unavailable` — a 404, meaning the endpoint is not built on this
+   * deployment. Nothing to offer and nothing to retry, so nothing is rendered:
+   * this is the one case where a blank is the honest answer.
+   */
   const options = availability.data;
   if (!options) return null;
 
@@ -119,7 +183,7 @@ export function OpenAccountButton({
     <>
       <Button variant={variant} size="sm" onClick={() => setOpen(true)}>
         <Plus className="h-4 w-4" aria-hidden="true" />
-        {environment === 'live' ? t('accounts.openLive') : t('accounts.openDemo')}
+        {label}
       </Button>
       {open && (
         <OpenAccountDialog
@@ -310,9 +374,15 @@ function OpenAccountDialog({
 
           The form grew from one field to four, and stacked they pushed the
           submit button off a laptop screen — a dialog that scrolls to reach its
-          own confirm button is a dialog people abandon. The pairs are read
-          together anyway: type with leverage (the terms), name with balance
-          (what this particular account is).
+          own confirm button is a dialog people abandon.
+
+          The ORDER is name → currency → product → leverage, and it is the order
+          a client answers in: which account is this, then what is it held in,
+          then what is it, then on what terms. Each field's own note says why it
+          sits where it does. The grid fills row-wise, so the DOM order IS the
+          reading order and IS the tab order — there is no CSS reordering here,
+          because a form whose visual order and tab order disagree is a form
+          keyboard users fill in wrong.
 
           Everything that is not a field spans both columns, so the intro, the
           KYC notice, the error and the buttons stay full width at every size.
@@ -339,6 +409,40 @@ function OpenAccountDialog({
               </div>
             </div>
           )}
+
+          {/*
+            THE NAME FIRST.
+
+            It sat fourth, after currency, product and leverage, on the reasoning
+            that the terms come before the label. In front of the form that reads
+            backwards: the first three fields are the account's TERMS, and a
+            client who has just pressed "Open a live account" is answering
+            "which account is this" before they are answering "on what terms".
+            The name is also the only field they compose rather than choose, and
+            a free-text box is a poor thing to meet halfway down a form after
+            three dropdowns.
+
+            Optional, and still first. Optionality is a property of the field,
+            not a position in the order — the hint says so, and burying it does
+            not make it more optional, only easier to miss by the client who
+            holds several accounts and most needs it.
+          */}
+          <div className="space-y-1.5">
+            <Label htmlFor="account-name" className="text-xs">
+              {t('accounts.fieldName')}
+            </Label>
+            <Input
+              id="account-name"
+              maxLength={64}
+              placeholder={t('accounts.namePlaceholder')}
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError(null);
+              }}
+            />
+            <p className="text-[11px] text-muted-foreground">{t('accounts.nameHint')}</p>
+          </div>
 
           <AccountTypeFields
             currencies={currencies}
@@ -380,23 +484,6 @@ function OpenAccountDialog({
               </SelectContent>
             </Select>
             <p className="text-[11px] text-muted-foreground">{t('accounts.leverageHint')}</p>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="account-name" className="text-xs">
-              {t('accounts.fieldName')}
-            </Label>
-            <Input
-              id="account-name"
-              maxLength={64}
-              placeholder={t('accounts.namePlaceholder')}
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setError(null);
-              }}
-            />
-            <p className="text-[11px] text-muted-foreground">{t('accounts.nameHint')}</p>
           </div>
 
           {/*

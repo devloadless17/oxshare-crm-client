@@ -343,14 +343,32 @@ function AccountCard({ account, tone }: { account: TradingAccount; tone: 'live' 
               : t('accounts.unknownValue')
           }
         />
-        <Detail
-          label={t('accounts.tierLabel')}
-          value={account.tier ?? t('accounts.unknownValue')}
-        />
-        <Detail
-          label={t('accounts.groupLabel')}
-          value={account.mt5Group ?? t('accounts.unknownValue')}
-        />
+        {/*
+          THE PRODUCT, and ONLY when there is one.
+
+          This pair of rows used to read "TYPE —" and "GROUP —" on every card of
+          every client, and both dashes were structural rather than unlucky:
+          `trading_accounts.tier` is a column nothing has ever written, and
+          `mt5_group` was never persisted at account creation, so neither field
+          could ever hold a value. Two permanent em dashes on a card whose whole
+          job is to state facts about an account teaches a client that our data
+          is missing — and it is the first thing they ask support about.
+
+          `product` is the real answer to "what kind of account is this". It is
+          also the answer the client themselves gave: the open-account form asks
+          for a currency and a product, so this is their own choice read back.
+          The MT5 group it resolves from stays on the detail screen, where a
+          server path is a technical detail somebody quoting a support ticket
+          might want and not a label on a summary card.
+
+          OMITTED rather than dashed when null. That is a real state — an
+          operator may open an account directly into a group the catalogue does
+          not sell, and every account opened before the group was persisted has
+          none — and a row that says nothing is worse than no row at all. The
+          grid reflows; nothing is left holding a space for an answer that is not
+          coming.
+        */}
+        {account.product && <Detail label={t('accounts.productLabel')} value={account.product} />}
         <Detail label={t('accounts.openedLabel')} value={formatDate(account.createdAt)} />
       </dl>
 

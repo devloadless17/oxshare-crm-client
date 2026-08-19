@@ -44,14 +44,16 @@ export function AccountTypeFields({
   /** Demo asks no product — it takes the first offered in the currency. */
   isDemo: boolean;
 }) {
-  const only = productsForCurrency.length === 1 ? productsForCurrency[0] : undefined;
-
   return (
     <>
       {/*
-        CURRENCY FIRST: it narrows the products, and an account is denominated
-        once and cannot be re-denominated. A single option still gets a dropdown
-        rather than a hidden field — a client should see what it will be held in.
+        CURRENCY BEFORE PRODUCT: it narrows the products, and an account is
+        denominated once and cannot be re-denominated. A single option still gets
+        a dropdown rather than a hidden field — a client should see what it will
+        be held in, and the product field below now follows the same rule.
+
+        These two are the middle of the form's sequence, not its start. The
+        caller renders the account NAME above them — see the note there.
       */}
       {currencies.length > 0 && (
         <div className="space-y-1.5">
@@ -74,13 +76,33 @@ export function AccountTypeFields({
       )}
 
       {/*
-        PRODUCT — live only. Demo takes the first product in the chosen currency:
-        practice money on "Standard" rather than "Raw Spread" is not a decision
-        worth reading about before trying the platform. Hidden, not disabled,
-        when a currency carries exactly one — a select that cannot be changed is
-        a label wearing a control's clothes.
+        PRODUCT — live only, and ALWAYS a select when one is offered.
+
+        It used to hide itself when a currency carried exactly one product,
+        replacing the control with the sentence "Opening a Standard account." The
+        reasoning was that a select which cannot be changed is a label wearing a
+        control's clothes — true in isolation, and wrong beside the currency
+        field directly above it, which renders a one-option dropdown on the
+        explicit ground that "a client should see what it will be held in". Two
+        adjacent answers to the same question, and the form's most-asked question
+        was the one that disappeared.
+
+        What the client saw was a dialog with no product field at all, and a line
+        of prose where a control belongs is not where anybody looks for one. The
+        product also decides the spread and the commission the account trades on,
+        so it is the field a client most wants to confirm before pressing open —
+        and, once accounts exist, the one that tells two of them apart.
+
+        A single-option select is honest about that: it shows what is being
+        opened, in the same shape as every other choice on the form, and it grows
+        a second row the day the broker sells a second product without this file
+        changing.
+
+        Demo still asks nothing and takes the first product in the chosen
+        currency: practice money on "Standard" rather than "Raw Spread" is not a
+        decision worth reading about before trying the platform.
       */}
-      {!isDemo && productsForCurrency.length > 1 && (
+      {!isDemo && productsForCurrency.length > 0 && (
         <div className="space-y-1.5">
           <Label htmlFor="account-product" className="text-xs">
             {t('accounts.fieldProduct')}
@@ -98,12 +120,6 @@ export function AccountTypeFields({
             </SelectContent>
           </Select>
         </div>
-      )}
-
-      {!isDemo && only && (
-        <p className="text-[11px] text-muted-foreground">
-          {t('accounts.onlyProduct', { product: only.product })}
-        </p>
       )}
     </>
   );

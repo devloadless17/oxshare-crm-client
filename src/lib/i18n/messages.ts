@@ -659,7 +659,11 @@ export const messages = {
   'accounts.fieldProduct': 'Product',
   // Stated rather than asked when a currency carries exactly one product: a
   // select that cannot be changed is a label wearing a control's clothes.
-  'accounts.onlyProduct': 'Opening a {product} account.',
+  // 'accounts.onlyProduct' is GONE. It read "Opening a {product} account." and
+  // stood in for the product SELECT whenever a currency carried exactly one —
+  // so the field a client most wants to confirm was the one field the form did
+  // not show. The select is now always rendered, matching the currency field
+  // directly above it, which has always shown its single option.
   'accounts.fieldLeverage': 'Leverage',
   'accounts.leverageHint':
     'How far your margin stretches. Higher leverage magnifies losses as much as gains.',
@@ -696,6 +700,10 @@ export const messages = {
   'accounts.demoBody': 'Trades with practice money. Nothing at risk, and no verification needed.',
   'accounts.openDemo': 'Open a demo account',
   'accounts.openFailed': 'That account could not be opened. Please try again.',
+  // The self-service request failed — which is NOT "the broker has switched
+  // this off". Naming the retry rather than the failure, because pressing it is
+  // the only thing the client can do about it.
+  'accounts.availabilityRetry': 'Retry',
   'accounts.liveNeedsKyc':
     'A live account needs your identity verified first. You can open a demo account right now without it.',
   'accounts.verifyNow': 'Verify my identity',
@@ -737,8 +745,13 @@ export const messages = {
   'accounts.liveTag': 'Live',
   'accounts.demoTag': 'Demo',
   'accounts.loginLabel': 'MT5 login',
-  'accounts.groupLabel': 'Group',
-  'accounts.tierLabel': 'Type',
+  // 'accounts.groupLabel' and 'accounts.tierLabel' are GONE with the two rows
+  // that used them. Both rendered a permanent em dash: nothing has ever written
+  // `trading_accounts.tier`, and `mt5_group` was not persisted at creation. The
+  // card now names the PRODUCT, which is the answer the client themselves gave
+  // when they opened the account. The group survives on the detail screen,
+  // where a server path is a support detail rather than a label.
+  'accounts.productLabel': 'Product',
   'accounts.leverageLabel': 'Leverage',
   'accounts.openedLabel': 'Opened',
   'accounts.leverageValue': '1:{ratio}',
