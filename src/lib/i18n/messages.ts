@@ -664,9 +664,12 @@ export const messages = {
   // so the field a client most wants to confirm was the one field the form did
   // not show. The select is now always rendered, matching the currency field
   // directly above it, which has always shown its single option.
+  // 'accounts.leverageHint' is GONE. It explained what leverage is under a field
+  // whose every option is written as a ratio, on a form that opens a trading
+  // account — a standing paragraph of prose between two controls, read once and
+  // then read past. The risk it named is real and belongs where the risk is
+  // taken, not under a dropdown at account-opening time.
   'accounts.fieldLeverage': 'Leverage',
-  'accounts.leverageHint':
-    'How far your margin stretches. Higher leverage magnifies losses as much as gains.',
 
   // Shown INSTEAD of the create button when the broker has not switched this
   // environment on. Silence there reads as a broken page.
@@ -680,8 +683,15 @@ export const messages = {
   'accounts.capReached': 'You have reached the maximum of {max} accounts of this kind.',
 
   'accounts.fieldName': 'Account name',
+  // The placeholder does the hint's job by example. 'accounts.nameHint' said the
+  // name was optional and is gone with that: the field is now REQUIRED, so the
+  // string was not merely surplus, it was wrong.
   'accounts.namePlaceholder': 'Swing trading',
-  'accounts.nameHint': 'Optional. Helps you tell your accounts apart if you have several.',
+  // Shown ON the name field, from two sources that must say the same thing: the
+  // form's own check against the names already on screen, and the API's
+  // ACCOUNT_NAME_TAKEN when the two disagree. Deliberately does not name the
+  // clashing account — the client is looking at their own list.
+  'accounts.nameTaken': 'You already have an account with this name.',
   'accounts.fieldStartingBalance': 'Starting balance',
   'accounts.startingBalanceHint':
     'Practice money, up to {max}. Choose an amount close to what you would really trade — the practice is only useful if the position sizes are.',
@@ -1575,12 +1585,15 @@ export const messages = {
   'accounts.renameTitle': 'Change account name',
   'accounts.nameLabel': 'Account name',
   /*
-   * A SEPARATE key from `accounts.nameHint`, which belongs to the open-account
-   * form and says the name is optional and helps tell accounts apart. Here the
-   * name is neither optional nor cosmetic — it is written to MT5 — so reusing
-   * that string would describe the wrong thing on a control that changes the
-   * broker's own record. `accounts.namePlaceholder` IS shared: the example is
-   * as good in both places.
+   * Its own key, and it has outlived the one it was distinguished from.
+   *
+   * It used to be contrasted with `accounts.nameHint` on the open-account form,
+   * which said the name was optional and cosmetic. That string is gone — the
+   * name is required there now — but the reason for a separate key here is
+   * unchanged and is the stronger half: this control writes to MT5, so what it
+   * says has to be about the broker's own record rather than about telling your
+   * accounts apart. `accounts.namePlaceholder` IS shared: the example is as good
+   * in both places.
    */
   'accounts.nameMt5Hint': 'This is the name MetaTrader shows for this account.',
   'accounts.nameSave': 'Save name',
