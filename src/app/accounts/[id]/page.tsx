@@ -198,6 +198,20 @@ function AccountDetail({ account }: { account: TradingAccount }) {
             {account.leverage
               ? ` · ${t('accounts.leverageValue', { ratio: account.leverage })}`
               : ''}
+            {/*
+              The PRODUCT, then the group.
+
+              The group alone was here, and an MT5 group path in a subheading is
+              a server path where a reader expects a label. The product is what
+              the client chose and what they recognise; the group stays after it
+              because this is the one screen where the technical identifier earns
+              its place — it is what somebody quotes in a support ticket.
+
+              Each is dropped when absent rather than dashed. A subheading is a
+              run-on sentence of facts, and a missing one should shorten it, not
+              punctuate a gap.
+            */}
+            {account.product ? ` · ${account.product}` : ''}
             {account.mt5Group ? ` · ${account.mt5Group}` : ''}
           </p>
         </div>

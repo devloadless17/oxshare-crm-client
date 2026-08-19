@@ -4688,7 +4688,13 @@ export interface components {
             login: string | null;
             /** @description What the client calls this account. NULL means unnamed — the portal falls back to the login rather than inventing a name, so an account somebody named "5001234" stays distinguishable from one nobody named at all. */
             name: string | null;
+            /** @description The MT5 group path this account sits in — a server path, not a label. Null on accounts opened before it was persisted; see `product`, which is the readable form and what a client is shown. */
             mt5Group: string | null;
+            /**
+             * @description The product this account was opened under, resolved from `mt5Group` through `trading_product_groups`, which is unique on the group for exactly this reason. Null when the group is in no product — an operator may open an account directly into any MT5 group — and null on accounts opened before the group was stored. THE PORTAL RENDERS THIS, not the group: a backslash-separated MT5 group path is unreadable to a client, which is why the open-account form asks for a currency and a product rather than a path.
+             * @example Standard
+             */
+            product: string | null;
             /** @enum {string} */
             environment: "live" | "demo";
             /** @description The account's own currency, which need not match the wallet's. */
@@ -4698,7 +4704,6 @@ export interface components {
              * @example 1250.00000000
              */
             balance: string;
-            tier: string | null;
             /** @description The leverage ratio denominator — 500 means 1:500. Null when unset. */
             leverage: number | null;
             /** @enum {string} */
