@@ -75,8 +75,13 @@ export function AccountTransactions({
           <h2 className="text-sm font-semibold">{t('accounts.transactionsTitle')}</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">{t('accounts.transactionsNote')}</p>
         </div>
+        {/* `?account=` for the same reason as the card on /accounts — this panel
+            is about ONE account and already holds its id, so sending the client
+            to an empty picker asks a question they have answered by being here.
+            Outside the Button, which renders through Slot. See
+            use-preselected-transfer.ts. */}
         <Button asChild variant="outline" size="sm">
-          <Link href="/transfer">{t('accounts.fundAccount')}</Link>
+          <Link href={`/transfer?account=${accountId}`}>{t('accounts.fundAccount')}</Link>
         </Button>
       </header>
 
