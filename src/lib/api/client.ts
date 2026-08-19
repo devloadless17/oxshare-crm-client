@@ -21,6 +21,9 @@ import { LOGIN_PATH, loginPathFor } from '../return-to';
 // The single definition of "reachable without a session", shared with proxy.ts.
 import { isPublicPath } from '../public-paths';
 import { announceSessionEvent, withSessionLock } from '../session-channel';
+// The marker that tells the NEXT cold load which screen to paint — cleared here
+// so that a dead session cannot leave it behind. See the note in clearSession.
+import { clearSessionHint } from '../session-hint';
 
 /**
  * A request that never finishes must eventually fail.
@@ -258,6 +261,23 @@ export function clearSession(): void {
    */
   clearKycDraft();
   clearWithdrawIntent();
+  /*
+   * The `session-hint` marker, and this line is what keeps a stale one from
+   * becoming a redirect loop.
+   *
+   * `proxy.ts` reads the marker and sends `/auth/login` onward to the dashboard.
+   * If a session dies while the marker survives, that redirect and the 401
+   * eviction below point at each other: login → dashboard → 401 → login. Clearing
+   * it HERE closes that, because this runs inside the interceptor — before React
+   * Query settles the error, before any component re-renders and long before any
+   * navigation. By the time the eviction lands on the sign-in screen the marker
+   * is already gone and the proxy serves the form.
+   *
+   * `UserContext` clears it too, on a `signed-out` session state. That is the
+   * same fact observed one layer up and is not redundant: this covers the 401
+   * path, that covers a query resolving signed-out without one.
+   */
+  clearSessionHint();
 }
 
 /**

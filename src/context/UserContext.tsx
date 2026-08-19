@@ -8,6 +8,7 @@ import { clearKycDraft } from '@/lib/kyc-draft';
 import { clearWithdrawIntent } from '@/lib/withdraw-intent';
 import { announceSessionEvent, onSessionEvent } from '@/lib/session-channel';
 import { isPublicPath } from '@/lib/public-paths';
+import { clearSessionHint, markSessionHint } from '@/lib/session-hint';
 
 import type { components } from '@/lib/api/types.gen';
 
@@ -44,6 +45,20 @@ interface UserContextType {
   isAuthenticated: boolean;
   /** The full picture. `isLoading`/`isAuthenticated` remain as the two common slices of it. */
   sessionState: SessionState;
+  /**
+   * Does this browser believe it has a session, INCLUDING while we are still
+   * asking?
+   *
+   * Distinct from `isAuthenticated`, which is only ever the answer `/auth/me`
+   * gave. This is that answer once it exists and the `session-hint` cookie
+   * before it does — so it is the one signal available during the window where
+   * a screen has to decide what to paint and nothing authoritative has landed.
+   *
+   * ONLY for that. It is derived from a cookie any visitor can write, so a
+   * screen that used it to decide what somebody may SEE would be the forgeable
+   * gate `require-auth.tsx` exists to prevent.
+   */
+  hadSession: boolean;
   refetchUser: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -53,6 +68,7 @@ const UserContext = createContext<UserContextType>({
   isLoading: true,
   isAuthenticated: false,
   sessionState: 'loading',
+  hadSession: false,
   refetchUser: async () => {},
   logout: async () => {},
 });
@@ -70,7 +86,23 @@ function isUnauthenticated(error: unknown): boolean {
   return status === 401 || status === 403;
 }
 
-export function UserProvider({ children }: { children: React.ReactNode }) {
+export function UserProvider({
+  children,
+  /*
+   * Read from the `session-hint` cookie by `app/layout.tsx` — SERVER-side, so
+   * the first HTML this browser receives already knows which case it is in.
+   *
+   * Passed in rather than read here with `document.cookie`, and that is the
+   * whole reason it is a prop: a client component reading the cookie itself
+   * renders `false` on the server and `true` after hydration, which puts the
+   * sign-in form into the HTML and swaps it out a frame later. See
+   * lib/session-hint.ts.
+   */
+  initialSessionHint = false,
+}: {
+  children: React.ReactNode;
+  initialSessionHint?: boolean;
+}) {
   const queryClient = useQueryClient();
 
   // A query, not useEffect + useState: a signed-out visitor gets one 401 and
@@ -130,6 +162,27 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const user = sessionState === 'signed-in' ? (data ?? null) : null;
 
+  /*
+   * The cookie that lets the NEXT cold load know which case it is in, kept in
+   * step with the only authoritative answer there is.
+   *
+   * Here rather than in the login page, deliberately. Sign-in is not the only
+   * way a session begins — registration signs the client in, so does following
+   * a verification link, and so does simply returning tomorrow on a refresh
+   * cookie that is still good. Writing it at the point of LOGIN would cover one
+   * of those and leave the rest flashing the sign-in screen, which is the bug.
+   * `sessionState` is where all four converge.
+   *
+   * `unreachable` deliberately writes nothing. We do not know what is true, and
+   * clearing on a dropped request would sign a returning client out of the only
+   * signal that stops the flash — for a blip that `SessionState` exists to say
+   * is not an answer.
+   */
+  useEffect(() => {
+    if (sessionState === 'signed-in') markSessionHint();
+    else if (sessionState === 'signed-out') clearSessionHint();
+  }, [sessionState]);
+
   const refetchUser = useCallback(async () => {
     await refetch();
   }, [refetch]);
@@ -152,6 +205,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (event !== 'signed-out') return;
       queryClient.clear();
       clearKycDraft();
+      // This tab's own marker, before it navigates. Without it the next cold
+      // load of this browser is told a session exists, and the sign-in screen it
+      // is about to land on holds its paint waiting for a 401.
+      clearSessionHint();
       // The part-finished withdrawal too — it holds an amount and a payout
       // destination. Both, not one: this handler and `logout` below are the two
       // ways a session ends, and only clearing it in one leaves the other
@@ -177,6 +234,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await authApi.logout();
     queryClient.clear();
+    // Same reason as the cross-tab handler above: the marker outlives this JS
+    // context, so signing out has to take it with it.
+    clearSessionHint();
     // The half-filled KYC form holds the client's name, date of birth and
     // address, and sessionStorage SURVIVES the full page load below — so the
     // "no KYC data survives the logout" guarantee this function claims was not
@@ -203,6 +263,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         isLoading: isPending,
         isAuthenticated: sessionState === 'signed-in',
         sessionState,
+        /*
+         * The cookie answers while the request is in flight; the request
+         * answers once it lands.
+         *
+         * Not `initialSessionHint || isAuthenticated` — that would keep saying
+         * "yes" after a 401 on a browser holding a stale marker, which is the
+         * one case that must resolve to the sign-in form rather than to a
+         * spinner that never ends.
+         */
+        hadSession: sessionState === 'loading' ? initialSessionHint : sessionState === 'signed-in',
         refetchUser,
         logout,
       }}

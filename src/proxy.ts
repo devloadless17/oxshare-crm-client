@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { NONCE_HEADER, contentSecurityPolicy, createNonce } from '@/lib/csp';
-import { LOGIN_PATH } from '@/lib/return-to';
+import { DEFAULT_SIGNED_IN_PATH, LOGIN_PATH, RETURN_TO_PARAM, safeReturnTo } from '@/lib/return-to';
+// The single definition of "a screen that exists only for signed-out people",
+// shared with lib/api/client.ts. Never a `/auth` prefix — see the file.
+import { AUTH_ONLY_PATHS, matches } from '@/lib/public-paths';
+import { SESSION_HINT_COOKIE } from '@/lib/session-hint';
 
 /**
  * Route handling for the whole portal, in one file.
@@ -44,6 +48,25 @@ import { LOGIN_PATH } from '@/lib/return-to';
  * DO NOT reinstate a cookie check here without first giving this host a cookie
  * to read — a separate, non-sensitive marker set with `Domain=` on the shared
  * parent domain, never the session cookie itself, which must keep `__Host-`.
+ *
+ * ── That marker now exists, and this file reads it ──────────────────────────
+ *
+ * `lib/session-hint.ts`. It is written by THIS app on THIS host from JavaScript
+ * whenever `/auth/me` answers "signed in", so nothing about it depends on the
+ * API's cookie domain and the paragraph above still holds in full — the session
+ * cookie is still invisible here and still must be.
+ *
+ * What it is allowed to decide is bounded, and the boundary is the point: it
+ * chooses between two PUBLIC screens for a visitor, and never whether somebody
+ * may see a private one. Reinstating the old gate on top of it would be the
+ * original bug wearing a new cookie — a marker any visitor can write is not an
+ * authorisation, and `require-auth.tsx` remains the only thing that decides
+ * access, because `/auth/me` is the only answer that cannot be forged.
+ *
+ * The problem it solves is the one a returning client actually had: `/` is what
+ * people type and what their bookmark points at, so the unconditional redirect
+ * to `/auth/login` meant every client with a live thirty-day session was shown a
+ * sign-in form and then moved off it. Being logged out is what that looks like.
  */
 
 export type GuardDecision = { allow: true } | { allow: false; redirectTo: string };
@@ -53,16 +76,21 @@ const ALLOW: GuardDecision = { allow: true };
 /*
  * Exported for tests only — `proxy()` below is the sole caller in the app.
  *
- * All that survives is the SITE ROOT, which is a routing decision rather than a
- * page. It no longer takes a token, and that removal is the point: this
- * function must not decide anything that depends on a session, because it
- * cannot see one.
+ * PURE, and it takes the marker as an argument rather than reading a cookie, so
+ * every branch here is a table test rather than something you find by clicking.
  *
- * `/` therefore resolves to the sign-in screen unconditionally, matching what
- * `app/page.tsx` does anyway. A client who already has a session is corrected
- * onward by `components/auth/redirect-if-authenticated`, which asks `/auth/me`.
- * That costs a signed-in client one extra hop on `/` — the cost of the old
- * one-hop version was that everyone else could not sign in at all.
+ * It decides two things, both of which move a visitor between PUBLIC screens:
+ * where the SITE ROOT goes, and whether a browser that has been signed in should
+ * be handed the sign-in form. It still decides nothing about access — it cannot,
+ * because a marker any visitor can write is not a session. The hard version of
+ * that rule is in the header comment above.
+ *
+ * `/` used to resolve to the sign-in screen unconditionally, and that is the bug
+ * this fixes: it is the URL people type, so the guarantee was that every
+ * returning client saw a login form. They are now sent where they belong before
+ * any HTML is generated, and `components/auth/redirect-if-authenticated` is left
+ * as the backstop for the case this cannot see — a marker and a session that
+ * disagree.
  *
  * It used to also gate `/kyc` on an `emailVerified` claim. That was correct
  * while this file supplied the ACCESS token, whose payload carries it. When
@@ -72,13 +100,55 @@ const ALLOW: GuardDecision = { allow: true };
  * not, away from onboarding. Claims are read where the token's shape is known
  * and the answer is authoritative: `/auth/me`, via `RequireAuth`.
  */
-export function decideRoute(pathname: string): GuardDecision {
-  if (pathname === '/') return { allow: false, redirectTo: LOGIN_PATH };
+export function decideRoute(pathname: string, hasSessionHint: boolean, search = ''): GuardDecision {
+  if (pathname === '/') {
+    return { allow: false, redirectTo: hasSessionHint ? DEFAULT_SIGNED_IN_PATH : LOGIN_PATH };
+  }
+
+  /*
+   * A browser that has been signed in does not get handed the sign-in form.
+   *
+   * This is the half of the fix that runs on the SERVER, and it is the half that
+   * matters: the client-side backstop can only hold the paint until `/auth/me`
+   * answers, whereas this means the HTML for the sign-in screen is never sent.
+   * A returning client goes `/auth/login` → 307 → `/dashboard` with no form
+   * rendered at any point, and no round trip spent deciding.
+   *
+   * `AUTH_ONLY_PATHS`, not `PUBLIC_PATHS`. The difference is the whole reason
+   * public-paths.ts keeps two lists: /verify-email, /forgot-password and
+   * /reset-password must work WITH a session — a client who just registered is
+   * signed in and unverified, and account recovery runs from the device that
+   * still holds a stale session cookie. Redirecting those to the dashboard locks
+   * people out of the one page that unblocks them.
+   *
+   * `?next=` is honoured, through `safeReturnTo`: someone who followed a link to
+   * /wallet, was bounced here, and turns out to still be signed in belongs at
+   * /wallet, not at the dashboard. The value arrives in a URL, so it is
+   * attacker-supplied and never navigated to unchecked — that check is the
+   * reason `safeReturnTo` is a shared module rather than four inline snippets.
+   */
+  if (hasSessionHint && matches(pathname, AUTH_ONLY_PATHS)) {
+    const next = new URLSearchParams(search).get(RETURN_TO_PARAM);
+    return { allow: false, redirectTo: safeReturnTo(next) };
+  }
+
   return ALLOW;
 }
 
 export function proxy(request: NextRequest) {
-  const decision = decideRoute(request.nextUrl.pathname);
+  /*
+   * NOT the session. A non-sensitive marker this app writes on its OWN host
+   * whenever `/auth/me` says "signed in" — see lib/session-hint.ts, which
+   * explains why the session cookie itself is structurally invisible here and
+   * why this is the marker the note above asks for.
+   *
+   * Everything it decides is COSMETIC: which of two public screens to send a
+   * visitor to. Forging it buys one redirect to /dashboard, where `RequireAuth`
+   * asks the API, gets a 401, clears this marker and sends them back. No private
+   * byte is ever rendered from it.
+   */
+  const hasSessionHint = request.cookies.has(SESSION_HINT_COOKIE);
+  const decision = decideRoute(request.nextUrl.pathname, hasSessionHint, request.nextUrl.search);
 
   return decision.allow
     ? withCsp(request)
