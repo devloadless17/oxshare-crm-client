@@ -9,6 +9,7 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { Button } from '@/components/ui/button';
+import { PageLoader } from '@/components/ui/loader';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -127,11 +128,9 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <React.Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">
-          {t('common.loadingEllipsis')}
-        </div>
-      }
+      // The shared loader, `fullScreen` — see the note on app/auth/login/page.tsx
+      // for why all four auth screens stopped hand-building this.
+      fallback={<PageLoader label={t('common.loadingEllipsis')} fullScreen />}
     >
       <ResetPasswordForm />
     </React.Suspense>

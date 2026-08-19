@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, Eye, EyeOff, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { PageLoader } from '@/components/ui/loader';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { apiErrorMessage, isEmailUnverified } from '@/lib/api/errors';
@@ -42,11 +43,28 @@ import { AuthShell } from '@/components/auth/auth-shell';
 export default function LoginPage() {
   return (
     <React.Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">
-          {t('common.loadingEllipsis')}
-        </div>
-      }
+      /*
+       * `PageLoader`, not a centred line of text.
+       *
+       * All four auth screens had the same hand-built fallback — a flex div with
+       * `text-xs text-muted-foreground` and the word "Loading…" — which is a
+       * loading state that shares nothing with the loading state on every other
+       * screen in the app. `ui/loader.tsx` is the one indicator here, and it
+       * brings three things this did not: the shared spinner, `role="status"`
+       * with `aria-live` so a screen reader is told the page is working, and a
+       * mark that keeps moving under `prefers-reduced-motion`.
+       *
+       * `fullScreen`, because this replaces the whole page rather than a panel
+       * inside one — the same variant `RequireAuth` and
+       * `RedirectIfAuthenticated` use, which is what a visitor sees a moment
+       * later if they turn out to be signed in.
+       *
+       * The label is SHOWN rather than `srOnly`. The gates hide theirs because
+       * they are deliberately anonymous about whether a session exists; here
+       * there is nothing to be coy about — the page is simply loading, and
+       * saying so is better than a bare spinner.
+       */
+      fallback={<PageLoader label={t('common.loadingEllipsis')} fullScreen />}
     >
       <RedirectIfAuthenticated>
         <LoginForm />

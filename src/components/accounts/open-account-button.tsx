@@ -125,12 +125,20 @@ export function OpenAccountButton({
         variant="outline"
         size="sm"
         onClick={() => void availability.refetch()}
-        disabled={availability.isFetching}
+        loading={availability.isFetching}
       >
-        <RefreshCw
-          className={`h-4 w-4 ${availability.isFetching ? 'animate-spin' : ''}`}
-          aria-hidden="true"
-        />
+        {/*
+          The refresh mark while idle, the shared Spinner while in flight — and
+          never a `RefreshCw` with `animate-spin` on it, which is the exact
+          pattern `ui/loader.tsx` was written to remove. That version froze mid-
+          rotation for anyone with reduce-motion on, because globals.css cuts
+          every animation to 0.001ms and `animate-spin` obeys it.
+
+          Hidden rather than spun, so the two marks never stack: `Button` puts
+          its Spinner before the children, so leaving this in would show a
+          spinner and an arrow side by side.
+        */}
+        {!availability.isFetching && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
         {t('accounts.availabilityRetry')}
       </Button>
     );

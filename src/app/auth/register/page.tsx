@@ -10,6 +10,7 @@ import { t } from '@/lib/i18n';
 import { RedirectIfAuthenticated } from '@/components/auth/redirect-if-authenticated';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { Button } from '@/components/ui/button';
+import { PageLoader } from '@/components/ui/loader';
 
 /**
  * Signed-out only, like the sign-in screen and for the same reason: this
@@ -27,11 +28,9 @@ export default function RegisterPage() {
    */
   return (
     <React.Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">
-          {t('common.loadingEllipsis')}
-        </div>
-      }
+      // The shared loader, `fullScreen` — see the note on app/auth/login/page.tsx
+      // for why all four auth screens stopped hand-building this.
+      fallback={<PageLoader label={t('common.loadingEllipsis')} fullScreen />}
     >
       <RedirectIfAuthenticated>
         <RegisterForm />

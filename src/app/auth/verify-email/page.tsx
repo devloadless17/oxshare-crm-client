@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
-import { Spinner } from '@/components/ui/loader';
+import { PageLoader, Spinner } from '@/components/ui/loader';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
@@ -229,12 +229,28 @@ function VerifyEmailForm() {
                   type="button"
                   variant="outline"
                   onClick={() => void handleResendLink()}
-                  disabled={resendCooldown > 0 || isResending || !resendEmail}
+                  loading={isResending}
+                  /*
+                   * The COOLDOWN is not a loading state — nothing is in flight,
+                   * the client simply may not ask again yet — so it stays an
+                   * explicit `disabled` beside `loading` rather than being folded
+                   * into it. The sign-in screen's resend button already draws that
+                   * line the same way.
+                   *
+                   * The old version spun the icon through the cooldown too, which
+                   * said a request was running for sixty seconds after it had
+                   * finished.
+                   */
+                  disabled={resendCooldown > 0 || !resendEmail}
                   className="w-full"
                 >
-                  <RefreshCw
-                    className={`h-4 w-4 ${resendCooldown > 0 || isResending ? 'animate-spin' : ''}`}
-                  />
+                  {/*
+                    Idle: the refresh mark. In flight: the shared `Spinner`, via
+                    `loading`. Never `animate-spin`, which globals.css freezes
+                    under reduce-motion — see ui/loader.tsx, which names this
+                    exact pattern among the ones it replaced.
+                  */}
+                  {!isResending && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
                   {resendCooldown > 0
                     ? `Resend Link in ${resendCooldown}s`
                     : t('auth.verify.resendCta')}
@@ -255,11 +271,9 @@ function VerifyEmailForm() {
 export default function VerifyEmailPage() {
   return (
     <React.Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center text-xs text-muted-foreground">
-          {t('common.loadingEllipsis')}
-        </div>
-      }
+      // The shared loader, `fullScreen` — see the note on app/auth/login/page.tsx
+      // for why all four auth screens stopped hand-building this.
+      fallback={<PageLoader label={t('common.loadingEllipsis')} fullScreen />}
     >
       <VerifyEmailForm />
     </React.Suspense>
