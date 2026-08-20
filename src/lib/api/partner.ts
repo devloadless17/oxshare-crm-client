@@ -1,5 +1,5 @@
 import type { components } from './types.gen';
-import { apiClient } from './client';
+import { apiClient, idempotent } from './client';
 
 /**
  * The partner (introducing broker) programme, from the client's side.
@@ -160,8 +160,28 @@ export const partnerApi = {
    * the balances come back here, but the transaction lists on other screens do
    * not, and a partner who switches to /transactions expects to see it.
    */
-  async transferCommission(input: TransferCommissionInput): Promise<IbWalletTransfer> {
-    const { data } = await apiClient.post<IbWalletTransfer>('/ib/wallet/transfer', input);
+  async transferCommission(
+    input: TransferCommissionInput,
+    idempotencyKey: string,
+  ): Promise<IbWalletTransfer> {
+    /*
+     * The key is REQUIRED, like every other money POST in this file's siblings
+     * (`payments.requestWithdrawal`, `payments.requestTransfer`,
+     * `deposits.create`). It was missing here, and this is the one endpoint
+     * where that is easiest to miss and just as expensive: the 200 IS the money
+     * having moved, so a dropped response on a flaky connection leaves the
+     * partner looking at an unchanged balance with a live "Move to wallet"
+     * button in front of them. Pressing it again without a key posts a SECOND
+     * transfer.
+     *
+     * A positional argument rather than an optional field, so a new caller
+     * cannot forget it — omitting it is a compile error, not a silent downgrade.
+     */
+    const { data } = await apiClient.post<IbWalletTransfer>(
+      '/ib/wallet/transfer',
+      input,
+      idempotent(idempotencyKey),
+    );
     return data;
   },
 
