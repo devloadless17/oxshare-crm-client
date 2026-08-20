@@ -203,11 +203,25 @@ export const config = {
    * cached copy survived logging out, so it only appeared on a genuinely cold
    * signed-out load.
    *
-   * The trailing pattern excludes any path with a file extension. Gating a
-   * static asset behind a session was never the intent — nothing under
-   * `public/` is private, and anything that ever is belongs behind an
-   * authenticated route handler like the KYC uploads controller, not behind a
-   * redirect that returns HTML.
+   * The trailing pattern excludes static files. Gating a static asset behind a
+   * session was never the intent — nothing under `public/` is private, and
+   * anything that ever is belongs behind an authenticated route handler like
+   * the KYC uploads controller, not behind a redirect that returns HTML.
+   *
+   * ## Why an explicit extension LIST, and not `.*\.[\w]+$`
+   *
+   * "Any path with a dot in it" is too wide, and the cost is not a broken
+   * image — it is a page served with **no Content-Security-Policy**, because
+   * `withCsp()` only runs on paths this matcher admits. Every real asset this
+   * app serves is in the list below; a ROUTE segment that happens to contain a
+   * dot is not, so it keeps its CSP. The admin console carries the identical
+   * list for the identical reason.
+   *
+   * Note the double backslash: this is a single-quoted STRING, not a regex
+   * literal, and `'\.'` silently collapses to a bare `.` meaning "any
+   * character" — which reopens the hole this list closes.
    */
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/|.*\\.[\\w]+$).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|bmp|txt|xml|json|webmanifest|woff|woff2|ttf|otf|eot|map|mp4|webm|pdf|csv)$).*)',
+  ],
 };

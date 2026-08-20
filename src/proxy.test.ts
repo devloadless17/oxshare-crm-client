@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decideRoute } from './proxy';
+import { config, decideRoute } from './proxy';
 
 /**
  * Where the route gate sends a visitor, and — mostly — where it must not.
@@ -126,5 +126,43 @@ describe('private routes', () => {
       expect(target(path, SIGNED_IN_BEFORE)).toBeNull();
       expect(target(path, NEVER_SIGNED_IN)).toBeNull();
     }
+  });
+});
+
+/*
+ * The matcher decides which paths reach `withCsp()` at all, so a path it
+ * wrongly excludes is served with NO Content-Security-Policy.
+ *
+ * It used to exclude `.*\.[\w]+$` — "any path with a dot in it" — which is far
+ * wider than the asset list it was meant to describe: a route segment
+ * containing a dot lost its CSP silently. The explicit extension list is the
+ * fix, and these assertions are what stop it widening again (including back to
+ * a single-backslash `\.`, which JS collapses to "any character").
+ */
+describe('matcher', () => {
+  const matcher = config.matcher[0];
+  // ANCHORED, because Next matches the whole pathname. An unanchored test finds
+  // the pattern somewhere inside the string and disagrees with the runtime.
+  const matches = (path: string) => new RegExp(`^${matcher}$`).test(path);
+
+  it('excludes Next internals and the API rewrite', () => {
+    expect(matches('/_next/static/chunk.js')).toBe(false);
+    expect(matches('/favicon.ico')).toBe(false);
+    expect(matches('/api/auth/me')).toBe(false);
+  });
+
+  it('excludes a real static asset', () => {
+    expect(matches('/oxshare-mark.svg')).toBe(false);
+    expect(matches('/fonts/inter.woff2')).toBe(false);
+  });
+
+  it('still covers ordinary pages, which is what gets them a CSP', () => {
+    expect(matches('/dashboard')).toBe(true);
+    expect(matches('/kyc/step/3')).toBe(true);
+  });
+
+  it('covers a route whose segment merely contains a dot', () => {
+    expect(matches('/accounts/my.account')).toBe(true);
+    expect(matches('/walletXsvg')).toBe(true);
   });
 });

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { newIdempotencyKey } from '@/lib/api/client';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi } from '@/lib/api/partner';
 import type { Wallet } from '@/lib/api/wallet';
@@ -55,11 +56,33 @@ export function CommissionTransferDialog({
   const [amount, setAmount] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
 
+  /*
+   * The key for THIS attempt, minted once and held across retries.
+   *
+   * Both legs commit in one transaction, so a 200 is the money having moved —
+   * which is exactly what makes a LOST 200 dangerous. The partner sees an
+   * unchanged balance and a live button, and the obvious response is to press
+   * it again. The same key makes the server resolve that second press to the
+   * first transfer instead of performing a second one.
+   *
+   * `??=`, so a retry after a failure REUSES the key: the failure may well have
+   * moved the money and lost the response, which is the case the key exists
+   * for. It is cleared on success, where the next transfer is a new intent and
+   * must get a new key. Same rule, and the same reasoning, as /withdraw.
+   */
+  const idempotencyKey = React.useRef<string | null>(null);
+
   const transfer = useMutation({
-    mutationFn: () =>
-      partnerApi.transferCommission({ amount: amount.trim(), currency: wallet.currency }),
+    mutationFn: () => {
+      idempotencyKey.current ??= newIdempotencyKey();
+      return partnerApi.transferCommission(
+        { amount: amount.trim(), currency: wallet.currency },
+        idempotencyKey.current,
+      );
+    },
     onSuccess: () => {
       setError(null);
+      idempotencyKey.current = null;
       /*
        * Cleared on SUCCESS, not in an effect keyed on `open`.
        *
