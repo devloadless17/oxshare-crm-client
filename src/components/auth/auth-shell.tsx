@@ -46,7 +46,7 @@ export function AuthShell({
   footer?: React.ReactNode;
 }) {
   return (
-    <main className="flex min-h-screen bg-background">
+    <main className="flex h-dvh overflow-y-auto bg-background">
       <BrandPanel />
 
       {/* The form column. `min-w-0` so a long error message wraps instead of

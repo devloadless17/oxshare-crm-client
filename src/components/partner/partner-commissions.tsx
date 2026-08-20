@@ -3,6 +3,15 @@
 import { Coins } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { DataTable, EmptyState, type Column } from '@/components/data-table';
+import { CommissionSummary } from '@/components/partner/commission-summary';
+import { CommissionTransfers } from '@/components/partner/commission-transfers';
+import {
+  Pill,
+  TABLE_FRAME,
+  TABLE_PAGE_SIZE,
+  formatDate,
+  type Tone,
+} from '@/components/partner/partner-ui';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbCommissionRow } from '@/lib/api/partner';
@@ -12,49 +21,45 @@ import { t } from '@/lib/i18n';
 /**
  * Every commission this partner has earned, claim and credit alike.
  *
- * ## Why this table exists beside the totals
+ * ## Why the table exists beside the totals
  *
- * The dashboard figures read the LEDGER — money actually credited — so a
- * partner whose accruals are inside the maturation window sees zero there and
- * cannot tell "nothing earned" from "earned, not yet released". Those are
- * wildly different facts to somebody waiting to be paid, so every row carries
- * its status and the two numbers explain each other.
+ * The figures above read the LEDGER — money actually credited — so a partner
+ * whose accruals are inside the maturation window sees zero there and cannot
+ * tell "nothing earned" from "earned, not yet released". Those are wildly
+ * different facts to somebody waiting to be paid, so every row carries its
+ * status and the summary panel adds them up by status.
  *
  * ## What the broker earned, and the partner's own rate, are NOT shown
  *
- * Both were columns here — "Broker earned" (the base) beside "Your rate", on the
- * reasoning that a partner reading "2.80" cannot check it while one reading
- * "4.00 × 70%" can.
+ * Both were columns here. They are gone at the operator's request, and the trade
+ * is worth stating: the base column published the broker's own revenue on every
+ * trade to every partner, which is commercially sensitive in a way the partner's
+ * share is not, and the rate belongs to the LEVEL rather than the row — it is
+ * shown once, on the overview tab, where it cannot disagree with itself.
  *
- * They are gone at the operator's request, and the trade is worth stating: the
- * base column published the broker's own revenue on every trade to every
- * partner, which is commercially sensitive in a way the partner's share is not,
- * and the rate belongs to the LEVEL rather than to the row — it is already shown
- * once, on the overview tab, where it cannot disagree with itself.
+ * ## What was ADDED: the release date, and the transfers beside it
  *
- * What a partner loses is the ability to re-derive their own figure from the
- * row. `amount` is still authoritative and still carries its status, so the
- * question this answers is "what am I owed and is it released", not "how was it
- * computed" — that one now goes to support.
+ * `confirmedAt` was on the wire and unrendered. It answers "when did this
+ * actually become mine", which is a different question from when it was earned,
+ * and the gap between the two columns is the maturation window made visible
+ * rather than described.
  *
- * `DataTable` rather than a hand-rolled table, so this sorts, pages and scrolls
- * exactly like the transactions screen. A partner should not have to learn a
- * second table in the same app.
+ * `CommissionTransfers` reads a second endpoint nothing rendered at all.
+ * Together they close the loop a partner walks: earned → released → moved.
  */
 /*
- * TEN rows, against the table's own default of 25.
- *
- * This sits inside a tab on a page that already carries the figure row
- * above it, so a full 25-row page pushes the pager below the fold and the
- * partner has to scroll to reach the control that moves them on. Ten keeps
- * the whole table — header, rows and pager — on one screen.
+ * Ten rows a page, matching the frame's height — see `TABLE_PAGE_SIZE`. A page
+ * that overflowed the frame would scroll inside it, and the page already
+ * scrolls; a page shorter than it would leave the pager floating in white space.
  */
-const PAGING = { noun: ['entry', 'entries'] as [string, string], pageSize: 10 };
+const PAGING = { noun: ['entry', 'entries'] as [string, string], pageSize: TABLE_PAGE_SIZE };
 
 export function PartnerCommissions() {
   const query = useResource<IbCommissionRow[]>(['ib-commissions'], (signal) =>
     partnerApi.commissions(signal),
   );
+
+  const rows = query.data ?? [];
 
   const columns: Column<IbCommissionRow>[] = [
     {
@@ -63,6 +68,7 @@ export function PartnerCommissions() {
       cellClassName: 'whitespace-nowrap text-muted-foreground',
       sortable: true,
       sortKey: 'createdAt',
+      sortType: 'date',
     },
     {
       header: t('partner.colClient'),
@@ -77,7 +83,7 @@ export function PartnerCommissions() {
           {row.source === 'position' ? t('partner.sourceTrade') : t('partner.sourceDeposit')}
           {/* Depth 2 is a sub-partner's client — a different kind of earning,
               and the one a partner is most likely to query. */}
-          {row.depth > 1 && <span className="ml-1 text-[10px]">{t('partner.viaSubPartner')}</span>}
+          {row.depth > 1 && <span className="ms-1 text-[10px]">{t('partner.viaSubPartner')}</span>}
         </span>
       ),
     },
@@ -96,6 +102,20 @@ export function PartnerCommissions() {
       sortable: true,
       sortKey: 'status',
     },
+    {
+      /*
+       * WHEN it became theirs. Null while an accrual is still maturing, and an
+       * em dash is the honest rendering of that — falling back to the earned
+       * date would say the money was released the moment it was earned, which is
+       * the one thing this column exists to disprove.
+       */
+      header: t('partner.colReleasedAt'),
+      cell: (row) => (row.confirmedAt ? formatDate(row.confirmedAt) : '—'),
+      cellClassName: 'whitespace-nowrap text-muted-foreground',
+      sortable: true,
+      sortKey: 'confirmedAt',
+      sortType: 'date',
+    },
   ];
 
   return (
@@ -106,18 +126,42 @@ export function PartnerCommissions() {
       onRetry={() => query.refetch()}
       errorMessage={apiErrorMessage(query.error, t('partner.commissionsFailed'))}
       error={query.error}
-      fill
     >
-      <DataTable
-        caption={t('partner.tabCommissions')}
-        columns={columns}
-        rows={query.data ?? []}
-        rowKey={(row) => row.id}
-        dimmed={query.isFetching}
-        clientPagination={PAGING}
-        fill
-        empty={<EmptyState icon={Coins} message={t('partner.commissionsEmpty')} />}
-      />
+      <div className="flex flex-col gap-5">
+        {/*
+          The summary is hidden when there is nothing to summarise, and the
+          transfer list takes the width in that case. A row of zeroes beside an
+          empty table is two ways of saying the same nothing.
+        */}
+        {rows.length > 0 ? (
+          <div className="grid gap-5 xl:grid-cols-3">
+            <div className="xl:col-span-2">
+              <CommissionSummary rows={rows} />
+            </div>
+            <CommissionTransfers />
+          </div>
+        ) : (
+          <CommissionTransfers />
+        )}
+
+        <div className={TABLE_FRAME}>
+          <DataTable
+            caption={t('partner.tabCommissions')}
+            columns={columns}
+            rows={rows}
+            rowKey={(row) => row.id}
+            dimmed={query.isFetching}
+            clientPagination={PAGING}
+            fill
+            empty={
+              <EmptyState
+                icon={Coins}
+                message={`${t('partner.commissionsEmpty')} — ${t('partner.commissionsEmptyBody')}`}
+              />
+            }
+          />
+        </div>
+      </div>
     </AsyncBoundary>
   );
 }
@@ -125,18 +169,14 @@ export function PartnerCommissions() {
 /**
  * The three states, and the middle one is the point.
  *
- * `pending` is earned and not yet spendable — inside the window that exists so
- * a reversed trade can be undone before the money has left. Saying "pending"
+ * `pending` is earned and not yet spendable — inside the window that exists so a
+ * reversed trade can be undone before the money has left. Saying "pending"
  * rather than showing a bare amount is what stops a partner adding up a total
  * they cannot withdraw.
  */
-function StatusPill({ status }: { status: string }) {
-  const tone =
-    status === 'confirmed'
-      ? 'border-success/30 bg-success/10 text-success'
-      : status === 'reversed'
-        ? 'border-destructive/30 bg-destructive/10 text-destructive'
-        : 'border-warning/30 bg-warning/10 text-warning';
+function StatusPill({ status }: { status: IbCommissionRow['status'] }) {
+  const tone: Tone =
+    status === 'confirmed' ? 'success' : status === 'reversed' ? 'destructive' : 'warning';
 
   const label =
     status === 'confirmed'
@@ -145,16 +185,5 @@ function StatusPill({ status }: { status: string }) {
         ? t('partner.statusReversed')
         : t('partner.statusPending');
 
-  return (
-    <span
-      className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tone}`}
-    >
-      {label}
-    </span>
-  );
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
+  return <Pill tone={tone}>{label}</Pill>;
 }

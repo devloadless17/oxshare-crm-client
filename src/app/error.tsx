@@ -32,7 +32,7 @@ export default function PortalError({
   return (
     <div
       role="alert"
-      className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center"
+      className="flex h-dvh flex-col items-center justify-center gap-4 overflow-y-auto bg-background px-6 text-center"
     >
       <AlertTriangle className="h-10 w-10 text-destructive" aria-hidden="true" />
       <h1 className="text-lg font-bold text-foreground">{t('error.title')}</h1>

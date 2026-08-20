@@ -22,7 +22,13 @@ src/components/wallet/wallet-card         the balance card (see "Wallet cards" b
 src/components/transactions/              transaction-filters — the toolbar AND `applyFilters`
 src/components/accounts/                  open-account-button · account-live-panel ·
                                           account-stats-panel · account-history
-src/components/partner/partner-dashboard  earnings · referred clients · sub-partners
+src/components/partner/               partner-workspace (root) · partner-header ·
+                                          partner-summary · partner-ui (the design system) ·
+                                          partner-tabs · partner-overview · partner-clients ·
+                                          partner-network · partner-commissions ·
+                                          commission-summary · commission-transfers ·
+                                          commission-balances · commission-transfer-dialog ·
+                                          apply-panel (the non-approved states, untouched)
 src/context/UserContext.tsx
 src/hooks/                                use-resource · use-hydrated
 src/lib/api/                              client · auth · errors · wallet · trading · partner ·
@@ -34,6 +40,26 @@ src/proxy.ts                              route gate (a MARKER only — never a 
 
 **Never create `middleware.ts`** — it will not run. The gate is `src/proxy.ts`, which also
 delegates to the pure `lib/route-guard.ts`.
+
+## The document never scrolls
+
+`<body>` is `h-dvh overflow-hidden` (`app/layout.tsx`). Every screen owns its own scroll
+container: the portal's `<main>`, `auth-shell`, and the full-screen error/not-found/session
+states. Without the cap the document scrolls *behind* whichever shell is already scrolling, and
+the reader sees two scrollbars side by side on one screen — reported on `/partner` and fixed here
+rather than on that page, because the cause was the shell.
+
+`dvh`, not `vh`: on mobile `100vh` is the viewport with the browser chrome RETRACTED, so a `vh`
+cap is taller than what is visible and reintroduces the overflow it was meant to remove.
+
+**The consequence is a rule.** Anything past that box is CLIPPED, not reachable by scrolling — so
+a new screen whose content can exceed the viewport must carry its own `overflow-y-auto`. A
+full-height screen that forgets it loses its bottom silently, which is why the five that relied on
+document scrolling were converted in the same change.
+
+A panel INSIDE a scrolling screen may still scroll (a `fill` DataTable is the common case). That
+is a nested scroll region and is fine as long as it is intended — see the `TABLE_FRAME` note under
+`/partner` for how to size one so it never scrolls by accident.
 
 **The gate reads a MARKER, and it is not a session.** `lib/session-hint.ts` is a non-sensitive
 cookie this app writes on its OWN host whenever `/auth/me` answers "signed in", and clears when it
@@ -194,6 +220,101 @@ correct on `/transactions` would silently under-report a client's own trading he
   about the CARD, so the fix belongs there (`max-w-md` on the prose inside the panels); capping the
   PAGE also moved the heading inward, so the partner screen sat at a different width from every
   other screen and read as a different app.
+
+  The APPROVED screen reads identity → money → evidence: a header surface (status, level,
+  programme, and the referral code and link on one rule), then the four figures as one statement
+  row, then every commission balance, then five tabs. The four non-approved states are untouched —
+  `apply-panel.tsx` and the status panels in `page.tsx` were not part of the rebuild.
+
+  **The visual language is `partner-ui.tsx`, and it is deliberately undecorated.** Related figures
+  share ONE surface separated by hairlines (`HAIRLINE_GRID`: `gap-px` over `bg-border`, each cell
+  painting `bg-card`, which is correct at every breakpoint without per-breakpoint border
+  overrides) rather than floating as individual cards. No glows, no gradients, no tinted icon chip
+  per panel header. Colour appears on the primary action, the active tab, and STATES — never on a
+  figure for decoration. Three type sizes, used everywhere.
+
+  **This screen is a DOCUMENT, not a fill screen.** No `flex-1 min-h-0` on its roots and no `fill`
+  on its tables. `portal-layout` makes `<main>` the one scroll container, and its own note explains
+  the trap: a `flex-1 min-h-0` child has `flex-basis: 0`, contributes zero to its parent's content
+  height, and leaves the padded div exactly `<main>`'s height — so a page taller than the viewport
+  overflows it, the bottom padding strands, and a `fill` table inside becomes a SECOND scrollbar
+  inside the page's own. That shape is right for /transactions (one table owning the viewport) and
+  wrong here.
+
+  **Every table is ten rows tall whatever it holds** — `TABLE_FRAME` (`min-h-[32rem]`) around a
+  `fill` `DataTable`, paging at `TABLE_PAGE_SIZE` (10). The three parts are one decision: `fill`
+  gives the table's root `flex-1` so it resolves to the frame's height and keeps its
+  header/body/pager shape, the frame supplies that height, and the ten-row page is what stops the
+  body ever overflowing it. Without `fill` the frame stretches nothing — the card inside keeps its
+  content height and the slack shows up as a gap underneath it. A `fill` table whose page DOES
+  overflow is the second scrollbar inside `<main>` that this screen was reported for.
+
+  Do not put a toolbar inside the frame; filters go above it.
+
+  **`GET /ib/overview` is read ONCE**, in `partner-workspace.tsx`, and passed down. Seven panels
+  need it; under one query key React Query serves them all from one fetch, so the cost of seven
+  `useResource` calls is not requests — it is seven spinners on load and seven retry cards for one
+  failure. Overview, Clients and Network therefore take `data` as a prop. The commission list and
+  the open positions still own their reads, and `TabPanel` unmounts an inactive tab, so neither
+  fires on a visit that only wanted the headline.
+
+  The header sits OUTSIDE that boundary deliberately — "am I still a partner, and what is my link"
+  is answered by `/ib/status`, which the page already holds.
+
+  **The client list and the sub-partner tree are TABS, not capped scroll boxes.** They were
+  `max-h-[22rem]` panels with no sort and no search, which is a treatment that gets worse exactly as
+  a partner succeeds. Both are `DataTable`s now. Client-side filtering is correct there and the
+  reason is on the wire: `IbOverviewDto.referredClients` is documented as the whole list and takes
+  no query parameters. **If that field ever grows paging, the filter must move server-side** — the
+  same rule `/transactions` carries.
+
+  **The commission summary totals are BOUNDED, and the copy says so.** `GET /ib/commissions` caps
+  its list server-side (200, newest first) and takes no parameters, so `lib/partner-earnings.ts`
+  sums *the rows it was given* — never "everything you have ever earned". The scope line under the
+  tiles is what keeps that a true statement, and it is why the lifetime figure (summed over the
+  whole ledger, in the database) is labelled differently and lives in the band above. Two money
+  figures that differ with nothing saying which is which is the `/accounts/[id]` failure again.
+  Currencies never merge there either — one summary per currency, because there is no FX source.
+
+  **Still deliberately NOT rendered: a commission chart.** Not only because a projection would be
+  invented — a chart over that capped list would under-draw exactly the partners with the most
+  history, and silently.
+
+  ### Commission is MULTI-CURRENCY, and the screen shows every balance
+
+  A partner does not choose what they earn in — an accrual takes the currency of the trade that
+  produced it. The server handles that already: `openCommissionWallet` opens the DEFAULT currency
+  at approval, `WalletService.post` opens any other lazily on the first confirmed commission in it,
+  and `GET /ib/overview.commissionWallets` returns every one. `POST /ib/wallet/transfer` is
+  same-currency only, into the main wallet of that currency (created if missing).
+
+  The SCREEN was what did not handle it. It drew one credit-card object and put the rest behind a
+  carousel, so a partner with two balances saw one and a swipe hint — and a carousel also makes the
+  money control ambiguous, because after a swipe lands mid-animation "Move to wallet" acts on a card
+  the reader cannot be certain of. `commission-balances.tsx` renders one cell per currency, each
+  with its own amount and its own named button, and the column count follows the number of balances
+  so a single wallet does not sit in a third of an empty panel. The em-dash-not-zero rule is
+  unchanged: no wallet at all is a panel that says so, never `$0.00`.
+
+  **The one real gap is server-side and is now stated on screen.** `IbOverviewService` sums earnings
+  in ONE currency (`EARNINGS_CURRENCY`, today USD) because there is no FX source — so a partner
+  accruing in a second currency holds real money those totals do not cover. `PartnerSummary`
+  compares the commission wallets against `earnings.currency` and, when they differ, names the
+  currencies and points at the balances below. Without it the screen puts a zero lifetime total
+  directly above a funded balance and explains neither. The server-side fix is a per-currency
+  breakdown, **not** a converted total.
+
+  **The `engineLive` notice was REMOVED on request.** A paragraph used to sit under the figures
+  whenever no accrual had ever been confirmed platform-wide. It is gone on an explicit instruction,
+  and the cost is recorded in `partner-summary.tsx` rather than lost: a structural zero and an
+  earned-nothing zero now look identical. The flag is still read — it decides whether the lifetime
+  figure claims to be credited as it is earned — so restoring the sentence is one JSX line. Do not
+  re-add it as a "fix".
+
+  `GET /ib/wallet/transfers` had a client method and no caller; it is now the "Moved to your wallet"
+  panel on the commission tab. It answers the question the card raises and cannot: lifetime earnings
+  do not move when a partner transfers money out, so the difference between the two figures is that
+  list. Its `commissionBalance`/`mainBalance` stay unrendered for the reason the DTO gives.
 
 - **`/dashboard`** renders from `GET /dashboard`: four stat tiles, wallets, recent transactions,
   open positions and trading accounts. It was two cards (KYC + download) before, and that emptiness
@@ -403,6 +524,10 @@ admin's.
   - `src/components/transactions/transaction-filters.test.ts` — that amounts sort through
     decimal.js, so `'9'` does not outrank `'100'` and two amounts a float would collapse stay
     distinct; and that the filter does not mutate React Query's cached array.
+  - `src/lib/partner-earnings.test.ts` — that the commission summary sums through decimal.js,
+    never merges two currencies into one total, and never nets a reversal off the released figure.
+    Each wrong version renders perfectly: a float total is right to the cent and wrong in the
+    eighth decimal, and a merged total is a plausible number describing nothing.
   - `src/lib/account-stats.test.ts` — that a win rate divides by `trades` and not by
     `wins + losses` (the two agree on every account with no flat exits, which is what lets the
     wrong one survive review), and that a P/L sign comes from decimal.js rather than from the

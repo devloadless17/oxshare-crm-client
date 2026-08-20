@@ -1799,26 +1799,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/admin/trading-accounts/live-balances": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Live MT5 balances for the accounts on one page
-         * @description One bridge call per account, so the list is capped. An account MT5 will not answer for is simply absent from the result and the console falls back to its cached figure.
-         */
-        post: operations["Mt5AccountsController_liveBalances"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/admin/trading-accounts/{id}/live": {
         parameters: {
             query?: never;
@@ -2167,10 +2147,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * MT5 groups available to attach, read live from the server
+         * MT5 groups available to attach, read live where possible
          * @description Gated on settings.edit rather than trading.create, unlike GET /admin/mt5/groups. The two read the same list for different jobs: that one is for opening an account, this one is for building the catalogue, and an operator who configures products has no reason to hold the power to open accounts.
          *
          *     Groups another product already claims come back flagged rather than filtered out — "the broker does not offer it" and "ECN already has it" are different problems.
+         *
+         *     When MT5 cannot be reached this falls back to the synced catalogue rather than failing, and every row carries `lastSeenAt` saying when it was last confirmed. Attaching a group still validates against the live server, so a stale row here cannot become a stored product configuration.
          */
         get: operations["AdminCatalogueController_availableGroups"];
         put?: never;
@@ -2624,7 +2606,41 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Correct a client's profile (requires clients.edit)
+         * @description Name, phone and country only — the clerical set a support desk fixes when a client typed them wrong at registration.
+         *
+         *     Email is NOT here. It lives on PATCH /admin/clients/:id/email behind the separate `clients.email` permission, because changing the address an account signs in with is an account-takeover primitive and must not ride along with fixing a surname.
+         *
+         *     `status` is not here either (PATCH .../status, `clients.suspend`), and neither is verification level or type — those are conclusions the KYC and partner flows reach from evidence, not fields to type in.
+         *
+         *     Send an empty string for phone or country to clear it.
+         */
+        patch: operations["AdminClientsController_updateClientProfile"];
+        trace?: never;
+    };
+    "/v1/admin/clients/{id}/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a client's sign-in email (requires clients.email)
+         * @description ⚠️ The one operation on this surface that can take an account over: point the address at your own inbox, run a password reset, and the balance follows. It carries its own permission for exactly that reason — `clients.edit` does not grant it.
+         *
+         *     Changing it: revokes every portal session for the client, resets email verification and sends a fresh verification link to the NEW address, and notifies the PREVIOUS address that the change happened. That last one is the control that points at the person who would notice an unauthorised change, so it is sent whether or not anyone asked for it.
+         *
+         *     Already-issued access tokens are short-lived JWTs and expire on their own; what revocation guarantees is that none of them can be refreshed.
+         */
+        patch: operations["AdminClientsController_changeClientEmail"];
         trace?: never;
     };
     "/v1/admin/clients/{id}/status": {
@@ -4691,7 +4707,7 @@ export interface components {
             /** @description The MT5 group path this account sits in — a server path, not a label. Null on accounts opened before it was persisted; see `product`, which is the readable form and what a client is shown. */
             mt5Group: string | null;
             /**
-             * @description The product this account was opened under, resolved from `mt5Group` through `trading_product_groups`, which is unique on the group for exactly this reason. Null when the group is in no product — an operator may open an account directly into any MT5 group — and null on accounts opened before the group was stored. THE PORTAL RENDERS THIS, not the group: a backslash-separated MT5 group path is unreadable to a client, which is why the open-account form asks for a currency and a product rather than a path.
+             * @description The product this account was opened under. Read from its own `productId` column, which is SNAPSHOTTED at creation (migration 0080) so that re-pointing a group in the catalogue afterwards cannot retroactively change what an existing account was sold as; accounts opened before 0080 fall back to matching `mt5Group` against `trading_product_groups`. Null when neither answers — an operator may open an account directly into any MT5 group, including one the catalogue does not sell. THE PORTAL RENDERS THIS, not the group: a backslash-separated MT5 group path is unreadable to a client, which is why the open-account form asks for a currency and a product.
              * @example Standard
              */
             product: string | null;
@@ -4993,9 +5009,6 @@ export interface components {
             direction: "deposit" | "withdraw";
             /** @example Goodwill credit, ticket #4412 */
             comment: string;
-        };
-        Mt5LiveBalancesDto: {
-            accountIds: string[];
         };
         KycDocumentPartDto: {
             /**
@@ -5314,6 +5327,11 @@ export interface components {
             currency: string;
             /** @description True when another product already claims it. Shown disabled with the reason rather than hidden, so an operator can tell "not offered" from "already taken". */
             claimed: boolean;
+            /**
+             * Format: date-time
+             * @description NULL when this list was read live from MT5, which is the normal case. A date means the server could not be reached and this row came from the synced catalogue instead — it is when that group was last confirmed to exist. Surface it: a stale picker that cannot say how stale it is reads exactly like a current one.
+             */
+            lastSeenAt: string | null;
         };
         UpsertProductDto: {
             /** @example Standard */
@@ -5568,7 +5586,6 @@ export interface components {
             mt5Group?: string;
             /** @enum {string} */
             environment: "live" | "demo";
-            tier?: string;
             leverage?: number;
             /** Format: date-time */
             createdAt: string;
@@ -5622,6 +5639,42 @@ export interface components {
             /** @description How many referredClients were returned; the list is capped for one screen. */
             referredShown?: number;
             maskedFields: string[];
+        };
+        UpdateClientProfileDto: {
+            /** @example Layla */
+            firstName?: string;
+            /** @example Haddad */
+            lastName?: string;
+            /**
+             * @description Send an empty string to clear it.
+             * @example +9613111222
+             */
+            phone?: string | null;
+            /** @example Lebanon */
+            country?: string | null;
+        };
+        ClientAccountDto: {
+            /** Format: uuid */
+            id: string;
+            email: string;
+            firstName: string;
+            lastName: string;
+            /** @enum {string} */
+            type: "individual" | "referral" | "partner";
+            /** @enum {string} */
+            status: "active" | "pending" | "suspended";
+            /** @enum {number} */
+            verificationLevel: 0 | 1;
+            /** @description Reset to false by an email change, and stays false until the new address is verified. */
+            emailVerified: boolean;
+            country: string | null;
+            phone: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ChangeClientEmailDto: {
+            /** @example layla.haddad@example.com */
+            email: string;
         };
         ClientStatusDto: {
             /**
@@ -6307,7 +6360,9 @@ export interface components {
              * @example 1000.00000000
              */
             balance: string;
-            tier?: string | null;
+            product?: string | null;
+            /** Format: date-time */
+            balanceSyncedAt?: string | null;
             leverage?: number | null;
             /** @enum {string} */
             status: "active" | "suspended" | "closed";
@@ -8830,27 +8885,6 @@ export interface operations {
             };
         };
     };
-    Mt5AccountsController_liveBalances: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Mt5LiveBalancesDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     Mt5AccountsController_live: {
         parameters: {
             query?: never;
@@ -9963,6 +9997,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClientProfileDto"];
+                };
+            };
+        };
+    };
+    AdminClientsController_updateClientProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateClientProfileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientAccountDto"];
+                };
+            };
+        };
+    };
+    AdminClientsController_changeClientEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeClientEmailDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientAccountDto"];
                 };
             };
         };
