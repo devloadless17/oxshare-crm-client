@@ -397,6 +397,35 @@ second row, because a client cannot see that wallet). `kind` is an OPEN set: bra
 `lib/movement-label.ts`, which three screens share, and which falls back to the direction for a
 kind this build has not heard of.
 
+### A partner's terms come from a named PROGRAMME, not from their level
+
+`GET /ib/overview` carries `programme` — name, `mode`, `level1Rate`, `level2Rate`, `rebateRate` —
+beside `level`. The two answer different questions and both are on the wire: the LADDER is where a
+partner stands, the PROGRAMME is what they are paid.
+
+**`level.rateValue` decides nothing any more.** It is still on the response and rendering it as
+what somebody earns is reading the wrong number, correct to four decimal places. The terms panel
+shows the programme's rates and the level cell says only where they stand.
+
+The two rates are per **DEPTH**: `level1Rate` is what they earn from their OWN clients,
+`level2Rate` from a sub-partner's. Labelling either "the level-N rate" tells a sub-partner the
+wrong number for business they introduced themselves.
+
+`mode` is `commission_only | rebate_only | hybrid`, and `rebate_only` means the partner earns
+nothing while their clients are paid instead — a real arrangement the screen states plainly rather
+than presenting as a fault.
+
+**"Programme" now means the commission terms**, so the agency (وكالة) is labelled "Your agency".
+Two different things sharing one word on the screen that explains what somebody is paid is the
+ambiguity that rename exists to remove.
+
+### The client's rebate arrives as an ordinary wallet credit
+
+A rebate credits the TRADING CLIENT's main wallet as `entry_type: 'rebate'` — most people
+receiving one are not partners at all. `notification-kinds.ts` links `rebate.credited` to /wallet
+rather than /partner for that reason: sending a non-partner to the partner screen is a dead end on
+the one notification that says they have been paid.
+
 ### `earnings.engineLive` is the field that matters most on the partner screen
 
 The commission engine now EXISTS (backend `modules/ib/commission*`): a client deposit accrues to

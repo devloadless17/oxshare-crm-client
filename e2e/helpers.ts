@@ -1,8 +1,207 @@
-import type { Page, Response } from '@playwright/test';
-// The app's own cookie names, not a second copy of them. `client.ts` explains
-// why they are worth importing rather than retyping: the backend computes these
-// and this repo hardcodes them, with nothing connecting the two.
-import { CSRF_COOKIE_NAMES } from '../src/lib/api/client';
+// Topology FIRST: it sets the E2E_* / NEXT_PUBLIC_* defaults the constants
+// below read at import time. See topology.ts.
+import './topology';
+import {
+  expect,
+  request as apiRequest,
+  test,
+  type APIRequestContext,
+  type BrowserContext,
+  type Page,
+  type Response,
+  type Route,
+} from '@playwright/test';
+
+/**
+ * ── Where things are ────────────────────────────────────────────────────────
+ *
+ * The browser calls the API DIRECTLY at `NEXT_PUBLIC_API_BASE_URL` (+ `/v1`);
+ * the same-origin `/api/*` rewrite is history for browser traffic. Every spec
+ * that intercepts or awaits API traffic must match on the versioned PATH and
+ * never on a host or an `/api/` prefix — `signIn` here waited on
+ * `'/api/auth/login'`, which no request has carried since the switch, and a
+ * `page.route('**​/api/auth/me')` delay never fired.
+ *
+ * Two origins are kept apart on purpose:
+ *  - `API_ORIGIN` is what the BROWSER dials. In cross-host mode this is
+ *    `http://api.crm.localhost:3001`, a name only Chromium resolves.
+ *  - `API_NODE_BASE` is what NODE dials (`request` contexts, setup probes).
+ *    Node does not resolve `*.localhost`, so it keeps `localhost`.
+ */
+export const APP_ORIGIN = (process.env.E2E_BASE_URL ?? 'http://localhost:3000').replace(/\/+$/, '');
+export const ADMIN_ORIGIN = (process.env.E2E_ADMIN_ORIGIN ?? 'http://localhost:3002').replace(
+  /\/+$/,
+  '',
+);
+export const API_ORIGIN = (
+  process.env.E2E_API_ORIGIN ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  'http://localhost:3001'
+).replace(/\/+$/, '');
+/** What the browser dials. */
+export const API_BASE = `${API_ORIGIN}/v1`;
+/** What Node dials. */
+export const API_NODE_BASE = `${(process.env.E2E_API_NODE_ORIGIN ?? 'http://localhost:3001').replace(/\/+$/, '')}/v1`;
+
+/** The login limiter's window, plus a few seconds of slack. */
+const RATE_LIMIT_WINDOW_MS = 65_000;
+
+/**
+ * A `page.route` / `waitForResponse` matcher for one API path — a PREDICATE on
+ * the pathname, blind to host and query string. `path` is the un-versioned
+ * route (`/auth/me`); a RegExp is matched against the pathname as-is.
+ */
+export function apiRoute(path: string | RegExp): (url: URL) => boolean {
+  return (url) =>
+    typeof path === 'string' ? url.pathname === `/v1${path}` : path.test(url.pathname);
+}
+
+/** Is this response the API answering `path` (optionally with `method`)? */
+export function isApi(res: Response, path: string | RegExp, method?: string): boolean {
+  if (!apiRoute(path)(new URL(res.url()))) return false;
+  return method === undefined || res.request().method() === method.toUpperCase();
+}
+
+/**
+ * `page.route` that COUNTS. Every test that injects a failure must assert
+ * `hits() > 0` afterwards — a handler that never fires leaves the app talking
+ * to the real API, and the assertion that follows passes against a healthy
+ * response.
+ */
+export async function routeHit(
+  page: Page,
+  path: string | RegExp,
+  handler: (route: Route) => Promise<void> | void,
+): Promise<{ hits: () => number }> {
+  let count = 0;
+  await page.route(apiRoute(path), async (route) => {
+    count += 1;
+    await handler(route);
+  });
+  return { hits: () => count };
+}
+
+/**
+ * The portal's anti-forgery token, read through Playwright's jar — which sees
+ * every host's cookies — and NOT through `document.cookie`, which is blind to
+ * the API host's cookies wherever the two differ.
+ */
+export async function csrfOf(context: BrowserContext): Promise<string> {
+  const csrf = (await context.cookies()).find((c) => c.name.includes('portal_csrf'))?.value;
+  expect(csrf, 'no CSRF cookie in the saved session — is it signed in?').toBeTruthy();
+  return csrf!;
+}
+
+/** Remove every cookie whose name matches, keeping the rest of the jar. */
+export async function deleteCookie(context: BrowserContext, name: RegExp): Promise<void> {
+  const cookies = await context.cookies();
+  await context.clearCookies();
+  await context.addCookies(cookies.filter((c) => !name.test(c.name)));
+}
+
+/**
+ * Call the API FROM INSIDE THE PAGE, with the page's own cookies.
+ *
+ * `fetch` from the document carries the session cookies the browser holds for
+ * the API host (same-site, `credentials: 'include'`); the CSRF header is
+ * supplied from Playwright's jar because the page cannot read it cross-host.
+ */
+export async function apiFromPage(
+  page: Page,
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  path: string,
+  body?: unknown,
+): Promise<{ status: number; body: unknown }> {
+  const csrf = method === 'GET' ? '' : await csrfOf(page.context());
+  return page.evaluate(
+    async ({ base, method, path, body, csrf }) => {
+      const res = await fetch(`${base}${path}`, {
+        method,
+        credentials: 'include',
+        headers: {
+          ...(csrf ? { 'x-oxshare-csrf': csrf } : {}),
+          ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+        },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+      let parsed: unknown = null;
+      try {
+        parsed = await res.json();
+      } catch {
+        parsed = null;
+      }
+      return { status: res.status, body: parsed };
+    },
+    { base: API_BASE, method, path, body, csrf },
+  );
+}
+
+/**
+ * The ADMIN the suites own, for specs where an administrator must ACT on the
+ * client under test (credit a wallet, approve a KYC). The same identity the
+ * admin suite signs in as — NEVER `admin@oxshare.com`, the developer's own.
+ */
+export const E2E_ADMIN = {
+  email: 'e2e-admin@oxshare.com',
+  password: 'admin123',
+} as const;
+
+/**
+ * A standalone admin API session, signed in over the wire as `E2E_ADMIN`.
+ * Waits out the 5-per-minute login cap instead of failing on it.
+ */
+export async function adminApiSession(
+  credentials: { email: string; password: string } = E2E_ADMIN,
+): Promise<{
+  request: APIRequestContext;
+  csrf: string;
+  get: (path: string) => ReturnType<APIRequestContext['get']>;
+  post: (
+    path: string,
+    data?: unknown,
+    extra?: Record<string, string>,
+  ) => ReturnType<APIRequestContext['post']>;
+  patch: (
+    path: string,
+    data?: unknown,
+    extra?: Record<string, string>,
+  ) => ReturnType<APIRequestContext['patch']>;
+  del: (path: string) => ReturnType<APIRequestContext['delete']>;
+  dispose: () => Promise<void>;
+}> {
+  const request = await apiRequest.newContext();
+  for (;;) {
+    const login = await request.post(`${API_NODE_BASE}/admin/auth/login`, {
+      headers: { Origin: ADMIN_ORIGIN },
+      data: credentials,
+    });
+    if (login.status() === 429) {
+      // eslint-disable-next-line no-console
+      console.log(`↻ admin API login rate limited; waiting ${RATE_LIMIT_WINDOW_MS / 1000}s…`);
+      await new Promise((r) => setTimeout(r, RATE_LIMIT_WINDOW_MS));
+      continue;
+    }
+    if (!login.ok()) {
+      throw new Error(`admin API sign-in as ${credentials.email} answered ${login.status()}`);
+    }
+    break;
+  }
+  const csrf =
+    (await request.storageState()).cookies.find((c) => c.name.includes('admin_csrf'))?.value ?? '';
+  if (!csrf) throw new Error('the admin API session carried no CSRF cookie');
+  const headers = { Origin: ADMIN_ORIGIN, 'X-OxShare-CSRF': csrf };
+  return {
+    request,
+    csrf,
+    get: (path) => request.get(`${API_NODE_BASE}${path}`, { headers }),
+    post: (path, data, extra) =>
+      request.post(`${API_NODE_BASE}${path}`, { headers: { ...headers, ...extra }, data }),
+    patch: (path, data, extra) =>
+      request.patch(`${API_NODE_BASE}${path}`, { headers: { ...headers, ...extra }, data }),
+    del: (path) => request.delete(`${API_NODE_BASE}${path}`, { headers }),
+    dispose: () => request.dispose(),
+  };
+}
 
 /**
  * The client the E2E SUITE owns — seeded verified and KYC-approved.
@@ -99,19 +298,23 @@ export async function signIn(
    * not about the product, and the message says so.
    */
   const [response] = await Promise.all([
-    page.waitForResponse(
-      (res) => res.url().includes('/api/auth/login') && res.request().method() === 'POST',
-      { timeout: 30_000 },
-    ),
+    page.waitForResponse((res) => isApi(res, '/auth/login', 'POST'), { timeout: 30_000 }),
     page.getByRole('button', { name: /sign in/i }).click(),
   ]);
 
   if (response.status() === 429) {
-    throw new Error(
-      `Rate limited signing in as ${credentials.email}: POST /auth/login answered 429. ` +
-        'The cap is five per minute and it is not the thing under test — wait a minute and ' +
-        're-run, or reduce how many times this suite signs in.',
-    );
+    /*
+     * WAIT FOR THE CAP, do not fail on it and do not weaken it — the admin
+     * suite's lesson. The cap is five per minute per IP and correct; a run that
+     * only goes green when nobody re-ran inside the same minute is one people
+     * stop believing. The per-test budget grows for the wait, or the wait
+     * itself becomes the failure.
+     */
+    test.setTimeout(RATE_LIMIT_WINDOW_MS + 60_000);
+    // eslint-disable-next-line no-console
+    console.log(`↻ login rate limit reached; waiting ${RATE_LIMIT_WINDOW_MS / 1000}s to retry…`);
+    await page.waitForTimeout(RATE_LIMIT_WINDOW_MS);
+    return signIn(page, credentials);
   }
   if (!response.ok()) {
     throw new Error(
@@ -146,10 +349,7 @@ export async function register(
   await page.locator('input[type="password"]').first().fill(client.password);
 
   const [response] = await Promise.all([
-    page.waitForResponse(
-      (res) => res.url().includes('/api/auth/register') && res.request().method() === 'POST',
-      { timeout: 30_000 },
-    ),
+    page.waitForResponse((res) => isApi(res, '/auth/register', 'POST'), { timeout: 30_000 }),
     page.getByRole('button', { name: /complete registration|create account/i }).click(),
   ]);
 
@@ -189,28 +389,35 @@ export async function register(
  * at the wrong session.
  */
 export async function resetKycFixture(page: Page): Promise<void> {
-  const status = await page.evaluate(async (cookieNames) => {
-    const jar = document.cookie.split('; ');
-    const raw = cookieNames
-      .map((name) => jar.find((c) => c.startsWith(`${name}=`)))
-      .find((found) => found !== undefined);
-    if (raw === undefined) return 0;
-
-    const res = await fetch('/api/kyc/reset', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'x-oxshare-csrf': decodeURIComponent(raw.slice(raw.indexOf('=') + 1)) },
-    });
-    return res.status;
-  }, CSRF_COOKIE_NAMES);
-
-  if (status === 0) throw new Error('No CSRF cookie — is this page signed in?');
+  const { status } = await apiFromPage(page, 'POST', '/kyc/reset');
   // 200 is a reset; 400 means there was nothing to reset, which is the same
   // world as far as the wizard is concerned. Anything else is worth failing on
   // rather than discovering three assertions later.
   if (status !== 200 && status !== 201 && status !== 400) {
     throw new Error(`POST /kyc/reset answered ${status}; the wizard fixture is not clean.`);
   }
+}
+
+/**
+ * Write a context's jar over a storage-state file — ONLY if it still holds a
+ * refresh cookie. A jar without one is a signed-out browser, and saving it
+ * signs out every test that follows. See the admin twin for the incident.
+ */
+export async function persistStateIfLive(context: BrowserContext, path: string): Promise<void> {
+  const cookies = await context.cookies();
+  const live = cookies.some((c) => /_rt$/.test(c.name) && c.value.length > 0);
+  if (!live) {
+    throw new Error(
+      `Refusing to persist ${path}: the context holds no refresh cookie, so it is signed out. ` +
+        'Saving it would sign out every later test.',
+    );
+  }
+  await context.storageState({ path });
+}
+
+/** Persist the default storage state — after any test that forced a renewal. */
+export async function persistSharedState(context: BrowserContext): Promise<void> {
+  await persistStateIfLive(context, STORAGE_STATE);
 }
 
 /**
@@ -229,7 +436,8 @@ export function collectRejections(page: Page): { list: () => string[] } {
 
   page.on('response', (response: Response) => {
     const url = response.url();
-    if (!url.includes('/api/')) return;
+    // The direct API origin, whichever host — matched on the versioned path.
+    if (!new URL(url).pathname.startsWith('/v1/')) return;
     const status = response.status();
     if (status === 401 || status === 403) {
       rejected.push(`${status} ${new URL(url).pathname}`);
@@ -248,7 +456,34 @@ export function collectRejections(page: Page): { list: () => string[] } {
  */
 export function newClient(): { email: string; password: string } {
   return {
-    email: `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}@oxshare-e2e.test`,
+    // A domain of its own. These used to share `@oxshare-e2e.test` with the
+    // ADMIN suite's seeded cohort, whose list assertions filter on that domain
+    // — every registration here pushed the seeded rows one place further down
+    // the admin's newest-first list until they left page one.
+    email: `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}@oxshare-e2e-signup.test`,
     password: 'e2e-password-123',
   };
+}
+
+/**
+ * Open the Identity Document step with its uploader SHOWING.
+ *
+ * Since the document-choice cards landed (15 Aug), nothing renders an upload
+ * slot until the client has said WHICH document they are presenting — an
+ * upload box for an unstated document is what let a passport land in a slot
+ * labelled "Back Side". The specs that predate that change went straight to
+ * `/kyc/step/2` and waited a minute for a file input that never appears. This
+ * picks the first document type when the cards are showing and leaves a page
+ * that already has a choice alone.
+ */
+export async function openDocumentStep(page: Page): Promise<void> {
+  await page.goto('/kyc/step/2');
+  await page.waitForLoadState('networkidle');
+  const uploader = page.locator('input[type="file"]').first();
+  if (await uploader.count()) return;
+  const firstCard = page.getByRole('button', { name: /passport/i }).first();
+  if (await firstCard.isVisible().catch(() => false)) {
+    await firstCard.click();
+    await expect(page.locator('input[type="file"]').first()).toBeAttached({ timeout: 15_000 });
+  }
 }

@@ -21,6 +21,7 @@ import { useUser } from '@/context/UserContext';
 import { API_BASE_URL } from '@/lib/env';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { t } from '@/lib/i18n';
+import { toast } from 'sonner';
 
 /**
  * The account menu at the foot of the sidebar.
@@ -84,6 +85,15 @@ export function UserMenu({
     try {
       await logout();
     } catch {
+      /*
+       * Surfaced TWICE on purpose. The inline line under the trigger is only
+       * rendered in the expanded sidebar; in the header variant — the phone,
+       * this portal's primary device — there is no room for it, so a failed
+       * sign-out was completely silent there, which is the one outcome this
+       * whole path exists to prevent (see api/auth.ts). The toast reaches
+       * every layout.
+       */
+      toast.error(t('session.logoutFailed'));
       setLogoutError(t('session.logoutFailed'));
     }
   };

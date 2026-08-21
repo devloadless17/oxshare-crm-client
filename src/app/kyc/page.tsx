@@ -1,62 +1,39 @@
-import { redirect } from 'next/navigation';
-import { fetchKycStatus } from '@/lib/kyc-server-status';
+'use client';
 
-/*
- * NEVER PRERENDERED. This route's whole job is to read one client's KYC status
- * and act on it, so a build-time snapshot would be somebody else's answer baked
- * into HTML — and `cookies()` makes it dynamic at runtime regardless. Saying so
- * explicitly also keeps the build from evaluating this module's config while
- * collecting routes, which fails when NEXT_PUBLIC_API_BASE_URL is set at deploy
- * time rather than at build time.
- */
-export const dynamic = 'force-dynamic';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { PageLoader } from '@/components/ui/loader';
+import { useKycAccess } from '@/hooks/use-kyc-access';
+import type { KycStatus } from '@/lib/kyc-form-access';
+import { t } from '@/lib/i18n';
 
 /**
  * `/kyc` is a signpost, not a screen — it decides where the client belongs and
  * sends them there.
  *
- * ## It caused an infinite redirect loop, and this is what fixed it
+ * One rule, shared with the two routes it points at: `canOpenKycForm`. Anything
+ * other than an unfinished submission goes to the terminal screen (`rejected`
+ * included — they need the reason and the returned-field list before editing;
+ * the re-apply button there is what opens the form), and the rest to step 1.
+ * The step route and the outcome route gate on the same predicate, so the
+ * three cannot disagree about where somebody belongs — which is the property
+ * that once failed and produced a redirect loop.
  *
- * The client-side version worked out a target step from how much data the
- * client had SAVED — first name present means step 2, document uploaded means
- * step 3, and so on — while the gate on the step route decided from their
- * STATUS. For a rejected client the two disagreed permanently: every field is
- * filled in, so this page said "step 5", and the step route said "you should be
- * reading why it came back". The browser bounced between them without end.
- *
- * Two effects with two different notions of "where does this client belong" is
- * the bug. There is one rule now and it lives in `lib/kyc-server-status.ts`:
- * anything other than an unfinished submission goes to the terminal screen, and
- * `canOpenKycForm` is the same predicate the step route uses. They cannot
- * disagree because they are the same function.
- *
- * The second cause was mechanical and worth naming: that effect listed
- * `statusQuery.data` in its dependencies. React Query hands back a fresh object
- * identity on every render, so the effect re-ran on each one and called
- * `router.replace` each time — a loop that would have fired even if the
- * destination had been right.
- *
- * ## No spinner any more
- *
- * The old page rendered "Resuming your verification…" while it fetched. On the
- * server there is nothing to wait for: the redirect is decided before any HTML
- * is sent, so the client's browser goes straight to the destination.
+ * Decided in the BROWSER, from the status the portal already has in its query
+ * cache. See components/kyc/kyc-route-gate.tsx for why the server-side read
+ * this used to do could not work off localhost.
  */
-export default async function KycPage() {
-  const status = await fetchKycStatus();
+export default function KycPage() {
+  const router = useRouter();
+  const { status, isLoading } = useKycAccess();
 
-  /*
-   * `rejected` goes to the terminal screen deliberately, even though the form
-   * is open to them. They need the reason and the returned-field list before
-   * they start editing, or they resubmit the same mistake — the re-apply button
-   * there is what opens the form.
-   *
-   * A null status (the read failed, or there is no submission yet) falls
-   * through to the form, which is where a client who has never started belongs.
-   */
-  if (status !== null && status !== 'not_started' && status !== 'in_progress') {
-    redirect('/kyc/submitted');
-  }
+  useEffect(() => {
+    if (isLoading) return;
+    const resolved: KycStatus = status ?? 'not_started';
+    const unfinished = resolved === 'not_started' || resolved === 'in_progress';
+    // `rejected` may open the form, but goes to the outcome screen first.
+    router.replace(unfinished ? '/kyc/step/1' : '/kyc/submitted');
+  }, [isLoading, status, router]);
 
-  redirect('/kyc/step/1');
+  return <PageLoader label={t('kyc.resuming')} />;
 }

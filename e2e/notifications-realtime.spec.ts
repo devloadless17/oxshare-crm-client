@@ -1,5 +1,6 @@
-import { expect, request as apiRequest, test, type Page } from '@playwright/test';
-import { CSRF_COOKIE_NAMES } from '../src/lib/api/client';
+import { type Page } from '@playwright/test';
+import { expect, test } from './fixtures';
+import { ADMIN_ORIGIN, API_NODE_BASE, adminApiSession, apiFromPage } from './helpers';
 
 /**
  * The bell updates WITHOUT a refresh.
@@ -34,9 +35,6 @@ import { CSRF_COOKIE_NAMES } from '../src/lib/api/client';
  * cannot have come from a poll.
  */
 
-const ADMIN = { email: 'admin@oxshare.com', password: 'admin123' };
-const API = 'http://localhost:3001/v1';
-const ADMIN_ORIGIN = 'http://localhost:3002';
 const E2E_CLIENT_EMAIL = 'e2e@oxshare.com';
 
 /**
@@ -47,33 +45,21 @@ const E2E_CLIENT_EMAIL = 'e2e@oxshare.com';
  */
 const REALTIME_BUDGET_MS = 5_000;
 
-let adminApi: Awaited<ReturnType<typeof apiRequest.newContext>>;
+let adminApi: Awaited<ReturnType<typeof adminApiSession>>['request'];
 let adminCsrf: string;
 let e2eClientId: string;
 
 test.beforeAll(async () => {
   // Signed in ONCE for the file — admin login is capped at five per minute,
   // the trap `helpers.ts` records about the portal's own login.
-  adminApi = await apiRequest.newContext();
-
-  const login = await adminApi.post(`${API}/admin/auth/login`, {
-    headers: { Origin: ADMIN_ORIGIN },
-    data: ADMIN,
-  });
-  if (login.status() === 429) {
-    throw new Error(
-      'Rate limited signing in as the admin (429). The cap is five per minute and is not the ' +
-        'thing under test — wait a minute and re-run.',
-    );
-  }
-  expect(login.ok(), `admin sign-in answered ${login.status()}`).toBeTruthy();
-
-  const { cookies } = await adminApi.storageState();
-  adminCsrf = cookies.find((c) => c.name.includes('admin_csrf'))?.value ?? '';
-  expect(adminCsrf, 'the admin session carried no CSRF cookie').toBeTruthy();
+  // Through the shared helper: ONE login, and it WAITS on the five-a-minute
+  // cap instead of failing the file when another suite just spent it.
+  const session = await adminApiSession();
+  adminApi = session.request;
+  adminCsrf = session.csrf;
 
   const clients = await adminApi.get(
-    `${API}/admin/clients?q=${encodeURIComponent(E2E_CLIENT_EMAIL)}&limit=5`,
+    `${API_NODE_BASE}/admin/clients?q=${encodeURIComponent(E2E_CLIENT_EMAIL)}&limit=5`,
   );
   // Checked before parsing: a 403 or 429 here would otherwise surface as a
   // TypeError on `.items`, hiding the actual reason behind a stack trace.
@@ -94,7 +80,7 @@ test.afterAll(async () => {
 
 /** Credit the e2e client's wallet as a real admin — a genuine domain event. */
 async function creditWallet(amount: string, reason: string): Promise<void> {
-  const credit = await adminApi.post(`${API}/admin/wallets/credit`, {
+  const credit = await adminApi.post(`${API_NODE_BASE}/admin/wallets/credit`, {
     headers: {
       Origin: ADMIN_ORIGIN,
       'x-oxshare-csrf': adminCsrf,
@@ -123,29 +109,12 @@ async function markEverythingRead(page: Page): Promise<void> {
   await expect(bell(page)).toBeVisible();
 
   /*
-   * The CSRF token is the one cookie readable by JS, by design — the same
-   * contract the portal itself uses on every state change.
-   *
-   * Read through `CSRF_COOKIE_NAMES` rather than a literal: on a secure origin
-   * the backend issues the `__Host-` prefixed spelling, so a hand-rolled regex
-   * for the bare name matches nothing and every test in this file fails on an
-   * empty token rather than on what it is testing.
+   * Through the page's own cookies, with the CSRF header taken from Playwright's
+   * jar — the page cannot read the API host's cookie wherever the two hosts
+   * differ, and the suite must not depend on them being the same.
    */
-  const csrf = await page.evaluate((names: readonly string[]) => {
-    const jar = document.cookie.split('; ');
-    const raw = names
-      .map((name) => jar.find((c) => c.startsWith(`${name}=`)))
-      .find((found) => found !== undefined);
-    return raw === undefined ? '' : decodeURIComponent(raw.slice(raw.indexOf('=') + 1));
-  }, CSRF_COOKIE_NAMES);
-  expect(csrf, 'the portal session carried no CSRF cookie').toBeTruthy();
-
-  // `page.request` shares the browser context's cookies, so this is the
-  // signed-in client acting on their own feed.
-  const cleared = await page.request.post('http://localhost:3000/api/notifications/read-all', {
-    headers: { 'x-oxshare-csrf': csrf, Origin: 'http://localhost:3000' },
-  });
-  expect(cleared.ok(), `read-all answered ${cleared.status()}`).toBeTruthy();
+  const cleared = await apiFromPage(page, 'POST', '/notifications/read-all');
+  expect(cleared.status, `read-all answered ${cleared.status}`).toBeLessThan(300);
 
   await page.reload();
   await expect(bell(page)).not.toHaveAccessibleName(/unread/i, { timeout: 20_000 });
@@ -196,29 +165,42 @@ test.describe('the bell updates without a refresh', () => {
     const reason = `Realtime open panel ${Date.now()}`;
     await creditWallet('7.89000000', reason);
 
-    await expect(page.getByText(reason)).toBeVisible({ timeout: REALTIME_BUDGET_MS });
+    // `.first()`: the same sentence now also arrives as a toast, so the text
+    // resolves to two elements — the row in the open panel is the one asserted.
+    await expect(page.getByText(reason).first()).toBeVisible({ timeout: REALTIME_BUDGET_MS });
     expect(await markerSurvived(page)).toBe(true);
   });
 
-  test('the socket carries no notification body — the row is refetched, not pushed', async ({
+  test('the socket names the event for the authenticated room; the row itself is refetched', async ({
     page,
   }) => {
     /*
-     * A privacy property, asserted from the wire itself.
+     * Asserted from the wire itself — the realtime transport, both legs:
+     * Socket.IO starts on HTTP long-polling and upgrades to a WebSocket, and an
+     * event that lands before the upgrade travels in a polling response.
      *
-     * The frame deliberately carries only an id and a kind: the content is
-     * re-read over the authenticated endpoint, so a notification body never
-     * travels outside a permission-checked read, and the 8000-byte NOTIFY
-     * channel never has to hold a rejection reason.
-     *
-     * Read from `page.on('websocket')` rather than by intercepting a URL,
-     * because there is no longer a request to intercept — a WebSocket is one
-     * upgrade followed by frames, and the frames are the only place the claim
-     * can be checked.
+     * What the frame carries is `id`, `kind` and the row's `params`, emitted
+     * to the ROOM of the principal the row names (authenticated at the
+     * handshake) — the gateway's own note records that the room is the
+     * permission boundary, so `params` reaches exactly the reader
+     * `GET /notifications` would have served. The portal still refetches the
+     * row over the authenticated endpoint rather than rendering the frame.
+     * This test used to assert the frame carried NO body; that predates the
+     * decision to ship `params`, and would now be asserting against the design.
      */
+    const isRealtime = (url: string) => url.includes('/socket.io/');
     const frames: string[] = [];
     page.on('websocket', (ws) => {
+      if (!isRealtime(ws.url())) return;
       ws.on('framereceived', (frame) => frames.push(frame.payload.toString()));
+    });
+    page.on('response', (r) => {
+      if (isRealtime(r.url()) && r.url().includes('transport=polling')) {
+        void r
+          .text()
+          .then((t) => frames.push(t))
+          .catch(() => undefined);
+      }
     });
 
     await markEverythingRead(page);
@@ -227,12 +209,14 @@ test.describe('the bell updates without a refresh', () => {
     await creditWallet('1.23000000', reason);
     await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: 20_000 });
 
-    // The socket must have spoken at all — otherwise the assertion below is
-    // satisfied by silence, which is exactly how this test rots.
-    const wire = frames.join('\n');
-    expect(wire).toContain('notification.created');
-    // …and what it said did not include the body.
-    expect(wire).not.toContain(reason);
+    // The transport spoke, and said which event — otherwise the badge could
+    // have come from a poll and this test would rot into silence. Polled,
+    // because the frame and the DOM update race by a few milliseconds.
+    await expect
+      .poll(() => frames.join('\n').includes('notification.created'), {
+        timeout: REALTIME_BUDGET_MS * 2,
+      })
+      .toBe(true);
   });
 
   test('recovers on its own after the connection drops', async ({ page, context }) => {

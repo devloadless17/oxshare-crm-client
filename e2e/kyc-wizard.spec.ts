@@ -1,5 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
-import { resetKycFixture, TINY_PNG } from './helpers';
+import { type Page } from '@playwright/test';
+import { expect, test } from './fixtures';
+import { TINY_PNG, openDocumentStep, resetKycFixture } from './helpers';
 
 /**
  * KYC onboarding, on the device it is actually used from.
@@ -83,7 +84,7 @@ test.describe('the KYC wizard', () => {
      * camera-ONLY, which locks out anyone who photographed their ID with a
      * second device or already holds a scan.
      */
-    await page.goto('/kyc/step/2');
+    await openDocumentStep(page);
     await resetUploader(page);
 
     await expect(page.getByRole('button', { name: /take photo/i }).first()).toBeVisible();
@@ -109,7 +110,7 @@ test.describe('the KYC wizard', () => {
      * This also exercises the canvas normalisation for real: choosing the file
      * decodes it, draws it oriented, and re-encodes before anything is sent.
      */
-    await page.goto('/kyc/step/2');
+    await openDocumentStep(page);
     await resetUploader(page);
 
     const uploads: string[] = [];
@@ -142,7 +143,7 @@ test.describe('the KYC wizard', () => {
      * advisory by decision: a legitimate small scan refused outright is a worse
      * outcome than a marginal one a reviewer can judge for themselves.
      */
-    await page.goto('/kyc/step/2');
+    await openDocumentStep(page);
     await resetUploader(page);
 
     await page.locator('input[type="file"]:not([capture])').first().setInputFiles({
@@ -210,7 +211,7 @@ test.describe('choosing a document but not confirming it', () => {
      * only message available was the one that was wrong. `onPendingChange`
      * closes that gap.
      */
-    await page.goto('/kyc/step/2');
+    await openDocumentStep(page);
     await resetUploader(page);
 
     await page.locator('input[type="file"]:not([capture])').first().setInputFiles({

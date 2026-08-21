@@ -38,6 +38,19 @@ export type IbReferredClient = components['schemas']['IbReferredClientDto'];
 export type IbSubPartner = components['schemas']['IbSubPartnerDto'];
 export type IbLevelSummary = components['schemas']['IbLevelSummaryDto'];
 
+/**
+ * The TERMS a partner is paid on — their named programme (FR-IB-06).
+ *
+ * Distinct from `IbLevelSummary`, which is the RUNG they stand on. Since the
+ * programme record landed, the ladder decides placement and the programme
+ * decides the money; a screen showing the level's `rateValue` as what somebody
+ * earns is reading the wrong number off the wire.
+ *
+ * `level1Rate` is what they earn from their OWN clients, `level2Rate` from a
+ * sub-partner's — per DEPTH, not per rung.
+ */
+export type IbProgramSummary = components['schemas']['IbProgramSummaryDto'];
+
 /** One commission entry, with the status that says whether it is money yet. */
 export type IbCommissionRow = components['schemas']['IbCommissionRowDto'];
 

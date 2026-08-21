@@ -50,7 +50,7 @@ export function visibleNavItems(
   kycStatus: string | undefined,
   verificationLevel: number | undefined,
 ): NavItem[] {
-  const kycDone = verificationLevel === 1 || kycStatus === 'approved';
+  const kycDone = (verificationLevel ?? 0) >= 1 || kycStatus === 'approved';
   return kycDone
     ? NAV_ITEMS
     : [...NAV_ITEMS, { label: 'nav.kyc', href: '/kyc', icon: ShieldCheck }];
@@ -60,7 +60,7 @@ export function kycNavBadge(
   kycStatus: string | undefined,
   verificationLevel: number | undefined,
 ): { text: string; tone: 'warning' | 'info' | 'destructive' } | undefined {
-  if (verificationLevel === 1 || kycStatus === 'approved') return undefined;
+  if ((verificationLevel ?? 0) >= 1 || kycStatus === 'approved') return undefined;
   if (kycStatus === 'rejected') return { text: t('kyc.badgeActionRequired'), tone: 'destructive' };
   if (kycStatus === 'submitted' || kycStatus === 'under_review') {
     return { text: t('kyc.badgeInReview'), tone: 'info' };

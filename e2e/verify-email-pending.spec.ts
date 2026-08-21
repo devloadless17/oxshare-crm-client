@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
+import { apiRoute } from './helpers';
 
 /**
  * The screen a client sits on while waiting for a verification email.
@@ -114,17 +115,16 @@ test.describe('following a verification link', () => {
      */
     const attempts: string[] = [];
     page.on('request', (r) => {
-      // `/api/` matters: without it this also counts the page navigation to
-      // /auth/verify-email itself, so the document request looked like a second
-      // submission and the test failed on its own filter.
-      if (r.url().includes('/api/auth/verify-email')) attempts.push(r.method());
+      // The API path, not the page's: without the `/v1` prefix this also counts
+      // the document navigation to /auth/verify-email itself.
+      if (apiRoute('/auth/verify-email')(new URL(r.url()))) attempts.push(r.method());
     });
 
     await page.goto('/auth/verify-email?token=e2e-single-use-check');
     await page.waitForLoadState('networkidle');
 
-    expect(attempts.length, `the token was submitted ${attempts.length} times`).toBeLessThanOrEqual(
-      1,
-    );
+    // EXACTLY one — `<= 1` is satisfied by zero, which is what a filter that
+    // matches nothing produces, and that is how this test passed vacuously.
+    expect(attempts.length, `the token was submitted ${attempts.length} times`).toBe(1);
   });
 });
