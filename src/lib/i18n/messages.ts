@@ -280,6 +280,27 @@ export const messages = {
   'auth.verify.resendConfirmed': 'Sent! Check your inbox again.',
   'auth.verify.signInNow': 'Sign In Now',
   'auth.verify.failedHeading': 'Verification Failed',
+  /*
+   * UX-BACKLOG UX-01 — the three outcomes below used to be one red box.
+   *
+   * `failedHeading` + `invalidToken` covered "already used", "expired" and
+   * "never valid" alike, so the most common of the three — a refresh, the Back
+   * button, or a mail scanner that opened the link first — told a client whose
+   * account WAS verified that verification had failed. In a money product that
+   * is expensive: it trains people to re-request links they do not need, and it
+   * is what a buyer sees if they press Back during a walkthrough.
+   *
+   * "Already used" is deliberately NOT phrased as an error. Nothing went wrong;
+   * the address is confirmed and the only thing left to do is sign in.
+   */
+  'auth.verify.alreadyTitle': 'This link has already been used',
+  'auth.verify.alreadyBody': 'Your email is already verified. You can sign in now.',
+  'auth.verify.throttledHeading': 'Too many attempts',
+  'auth.verify.throttledBody':
+    'We have paused verification for a moment to keep your account safe. Wait a minute, then open the link again — nothing has gone wrong with it.',
+  'auth.verify.expiredHeading': 'This link has expired',
+  'auth.verify.expiredBody':
+    'Verification links are valid for 24 hours. Request a new one and we will email it straight away.',
   'auth.verify.backToSignIn': 'Back to Sign In',
   'auth.verify.missingToken': 'Verification token is missing in URL parameters.',
   'auth.verify.invalidToken': 'The verification link is invalid or has expired.',

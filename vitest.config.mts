@@ -114,10 +114,10 @@ export default defineConfig({
        * They may only ever go up.
        */
       thresholds: {
-        lines: 22,
-        functions: 17,
-        branches: 17,
-        statements: 22,
+        lines: 23,
+        functions: 18,
+        branches: 18,
+        statements: 23,
       },
     },
   },
