@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { KYC_STORAGE_STATE, TINY_PNG, resetKycFixture } from './helpers';
+import { expect, test } from './fixtures';
+import { KYC_STORAGE_STATE, TINY_PNG, openDocumentStep, resetKycFixture } from './helpers';
 
 /**
  * The KYC upload journey, end to end, through a real browser and into Cloudflare R2.
@@ -65,7 +65,7 @@ test.describe('KYC documents live in object storage', () => {
       if (r.url().includes('/uploads/kyc/')) documentRequests.push(r.url());
     });
 
-    await page.goto('/kyc/step/2');
+    await openDocumentStep(page);
 
     const uploadResponse = page.waitForResponse(
       (r) => r.url().includes('/kyc/upload') && r.request().method() === 'POST',
@@ -119,7 +119,7 @@ test.describe('KYC documents live in object storage', () => {
      * improves, which is backwards. What must hold is that NOTHING IS STORED, and
      * that the client is told rather than left on a spinner.
      */
-    await page.goto('/kyc/step/2');
+    await openDocumentStep(page);
 
     const uploadStatuses: number[] = [];
     page.on('response', (r) => {

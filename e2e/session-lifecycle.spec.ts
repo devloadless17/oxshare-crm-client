@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { E2E_LOGOUT_CLIENT, signIn } from './helpers';
 // The app's own cookie names rather than a second copy — the same reasoning
 // `helpers.ts` gives for importing them: the backend computes these and this
@@ -159,7 +160,10 @@ test.describe('a session that has died', () => {
         .map((c) => (/_rt$|_at$/.test(c.name) ? { ...c, value: 'no-longer-valid' } : c)),
     );
 
-    await page.goto('/dashboard');
+    // The eviction is a hard `window.location` navigation that can interrupt
+    // this very load — Chromium reports that as ERR_ABORTED on the goto, which
+    // is the eviction WORKING, not failing. The URL assertion is the test.
+    await page.goto('/dashboard').catch(() => null);
     await expect(page).toHaveURL(/\/auth\/login/, { timeout: 20_000 });
   });
 });

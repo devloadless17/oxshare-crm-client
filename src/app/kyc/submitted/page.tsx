@@ -1,16 +1,8 @@
-import { redirect } from 'next/navigation';
-import { fetchKycStatus } from '@/lib/kyc-server-status';
-import { KycOutcome } from '@/components/kyc/kyc-outcome';
+'use client';
 
-/*
- * NEVER PRERENDERED. This route's whole job is to read one client's KYC status
- * and act on it, so a build-time snapshot would be somebody else's answer baked
- * into HTML — and `cookies()` makes it dynamic at runtime regardless. Saying so
- * explicitly also keeps the build from evaluating this module's config while
- * collecting routes, which fails when NEXT_PUBLIC_API_BASE_URL is set at deploy
- * time rather than at build time.
- */
-export const dynamic = 'force-dynamic';
+import { KycRouteGate } from '@/components/kyc/kyc-route-gate';
+import { KycOutcome } from '@/components/kyc/kyc-outcome';
+import { canOpenKycForm } from '@/lib/kyc-form-access';
 
 /**
  * Where a finished submission lands: pending, approved, or returned with the
@@ -19,22 +11,17 @@ export const dynamic = 'force-dynamic';
  * The gate is the mirror of the step route's. A client who has NOT submitted
  * anything has no outcome to read, so they are sent to the form — otherwise
  * this page tells someone who never started that their documents are under
- * review.
- *
- * `rejected` stays here. The form is open to them, but the reason and the
- * returned-field list are on this screen and the re-apply button is what moves
- * them — sending them straight to the form would mean editing before reading
- * why it came back.
+ * review. `rejected` stays here: the form is open to them, but the reason and
+ * the returned-field list are on this screen and the re-apply button is what
+ * moves them. Same predicate as the step route, so the two cannot ping-pong.
  */
-export default async function KycSubmittedPage() {
-  const status = await fetchKycStatus();
-
-  // A null status is an unreadable one, and this page has nothing useful to say
-  // without it — the form is the safe destination, since it is resumable and
-  // reloads whatever was already saved.
-  if (status === null || status === 'not_started' || status === 'in_progress') {
-    redirect('/kyc/step/1');
-  }
-
-  return <KycOutcome />;
+export default function KycSubmittedPage() {
+  return (
+    <KycRouteGate
+      allow={(status) => !canOpenKycForm(status) || status === 'rejected'}
+      redirectTo="/kyc/step/1"
+    >
+      <KycOutcome />
+    </KycRouteGate>
+  );
 }

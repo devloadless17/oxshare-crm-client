@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { apiClient } from './client';
 
@@ -133,5 +133,121 @@ describe('the anti-forgery token across a refresh', () => {
     await client.apiClient.patch('/profile', { country: 'DE' });
 
     expect(sent?.headers['X-OxShare-CSRF']).toBe('token-after-rotation');
+  });
+});
+
+describe('proactive refresh', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    document.cookie = 'oxshare_crm_portal_session_hint=; Path=/; Max-Age=0';
+  });
+
+  it('fires where the CSRF cookie is unreadable but the session marker is set', async () => {
+    /*
+     * THE PRODUCTION TOPOLOGY. The portal and the API are different hostnames,
+     * so the API's `__Host-` CSRF cookie is invisible here — and the timer used
+     * to be gated on reading it, so it never fired outside localhost. The
+     * session-hint marker is this app's own cookie and is what it asks now.
+     */
+    vi.useFakeTimers();
+    document.cookie = 'oxshare_crm_portal_session_hint=1; Path=/';
+    const { startProactiveRefresh, stopProactiveRefresh } = await loadClient();
+    mockedPost.mockResolvedValue({ status: 200, headers: {} });
+
+    startProactiveRefresh();
+    await vi.advanceTimersByTimeAsync(11 * 60 * 1000);
+    stopProactiveRefresh();
+
+    expect(mockedPost).toHaveBeenCalled();
+  });
+
+  it('does not refresh while no session marker exists', async () => {
+    vi.useFakeTimers();
+    const { startProactiveRefresh, stopProactiveRefresh } = await loadClient();
+    mockedPost.mockResolvedValue({ status: 200, headers: {} });
+
+    startProactiveRefresh();
+    await vi.advanceTimersByTimeAsync(31 * 60 * 1000);
+    stopProactiveRefresh();
+
+    expect(mockedPost).not.toHaveBeenCalled();
+  });
+});
+
+describe('a 401 on a public page', () => {
+  /*
+   * `/auth/login`, `/auth/forgot-password`, `/verify-email/pending` all ask
+   * `/auth/me` on mount. For a visitor who was never signed in that 401 is the
+   * answer and a refresh would be two guaranteed-to-fail requests per cold
+   * load. For a client whose access token lapsed — the normal state of anyone
+   * returning after fifteen minutes — it is a session to renew, and skipping it
+   * shows them the sign-in form over a live session. The session-hint marker
+   * tells the two apart; the CSRF cookie used to, and cannot off localhost.
+   */
+  afterEach(() => {
+    document.cookie = 'oxshare_crm_portal_session_hint=; Path=/; Max-Age=0';
+    window.history.pushState({}, '', '/');
+  });
+
+  function answer401ThenOk(apiClient: import('axios').AxiosInstance) {
+    let calls = 0;
+    apiClient.defaults.adapter = (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+      calls += 1;
+      if (calls === 1) {
+        return Promise.reject(
+          Object.assign(new Error('401'), {
+            config,
+            response: { status: 401, data: {}, headers: {}, statusText: '', config },
+            isAxiosError: true,
+          }),
+        );
+      }
+      return Promise.resolve({
+        data: { ok: true },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      });
+    };
+  }
+
+  it('is not renewed when no session marker exists', async () => {
+    window.history.pushState({}, '', '/auth/login');
+    const { apiClient } = await loadClient();
+    answer401ThenOk(apiClient);
+
+    await expect(apiClient.get('/auth/me')).rejects.toBeTruthy();
+    expect(mockedPost).not.toHaveBeenCalled();
+  });
+
+  it('IS renewed when the session marker says there is a session to renew', async () => {
+    window.history.pushState({}, '', '/auth/login');
+    document.cookie = 'oxshare_crm_portal_session_hint=1; Path=/';
+    const { apiClient } = await loadClient();
+    answer401ThenOk(apiClient);
+    mockedPost.mockResolvedValue({ status: 200, headers: {} });
+
+    const res = await apiClient.get('/auth/me');
+    expect(res.status).toBe(200);
+    expect(mockedPost).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('a refresh that lost a race', () => {
+  it('retries once on SESSION_SUPERSEDED and keeps the session', async () => {
+    /*
+     * Pins the status the backend answers with: 401 + code SESSION_SUPERSEDED.
+     * This interceptor and the admin's both branch on the CODE before the
+     * status, so the 401 must never be read as a dead session — this is the
+     * assertion that it is not.
+     */
+    const { refreshPortalToken } = await loadClient();
+    mockedPost
+      .mockRejectedValueOnce({ response: { status: 401, data: { code: 'SESSION_SUPERSEDED' } } })
+      .mockResolvedValueOnce({ status: 200, headers: {} });
+
+    expect(await refreshPortalToken()).toBe(true);
+    expect(mockedPost).toHaveBeenCalledTimes(2);
   });
 });

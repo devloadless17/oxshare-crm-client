@@ -57,10 +57,17 @@ describe('either signal is enough', () => {
     expect(isKycApproved(0, 'rejected')).toBe(false);
   });
 
-  it('treats a level other than 1 as unverified', () => {
-    // Only 1 means approved. A future level 2 would be a HIGHER tier, and
-    // reading `>= 1` here would silently admit a state nobody has designed for.
+  it('treats level 0 as unverified', () => {
     expect(isKycApproved(0, 'submitted')).toBe(false);
+    expect(isKycApproved(undefined, undefined)).toBe(false);
+  });
+
+  it('treats any level AT OR ABOVE 1 as verified', () => {
+    // CORE-15 is "verification LEVELS". A level 2 is a higher tier, not a
+    // different kind of thing: an exact-equality check here read the
+    // most-verified clients as unverified and closed the money routes on them.
+    expect(isKycApproved(1, undefined)).toBe(true);
+    expect(isKycApproved(2, undefined)).toBe(true);
   });
 });
 

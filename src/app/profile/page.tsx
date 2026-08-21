@@ -57,7 +57,10 @@ export default function ProfilePage() {
   // and for anyone who mounts this outside that layout.
   if (!user) return null;
 
-  const verified = user.verificationLevel === 1;
+  // The pill under the name says "Email verified", so it is driven by the
+  // email flag — not by the KYC level, which told a KYC-approved client with an
+  // unconfirmed address the opposite of what the panel below correctly said.
+  const verified = user.emailVerified;
   const fullName = `${user.firstName} ${user.lastName}`.trim();
 
   return (
@@ -101,9 +104,15 @@ export default function ProfilePage() {
               <Field
                 label={t('profile.accountType')}
                 value={
-                  user.type === 'corporate'
-                    ? t('profile.typeCorporate')
-                    : t('profile.typeIndividual')
+                  // The DERIVED classification the API now answers everywhere:
+                  // partner ▸ referral ▸ individual ("Normal"). There was never
+                  // a `corporate` type; the old label set described a shape the
+                  // enum did not have.
+                  user.type === 'partner'
+                    ? t('profile.typePartner')
+                    : user.type === 'referral'
+                      ? t('profile.typeReferral')
+                      : t('profile.typeIndividual')
                 }
               />
             </dl>

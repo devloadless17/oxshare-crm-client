@@ -125,6 +125,35 @@ export function AsyncBoundary({
     return fill ? <div className={frame}>{card}</div> : card;
   }
 
+  /*
+   * A 401 that reached the screen.
+   *
+   * In this app that is NOT always the interceptor mid-redirect: when the
+   * refresh could not be asked at all (`unreachable`), the interceptor lets the
+   * 401 propagate without ending the session — deliberately, so a network blip
+   * mid-KYC does not sign anybody out. So this branch can be a settled state,
+   * and a spinner here could hang for ever. It renders the retry card with a
+   * sentence that says what actually happened, rather than "something went
+   * wrong".
+   *
+   * DIVERGES FROM THE ADMIN'S COPY deliberately: the admin interceptor always
+   * navigates on a terminal 401, so that app paints a loader here.
+   */
+  if (status === 'unauthenticated') {
+    const card = (
+      <div
+        className="rounded-xl border border-border bg-card p-8 text-center space-y-3"
+        role="alert"
+      >
+        <p className="text-sm text-muted-foreground">{t('session.unconfirmed')}</p>
+        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+          {t('common.retryShort')}
+        </Button>
+      </div>
+    );
+    return fill ? <div className={frame}>{card}</div> : card;
+  }
+
   if (status === 'error') {
     const requestId = apiErrorRequestId(error);
     const card = (

@@ -85,7 +85,7 @@ function RegisterForm() {
     setSuccessMessage(null);
 
     if (!email || !password || !firstName || !lastName) {
-      setError('Please fill in all required fields.');
+      setError(t('auth.register.fillRequired'));
       return;
     }
 
@@ -102,9 +102,7 @@ function RegisterForm() {
         ...(referralCode ? { referralCode } : {}),
       });
 
-      setSuccessMessage(
-        res.message || 'Registration successful! Please check your email to verify your account.',
-      );
+      setSuccessMessage(res.message || t('auth.register.success'));
 
       /*
        * Tracked so it can be cancelled — see the cleanup effect below.
@@ -119,7 +117,7 @@ function RegisterForm() {
         router.push('/auth/login');
       }, 3000);
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, 'Registration failed. Please try again.'));
+      setError(apiErrorMessage(err, t('auth.register.failed')));
     } finally {
       setIsLoading(false);
     }

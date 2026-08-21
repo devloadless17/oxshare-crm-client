@@ -117,7 +117,8 @@ export const messages = {
   'profile.emailVerified': 'Verified',
   'profile.emailUnverified': 'Not verified',
   'profile.typeIndividual': 'Individual',
-  'profile.typeCorporate': 'Corporate',
+  'profile.typePartner': 'Partner',
+  'profile.typeReferral': 'Referred client',
   'profile.verificationTitle': 'Verification',
   'profile.verificationApproved': 'Your identity is verified.',
   'profile.verificationPending': 'Identity verification is not complete yet.',
@@ -201,6 +202,9 @@ export const messages = {
   'auth.login.resendFailed': 'Failed to resend verification link.',
 
   // ── Auth: register ────────────────────────────────────────────────────────
+  'auth.register.fillRequired': 'Please fill in all required fields.',
+  'auth.register.success':
+    'Registration successful! Please check your email to verify your account.',
   'auth.register.title': 'Create your account',
   'auth.register.subtitle': 'Start trading with OXShare',
   'auth.register.firstName': 'First Name',
@@ -332,6 +336,9 @@ export const messages = {
   'session.unreachableBody':
     'Your session is still active — we could not contact the server. Check your connection and try again.',
   'session.retry': 'Try again',
+  // A 401 that reached a screen without the session being ended — the refresh
+  // could not be asked (offline, API down). Says so rather than "went wrong".
+  'session.unconfirmed': 'We could not confirm your session. Check your connection and try again.',
   // ── The framework's error surfaces (app/error.tsx, app/not-found.tsx) ──────
   // This portal had none, so any render throw or mistyped URL landed on Next's
   // unbranded default — no chrome, no navigation, no way back — at exactly the
@@ -990,6 +997,13 @@ export const messages = {
   // approved client has none.
   'kyc.badgeInReview': 'In review',
   'kyc.badgeActionRequired': 'Action needed',
+  'kyc.approvedBody':
+    'Your identity has been verified successfully. You now have full access to trading accounts and features.',
+  'kyc.rejectedBody':
+    'Your KYC documents were not approved. Please review the requirements and re-submit your verification.',
+  'kyc.submittedBody':
+    "Your documents have been received and are currently under compliance review. This process usually takes 1–2 business days. We'll update your account status once review is complete.",
+  'kyc.resuming': 'Resuming your verification…',
   'kyc.submittedTitle': 'Verification Submitted',
   'kyc.approvedTitle': 'KYC Approved!',
   'kyc.rejectedTitle': 'KYC Verification Rejected',

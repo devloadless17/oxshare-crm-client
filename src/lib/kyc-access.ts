@@ -33,14 +33,18 @@ export type KycStatusValue = string | undefined;
 /**
  * Approved, by either signal.
  *
- * `verificationLevel === 1` is the profile's own answer; `'approved'` is the KYC
+ * `verificationLevel >= 1` is the profile's own answer; `'approved'` is the KYC
  * record's. See the module comment for why either alone is enough.
+ *
+ * AT LEAST one, not exactly one. CORE-15 is "verification LEVELS", and the day
+ * a level 2 exists an exact-equality check reads the most-verified clients as
+ * unverified and closes the money routes on them.
  */
 export function isKycApproved(
   verificationLevel: number | undefined,
   kycStatus: KycStatusValue,
 ): boolean {
-  return verificationLevel === 1 || kycStatus === 'approved';
+  return (verificationLevel ?? 0) >= 1 || kycStatus === 'approved';
 }
 
 /**

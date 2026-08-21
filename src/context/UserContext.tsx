@@ -83,7 +83,15 @@ const UserContext = createContext<UserContextType>({
  */
 function isUnauthenticated(error: unknown): boolean {
   const status = (error as { response?: { status?: number } })?.response?.status;
-  return status === 401 || status === 403;
+  /*
+   * 401 ONLY. A 403 is a valid session that was refused — an IP allowlist, a
+   * policy guard, a suspension answered at the wrong layer — and reading it as
+   * "no session" silently signed the client out and cleared the marker (R-2.3:
+   * 401 = no valid session, 403 = valid session, not permitted). It falls to
+   * the `unreachable` state instead, which says the session is intact and
+   * offers a retry.
+   */
+  return status === 401;
 }
 
 export function UserProvider({

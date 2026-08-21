@@ -124,8 +124,13 @@ export const depositsApi = {
     method: string,
     signal?: AbortSignal,
   ): Promise<{ state: string }> {
-    const { data } = await apiClient.get<{ state: string }>(
-      `/payments/deposits/${encodeURIComponent(reference)}/status?method=${encodeURIComponent(method)}`,
+    // A POST, because this SETTLES — the API asks the provider and credits the
+    // wallet. It used to ride on the status GET, which put a money-moving state
+    // change behind a verb prefetchers and the back button issue freely and
+    // outside the anti-forgery guard. `GET …/status` is read-only now.
+    const { data } = await apiClient.post<{ state: string }>(
+      `/payments/deposits/${encodeURIComponent(reference)}/settle?method=${encodeURIComponent(method)}`,
+      {},
       { signal },
     );
     return data;

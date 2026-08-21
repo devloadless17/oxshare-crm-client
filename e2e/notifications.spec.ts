@@ -1,5 +1,6 @@
-import { expect, request as apiRequest, test, type Page } from '@playwright/test';
-import { collectRejections } from './helpers';
+import { type Page } from '@playwright/test';
+import { expect, test } from './fixtures';
+import { ADMIN_ORIGIN, API_NODE_BASE, adminApiSession, collectRejections } from './helpers';
 
 /**
  * The notification bell, as a signed-in client actually meets it.
@@ -22,11 +23,6 @@ import { collectRejections } from './helpers';
  * That is the whole feature: an event happened, therefore a person knows.
  */
 
-const ADMIN = { email: 'admin@oxshare.com', password: 'admin123' };
-const API = 'http://localhost:3001/v1';
-/** The admin console's origin — the API validates it on every write. */
-const ADMIN_ORIGIN = 'http://localhost:3002';
-
 /** The client this project's storage state is signed in as. */
 const E2E_CLIENT_EMAIL = 'e2e@oxshare.com';
 
@@ -40,33 +36,19 @@ const E2E_CLIENT_EMAIL = 'e2e@oxshare.com';
  * believing — so the session, the CSRF token and the client id are resolved
  * once and reused.
  */
-let adminApi: Awaited<ReturnType<typeof apiRequest.newContext>>;
+let adminApi: Awaited<ReturnType<typeof adminApiSession>>['request'];
 let adminCsrf: string;
 let e2eClientId: string;
 
 test.beforeAll(async () => {
-  adminApi = await apiRequest.newContext();
-
-  const login = await adminApi.post(`${API}/admin/auth/login`, {
-    headers: { Origin: ADMIN_ORIGIN },
-    data: ADMIN,
-  });
-  if (login.status() === 429) {
-    throw new Error(
-      'Rate limited signing in as the admin: POST /admin/auth/login answered 429. The cap is ' +
-        'five per minute and it is not the thing under test — wait a minute and re-run.',
-    );
-  }
-  expect(login.ok(), `admin sign-in answered ${login.status()}`).toBeTruthy();
-
-  // The CSRF token is the one cookie readable by JS, by design — the same
-  // contract the admin console itself uses on every write.
-  const { cookies } = await adminApi.storageState();
-  adminCsrf = cookies.find((c) => c.name.includes('admin_csrf'))?.value ?? '';
-  expect(adminCsrf, 'the admin session carried no CSRF cookie').toBeTruthy();
+  // Through the shared helper: ONE login, and it WAITS on the five-a-minute
+  // cap instead of failing the file when another suite just spent it.
+  const session = await adminApiSession();
+  adminApi = session.request;
+  adminCsrf = session.csrf;
 
   const clients = await adminApi.get(
-    `${API}/admin/clients?q=${encodeURIComponent(E2E_CLIENT_EMAIL)}&limit=5`,
+    `${API_NODE_BASE}/admin/clients?q=${encodeURIComponent(E2E_CLIENT_EMAIL)}&limit=5`,
   );
   expect(clients.ok(), `client lookup answered ${clients.status()}`).toBeTruthy();
   const found = ((await clients.json()) as { items: { id: string; email: string }[] }).items.find(
@@ -91,7 +73,7 @@ async function creditWalletAsAdmin(
   amount: string,
   reason: string,
 ): Promise<{ transactionId: string }> {
-  const credit = await adminApi.post(`${API}/admin/wallets/credit`, {
+  const credit = await adminApi.post(`${API_NODE_BASE}/admin/wallets/credit`, {
     headers: {
       Origin: ADMIN_ORIGIN,
       'x-oxshare-csrf': adminCsrf,

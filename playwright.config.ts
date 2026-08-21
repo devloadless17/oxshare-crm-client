@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { CROSS, TOPOLOGY } from './e2e/topology';
 import { STORAGE_STATE } from './e2e/helpers';
 
 /**
@@ -57,7 +58,9 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
 
   use: {
-    baseURL: 'http://localhost:3000',
+    // `localhost` for an ordinary run; `portal.crm.localhost` when E2E_TOPOLOGY=crosshost
+    // reproduces the production cookie topology. See e2e/topology.ts.
+    baseURL: TOPOLOGY.portalOrigin,
     // Kept only for failures: a trace per test is gigabytes and nobody opens the
     // passing ones. This is the artefact that makes a red run diagnosable
     // without reproducing it.
@@ -126,7 +129,8 @@ export default defineConfig({
        * spec and not the line. Whether a session survives a refresh is not a
        * question about viewport width; what mobile is FOR still runs in full.
        */
-      testIgnore: /(auth-session|account-security|emailed-links|session-lifecycle)\.spec\.ts/,
+      testIgnore:
+        /(auth-session|account-security|emailed-links|session-lifecycle|session-matrix)\.spec\.ts/,
     },
   ],
 
@@ -134,9 +138,12 @@ export default defineConfig({
     // `dev`, not `build && start`: this suite is for catching things while
     // building, and a production build per run would make it too slow to reach
     // for. The CI job, when it exists, should use the built app instead.
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: true,
+    // In cross-host mode the dev server listens on a DIFFERENT port, so the
+    // ordinary localhost server can stay up beside it; `NEXT_PUBLIC_*` is baked
+    // at compile time, so it must be a fresh server rather than a reused one.
+    command: CROSS ? `npx next dev --port ${TOPOLOGY.ports.portal}` : 'npm run dev',
+    url: `http://localhost:${TOPOLOGY.ports.portal}`,
+    reuseExistingServer: !CROSS,
     timeout: 120_000,
     stdout: 'ignore',
     stderr: 'pipe',

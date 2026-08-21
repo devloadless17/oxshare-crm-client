@@ -1,5 +1,13 @@
-import { expect, test } from '@playwright/test';
-import { collectRejections, E2E_CLIENT, newClient, register, signIn } from './helpers';
+import { expect, test } from './fixtures';
+import {
+  API_BASE,
+  collectRejections,
+  E2E_CLIENT,
+  newClient,
+  register,
+  routeHit,
+  signIn,
+} from './helpers';
 
 /**
  * Does the session actually hold, on every page, across a refresh?
@@ -55,7 +63,7 @@ test.describe('an authenticated session', () => {
      * `/auth/me` is delayed so that moment is wide enough to observe. If nothing
      * is wrong, the page waits rather than lying.
      */
-    await page.route('**/api/auth/me', async (route) => {
+    const me = await routeHit(page, '/auth/me', async (route) => {
       await new Promise((r) => setTimeout(r, 1_200));
       await route.continue();
     });
@@ -66,6 +74,8 @@ test.describe('an authenticated session', () => {
 
     expect(page.url()).toContain('/dashboard');
     await expect(page.getByRole('button', { name: /^sign in$/i })).toHaveCount(0);
+    // The delay really was in force while we sampled.
+    expect(me.hits(), 'the delaying route never fired').toBeGreaterThan(0);
   });
 
   test('does not loop or 401 while simply moving around', async ({ page }) => {
@@ -218,10 +228,10 @@ test.describe('the session belongs to the server', () => {
     // The end-to-end statement: the cookie the browser holds is one the API
     // accepts, on a request the page made itself.
     await page.goto('/dashboard');
-    const me = await page.evaluate(async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
+    const me = await page.evaluate(async (base) => {
+      const res = await fetch(`${base}/auth/me`, { credentials: 'include' });
       return { status: res.status, body: (await res.json()) as { email?: string } };
-    });
+    }, API_BASE);
 
     expect(me.status).toBe(200);
     expect(me.body.email).toBe(E2E_CLIENT.email);
