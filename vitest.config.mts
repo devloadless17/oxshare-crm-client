@@ -92,18 +92,33 @@ export default defineConfig({
         'src/components/theme-provider.tsx',
       ],
       /*
-       * NO THRESHOLDS YET, and that is deliberate rather than an omission.
+       * A FLOOR, not a target — and now that there is something to measure, it
+       * exists.
        *
-       * Admin's are a floor pinned just under its measured numbers, set after
-       * its suite had grown. This suite starts at one file. A threshold guessed
-       * before there is anything to measure either sits so low it protects
-       * nothing or so high it blocks the first person to add a test — and a
-       * coverage gate that blocks people gets disabled, after which it protects
-       * nothing either.
+       * This block used to say "no thresholds yet", correctly: the suite was one
+       * file, and a threshold guessed before there is anything to measure either
+       * sits so low it protects nothing or so high it blocks the first person to
+       * add a test. It then said what to do about it — run the coverage report,
+       * read the figures, pin a point or two under them. That is what these are,
+       * taken from a measured run of 23 files / 298 tests on 21 Aug 2026
+       * (statements 23.23, branches 18.14, functions 17.77, lines 23.40).
        *
-       * Run `npm run test:coverage`, read the figures, and pin a floor a point
-       * or two under them. They may only ever go up.
+       * READ THE NUMBER IN CONTEXT. It is low, and raising it for its own sake
+       * would be the wrong work: what is covered here is chosen — the money
+       * formatter, the sort comparators, the date range, the KYC gate, the
+       * commission summariser, the transfer preselection. Those are the rules
+       * whose wrong version renders perfectly. Wiring, shells and one-line API
+       * wrappers make up most of the remainder and testing them would move this
+       * figure without protecting anything.
+       *
+       * They may only ever go up.
        */
+      thresholds: {
+        lines: 22,
+        functions: 17,
+        branches: 17,
+        statements: 22,
+      },
     },
   },
 });
