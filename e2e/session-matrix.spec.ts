@@ -204,7 +204,8 @@ test.describe('reuse detection', () => {
 
     // The live tab is out on its next navigation: the family is dead.
     await deleteCookie(context, /_at$/);
-    await page.goto('/dashboard');
+    // The eviction can interrupt this very load (ERR_ABORTED) — the URL is the test.
+    await page.goto('/dashboard').catch(() => null);
     await expect(page).toHaveURL(/\/auth\/login/, { timeout: 20_000 });
     await context.close();
   });
