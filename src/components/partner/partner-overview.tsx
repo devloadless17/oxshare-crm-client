@@ -49,20 +49,71 @@ export function PartnerOverview({
   /** Switches tab, because these panels hand the reader on to the full list. */
   onNavigate: (tab: string) => void;
 }) {
-  const { level, referredClients, subPartners, verifiedReferredCount } = data;
+  const { level, programme, referredClients, subPartners, verifiedReferredCount } = data;
   const activePartners = subPartners.filter((partner) => partner.active).length;
   const unverified = referredClients.length - verifiedReferredCount;
 
   return (
     <div className="space-y-5">
       {/*
-        The terms. Rate and programme are one object — what you earn and what you
-        may sell — so they share a surface and a hairline rather than floating as
-        two cards that happen to be adjacent.
+        The terms: what you are paid, where you stand, and what you may sell.
+        One surface split by hairlines rather than three cards, because a
+        partner reads them as one answer to "what is my arrangement".
       */}
       <Surface>
         <SectionHeader title={t('partner.termsHeading')} />
-        <div className="grid gap-px bg-border lg:grid-cols-2">
+        <div className="grid gap-px bg-border lg:grid-cols-3">
+          {/*
+            THE RATES, and they come from the PROGRAMME.
+
+            The rung's own `rateValue` is still on the wire and decides nothing
+            since programmes landed — showing it here as what somebody earns
+            would be the wrong number, correct to four decimal places. The level
+            cell beside this one carries placement and says so.
+          */}
+          <div className={`${CELL} p-5`}>
+            <p className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+              {t('partner.termsProgramme')}
+            </p>
+            {programme ? (
+              <>
+                <p className="mt-2 text-xl font-semibold tracking-tight">{programme.name}</p>
+
+                <dl className="mt-4 space-y-3">
+                  {/*
+                    Per DEPTH, and labelled that way. "Level 1" and "level 2" as
+                    bare words read as the RUNG, which is a different fact and
+                    the one a sub-partner would misprice their own business on.
+                  */}
+                  {programme.mode !== 'rebate_only' && (
+                    <>
+                      <Rate label={t('partner.termsLevel1')} rate={programme.level1Rate} lead />
+                      <Rate label={t('partner.termsLevel2')} rate={programme.level2Rate} />
+                    </>
+                  )}
+                  {programme.mode !== 'commission_only' && (
+                    <Rate
+                      label={t('partner.termsRebate')}
+                      rate={programme.rebateRate}
+                      lead={programme.mode === 'rebate_only'}
+                    />
+                  )}
+                </dl>
+
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  {programme.mode === 'rebate_only'
+                    ? t('partner.termsRebateOnly')
+                    : t('partner.termsOfRevenue')}
+                </p>
+              </>
+            ) : (
+              // The row can only be missing if the catalogue was edited from
+              // under this partner, which the foreign key prevents. Saying so
+              // beats an empty cell if it ever happens.
+              <p className="mt-2 text-xs text-muted-foreground">{t('partner.termsNone')}</p>
+            )}
+          </div>
+
           <div className={`${CELL} p-5`}>
             <p className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
               {t('partner.levelLabel')}
@@ -73,16 +124,7 @@ export function PartnerOverview({
                 <p className="text-xs text-muted-foreground">
                   {t('partner.subPartnerLevel', { level: level.level })}
                 </p>
-                {/*
-                  ALWAYS a percentage. This used to branch on `payoutModel`,
-                  because "70" meant 70% under revenue share and $70 per lot
-                  under per-lot — the backend dropped that column (migration
-                  0055), so the rate has one unit and no model to read first.
-                */}
-                <p className="mt-4 text-3xl font-semibold tracking-tight tabular-nums">
-                  {t('partner.levelRateRevenue', { rate: formatDecimal(level.rateValue) })}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
                   {t('partner.levelRateNote')}
                 </p>
               </>
@@ -268,6 +310,27 @@ export function PartnerOverview({
           <Step index={4} title={t('partner.howStepFour')} body={t('partner.howStepFourBody')} />
         </ol>
       </Surface>
+    </div>
+  );
+}
+
+/**
+ * One rate on the terms panel.
+ *
+ * `lead` marks the one that ranks — what this partner earns on their own
+ * business, or the rebate on a rebate-only programme. It is a size difference
+ * rather than a colour one: a coloured number on a money screen should mean a
+ * state, and this one does not.
+ */
+function Rate({ label, rate, lead }: { label: string; rate: string; lead?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd
+        className={`font-semibold tracking-tight tabular-nums ${lead ? 'text-2xl' : 'text-base'}`}
+      >
+        {t('partner.termsRate', { rate: formatDecimal(rate) })}
+      </dd>
     </div>
   );
 }

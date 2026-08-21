@@ -1229,6 +1229,12 @@ export const messages = {
   'notifications.kindKycRejectedTitle': 'Verification needs attention',
   'notifications.kindKycRejectedBody': 'Your verification was declined: {reason}. You can retry.',
   'notifications.kindCommissionConfirmedTitle': 'Commission credited',
+  // The client's side of the same trade. "Rebate" rather than "commission",
+  // because the money is theirs coming back rather than something they earned —
+  // and the two arrive from the same event, so a shared word would make them
+  // indistinguishable in the bell.
+  'notifications.kindRebateCreditedTitle': 'Rebate credited',
+  'notifications.kindRebateCreditedBody': '{amount} was added to your wallet.',
   'notifications.kindCommissionConfirmedBody':
     'A commission of {amount} was credited to your wallet.',
   'notifications.kindPartnerApprovedTitle': 'Partner application approved',
@@ -1310,7 +1316,7 @@ export const messages = {
   'partner.sideBuy': 'Buy',
   'partner.sideSell': 'Sell',
 
-  'partner.agencyLabel': 'Your programme',
+  'partner.agencyLabel': 'Your agency',
   'partner.pendingSubmittedFor': 'Applied for {agency} on {date}',
   'partner.chooseAgency': 'Choose a programme',
   /*
@@ -1476,6 +1482,25 @@ export const messages = {
   'partner.colSince': 'Since',
 
   'partner.termsHeading': 'Your terms',
+  // ── The commission programme (FR-IB-06) ───────────────────────────────────
+  // The rates a partner is actually paid at. The LEVEL beside them is their
+  // placement in the chain and decides nothing about the money — showing its
+  // old `rateValue` as an earning rate is reading the wrong number off the
+  // wire, which is why these strings name the source of each one.
+  'partner.termsProgramme': 'Commission programme',
+  'partner.termsLevel1': 'From your own clients',
+  'partner.termsLevel2': 'From your partners’ clients',
+  'partner.termsRebate': 'Back to your clients',
+  'partner.termsRate': '{rate}%',
+  'partner.termsOfRevenue':
+    'of the broker’s revenue on each closed position — nothing is earned on an open one, or on a ' +
+    'deposit, withdrawal or transfer',
+  // `rebate_only` is a real arrangement — the broker buys volume by handing the
+  // spread back — so this states it plainly rather than as a fault.
+  'partner.termsRebateOnly':
+    'Your clients are paid a rebate on their trading, and you do not earn commission on this ' +
+    'programme.',
+  'partner.termsNone': 'Your commission terms are being configured.',
   'partner.levelRateNote': 'Your share of the broker’s revenue on the trades your clients close.',
   'partner.programmeProductsLabel': 'Account types your clients can open',
   // An EMPTY product list means unrestricted (see `IbAccountDto`), which is a
@@ -1500,9 +1525,10 @@ export const messages = {
   'partner.howStepOne': 'Share your link',
   'partner.howStepOneBody':
     'Clients who register through your referral link are attributed to you permanently.',
-  'partner.howStepTwo': 'They trade',
+  'partner.howStepTwo': 'They close a trade',
   'partner.howStepTwoBody':
-    'Commission accrues at your level’s rate and appears in your commission list as pending.',
+    'Commission is worked out when a position CLOSES — never while it is open, and never on a ' +
+    'deposit or a transfer. It appears in your commission list as pending.',
   'partner.howStepThree': 'It is released',
   'partner.howStepThreeBody':
     'Shortly afterwards it is credited to your commission wallet, held separately from your deposits.',

@@ -131,6 +131,21 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     vars: moneyVars,
     href: '/partner',
   },
+  /*
+   * The CLIENT's leg, and it deliberately links to /wallet rather than /partner.
+   *
+   * A rebate is credited to the trading client's main wallet, and most of the
+   * people receiving one are not partners at all — sending them to the partner
+   * screen would be a dead end on the one notification that says they have been
+   * paid.
+   */
+  'rebate.credited': {
+    icon: Percent,
+    titleKey: 'notifications.kindRebateCreditedTitle',
+    bodyKey: 'notifications.kindRebateCreditedBody',
+    vars: moneyVars,
+    href: '/wallet',
+  },
   'partner.approved': {
     icon: Handshake,
     titleKey: 'notifications.kindPartnerApprovedTitle',
