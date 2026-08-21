@@ -31,6 +31,15 @@ export type AuthResponse = components['schemas']['AuthTokensResponseDto'];
 export type MessageResponse = components['schemas']['MessageResponseDto'];
 
 /**
+ * `POST /auth/verify-email` — an ALIAS of the generated schema, not a
+ * hand-written picture of it (R-1.1).
+ *
+ * That is what makes a backend change to this response a compile error here
+ * rather than a screen that silently stops branching correctly.
+ */
+export type VerifyEmailResponse = components['schemas']['VerifyEmailResponseDto'];
+
+/**
  * `{ message, userId }` — registration does NOT return tokens, because the
  * account is unverified until the emailed link is followed. Aliasing this is what
  * caught the backend briefly documenting the route as returning tokens.
@@ -59,15 +68,6 @@ export const authApi = {
   },
 
   /**
-   * GET with the token in the query string — that is what the backend exposes
-   * (`@Get('verify-email')` with `@Query('token')`).
-   *
-   * This used to POST a JSON body to that route. The verification email links
-   * to the page that calls this, so every new client clicked their link and got
-   * a 404: email verification was broken end to end, while a second, working
-   * implementation of the same screen sat unused at /verify-email.
-   */
-  /**
    * POST, not GET — R-3.9.
    *
    * The API used to verify on a GET, which meant anything that follows a link
@@ -79,9 +79,17 @@ export const authApi = {
    * page makes this call. One click, as before, but the state change is now
    * something a person triggered. The token also moves out of the query string,
    * where it would otherwise reach access logs and Referer headers.
+   *
+   * ## IDEMPOTENT — a second click resolves, it does not reject
+   *
+   * The API answers 200 with `status: 'already_verified'` when the link has
+   * already been redeemed, instead of the 400 that used to paint a red
+   * "Verification Failed" over a verified account (UX-BACKLOG UX-01). Callers
+   * branch on `status`; nothing may branch on `message`, which is prose and
+   * will be translated (FSD §10 / D-16).
    */
   async verifyEmail(token: string) {
-    const { data } = await apiClient.post<MessageResponse>('/auth/verify-email', { token });
+    const { data } = await apiClient.post<VerifyEmailResponse>('/auth/verify-email', { token });
     return data;
   },
 

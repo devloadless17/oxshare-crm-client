@@ -6,19 +6,107 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { PageLoader, Spinner } from '@/components/ui/loader';
 import { api } from '@/lib/api';
-import { apiErrorMessage } from '@/lib/api/errors';
+import { apiErrorCode, apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { Button } from '@/components/ui/button';
+
+/**
+ * What this screen has concluded. Exhaustive, and each case renders differently.
+ *
+ * `already` is the one the old three-boolean version could not express, and the
+ * reason for this whole change (UX-BACKLOG UX-01): a link that has already been
+ * redeemed is neither a success to celebrate nor a failure to apologise for.
+ * Rendering it as the latter told verified clients that verification had failed.
+ */
+type Outcome =
+  | { kind: 'verifying' }
+  | { kind: 'verified' }
+  | { kind: 'already' }
+  | { kind: 'expired' }
+  /*
+   * The route is rate-limited (10 per 15 minutes — auth.controller.ts). Without
+   * this case a 429 fell through to `invalid` and read "Verification Failed",
+   * which is the same lie UX-01 is about: the link is fine, the account may
+   * well be verified, and the only thing that happened is that we asked the
+   * client to wait. Reachable in practice when a scanner, a refresh and a human
+   * all pull on the same link.
+   */
+  | { kind: 'throttled' }
+  | { kind: 'invalid'; message: string };
+
+/**
+ * Where this tab remembers that it already verified.
+ *
+ * `sessionStorage`, not `localStorage`: the memory should die with the tab. It
+ * is a UI convenience, not a fact about the account — the account's own state
+ * lives in the database, and a stale "you verified" surviving in a browser for
+ * weeks would be a small lie waiting to be told.
+ */
+const OUTCOME_KEY = 'oxshare.verify-email.outcome';
+
+/**
+ * Remember how this resolved, so a REFRESH does not have to ask again.
+ *
+ * The token is stripped from the URL once it has been redeemed, which means a
+ * refresh arrives with nothing to verify. Without this, that lands on "token is
+ * missing" — trading one wrong red screen for another.
+ *
+ * Belt and braces with the API's own idempotency: the backend would answer
+ * `already_verified` if the token were re-sent. This exists so the common case
+ * never needs a round trip, and so the screen is still right if the network is
+ * gone by the time somebody hits reload.
+ *
+ * Wrapped because `sessionStorage` THROWS rather than returning null in Safari
+ * private mode and under some enterprise policies. A storage failure must not
+ * take down a screen that works perfectly well without it.
+ */
+function rememberOutcome(outcome: Outcome): void {
+  try {
+    sessionStorage.setItem(OUTCOME_KEY, outcome.kind);
+  } catch {
+    // Storage unavailable. The API is idempotent, so a refresh still resolves
+    // correctly — just with a round trip.
+  }
+}
+
+/**
+ * Which refusal this is. Decided from the machine-readable code and the status,
+ * never from the message — the message is prose and is translated.
+ */
+function refusalOutcome(err: unknown): Outcome {
+  const code = apiErrorCode(err);
+  if (code === 'VERIFICATION_TOKEN_EXPIRED') return { kind: 'expired' };
+  if (code === 'RATE_LIMITED') return { kind: 'throttled' };
+  return { kind: 'invalid', message: apiErrorMessage(err, t('auth.verify.invalidToken')) };
+}
+
+/** What this tab concluded earlier, if anything. */
+function recallOutcome(): Outcome | null {
+  try {
+    const stored = sessionStorage.getItem(OUTCOME_KEY);
+    if (stored === 'verified') return { kind: 'verified' };
+    if (stored === 'already') return { kind: 'already' };
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 function VerifyEmailForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
 
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isSuccess, setIsSuccess] = React.useState(false);
-  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  /*
+   * ONE outcome, not three booleans — UX-BACKLOG UX-01.
+   *
+   * `isLoading` + `isSuccess` + `errorMessage` could express states that do not
+   * exist ("loading and failed") and could not express the one that matters:
+   * ALREADY VERIFIED, which is neither a success to celebrate nor a failure to
+   * apologise for. Every combination below is reachable and distinct.
+   */
+  const [outcome, setOutcome] = React.useState<Outcome>({ kind: 'verifying' });
 
   // Auto-Redirect Timer State
   const [countdown, setCountdown] = React.useState(5);
@@ -33,42 +121,62 @@ function VerifyEmailForm() {
   const [isResending, setIsResending] = React.useState(false);
 
   /*
-   * One attempt per token, ever.
+   * One attempt per token per mount.
    *
    * The token is SINGLE-USE, and this effect had no guard — so React's
    * development StrictMode, which mounts every component twice on purpose, ran
-   * it twice: the first call verified the account and consumed the token, the
-   * second found it already spent, got a 400, and overwrote the success with
-   * "verification failed". The client was verified and told they were not, which
-   * sends them back to request another link they do not need.
+   * it twice and the second call overwrote the success with a failure.
    *
    * A ref rather than state: it must not itself trigger a render, and it must
-   * survive the re-render that `setIsLoading` causes before the request returns.
-   * Keyed on the token so a genuinely different link still gets its own attempt.
+   * survive the re-render the request causes before it returns. Keyed on the
+   * token so a genuinely different link still gets its own attempt.
    *
-   * This is not only a development concern. Anything that loads the URL twice
-   * hits the same wall — a refresh, a restored tab, or a corporate mail scanner
-   * prefetching the link before the human clicks it.
+   * ⚠️ It is per-MOUNT, and that was the hole. A refresh, a restored tab, or a
+   * Back navigation resets it and re-POSTs a token that has already been
+   * redeemed. That is fixed in two places that do not depend on each other:
+   * the API now answers `already_verified` instead of 400 (auth.service.ts),
+   * and the token is stripped from the URL the moment it resolves, below.
+   * Either alone would do; both, because this screen is the first thing a new
+   * client ever sees and the second one is free.
    */
   const attempted = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     async function executeVerification() {
       if (!token) {
-        setIsLoading(false);
-        setErrorMessage(t('auth.verify.missingToken'));
+        /*
+         * No token in the URL. Before concluding that something is wrong, ask
+         * whether THIS TAB already verified — the success path strips the token
+         * and lands here on purpose (see `rememberOutcome`).
+         *
+         * The functional update is not a style choice. This effect re-runs when
+         * the token LEAVES the URL, which is something this screen does to
+         * itself — so without the guard, stripping the token overwrote whatever
+         * had just been concluded with "the token is missing". A conclusion
+         * already reached must never be downgraded by a URL change.
+         */
+        setOutcome((prev) =>
+          prev.kind !== 'verifying'
+            ? prev
+            : (recallOutcome() ?? { kind: 'invalid', message: t('auth.verify.missingToken') }),
+        );
         return;
       }
 
-      setIsLoading(true);
-
       try {
-        await api.auth.verifyEmail(token);
-        setIsSuccess(true);
+        const result = await api.auth.verifyEmail(token);
+        /*
+         * Branch on `status`, never on `message`. The message is prose, and it
+         * is translated (FSD §10 / D-16) — the portal used to decide what to
+         * render by matching English, which is the defect `apiErrorCode` exists
+         * to end.
+         */
+        const settled: Outcome =
+          result.status === 'already_verified' ? { kind: 'already' } : { kind: 'verified' };
+        rememberOutcome(settled);
+        setOutcome(settled);
       } catch (err: unknown) {
-        setErrorMessage(apiErrorMessage(err, t('auth.verify.invalidToken')));
-      } finally {
-        setIsLoading(false);
+        setOutcome(refusalOutcome(err));
       }
     }
 
@@ -77,9 +185,43 @@ function VerifyEmailForm() {
     void executeVerification();
   }, [token]);
 
-  // Auto-Redirect Countdown Timer Effect
+  /*
+   * Settled, and settled WELL — the address is confirmed, however it got there.
+   *
+   * `already` counts: the client's next step is identical to a fresh
+   * verification, so it earns the same countdown and the same button. Making
+   * them find their own way out of a flow that did not go wrong would be a
+   * worse ending than the one this change is fixing.
+   */
+  const settledOk = outcome.kind === 'verified' || outcome.kind === 'already';
+
+  /*
+   * Take the SPENT token out of the URL. Successes only.
+   *
+   * A token that failed was never spent, and stripping it cost more than it
+   * bought: removing it re-runs the effect above with an empty token, which is
+   * indistinguishable from arriving at this page with no link at all. That is
+   * how a precise "this link has expired" became a generic "token is missing"
+   * — one wrong red screen traded for another, which is the exact failure mode
+   * this whole change exists to end.
+   *
+   * `replace`, not `push`, so the Back button leaves this screen rather than
+   * re-entering it — and a refresh no longer re-POSTs a credential that has
+   * already done its job. The token also stops sitting in the address bar,
+   * where it reaches browser history, the next page's Referer, and anything
+   * reading the tab title over a shoulder.
+   *
+   * Guarded on `token` so it fires once: the effect re-runs after the URL
+   * changes, and `router.replace` on an already-clean URL would loop.
+   */
   React.useEffect(() => {
-    if (!isSuccess) return;
+    if (!token) return;
+    if (!settledOk) return;
+    router.replace('/auth/verify-email');
+  }, [settledOk, token, router]);
+
+  React.useEffect(() => {
+    if (!settledOk) return;
 
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -93,7 +235,7 @@ function VerifyEmailForm() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isSuccess, router]);
+  }, [settledOk, router]);
 
   // Resend Cooldown Timer Effect
   React.useEffect(() => {
@@ -147,7 +289,7 @@ function VerifyEmailForm() {
     <AuthShell heading={t('auth.verify.heading')} subheading={t('auth.verify.tagline')}>
       <div className="space-y-6">
         <div className="text-center space-y-5">
-          {isLoading ? (
+          {outcome.kind === 'verifying' ? (
             <div className="py-8 space-y-4">
               <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-info/10">
                 <Spinner size="lg" className="text-info" />
@@ -159,16 +301,31 @@ function VerifyEmailForm() {
                 </p>
               </div>
             </div>
-          ) : isSuccess ? (
+          ) : settledOk ? (
+            /*
+             * BOTH successes render here, differing only in wording.
+             *
+             * `already` is not a lesser outcome dressed up: the address is
+             * verified, which is the thing the client came here to achieve. It
+             * gets the same green tick, the same countdown and the same button,
+             * because the only honest difference is that it happened a moment
+             * ago rather than just now.
+             */
             <div className="py-4 space-y-5">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/10 border border-success/20 text-success">
                 <CheckCircle2 className="h-8 w-8" />
               </div>
 
               <div>
-                <h2 className="text-lg font-bold text-success">{t('auth.verify.verifiedTitle')}</h2>
+                <h2 className="text-lg font-bold text-success">
+                  {outcome.kind === 'already'
+                    ? t('auth.verify.alreadyTitle')
+                    : t('auth.verify.verifiedTitle')}
+                </h2>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {t('auth.verify.verifiedBody')}
+                  {outcome.kind === 'already'
+                    ? t('auth.verify.alreadyBody')
+                    : t('auth.verify.verifiedBody')}
                 </p>
               </div>
 
@@ -189,11 +346,21 @@ function VerifyEmailForm() {
               </div>
 
               <div>
+                {/*
+                  An EXPIRED link and an invalid one are different problems with
+                  different answers, and they used to share one red box reading
+                  "Verification Failed". A client whose link had merely aged out
+                  was told nothing they could act on.
+                */}
                 <h2 className="text-lg font-bold text-destructive">
-                  {t('auth.verify.failedHeading')}
+                  {outcome.kind === 'expired' && t('auth.verify.expiredHeading')}
+                  {outcome.kind === 'throttled' && t('auth.verify.throttledHeading')}
+                  {outcome.kind === 'invalid' && t('auth.verify.failedHeading')}
                 </h2>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {errorMessage || t('auth.verify.invalidToken')}
+                  {outcome.kind === 'expired' && t('auth.verify.expiredBody')}
+                  {outcome.kind === 'throttled' && t('auth.verify.throttledBody')}
+                  {outcome.kind === 'invalid' && outcome.message}
                 </p>
               </div>
 
