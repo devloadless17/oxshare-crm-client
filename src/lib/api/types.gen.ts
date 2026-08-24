@@ -5375,6 +5375,11 @@ export interface components {
              * @example 50.00
              */
             ibMaxRevenueSharePct: string;
+            /**
+             * @description Hours a commission is HELD before it may be confirmed — the rule between earned and spendable. 0 pays as soon as it is calculated.
+             * @example 24
+             */
+            ibCommissionHoldHours: number;
             /** Format: date-time */
             updatedAt?: string | null;
         };
@@ -5393,6 +5398,8 @@ export interface components {
              * @example 50.00
              */
             ibMaxRevenueSharePct: string;
+            /** @example 24 */
+            ibCommissionHoldHours: number;
         };
         SmtpSettingsDto: {
             /** @example smtp.postmarkapp.com */
@@ -5811,7 +5818,8 @@ export interface components {
         };
         ProfileTradingAccountDto: {
             id: string;
-            mt5Login: string;
+            /** @description The MT5 login, NULL until MT5 issues one — the same contract the accounts directory states. A blank where a login belongs is how a real account reads as a broken row, so a reader has to be told which of the two it is. */
+            mt5Login: string | null;
             mt5Group?: string;
             /** @enum {string} */
             environment: "live" | "demo";
@@ -5861,9 +5869,9 @@ export interface components {
             documents?: string[];
             /** @description Absent without trading.view. */
             tradingAccounts?: components["schemas"]["ProfileTradingAccountDto"][];
-            /** @description Absent without partners.view. */
+            /** @description Absent without ib.view, and absent when nobody introduced this client — the UI tells the two apart by its own permission check. */
             referrer?: components["schemas"]["ProfileReferrerDto"];
-            /** @description Capped — see referredTotal. Absent without partners.view. */
+            /** @description Capped — see referredShown. Absent without ib.view; empty when none. */
             referredClients?: components["schemas"]["ProfileReferredClientDto"][];
             /** @description How many referredClients were returned; the list is capped for one screen. */
             referredShown?: number;
