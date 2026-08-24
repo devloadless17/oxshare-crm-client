@@ -46,6 +46,9 @@ import type { Wallet as WalletRecord } from '@/lib/api/wallet';
 const wallet = (currency: string): WalletRecord =>
   ({
     id: `w-${currency}`,
+    // Lowercased: real numbers are minted lowercase, and the `as` cast below
+    // means a missing field here is a runtime crash, not a compile error.
+    walletNumber: `4f7kq2nm${currency.toLowerCase()}0`,
     userId: 'u-1',
     currency,
     balance: '250.00000000',

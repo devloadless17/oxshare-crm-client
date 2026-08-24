@@ -251,3 +251,63 @@ describe('a refresh that lost a race', () => {
     expect(mockedPost).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('a refresh the API never answered is NOT a dead session', () => {
+  /*
+   * The rule this file introduced and the admin twin later adopted: only a
+   * REFUSED refresh (401) ends the session. A 5xx or a request that never got
+   * an answer is the API being unreachable, which must not evict anyone —
+   * reachable mid-KYC on a phone, which is this portal's primary device.
+   * These tests pin the outcome mapping so neither twin can drift back.
+   */
+  it('resolves unreachable for a 5xx, dead for a 401, renewed for a 200', async () => {
+    const { refreshPortalSession } = await loadClient();
+
+    mockedPost.mockRejectedValueOnce({ response: { status: 502, data: {} } });
+    expect(await refreshPortalSession()).toBe('unreachable');
+
+    mockedPost.mockRejectedValueOnce(Object.assign(new Error('network'), {}));
+    expect(await refreshPortalSession()).toBe('unreachable');
+
+    mockedPost.mockRejectedValueOnce({ response: { status: 401, data: {} } });
+    expect(await refreshPortalSession()).toBe('dead');
+
+    mockedPost.mockResolvedValueOnce({ status: 200, headers: {} });
+    expect(await refreshPortalSession()).toBe('renewed');
+  });
+
+  function answer401(apiClient: import('axios').AxiosInstance) {
+    apiClient.defaults.adapter = (config: InternalAxiosRequestConfig): Promise<AxiosResponse> =>
+      Promise.reject(
+        Object.assign(new Error('401'), {
+          config,
+          response: { status: 401, data: {}, headers: {}, statusText: '', config },
+          isAxiosError: true,
+        }),
+      );
+  }
+
+  it('keeps the session marker when the refresh cannot reach the API', async () => {
+    window.history.pushState({}, '', '/dashboard');
+    document.cookie = 'oxshare_crm_portal_session_hint=1; Path=/';
+    const { apiClient } = await loadClient();
+    answer401(apiClient);
+    mockedPost.mockRejectedValue({ response: { status: 502, data: {} } });
+
+    await expect(apiClient.get('/wallet')).rejects.toBeTruthy();
+    expect(document.cookie).toContain('oxshare_crm_portal_session_hint=1');
+    window.history.pushState({}, '', '/');
+  });
+
+  it('still ends the session when the API answers the refresh with a real 401', async () => {
+    window.history.pushState({}, '', '/dashboard');
+    document.cookie = 'oxshare_crm_portal_session_hint=1; Path=/';
+    const { apiClient } = await loadClient();
+    answer401(apiClient);
+    mockedPost.mockRejectedValue({ response: { status: 401, data: {} } });
+
+    await expect(apiClient.get('/wallet')).rejects.toBeTruthy();
+    expect(document.cookie).not.toContain('oxshare_crm_portal_session_hint=1');
+    window.history.pushState({}, '', '/');
+  });
+});
