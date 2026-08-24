@@ -1591,7 +1591,7 @@ export const messages = {
   // ── Wallet cards ──────────────────────────────────────────────────────────
   // The credit-card presentation. `walletIdLabel` is shown with a truncated id
   // — see the card component for why the whole uuid is not rendered.
-  'wallet.cardIdLabel': 'Wallet ID',
+  'wallet.cardIdLabel': 'Wallet no.',
   'wallet.cardHolder': 'Account holder',
   'wallet.cardOpened': 'Opened',
   'wallet.cardNotOpenedTitle': 'Not opened',
@@ -1603,8 +1603,8 @@ export const messages = {
   'wallet.recentHeading': 'Recent activity',
   'wallet.recentEmpty': 'No transactions yet',
   'wallet.recentEmptyBody': 'Deposits, withdrawals and transfers appear here as they happen.',
-  'wallet.copyId': 'Copy wallet ID',
-  'wallet.copiedId': 'Wallet ID copied',
+  'wallet.copyId': 'Copy wallet number',
+  'wallet.copiedId': 'Wallet number copied',
   'wallet.totalHeading': 'Total balance',
   'wallet.totalNote': 'Across your opened wallets, per currency.',
   // The ACTION, not the state. "Balance hidden" as a button name leaves a
