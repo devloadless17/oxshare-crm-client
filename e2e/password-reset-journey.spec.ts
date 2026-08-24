@@ -1,6 +1,14 @@
 import { request } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { API_NODE_BASE, APP_ORIGIN, isApi, linkIn, newClient, waitForMail } from './helpers';
+import {
+  API_NODE_BASE,
+  APP_ORIGIN,
+  isApi,
+  linkIn,
+  newClient,
+  waitForMail,
+  requirePrecondition,
+} from './helpers';
 
 /**
  * FR-CORE-03 password recovery, A→Z, on a client minted for this run:
@@ -37,7 +45,7 @@ test('the whole recovery journey, end to end', async ({ page }) => {
         lastName: 'Journey',
       },
     });
-    test.skip(reg.status() === 429, 'registration is rate limited right now (10/h)');
+    requirePrecondition(reg.status() === 429, 'registration is rate limited right now (10/h)');
     expect(reg.ok(), `register answered ${reg.status()}`).toBe(true);
     const mail = await waitForMail(client.email, { subject: /verify/i });
     const token = new URL(linkIn(mail, APP_ORIGIN)).searchParams.get('token')!;
@@ -53,7 +61,7 @@ test('the whole recovery journey, end to end', async ({ page }) => {
       headers: origin,
       data: { email: client.email, password: client.password },
     });
-    test.skip(login.status() === 429, 'portal login is rate limited right now');
+    requirePrecondition(login.status() === 429, 'portal login is rate limited right now');
     expect(login.ok()).toBe(true);
     expect((await preReset.get(`${API_NODE_BASE}/auth/me`, { headers: origin })).ok()).toBe(true);
   });
@@ -66,7 +74,7 @@ test('the whole recovery journey, end to end', async ({ page }) => {
         page.waitForResponse((r) => isApi(r, '/auth/forgot-password', 'POST')),
         page.getByRole('button', { name: /send password reset link/i }).click(),
       ]);
-      test.skip(res.status() === 429, 'forgot-password is rate limited right now (3/h)');
+      requirePrecondition(res.status() === 429, 'forgot-password is rate limited right now (3/h)');
       expect(res.ok(), `forgot-password answered ${res.status()}`).toBe(true);
       await expect(page.getByText(/reset email sent/i)).toBeVisible();
     });

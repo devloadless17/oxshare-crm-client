@@ -147,3 +147,150 @@ jobs:
         env:
           OXSHARE_CONTRACT: ${{ github.workspace }}/.contract/openapi.json
         run: ./scripts/check-api-types.sh
+
+  # ── The client journeys, as EVIDENCE ──────────────────────────────────────
+  #
+  # These specs ARE the product: register, verify, sign in, KYC, upload. Until
+  # now nothing ran them automatically, and — more quietly — nothing could tell
+  # a run that exercised them from one that did not.
+  #
+  # A skipped Playwright test reports as PASSING. This suite guards against
+  # conditions that are ordinary on a shared machine (registration is capped at
+  # 10/hour per address, login and forgot-password are capped too, a fixture may
+  # be absent), and skipping is right on a laptop — a red suite for a rate limit
+  # teaches people to ignore red. But it means a green summary can prove nothing
+  # happened. `requirePrecondition` + `E2E_STRICT=1` is the switch.
+  #
+  # The VIEWPORT and TOPOLOGY guards are deliberately NOT routed through it.
+  # `test.skip(isMobile, …)` and `test.skip(!CROSS, …)` say the case does not
+  # apply to the project being run; failing those would make the suite
+  # permanently red for something that is not a defect, which is the same
+  # ignore-the-red-build failure by the opposite route.
+  #
+  # Triggers match the rest of this file: production PRs and on demand, never on
+  # every push. Standing up Postgres, Redis, the API and a browser costs minutes
+  # this repo budgets, and a production PR is the deploy gate — the moment
+  # evidence is actually worth paying for.
+  journeys:
+    name: Client journeys (E2E_STRICT)
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: oxshare
+          POSTGRES_PASSWORD: oxshare_ci
+          POSTGRES_DB: oxshare
+        ports: ['5432:5432']
+        # Without the health gate the API races the database's first accept()
+        # and dies on boot, which reads as a failed test rather than as a
+        # container that was not ready.
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # The API is a sibling repo and this job cannot run without it. Same rule
+      # as the contract step: if it cannot be fetched the build FAILS rather
+      # than degrading into a skip.
+      - name: Check out the backend
+        uses: actions/checkout@v4
+        with:
+          repository: devloadless17/oxshare-crm-backend
+          token: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
+          path: .api
+
+      # ONE step, so the API's environment is written once.
+      #
+      # GitHub Actions does not support YAML anchors, and a job-level `env`
+      # cannot be used either: `PORT` would reach the portal's dev server, which
+      # reads it — Next would try to start on the API's port and every journey
+      # would fail with a collision that looks like a broken app.
+      - name: Start the API
+        working-directory: .api
+        # Seeds run on boot outside production and are idempotent, which is what
+        # puts the e2e fixtures in the database. Without them E2E_STRICT turns
+        # the journeys that need one into failures — correctly, but the cause
+        # would be this step rather than the app.
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          npm run db:migrate
+          node dist/main &
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3001/health >/dev/null 2>&1; then
+              echo "API up after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not become healthy in 60s"; exit 1
+        env:
+          DATABASE_URL: postgresql://oxshare:oxshare_ci@localhost:5432/oxshare
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: development
+          PORT: '3001'
+          API_PUBLIC_URL: http://localhost:3001
+          # The portal's dev server is 3000 in the localhost topology; the admin
+          # is not started here at all, and the API only needs a valid origin.
+          PORTAL_URL: http://localhost:3000
+          ADMIN_URL: http://localhost:3002
+          # Ephemeral and CI-only. Real deployments supply their own; these
+          # exist to satisfy the boot-time validation, which refuses to start on
+          # a bad config rather than failing later on the unlucky request.
+          ADMIN_JWT_SECRET: ci-admin-secret-ci-admin-secret-32
+          ADMIN_JWT_REFRESH_SECRET: ci-admin-refresh-ci-admin-refresh
+          JWT_ACCESS_SECRET: ci-access-secret-ci-access-secret
+          JWT_REFRESH_SECRET: ci-refresh-secret-ci-refresh-secre
+          APP_ENCRYPTION_KEY: ci-encryption-key-ci-encryption-k
+          RIVAL_WEBHOOK_KEY: ci-rival-webhook-key
+          # `disk`, STATED. env.validation refuses to infer a driver, and a run
+          # that billed a live R2 account per push is one somebody disables.
+          STORAGE_DRIVER: disk
+          # No proxy in front of the API here, so the socket address IS the
+          # caller — see the backend's common/security/client-ip.ts.
+          TRUSTED_PROXY_HOPS: '0'
+          # The commission engine holds rather than pay an aged backlog nobody
+          # decided about. A fresh CI database has no history, so this only ever
+          # applies to the seeds — and saying so beats the engine holding while
+          # the journeys blame the screen.
+          IB_ACCRUAL_START: all
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the journeys
+        run: npm run e2e
+        env:
+          # THE POINT OF THIS JOB. A precondition that cannot be met now FAILS
+          # and names itself, instead of skipping and reporting as passed.
+          E2E_STRICT: '1'
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
+
+      # Traces and screenshots are kept only for failures, so this stays small
+      # and is the difference between a diagnosable red build and reproducing it.
+      - name: Keep the report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

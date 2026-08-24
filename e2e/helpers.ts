@@ -560,3 +560,48 @@ export function linkIn(mail: { text: string; html: string }, appOrigin: string):
   const url = new URL(match[0]);
   return `${appOrigin}${url.pathname}${url.search}`;
 }
+
+/**
+ * A precondition that could not be met — skipped locally, FATAL in CI.
+ *
+ * ## Why this exists
+ *
+ * A skipped Playwright test reports as PASSING in the summary. This suite
+ * guards against conditions that are ordinary on a shared machine —
+ * registration is capped at 10/hour per address, login and forgot-password are
+ * capped too, and a fixture may be absent — and skipping is the right call when
+ * somebody is iterating locally, because a red suite for a rate limit teaches
+ * people to ignore red.
+ *
+ * The cost is that a run which exercised none of the onboarding journey looks
+ * identical to one that exercised all of it. On the portal that journey IS the
+ * product: register, verify, sign in, KYC, upload. A green summary that proves
+ * none of it happened is worse than no summary.
+ *
+ * So the decision belongs to the ENVIRONMENT rather than to the spec:
+ *
+ *   - unset (a laptop): skip, as before.
+ *   - `E2E_STRICT=1` (CI, or any run whose result somebody will quote): FAIL,
+ *     naming the precondition.
+ *
+ * ## What must NOT be routed through here
+ *
+ * A viewport or topology guard — `test.skip(isMobile, …)`, `test.skip(!CROSS, …)`
+ * — is not an unmet precondition. It says the case does not apply to the
+ * project being run, and it is CORRECT for it to be skipped in every run
+ * including CI. Converting one of those would make the suite permanently red
+ * for a reason that is not a defect, which is the same "ignore the red build"
+ * failure by the opposite route. Those stay `test.skip`.
+ */
+export function requirePrecondition(condition: boolean, reason: string): void {
+  if (!condition) return;
+  if (process.env['E2E_STRICT'] === '1') {
+    throw new Error(
+      `PRECONDITION NOT MET (E2E_STRICT): ${reason}. ` +
+        'This run was asked to be evidence, so the journey is reported as failed ' +
+        'rather than silently skipped. Re-run when the precondition clears, or ' +
+        'unset E2E_STRICT for a tolerant local run.',
+    );
+  }
+  test.skip(true, reason);
+}

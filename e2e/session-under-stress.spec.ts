@@ -9,6 +9,7 @@ import {
   newClient,
   routeHit,
   waitForMail,
+  requirePrecondition,
 } from './helpers';
 
 /**
@@ -66,7 +67,7 @@ test('an admin changing the sign-in email ends the live portal session', async (
         lastName: 'Rotation',
       },
     });
-    test.skip(reg.status() === 429, 'registration is rate limited right now (10/h)');
+    requirePrecondition(reg.status() === 429, 'registration is rate limited right now (10/h)');
     expect(reg.ok(), `register answered ${reg.status()}`).toBe(true);
     const mail = await waitForMail(client.email, { subject: /verify/i });
     const token = new URL(linkIn(mail, APP_ORIGIN)).searchParams.get('token')!;
@@ -79,7 +80,7 @@ test('an admin changing the sign-in email ends the live portal session', async (
       headers: origin,
       data: { email: client.email, password: client.password },
     });
-    test.skip(login.status() === 429, 'portal login is rate limited right now');
+    requirePrecondition(login.status() === 429, 'portal login is rate limited right now');
     expect(login.ok()).toBe(true);
 
     const ctx = await browser.newContext({ storageState: await boot.storageState() });
