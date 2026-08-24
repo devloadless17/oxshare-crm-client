@@ -90,7 +90,13 @@ function isUnauthenticated(error: unknown): boolean {
    * 401 = no valid session, 403 = valid session, not permitted). It falls to
    * the `unreachable` state instead, which says the session is intact and
    * offers a retry.
+   *
+   * And a 401 whose RENEWAL never got an answer is not the signed-out answer
+   * either — the interceptor marks that case (refreshUnreachable), because
+   * from here the two are indistinguishable and only a REFUSED refresh may
+   * clear the session-hint marker.
    */
+  if ((error as { refreshUnreachable?: boolean }).refreshUnreachable === true) return false;
   return status === 401;
 }
 

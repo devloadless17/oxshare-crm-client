@@ -783,7 +783,18 @@ apiClient.interceptors.response.use(assertApiResponse, async (error: AxiosError)
      * the page renders its own error with a retry, and the session, the timer
      * and the half-filled form all survive.
      */
-    if (outcome !== 'unreachable') endDeadSession();
+    if (outcome === 'unreachable') {
+      /*
+       * Tell the LAYER ABOVE which case this 401 is. UserContext reads a 401
+       * from /auth/me as the signed-out answer and clears the session-hint
+       * marker — correct for a refused refresh, wrong for one that never got
+       * an answer: the marker is what stops the next cold load painting a
+       * sign-in form over a live session.
+       */
+      Object.assign(error, { refreshUnreachable: true });
+    } else {
+      endDeadSession();
+    }
   }
   // Rethrow the original AxiosError, never a wrapped one: every caller reads
   // `error.response.data.message` through apiErrorMessage, and the 401 branch
