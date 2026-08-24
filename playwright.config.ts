@@ -130,7 +130,7 @@ export default defineConfig({
        * question about viewport width; what mobile is FOR still runs in full.
        */
       testIgnore:
-        /(auth-session|account-security|emailed-links|password-reset-journey|session-lifecycle|session-matrix)\.spec\.ts/,
+        /(auth-session|account-security|emailed-links|password-reset-journey|session-lifecycle|session-matrix|session-under-stress)\.spec\.ts/,
     },
   ],
 
