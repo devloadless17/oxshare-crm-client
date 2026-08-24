@@ -48,6 +48,7 @@ function account(over: Partial<TradingAccount> = {}): TradingAccount {
 function wallet(over: Partial<Wallet> = {}): Wallet {
   return {
     id: 'w-usd',
+    walletNumber: '4f7kq2nm8xcb',
     userId: 'u-1',
     currency: 'USD',
     kind: 'main',

@@ -211,7 +211,13 @@ export function WalletCard({
               <p className="text-[9px] font-semibold tracking-widest text-primary-foreground/60 uppercase">
                 {t('wallet.cardIdLabel')}
               </p>
-              <WalletIdentifier id={wallet.id} />
+              {/*
+                The wallet NUMBER, not the uuid. 12 lowercase chars from a
+                no-lookalike alphabet — short enough to render whole and read
+                aloud. The uuid still exists and still keys everything
+                server-side; it just no longer reaches a client's eyes.
+              */}
+              <WalletIdentifier id={wallet.walletNumber} />
             </>
           )}
         </div>
@@ -231,20 +237,19 @@ export function WalletCard({
 }
 
 /**
- * The wallet id, shortened for the card and copyable in full.
+ * The wallet's identifier, copyable, shortened only if it ever needs to be.
  *
- * ## Why it is truncated on screen but copied whole
+ * This was built for the 36-char uuid, which had to be truncated to fit the
+ * card foot. The card now receives the 12-char wallet NUMBER, which
+ * `shortenId` passes through whole — a code built to be read defeats its
+ * purpose truncated. The truncation branch stays as a guard: if some future
+ * value overflows again, the card degrades to first-and-last blocks instead
+ * of breaking its layout.
  *
- * A uuid is 36 characters and does not fit the card foot at a legible size. It
- * is also not something anyone reads — it is something they PASTE, into a
- * support ticket. So the display is the first and last block (enough to tell two
- * wallets apart and to confirm a match by eye) and the clipboard gets the whole
- * value, because a truncated id in a support ticket is worse than none.
- *
- * The full id stays in `title` and in a visually-hidden span so it is reachable
- * by a screen reader and by text selection, rather than being locked behind a
- * button that may not work — `navigator.clipboard` is unavailable over plain
- * HTTP and can be denied by permission.
+ * The full value stays in `title` and in a visually-hidden span so it is
+ * reachable by a screen reader and by text selection, rather than being locked
+ * behind a button that may not work — `navigator.clipboard` is unavailable
+ * over plain HTTP and can be denied by permission.
  */
 function WalletIdentifier({ id }: { id: string }) {
   const [copied, setCopied] = React.useState(false);
