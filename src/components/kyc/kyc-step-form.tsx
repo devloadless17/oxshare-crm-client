@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle } from 'lucide-react';
 import { Spinner } from '@/components/ui/loader';
 import api from '@/lib/api';
@@ -33,6 +34,7 @@ type KycStatusDto = components['schemas']['KycStatusDto'];
 export function KycStepForm() {
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const stepNumber = Number(params.step) || 1;
 
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -352,6 +354,17 @@ export function KycStepForm() {
           await api.post<{ message?: string }>('/kyc/step', { step: 'personal', data: formData });
         }
         await api.post<{ message?: string }>('/kyc/submit');
+        /*
+         * The status cache MUST learn about the submit before the navigation.
+         *
+         * `/kyc/submitted` is behind a client-side route gate that decides from
+         * the shared `['kyc-status']` query. A router.push keeps this page's
+         * QueryClient, whose cached status still says `in_progress` (staleTime
+         * 30s) — so the gate read yesterday's answer and bounced the client who
+         * had JUST submitted straight back to step 1. Awaited, so the fresh
+         * status is in the cache before the gate ever mounts.
+         */
+        await queryClient.invalidateQueries({ queryKey: ['kyc-status'] });
         router.push('/kyc/submitted');
         return;
       }
@@ -363,6 +376,9 @@ export function KycStepForm() {
           await api.post<{ message?: string }>('/kyc/step', { step: 'personal', data: formData });
         }
         await api.post<{ message?: string }>('/kyc/submit');
+        // Same reasoning as the review branch above: the gate must not decide
+        // from a pre-submit cache entry.
+        await queryClient.invalidateQueries({ queryKey: ['kyc-status'] });
         router.push('/kyc/submitted');
       }
     } catch (e: unknown) {
