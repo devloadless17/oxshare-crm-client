@@ -1,6 +1,6 @@
 import { type Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { TINY_PNG, openDocumentStep, resetKycFixture } from './helpers';
+import { TINY_PNG, openDocumentStep, resetKycFixture, requirePrecondition } from './helpers';
 
 /**
  * KYC onboarding, on the device it is actually used from.
@@ -242,7 +242,10 @@ test.describe('choosing a document but not confirming it', () => {
     await page.waitForLoadState('networkidle');
 
     const tiles = page.locator('input[type="file"]:not([capture])');
-    if ((await tiles.count()) === 0) test.skip();
+    requirePrecondition(
+      (await tiles.count()) === 0,
+      'no document tiles rendered for this KYC step',
+    );
 
     await tiles.first().setInputFiles({
       name: 'bill.png',

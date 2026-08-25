@@ -1,5 +1,13 @@
 import { expect, test } from './fixtures';
-import { apiFromPage, APP_ORIGIN, linkIn, newClient, register, waitForMail } from './helpers';
+import {
+  apiFromPage,
+  APP_ORIGIN,
+  linkIn,
+  newClient,
+  register,
+  waitForMail,
+  requirePrecondition,
+} from './helpers';
 
 /**
  * FR-IND-01 A→Z — a stranger becomes a client, through every door in order.
@@ -89,7 +97,7 @@ test('revisiting the spent link says "already verified", not "failed"', async ({
    * must not tell a verified client that verification failed — the defect a
    * client actually reported once.
    */
-  test.skip(!verifyLink, 'no link captured — the arrival test did not run');
+  requirePrecondition(!verifyLink, 'no verification link captured — the arrival test did not run');
   await page.goto(verifyLink);
   await expect(page.getByText(/already|verified/i).first()).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/failed|invalid/i)).toHaveCount(0);

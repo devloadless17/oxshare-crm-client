@@ -1,7 +1,7 @@
 import { request } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { CROSS } from './topology';
-import { deleteCookie, isApi, persistSharedState } from './helpers';
+import { deleteCookie, isApi, persistSharedState, requirePrecondition } from './helpers';
 
 /**
  * The session behaviours people actually hit — tabs, lapsed access tokens,
@@ -153,8 +153,8 @@ test.describe('reuse detection', () => {
       page.waitForResponse((r) => isApi(r, '/auth/login', 'POST')),
       page.getByRole('button', { name: /sign in/i }).click(),
     ]);
-    test.skip(login.status() === 401, 'e2e-reuse@oxshare.com is not seeded');
-    test.skip(login.status() === 429, 'portal login is rate limited right now');
+    requirePrecondition(login.status() === 401, 'e2e-reuse@oxshare.com is not seeded');
+    requirePrecondition(login.status() === 429, 'portal login is rate limited right now');
     expect(login.ok()).toBe(true);
     await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
 
