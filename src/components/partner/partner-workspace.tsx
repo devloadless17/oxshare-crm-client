@@ -65,7 +65,10 @@ export function ApprovedPanel({ account }: { account: NonNullable<IbStatus['acco
    */
   return (
     <div className="flex flex-col gap-5">
-      <PartnerHeader account={account} levelName={overview.data?.level?.name} />
+      {/* The PROGRAMME name in the header, replacing the rung's (0102). It is
+          what a partner is paid on, so it is the one word worth carrying above
+          the fold. */}
+      <PartnerHeader account={account} programmeName={overview.data?.programme?.name} />
 
       <AsyncBoundary
         status={overview.status}

@@ -49,14 +49,14 @@ export function PartnerOverview({
   /** Switches tab, because these panels hand the reader on to the full list. */
   onNavigate: (tab: string) => void;
 }) {
-  const { level, programme, referredClients, subPartners, verifiedReferredCount } = data;
+  const { programme, referredClients, subPartners, verifiedReferredCount } = data;
   const activePartners = subPartners.filter((partner) => partner.active).length;
   const unverified = referredClients.length - verifiedReferredCount;
 
   return (
     <div className="space-y-5">
       {/*
-        The terms: what you are paid, where you stand, and what you may sell.
+        The terms: what you are paid, how far it reaches, and what you may sell.
         One surface split by hairlines rather than three cards, because a
         partner reads them as one answer to "what is my arrangement".
       */}
@@ -64,12 +64,12 @@ export function PartnerOverview({
         <SectionHeader title={t('partner.termsHeading')} />
         <div className="grid gap-px bg-border lg:grid-cols-3">
           {/*
-            THE RATES, and they come from the PROGRAMME.
+            THE RATES, and the PROGRAMME is the only place they come from.
 
-            The rung's own `rateValue` is still on the wire and decides nothing
-            since programmes landed — showing it here as what somebody earns
-            would be the wrong number, correct to four decimal places. The level
-            cell beside this one carries placement and says so.
+            A rung with its own `rateValue` used to sit beside this, deciding
+            nothing while reading exactly like what a partner earns — the wrong
+            number, correct to four decimal places, on the one screen where
+            somebody looks to understand their pay. It went in 0102.
           */}
           <div className={`${CELL} p-5`}>
             <p className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
@@ -84,13 +84,26 @@ export function PartnerOverview({
                     Per DEPTH, and labelled that way. "Level 1" and "level 2" as
                     bare words read as the RUNG, which is a different fact and
                     the one a sub-partner would misprice their own business on.
+
+                    The LIST is the ladder: as many rows as the programme
+                    reaches. A fixed pair of rates could not describe a
+                    three-level programme at all, and a partner on one would
+                    have been shown two of their three rates with nothing
+                    saying the third existed.
                   */}
-                  {programme.mode !== 'rebate_only' && (
-                    <>
-                      <Rate label={t('partner.termsLevel1')} rate={programme.level1Rate} lead />
-                      <Rate label={t('partner.termsLevel2')} rate={programme.level2Rate} />
-                    </>
-                  )}
+                  {programme.mode !== 'rebate_only' &&
+                    programme.tiers.map((tier, index) => (
+                      <Rate
+                        key={tier.depth}
+                        label={
+                          index === 0
+                            ? t('partner.termsOwnClients')
+                            : t('partner.termsTier', { depth: String(tier.depth) })
+                        }
+                        rate={tier.rate}
+                        lead={index === 0}
+                      />
+                    ))}
                   {programme.mode !== 'commission_only' && (
                     <Rate
                       label={t('partner.termsRebate')}
@@ -114,24 +127,30 @@ export function PartnerOverview({
             )}
           </div>
 
+          {/*
+            REACH, which is what the rung cell used to occupy and never answered.
+            It said "Master Partner, level 1" — a placement — while the question
+            a partner has is how far down their own network they are paid on.
+            That is the tier COUNT, and it is stated in words rather than left
+            to be counted off the rates beside it.
+          */}
           <div className={`${CELL} p-5`}>
             <p className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-              {t('partner.levelLabel')}
+              {t('partner.reachLabel')}
             </p>
-            {level ? (
+            {programme && programme.mode !== 'rebate_only' && programme.tiers.length > 0 ? (
               <>
-                <p className="mt-2 text-xl font-semibold tracking-tight">{level.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t('partner.subPartnerLevel', { level: level.level })}
+                <p className="mt-2 text-xl font-semibold tracking-tight">
+                  {t('partner.reachValue', { count: String(programme.tiers.length) })}
                 </p>
                 <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-                  {t('partner.levelRateNote')}
+                  {t('partner.reachNote', { count: String(programme.tiers.length) })}
                 </p>
               </>
             ) : (
-              // The level row can be missing if the ladder was edited underneath
-              // this partner. Saying so beats an empty cell.
-              <p className="mt-2 text-xs text-muted-foreground">{t('partner.levelUnknown')}</p>
+              // `rebate_only` pays no partner at any depth — a real arrangement,
+              // and one the screen must not present as an error.
+              <p className="mt-2 text-xs text-muted-foreground">{t('partner.reachNone')}</p>
             )}
           </div>
 
@@ -279,7 +298,7 @@ export function PartnerOverview({
                 rows={subPartners.slice(0, PREVIEW).map((partner) => ({
                   key: partner.userId,
                   name: partner.name,
-                  meta: `${t('partner.subPartnerLevel', { level: partner.level })} · ${formatDate(partner.since)}`,
+                  meta: `${t('partner.subPartnerProgramme', { programme: partner.programName })} · ${formatDate(partner.since)}`,
                   pill: (
                     <Pill tone={partner.active ? 'success' : 'warning'}>
                       {partner.active

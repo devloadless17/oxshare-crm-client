@@ -40,11 +40,17 @@ import { t } from '@/lib/i18n';
  */
 export function PartnerHeader({
   account,
-  levelName,
+  programmeName,
 }: {
   account: NonNullable<IbStatus['account']>;
-  /** From `GET /ib/overview`. Absent while it loads, and if it fails. */
-  levelName?: string;
+  /**
+   * From `GET /ib/overview`. Absent while it loads, and if it fails.
+   *
+   * Replaced `levelName` in 0102 — with `ib_accounts.level` gone there is no
+   * rung to fall back to, and the programme is the fact worth carrying above
+   * the fold anyway: it is what this partner is paid on.
+   */
+  programmeName?: string;
 }) {
   const hydrated = useHydrated();
   /*
@@ -78,11 +84,13 @@ export function PartnerHeader({
           not.
         */}
         <dl className="flex flex-wrap gap-x-10 gap-y-3">
-          <Fact
-            label={t('partner.levelLabel')}
-            value={levelName ?? t('partner.subPartnerLevel', { level: account.level })}
-            hint={levelName ? t('partner.subPartnerLevel', { level: account.level }) : undefined}
-          />
+          {/*
+            Rendered only once the overview has answered. The rung it replaced
+            could be filled in from `account` while the second request was in
+            flight; a programme name cannot, and a placeholder standing in for
+            the terms somebody is paid on is the wrong kind of guess.
+          */}
+          {programmeName && <Fact label={t('partner.programmeLabel')} value={programmeName} />}
           {account.agencyName && (
             <Fact label={t('partner.agencyLabel')} value={account.agencyName} />
           )}
