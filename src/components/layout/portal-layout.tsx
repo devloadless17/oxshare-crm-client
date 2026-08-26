@@ -226,8 +226,6 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-
-        <UserMenu collapsed={collapsed} />
       </aside>
 
       <div
@@ -252,9 +250,16 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             <KycAlert kycStatus={kycStatus} verificationLevel={user?.verificationLevel} />
             <NotificationsSheet />
 
-            <div className="lg:hidden">
-              <UserMenu collapsed variant="header" />
-            </div>
+            {/*
+              The account menu lives HERE, at every breakpoint — the top-right
+              placement the product owner asked for. It used to sit at the foot
+              of the sidebar on desktop with this header copy gated `lg:hidden`;
+              one menu in one place means one selector for the tests and no
+              duplicate trigger for a screen reader to announce twice. The
+              trigger shows the client's name from `md` up and collapses to the
+              avatar below it, so the 56px mobile header keeps today's width.
+            */}
+            <UserMenu collapsed variant="header" />
           </div>
         </header>
         {/*
