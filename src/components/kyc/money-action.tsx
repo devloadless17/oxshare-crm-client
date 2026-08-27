@@ -126,6 +126,7 @@ export function MoneyAction({
         onOpenChange={setGateOpen}
         pending={kyc.pending}
         rejected={kyc.rejected}
+        emailUnverified={kyc.emailUnverified}
       />
     </>
   );

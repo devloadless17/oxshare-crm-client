@@ -1329,6 +1329,17 @@ export const messages = {
   'partner.colClient': 'Client',
   'partner.colSource': 'From',
   'partner.colAmount': 'Your share',
+  /*
+   * The WORKING behind the amount.
+   *
+   * `baseAmount` and `rateValue` ride on the same response and nothing
+   * rendered them, so the party most likely to dispute a commission was shown
+   * the least of it — while the admin console's own commissions screen argues
+   * "a commission an operator cannot recompute from the row is one they cannot
+   * defend when a partner disputes it". The partner deserves the same row.
+   */
+  'partner.colBase': 'Calculated on',
+  'partner.colRate': 'Rate',
   'partner.colStatus': 'Status',
   'partner.sourceTrade': 'Closed trade',
   // Historical only — commission is no longer earned on deposits.
