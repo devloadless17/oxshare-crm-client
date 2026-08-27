@@ -6,7 +6,7 @@ import { PageLoader } from '@/components/ui/loader';
 import type { Resource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import type { AccountSnapshot } from '@/lib/api/trading';
-import { formatDecimal, formatMoney } from '@/lib/money';
+import { formatDecimal, formatMoney, isZeroMoney } from '@/lib/money';
 import { moneySign } from '@/lib/account-stats';
 import { t } from '@/lib/i18n';
 
@@ -109,6 +109,20 @@ function LiveFigures({ snapshot }: { snapshot: AccountSnapshot }) {
         currency={snapshot.currency}
         hint={t('accounts.floatingHint')}
       />
+      {/*
+        Credit is part of equity and is NOT part of balance or floating —
+        `floating` is derived as `equity - balance - credit`. Without this tile
+        the three figures above simply did not reconcile on any account
+        carrying a bonus, and the client had nothing to explain the gap.
+        Shown only when there is some: a permanent zero is noise.
+      */}
+      {snapshot.credit && !isZeroMoney(snapshot.credit) && (
+        <Figure
+          label={t('accounts.creditLabel')}
+          value={formatMoney(snapshot.credit, snapshot.currency)}
+          hint={t('accounts.creditHint')}
+        />
+      )}
       <Figure
         label={t('accounts.marginLabel')}
         value={formatMoney(snapshot.margin, snapshot.currency)}

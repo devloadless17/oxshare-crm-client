@@ -1,0 +1,111 @@
+'use client';
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { formatMoney } from '@/lib/money';
+import { movementLabelKey } from '@/lib/movement-label';
+import { t } from '@/lib/i18n';
+import type { Transaction } from '@/lib/api/payments';
+
+/**
+ * What happened to one movement, in the client's own words.
+ *
+ * ## The gap this closes
+ *
+ * A refused withdrawal reached the client as a red "Rejected" pill and
+ * nothing else. The reason, the destination it was headed to, who reviewed it
+ * and when it settled all ride on the client's OWN `GET /payments/transactions`
+ * response — every one of those fields was on the wire and no portal surface
+ * read them. The only place the reason ever appeared was a bell notification,
+ * which is transient: miss it, and the money is back in the wallet with no
+ * explanation anywhere the client can return to.
+ *
+ * The status COLUMN is still a badge alone, and deliberately — printing a
+ * provider's sentence inside a table cell made the column the widest on the
+ * screen and the state itself the hardest thing to read. A detail view is
+ * where prose belongs.
+ *
+ * ## Only what is true
+ *
+ * Every row here is omitted when its field is absent rather than rendered as
+ * an em dash or a zero: a pending withdrawal has no settlement date, and a
+ * blank labelled "Settled" reads as a settlement that lost its date.
+ */
+export function TransactionDetails({
+  tx,
+  onClose,
+}: {
+  tx: Transaction | null;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={tx !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        {tx && (
+          <>
+            <DialogHeader>
+              <DialogTitle>{t(movementLabelKey(tx))}</DialogTitle>
+              <DialogDescription>
+                {formatMoney(tx.amount, tx.currency)} · {new Date(tx.createdAt).toLocaleString()}
+              </DialogDescription>
+            </DialogHeader>
+
+            <dl className="space-y-3 text-sm">
+              {/*
+                The REASON, first and unmissable when there is one. This is the
+                single field this dialog exists for: a client whose payout was
+                refused could not find out why from any screen.
+              */}
+              {tx.rejectionReason && (
+                <div className="rounded-lg bg-destructive/10 p-3">
+                  <dt className="text-xs font-semibold text-destructive">
+                    {t('transactions.detailReason')}
+                  </dt>
+                  <dd className="mt-1 text-xs leading-snug text-destructive">
+                    {tx.rejectionReason}
+                  </dd>
+                </div>
+              )}
+
+              <Row label={t('transactions.detailState')} value={tx.state} />
+              {tx.destination && (
+                <Row label={t('transactions.detailDestination')} value={tx.destination} />
+              )}
+              {tx.providerRef && (
+                <Row label={t('transactions.detailReference')} value={tx.providerRef} mono />
+              )}
+              {tx.reviewedAt && (
+                <Row
+                  label={t('transactions.detailReviewed')}
+                  value={new Date(tx.reviewedAt).toLocaleString()}
+                />
+              )}
+              {tx.settledAt && (
+                <Row
+                  label={t('transactions.detailSettled')}
+                  value={new Date(tx.settledAt).toLocaleString()}
+                />
+              )}
+            </dl>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className={`text-right text-xs text-foreground ${mono ? 'font-mono break-all' : ''}`}>
+        {value}
+      </dd>
+    </div>
+  );
+}

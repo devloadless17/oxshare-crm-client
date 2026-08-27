@@ -34,7 +34,6 @@ export interface NavItem {
   href: string;
   icon: React.ElementType;
   badge?: string | number;
-  comingSoon?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -173,26 +172,15 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
                   ? ({ text: String(item.badge), tone: 'warning' } as const)
                   : undefined;
 
-            if (item.comingSoon) {
-              return (
-                <div
-                  key={item.href}
-                  title={collapsed ? t('nav.comingSoonTitle', { label: t(item.label) }) : undefined}
-                  aria-disabled="true"
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground/60 cursor-not-allowed select-none ${
-                    collapsed ? 'justify-center px-0' : ''
-                  }`}
-                >
-                  <Icon className="h-5 w-5 shrink-0 text-muted-foreground/60" />
-                  {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
-                  {!collapsed && (
-                    <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                      {t('nav.comingSoon')}
-                    </span>
-                  )}
-                </div>
-              );
-            }
+            /*
+             * The `comingSoon` branch is GONE. It rendered a disabled nav
+             * entry with a "Soon" pill and had ZERO call sites — no item ever
+             * set the flag. The admin app deleted its equivalent deliberately
+             * ("an operator reading the navigation should be reading a list of
+             * places they can go, not a roadmap"); the portal kept the
+             * machinery, so the rule lived in one app and the dead code in the
+             * other. Restore it in the same commit that first needs it.
+             */
 
             return (
               <Link
@@ -226,8 +214,6 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-
-        <UserMenu collapsed={collapsed} />
       </aside>
 
       <div
@@ -252,9 +238,16 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             <KycAlert kycStatus={kycStatus} verificationLevel={user?.verificationLevel} />
             <NotificationsSheet />
 
-            <div className="lg:hidden">
-              <UserMenu collapsed variant="header" />
-            </div>
+            {/*
+              The account menu lives HERE, at every breakpoint — the top-right
+              placement the product owner asked for. It used to sit at the foot
+              of the sidebar on desktop with this header copy gated `lg:hidden`;
+              one menu in one place means one selector for the tests and no
+              duplicate trigger for a screen reader to announce twice. The
+              trigger shows the client's name from `md` up and collapses to the
+              avatar below it, so the 56px mobile header keeps today's width.
+            */}
+            <UserMenu collapsed variant="header" />
           </div>
         </header>
         {/*

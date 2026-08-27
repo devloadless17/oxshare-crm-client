@@ -50,6 +50,13 @@ let adminCsrf: string;
 let e2eClientId: string;
 
 test.beforeAll(async () => {
+  /*
+   * Past ONE login-cap window. `adminApiSession` waits out the five-a-minute
+   * cap rather than weakening it, and that 65-second backoff cannot fit inside
+   * the default 60-second hook timeout — so on a busy run the whole file failed
+   * in its setup, at 0ms, pointing at nothing it asserts.
+   */
+  test.setTimeout(180_000);
   // Signed in ONCE for the file — admin login is capped at five per minute,
   // the trap `helpers.ts` records about the portal's own login.
   // Through the shared helper: ONE login, and it WAITS on the five-a-minute

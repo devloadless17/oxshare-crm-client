@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { TransactionDetails } from '@/components/transactions/transaction-details';
 import { Receipt } from 'lucide-react';
 import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
@@ -139,6 +140,8 @@ export default function TransactionsPage() {
     [rows],
   );
 
+  const [detail, setDetail] = React.useState<Transaction | null>(null);
+
   const columns: Column<Transaction>[] = [
     {
       header: t('transactions.colDate'),
@@ -234,6 +237,23 @@ export default function TransactionsPage() {
        */
       cell: (tx) => <StateBadge state={tx.state} kind={tx.kind} />,
     },
+    {
+      header: '',
+      /*
+       * The way into the DETAIL, which is where prose belongs. A refused
+       * withdrawal used to end at the badge on its left: the reason,
+       * destination and settlement date were all on the wire and unreachable.
+       */
+      cell: (tx) => (
+        <button
+          type="button"
+          onClick={() => setDetail(tx)}
+          className="focus-outline rounded px-2 py-1 text-xs font-medium text-link hover:underline"
+        >
+          {t('transactions.detailOpen')}
+        </button>
+      ),
+    },
   ];
 
   return (
@@ -321,6 +341,7 @@ export default function TransactionsPage() {
               matching the filters. `DataTable` switches its client-side sorting
               off entirely once `onSortChange` is passed.
             */}
+            <TransactionDetails tx={detail} onClose={() => setDetail(null)} />
             <DataTable
               fill
               caption={t('transactions.title')}

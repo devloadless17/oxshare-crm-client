@@ -82,5 +82,19 @@ export function useKycAccess() {
     approved: isKycApproved(user?.verificationLevel, status),
     pending: isKycPending(status),
     rejected: isKycRejected(status),
+    /*
+     * The email gate, which every consumer has to be able to see.
+     *
+     * The KYC query is disabled until the address is confirmed, so for an
+     * unverified client `approved`/`pending`/`rejected` are all false and a
+     * gate dialog falls through to "start verification" — pointing at /kyc,
+     * which `EmailVerifiedGuard` bounces them out of. `KycGateDialog` has a
+     * purpose-built `email` branch and says why it must win: sending somebody
+     * into the identity wizard before they have clicked the link in their
+     * inbox hands them a form the API refuses for a different reason than the
+     * one on screen. `MoneyAction` could not pass it because this hook did not
+     * expose it.
+     */
+    emailUnverified: Boolean(user) && user?.emailVerified !== true,
   };
 }
