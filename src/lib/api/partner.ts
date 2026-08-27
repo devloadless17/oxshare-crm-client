@@ -36,18 +36,17 @@ export type IbOverview = components['schemas']['IbOverviewDto'];
 export type IbEarnings = components['schemas']['IbEarningsDto'];
 export type IbReferredClient = components['schemas']['IbReferredClientDto'];
 export type IbSubPartner = components['schemas']['IbSubPartnerDto'];
-export type IbLevelSummary = components['schemas']['IbLevelSummaryDto'];
 
 /**
  * The TERMS a partner is paid on — their named programme (FR-IB-06).
  *
- * Distinct from `IbLevelSummary`, which is the RUNG they stand on. Since the
- * programme record landed, the ladder decides placement and the programme
- * decides the money; a screen showing the level's `rateValue` as what somebody
- * earns is reading the wrong number off the wire.
+ * `IbLevelSummary` used to sit beside it, carrying the RUNG they stood on and a
+ * `rateValue` that decided nothing — so a screen could read the wrong number
+ * off the wire and be correct to four decimal places. It went in 0102.
  *
- * `level1Rate` is what they earn from their OWN clients, `level2Rate` from a
- * sub-partner's — per DEPTH, not per rung.
+ * `tiers` is per DEPTH, not per rung: depth 1 is what they earn from their OWN
+ * clients, depth 2 from a sub-partner's, and the COUNT is how far their
+ * earnings reach.
  */
 export type IbProgramSummary = components['schemas']['IbProgramSummaryDto'];
 

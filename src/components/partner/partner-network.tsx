@@ -34,12 +34,16 @@ export function PartnerNetwork({ subPartners }: { subPartners: IbSubPartner[] })
       sortKey: 'name',
     },
     {
-      header: t('partner.colLevel'),
-      cell: (row) => t('partner.subPartnerLevel', { level: row.level }),
+      /* Their PROGRAMME, replacing the rung they stood on (0102). A rung named
+         a placement that decided nothing; a programme is what this sub-partner
+         is actually paid on. Sorted as text, because a programme's identity is
+         its name — unlike a rung, whose number had to sort numerically to keep
+         "Level 10" from landing before "Level 2". */
+      header: t('partner.colProgramme'),
+      cell: (row) => row.programName,
       cellClassName: 'whitespace-nowrap text-muted-foreground',
       sortable: true,
-      sortKey: 'level',
-      sortType: 'number',
+      sortKey: 'programName',
     },
     {
       header: t('partner.colStatus'),

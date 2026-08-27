@@ -1403,7 +1403,15 @@ export const messages = {
 
   // Approved — the partner dashboard.
   'partner.approvedSince': 'Partner since {date}',
-  'partner.levelLabel': 'Your level',
+  // Replaced `partner.levelLabel` in 0102. The rung answered "where do you
+  // stand"; REACH answers the question a partner actually has, which is how far
+  // down their own network they are paid on.
+  'partner.reachLabel': 'How far you earn',
+  'partner.reachValue': '{count} level(s) deep',
+  'partner.reachNote':
+    'You earn on trades closed by your own clients and by clients of partners up to {count} ' +
+    'level(s) below you. Nothing beyond that.',
+  'partner.reachNone': 'Your programme pays a client rebate rather than partner commission.',
   'partner.referralCodeLabel': 'Your referral code',
   'partner.referralLinkLabel': 'Your referral link',
   'partner.copy': 'Copy',
@@ -1486,7 +1494,6 @@ export const messages = {
     'currencies with. You also hold commission in {others}; see the balances below.',
 
   'partner.levelRateRevenue': '{rate}% revenue share',
-  'partner.levelUnknown': 'Your level is being configured.',
 
   'partner.clientsHeading': 'Clients you introduced',
   'partner.clientsCount': '{count} total · {verified} verified',
@@ -1503,7 +1510,7 @@ export const messages = {
   'partner.subPartnersEmpty': 'No sub-partners yet',
   'partner.subPartnersEmptyBody':
     'Partners placed under you appear here, with the level they were assigned.',
-  'partner.subPartnerLevel': 'Level {level}',
+  'partner.subPartnerProgramme': 'On {programme}',
   'partner.subPartnerSuspended': 'Suspended',
   'partner.subPartnerActive': 'Active',
 
@@ -1525,7 +1532,7 @@ export const messages = {
   'partner.searchClients': 'Search by name',
   'partner.filterAll': 'All',
   'partner.colPartner': 'Partner',
-  'partner.colLevel': 'Level',
+  'partner.colProgramme': 'Programme',
   'partner.colSince': 'Since',
 
   'partner.termsHeading': 'Your terms',
@@ -1535,8 +1542,13 @@ export const messages = {
   // old `rateValue` as an earning rate is reading the wrong number off the
   // wire, which is why these strings name the source of each one.
   'partner.termsProgramme': 'Commission programme',
-  'partner.termsLevel1': 'From your own clients',
-  'partner.termsLevel2': 'From your partners’ clients',
+  'partner.programmeLabel': 'Programme',
+  'partner.termsOwnClients': 'From your own clients',
+  // Depth 2 and beyond. Numbered rather than named, because "your partners'
+  // clients" stops being accurate at depth 3 — that is your partners' partners'
+  // clients, and a label that quietly means something else at every level is
+  // one a partner would misprice their own network on.
+  'partner.termsTier': '{depth} level(s) below you',
   'partner.termsRebate': 'Back to your clients',
   'partner.termsRate': '{rate}%',
   'partner.termsOfRevenue':
@@ -1548,7 +1560,6 @@ export const messages = {
     'Your clients are paid a rebate on their trading, and you do not earn commission on this ' +
     'programme.',
   'partner.termsNone': 'Your commission terms are being configured.',
-  'partner.levelRateNote': 'Your share of the broker’s revenue on the trades your clients close.',
   'partner.programmeProductsLabel': 'Account types your clients can open',
   // An EMPTY product list means unrestricted (see `IbAccountDto`), which is a
   // different fact from having no programme — so it gets its own sentence
