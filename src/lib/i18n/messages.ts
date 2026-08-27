@@ -59,8 +59,6 @@ export const messages = {
   'nav.transactions': 'Transactions',
   'nav.kyc': 'KYC Verification',
   'nav.profile': 'Profile',
-  'nav.comingSoon': 'Soon',
-  'nav.comingSoonTitle': '{label} — coming soon',
   'nav.logout': 'Log out',
   'nav.accountMenu': 'Account menu',
 
@@ -578,9 +576,11 @@ export const messages = {
   'deposit.maxOnly': 'Maximum {max} per transfer.',
 
   // ── Transfer (wallet ⇄ trading account) ───────────────────────────────────
-  // The screen behind these is a placeholder: `POST /payments/transfers` works,
-  // but nothing lists the client's trading accounts, so there is no picker to
-  // populate. See app/transfer/page.tsx.
+  // The screen behind these is LIVE. It was a placeholder when these strings
+  // were written — `POST /payments/transfers` worked and nothing listed the
+  // client's trading accounts — and `GET /trading/accounts/transferable` has
+  // since filled that gap: app/transfer/page.tsx has a full picker with
+  // `?account=` preselection.
   'transfer.title': 'Transfer',
   'transfer.subtitle': 'Move funds between your wallet and a trading account',
   'transfer.loading': 'Loading your trading accounts',

@@ -34,7 +34,6 @@ export interface NavItem {
   href: string;
   icon: React.ElementType;
   badge?: string | number;
-  comingSoon?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -173,26 +172,15 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
                   ? ({ text: String(item.badge), tone: 'warning' } as const)
                   : undefined;
 
-            if (item.comingSoon) {
-              return (
-                <div
-                  key={item.href}
-                  title={collapsed ? t('nav.comingSoonTitle', { label: t(item.label) }) : undefined}
-                  aria-disabled="true"
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground/60 cursor-not-allowed select-none ${
-                    collapsed ? 'justify-center px-0' : ''
-                  }`}
-                >
-                  <Icon className="h-5 w-5 shrink-0 text-muted-foreground/60" />
-                  {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
-                  {!collapsed && (
-                    <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                      {t('nav.comingSoon')}
-                    </span>
-                  )}
-                </div>
-              );
-            }
+            /*
+             * The `comingSoon` branch is GONE. It rendered a disabled nav
+             * entry with a "Soon" pill and had ZERO call sites — no item ever
+             * set the flag. The admin app deleted its equivalent deliberately
+             * ("an operator reading the navigation should be reading a list of
+             * places they can go, not a roadmap"); the portal kept the
+             * machinery, so the rule lived in one app and the dead code in the
+             * other. Restore it in the same commit that first needs it.
+             */
 
             return (
               <Link
