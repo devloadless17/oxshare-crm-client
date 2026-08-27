@@ -87,6 +87,47 @@ function tooLargeMessage(file: File): string {
  * Now the file is shown first and uploaded on confirmation, which is the order
  * `SelfieCamera` has always used in this same repo.
  */
+/**
+ * Can this device actually TAKE a photo from a file input?
+ *
+ * `capture` is honoured by phones and tablets and IGNORED by every desktop
+ * browser — the input falls back to an ordinary file picker. So on a laptop the
+ * "Take photo" button opened exactly the same dialog as "Choose file": two
+ * buttons, one outcome, and a reader left wondering which one they got wrong.
+ *
+ * `(pointer: coarse)` is the honest question — "is this a touch device", which
+ * is the same set of devices whose file input opens a camera. It is read
+ * through `useHydrated` because the server cannot know it: rendering the mobile
+ * answer during SSR and the desktop one after hydration is a layout jump on the
+ * step where clients are already unsure what to press.
+ *
+ * On desktop the dropzone and "Choose file" remain, which is the whole
+ * interaction there anyway — a passport photographed on a laptop webcam is a
+ * rejected submission, so this removes a button nobody should have used.
+ */
+const COARSE_POINTER = '(pointer: coarse)';
+
+function subscribeToPointer(onChange: () => void): () => void {
+  const query = window.matchMedia(COARSE_POINTER);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+
+function useCanCapture(): boolean {
+  /*
+   * `useSyncExternalStore` rather than state-in-an-effect: matchMedia IS an
+   * external store, and this is the one API that reads it without a render
+   * where the answer is briefly wrong. The server snapshot is `false`, so SSR
+   * and the first client paint agree on the desktop layout and a phone
+   * upgrades on hydration — no flash of the wrong button set.
+   */
+  return React.useSyncExternalStore(
+    subscribeToPointer,
+    () => window.matchMedia(COARSE_POINTER).matches,
+    () => false,
+  );
+}
+
 export function DocumentUploader({
   label,
   field,
@@ -124,6 +165,7 @@ export function DocumentUploader({
   const [tooSmall, setTooSmall] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
+  const canCapture = useCanCapture();
 
   React.useEffect(() => {
     // Revoke nothing: `preview` is a data: URI from FileReader, not an object
@@ -417,15 +459,24 @@ export function DocumentUploader({
             )}
           </div>
 
-          {/* Both routes, both visible. A bare `capture` input would make the
-              camera the only option; no `capture` at all buries it in a file
-              browser. Neither alone satisfies the requirement. */}
+          {/* On a phone, both routes are offered: a bare `capture` input would
+              make the camera the only option, and no `capture` at all buries it
+              among Downloads and Drive. On a desktop `capture` does nothing, so
+              the second button would open the identical dialog — one button
+              there, and it is the one that describes what actually happens. */}
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button type="button" size="sm" onClick={openCamera}>
-              <Camera className="h-4 w-4" />
-              {t('kyc.takePhoto')}
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={openFilePicker}>
+            {canCapture && (
+              <Button type="button" size="sm" onClick={openCamera}>
+                <Camera className="h-4 w-4" />
+                {t('kyc.takePhoto')}
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant={canCapture ? 'outline' : 'default'}
+              size="sm"
+              onClick={openFilePicker}
+            >
               <FolderOpen className="h-4 w-4" />
               {t('kyc.chooseFile')}
             </Button>

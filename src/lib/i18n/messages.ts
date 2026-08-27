@@ -59,8 +59,6 @@ export const messages = {
   'nav.transactions': 'Transactions',
   'nav.kyc': 'KYC Verification',
   'nav.profile': 'Profile',
-  'nav.comingSoon': 'Soon',
-  'nav.comingSoonTitle': '{label} — coming soon',
   'nav.logout': 'Log out',
   'nav.accountMenu': 'Account menu',
 
@@ -397,6 +395,21 @@ export const messages = {
   'transactions.colType': 'Type',
   'transactions.colAmount': 'Amount',
   'transactions.colStatus': 'Status',
+  /*
+   * The detail view a refused withdrawal had nowhere to put.
+   *
+   * `rejectionReason`, `destination`, `providerRef`, `reviewedAt` and
+   * `settledAt` all ride on the client's own transactions response and no
+   * screen read them — so a client whose payout was refused saw a red pill and
+   * could not find out why from anywhere they could return to.
+   */
+  'transactions.detailReason': 'Why this was refused',
+  'transactions.detailState': 'Status',
+  'transactions.detailDestination': 'Sent to',
+  'transactions.detailReference': 'Reference',
+  'transactions.detailReviewed': 'Reviewed',
+  'transactions.detailSettled': 'Completed',
+  'transactions.detailOpen': 'View details',
   // `colReference` is gone with its column: a 20-character opaque provider id
   // that a client has no use for in a list, taking the width that made every
   // other column readable. It is still on the deposit confirmation, which is
@@ -563,9 +576,11 @@ export const messages = {
   'deposit.maxOnly': 'Maximum {max} per transfer.',
 
   // ── Transfer (wallet ⇄ trading account) ───────────────────────────────────
-  // The screen behind these is a placeholder: `POST /payments/transfers` works,
-  // but nothing lists the client's trading accounts, so there is no picker to
-  // populate. See app/transfer/page.tsx.
+  // The screen behind these is LIVE. It was a placeholder when these strings
+  // were written — `POST /payments/transfers` worked and nothing listed the
+  // client's trading accounts — and `GET /trading/accounts/transferable` has
+  // since filled that gap: app/transfer/page.tsx has a full picker with
+  // `?account=` preselection.
   'transfer.title': 'Transfer',
   'transfer.subtitle': 'Move funds between your wallet and a trading account',
   'transfer.loading': 'Loading your trading accounts',
@@ -830,6 +845,13 @@ export const messages = {
   // Null margin level means "no margin requirement at all", which is not zero.
   'accounts.marginLevelNone': 'No open positions',
   'accounts.creditLabel': 'Credit',
+  /*
+   * The tile using this label went unrendered until 27 Aug, and the arithmetic
+   * on the panel was wrong because of it: `floating` is derived server-side as
+   * `equity - balance - credit`, so on an account carrying a bonus the three
+   * figures shown did not add up and nothing on screen accounted for the gap.
+   */
+  'accounts.creditHint': 'Counts toward equity; it is not withdrawable.',
   'accounts.mt5BalanceLabel': 'Balance',
   'accounts.mt5BalanceHint': 'Cash on the account, excluding open profit.',
   // The two reasons live figures are missing. They must not share a string: one
@@ -1307,6 +1329,17 @@ export const messages = {
   'partner.colClient': 'Client',
   'partner.colSource': 'From',
   'partner.colAmount': 'Your share',
+  /*
+   * The WORKING behind the amount.
+   *
+   * `baseAmount` and `rateValue` ride on the same response and nothing
+   * rendered them, so the party most likely to dispute a commission was shown
+   * the least of it — while the admin console's own commissions screen argues
+   * "a commission an operator cannot recompute from the row is one they cannot
+   * defend when a partner disputes it". The partner deserves the same row.
+   */
+  'partner.colBase': 'Calculated on',
+  'partner.colRate': 'Rate',
   'partner.colStatus': 'Status',
   'partner.sourceTrade': 'Closed trade',
   // Historical only — commission is no longer earned on deposits.

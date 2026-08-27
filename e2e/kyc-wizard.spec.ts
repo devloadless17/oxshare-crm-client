@@ -77,20 +77,42 @@ test.describe('the KYC wizard', () => {
   // above. "Replace" never returned the tile to the state showing both capture
   // routes, so this asserted against a tile it could not see; resetting the ROW
   // rather than the widget removes the problem instead of working around it.
-  test('offers BOTH a camera and a file picker for a document', async ({ page }) => {
+  test('offers a camera where one opens, and a file picker everywhere', async ({ page }) => {
     /*
-     * The requirement is both, and it is why this is not simply a `capture`
-     * attribute: on iOS and Android a bare `capture` makes an input
+     * The requirement is both ROUTES, and it is why this is not simply a
+     * `capture` attribute: on iOS and Android a bare `capture` makes an input
      * camera-ONLY, which locks out anyone who photographed their ID with a
      * second device or already holds a scan.
+     *
+     * The BUTTON follows the device, and that is the fix this now pins.
+     * `capture` is honoured by phones and IGNORED by every desktop browser, so
+     * on a laptop "Take photo" opened the identical file dialog as "Choose
+     * file" — two controls, one outcome, and a client on the verification step
+     * guessing which one they got wrong. The camera button now renders only
+     * where `(pointer: coarse)` is true, which is the same set of devices
+     * whose file input actually opens a camera.
      */
     await openDocumentStep(page);
     await resetUploader(page);
 
-    await expect(page.getByRole('button', { name: /take photo/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /choose file/i }).first()).toBeVisible();
+    // The signal the component itself reads, asked of this project's device.
+    const canCapture = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
 
-    // Two inputs: one asking for the rear camera, one asking for nothing.
+    await expect(page.getByRole('button', { name: /choose file/i }).first()).toBeVisible();
+    if (canCapture) {
+      await expect(page.getByRole('button', { name: /take photo/i }).first()).toBeVisible();
+    } else {
+      await expect(
+        page.getByRole('button', { name: /take photo/i }),
+        'a desktop browser ignores `capture`, so this button would open the same dialog',
+      ).toHaveCount(0);
+    }
+
+    /*
+     * BOTH inputs exist regardless — the capture-seeking one is what a phone
+     * needs, and hiding its button on desktop must not remove the machinery a
+     * touch device depends on.
+     */
     const withCapture = page.locator('input[type="file"][capture]');
     const withoutCapture = page.locator('input[type="file"]:not([capture])');
     await expect(withCapture.first()).toHaveAttribute('capture', 'environment');

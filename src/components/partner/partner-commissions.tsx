@@ -97,6 +97,24 @@ export function PartnerCommissions() {
       sortType: 'money',
     },
     {
+      /*
+       * WHAT the rate was applied to, and at what rate — the two figures that
+       * turn an amount into something a partner can check. Both were on the
+       * wire and unrendered, so the one party most likely to dispute a
+       * commission saw only the answer.
+       */
+      header: t('partner.colBase'),
+      cell: (row) => formatMoney(row.baseAmount, row.currency),
+      align: 'right',
+      cellClassName: 'tabular text-muted-foreground',
+    },
+    {
+      header: t('partner.colRate'),
+      cell: (row) => row.rateValue,
+      align: 'right',
+      cellClassName: 'tabular text-muted-foreground',
+    },
+    {
       header: t('partner.colStatus'),
       cell: (row) => <StatusPill status={row.status} />,
       sortable: true,
