@@ -62,6 +62,18 @@ export const messages = {
   'nav.logout': 'Log out',
   'nav.accountMenu': 'Account menu',
 
+  /*
+   * The broker's own links, at the foot of the sidebar.
+   *
+   * A HEADING rather than the links simply following the app's own pages,
+   * because these leave the portal. Without something saying so, "Economic
+   * calendar" sits in the same list as "Wallet" and reads as another screen
+   * here — and the client finds out it is not by landing on somebody else's
+   * site. The arrow on each entry says the same thing a second time.
+   */
+  'nav.section.resources': 'Resources',
+  'nav.opensInNewTab': '{title} — opens in a new tab',
+
   // ── Theme ─────────────────────────────────────────────────────────────────
   // `system` is the default and is named rather than implied: a client whose OS
   // is in dark mode should be told that is WHY the portal is dark, otherwise the

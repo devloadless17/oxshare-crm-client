@@ -808,6 +808,74 @@ export interface paths {
         patch: operations["AdminLeveragesController_update"];
         trace?: never;
     };
+    "/v1/external-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The links on this client’s sidebar, in the operator’s order
+         * @description Hidden links are ABSENT rather than flagged — a client has no use for one they cannot open, and a portal that received them would have to remember to filter. An empty array is an ordinary answer: it means the operator has added no links, and the sidebar simply shows no extra section.
+         */
+        get: operations["ExternalLinksController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/external-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every link, operator order first
+         * @description Includes HIDDEN links, unlike `GET /external-links` — an operator has to see what they took down in order to put it back.
+         */
+        get: operations["AdminExternalLinksController_list"];
+        put?: never;
+        /**
+         * Add a link
+         * @description Only http and https are accepted: this URL becomes an `href` in every client’s browser, and `javascript:` there would be stored XSS against all of them. Omitting `sortOrder` appends to the end of the menu.
+         */
+        post: operations["AdminExternalLinksController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/external-links/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a link for good
+         * @description Nothing references a link, so this orphans nothing — but the title, description and position go with it. To take one off the client menu and keep it, hide it instead. The remaining links close up the gap in the ordering.
+         */
+        delete: operations["AdminExternalLinksController_remove"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit, reorder, or hide a link
+         * @description Only the fields sent are changed. `enabled: false` takes the link off the client menu and keeps everything about it, which is the ordinary way to withdraw one. An empty `description` clears it.
+         */
+        patch: operations["AdminExternalLinksController_update"];
+        trace?: never;
+    };
     "/v1/ib/status": {
         parameters: {
             query?: never;
@@ -4178,6 +4246,53 @@ export interface components {
             enabled?: boolean;
             sortOrder?: number;
         };
+        ClientExternalLinkDto: {
+            /** Format: uuid */
+            id: string;
+            /** @example Economic calendar */
+            title: string;
+            description: string | null;
+            /** @example https://example.com/calendar */
+            url: string;
+            /** @description The operator’s order, which is the order to render. */
+            sortOrder: number;
+        };
+        ExternalLinkDto: {
+            /** Format: uuid */
+            id: string;
+            /** @example Economic calendar */
+            title: string;
+            /** @description One line of context under the title. Null is a real answer, not an omission. */
+            description: string | null;
+            /** @example https://example.com/calendar */
+            url: string;
+            /** @description A disabled link is off the client menu and still on this screen. */
+            enabled: boolean;
+            /** @description The operator’s order, which is the order the sidebar renders. */
+            sortOrder: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateExternalLinkDto: {
+            /** @example Economic calendar */
+            title: string;
+            description?: string;
+            /** @example https://example.com/calendar */
+            url: string;
+            /** @default true */
+            enabled: boolean;
+            /** @description Omitted appends to the end of the menu. */
+            sortOrder?: number;
+        };
+        UpdateExternalLinkDto: {
+            title?: string;
+            description?: string;
+            url?: string;
+            enabled?: boolean;
+            sortOrder?: number;
+        };
         IbAccountDto: {
             userId: string;
             level: number;
@@ -4640,11 +4755,8 @@ export interface components {
             sortOrder?: number;
             /** @enum {string} */
             mode?: "commission_only" | "rebate_only" | "hybrid";
-            /**
-             * @default commission_swap
-             * @enum {string}
-             */
-            revenueBasis: "commission_swap" | "spread" | "commission_swap_spread";
+            /** @enum {string} */
+            revenueBasis?: "commission_swap" | "spread" | "commission_swap_spread";
             /** @description REPLACES the whole ladder. Send every level you want to keep; omit the field to leave the existing ladder alone. An empty array removes every level. */
             tiers?: components["schemas"]["IbProgramTierDto"][];
             /** @example 0 */
@@ -5387,6 +5499,7 @@ export interface components {
             ibMaxTotalPayoutPct: string;
             /** Format: date-time */
             updatedAt?: string | null;
+            updatedByName?: string | null;
         };
         UpdateTradingSettingsDto: {
             /** @example 5 */
@@ -5429,6 +5542,7 @@ export interface components {
             source: "database" | "environment";
             /** Format: date-time */
             updatedAt?: string | null;
+            updatedByName?: string | null;
         };
         UpdateSmtpSettingsDto: {
             /** @example smtp.postmarkapp.com */
@@ -5587,7 +5701,7 @@ export interface components {
             /** @example 1.50000000 */
             spreadMarkupPerLot?: string;
             /** @example 0 */
-            sortOrder: number;
+            sortOrder?: number;
         };
         AttachGroupDto: {
             /** @enum {string} */
@@ -5609,6 +5723,11 @@ export interface components {
             enabled: boolean;
             /** @example 0 */
             sortOrder: number;
+            /**
+             * Format: uuid
+             * @description The commission programme partners of this agency are appointed on (0107). Null means the agency expresses no preference, and approval falls through to the lowest-sorted enabled programme. A reviewer’s explicit choice always wins over this.
+             */
+            defaultProgramId: string | null;
             /** @description The products this agency sells. */
             productIds: string[];
         };
@@ -5619,7 +5738,9 @@ export interface components {
             /** @example true */
             enabled: boolean;
             /** @example 0 */
-            sortOrder: number;
+            sortOrder?: number;
+            /** Format: uuid */
+            defaultProgramId?: string | null;
         };
         SetAgencyProductsDto: {
             productIds: string[];
@@ -5955,6 +6076,20 @@ export interface components {
             /** @example #b45309 */
             color?: string;
             description?: string;
+        };
+        ClientTagAssignmentDto: {
+            id: string;
+            /** @description Stable machine name. Filter with ?tag=<slug>; a rename does not change it. */
+            slug: string;
+            label: string;
+            color?: string;
+            description?: string;
+            /** Format: date-time */
+            createdAt: string;
+            assignedBy?: string | null;
+            assignedByName?: string | null;
+            /** Format: date-time */
+            assignedAt: string;
         };
         KycDocumentDto: {
             docType?: string;
@@ -6331,6 +6466,7 @@ export interface components {
             requestedAt: string;
             /** Format: date-time */
             reviewedAt?: string | null;
+            reviewedByName?: string | null;
             /** Format: date-time */
             settledAt?: string | null;
             /** @description The payment platform’s withdrawal id, once submitted. Null before. */
@@ -8015,6 +8151,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeverageDto"];
+                };
+            };
+        };
+    };
+    ExternalLinksController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientExternalLinkDto"][];
+                };
+            };
+        };
+    };
+    AdminExternalLinksController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalLinkDto"][];
+                };
+            };
+        };
+    };
+    AdminExternalLinksController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateExternalLinkDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalLinkDto"];
+                };
+            };
+        };
+    };
+    AdminExternalLinksController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminExternalLinksController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateExternalLinkDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalLinkDto"];
                 };
             };
         };
@@ -10588,7 +10829,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientTagDto"][];
+                    "application/json": components["schemas"]["ClientTagAssignmentDto"][];
                 };
             };
         };
@@ -10610,7 +10851,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientTagDto"][];
+                    "application/json": components["schemas"]["ClientTagAssignmentDto"][];
                 };
             };
         };
@@ -10632,7 +10873,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientTagDto"][];
+                    "application/json": components["schemas"]["ClientTagAssignmentDto"][];
                 };
             };
         };
@@ -11814,10 +12055,14 @@ export interface operations {
             query?: {
                 format?: "csv";
                 direction?: "deposit" | "withdrawal";
+                /** @description payment = crossed the platform boundary through a provider; transfer = wallet ⇄ trading account; commission_transfer = partner earnings to their main wallet. */
                 kind?: "payment" | "transfer" | "commission_transfer";
                 state?: "pending" | "approved" | "success" | "failure" | "rejected";
+                /** @description Narrow to one client (UUID). */
                 userId?: string;
+                /** @description A currency code the platform holds. Case-insensitive; unknown codes are 400. */
                 currency?: string;
+                /** @description Search the client’s email and name — the same columns every other queue searches. */
                 q?: string;
                 /** @description Inclusive, YYYY-MM-DD. */
                 from?: string;
@@ -11845,10 +12090,14 @@ export interface operations {
         parameters: {
             query?: {
                 direction?: "deposit" | "withdrawal";
+                /** @description payment = crossed the platform boundary through a provider; transfer = wallet ⇄ trading account; commission_transfer = partner earnings to their main wallet. */
                 kind?: "payment" | "transfer" | "commission_transfer";
                 state?: "pending" | "approved" | "success" | "failure" | "rejected";
+                /** @description Narrow to one client (UUID). */
                 userId?: string;
+                /** @description A currency code the platform holds. Case-insensitive; unknown codes are 400. */
                 currency?: string;
+                /** @description Search the client’s email and name — the same columns every other queue searches. */
                 q?: string;
                 /** @description Inclusive, YYYY-MM-DD. */
                 from?: string;
@@ -11880,6 +12129,7 @@ export interface operations {
                 state?: "pending" | "approved" | "success" | "failure" | "rejected";
                 /** @description Narrow to one client (UUID). */
                 userId?: string;
+                /** @description A currency code the platform holds. Case-insensitive; unknown codes are 400. */
                 currency?: string;
                 /** @description Search the client’s email and name — the same columns every other queue searches. */
                 q?: string;
