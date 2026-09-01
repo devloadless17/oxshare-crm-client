@@ -15,12 +15,14 @@ import {
   Clock,
   ShieldAlert,
   Menu,
+  ArrowUpRight,
   Wallet as WalletIcon,
   X,
 } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { externalLinksApi, type ExternalLink } from '@/lib/api/external-links';
 import type { components } from '@/lib/api/types.gen';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { UserMenu } from './user-menu';
@@ -94,6 +96,30 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
     queryFn: async () => (await apiClient.get<KycStatusDto | null>('/kyc/status')).data ?? null,
     select: (dto) => dto?.status ?? 'not_started',
     enabled: user?.emailVerified === true,
+    retry: false,
+  });
+
+  /*
+   * The broker's own links, drawn under the app's pages.
+   *
+   * `useQuery` directly rather than `useResource`, matching the KYC badge above
+   * and for the same reason: the 4-state Resource exists so a SCREEN can tell
+   * loading from unavailable from error and render each differently. None of
+   * those have a rendering in a sidebar. A menu that has not loaded yet shows
+   * the app's own pages and nothing else, which is exactly what `[]` already
+   * means to the section below — so every failure state collapses to "no extra
+   * section" rather than putting a spinner or a retry card in the chrome of
+   * every page.
+   *
+   * `staleTime` is generous because this is operator content that changes a few
+   * times a year, and it is fetched on every page the client opens. `retry:
+   * false` for the same reason the KYC query sets it: a link menu is not worth
+   * a backoff storm, and the next navigation asks again.
+   */
+  const { data: externalLinks = [] } = useQuery({
+    queryKey: ['external-links'],
+    queryFn: ({ signal }) => externalLinksApi.list(signal),
+    staleTime: 5 * 60 * 1000,
     retry: false,
   });
 
@@ -213,6 +239,12 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+
+          <ExternalLinksSection
+            links={externalLinks}
+            collapsed={collapsed}
+            onNavigate={closeMobile}
+          />
         </nav>
       </aside>
 
@@ -298,6 +330,87 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
         </main>
       </div>
     </div>
+  );
+}
+
+/**
+ * The broker's own links, under the app's pages.
+ *
+ * ## It renders NOTHING when there are none
+ *
+ * Not an empty heading, not a "no links yet" line. The two other states this
+ * could be in — still loading, and the request failed — collapse to the same
+ * empty array by design (see the query in `PortalChrome`), and all three mean
+ * the same thing to a client: the sidebar is the app's own pages. A heading
+ * over nothing would be the only one of the three that looked broken.
+ *
+ * ## Why an `<a>` and not a `<Link>`
+ *
+ * These leave the portal, so there is nothing for the router to prefetch or
+ * intercept. `target="_blank"` keeps the client's session and any half-finished
+ * form on the page they were on — a broker link is a reference, not a
+ * destination — and `rel="noopener noreferrer"` is what makes that safe: without
+ * `noopener` the opened page gets a handle on this window through
+ * `window.opener` and can navigate it somewhere of its choosing, which is a
+ * phishing primitive aimed at a signed-in trading portal.
+ *
+ * The URL itself is never constructed or corrected here. The API refuses
+ * anything that is not http(s) — an operator-set value becoming an `href` in
+ * every client's browser is why `javascript:` there would be stored XSS — and
+ * this component adds no opinion of its own on top of that.
+ */
+function ExternalLinksSection({
+  links,
+  collapsed,
+  onNavigate,
+}: {
+  links: ExternalLink[];
+  collapsed: boolean;
+  onNavigate: () => void;
+}) {
+  if (links.length === 0) return null;
+
+  return (
+    <>
+      {/*
+        A separator, and a heading only when there is room for one. Collapsed,
+        the rail is icons — a truncated word above them says less than the rule
+        does, and the per-item arrow still marks these as leaving the portal.
+      */}
+      <div className="!mt-4 border-t border-border pt-4">
+        {!collapsed && (
+          <p className="px-3 pb-1.5 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
+            {t('nav.section.resources')}
+          </p>
+        )}
+      </div>
+
+      {links.map((link) => (
+        <a
+          key={link.id}
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={onNavigate}
+          /*
+           * The DESCRIPTION is the tooltip when there is one, because that is
+           * the thing the operator wrote to explain the link. Collapsed with no
+           * description, the title is all there is to identify the icon by.
+           */
+          title={link.description ?? (collapsed ? link.title : undefined)}
+          aria-label={t('nav.opensInNewTab', { title: link.title })}
+          className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-outline ${
+            collapsed ? 'justify-center px-0' : ''
+          }`}
+        >
+          <ArrowUpRight
+            className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-link"
+            aria-hidden="true"
+          />
+          {!collapsed && <span className="flex-1 truncate">{link.title}</span>}
+        </a>
+      ))}
+    </>
   );
 }
 
