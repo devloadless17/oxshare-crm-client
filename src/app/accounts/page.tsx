@@ -51,8 +51,27 @@ const TABS: TabDefinition[] = [
 ];
 
 export default function AccountsPage() {
-  const accounts = useResource(keys.tradingAccounts.all(), (signal) =>
-    tradingApi.getAccounts(signal),
+  /*
+   * POLLED, because nothing on this page is what changes the numbers on it.
+   *
+   * The balance here is the CRM's mirror of MT5, written by the bridge when a
+   * trade moves it — so the client is watching a value that a completely
+   * different process updates, with no event on this screen to hang a refresh
+   * on. Without a poll the list showed whatever it fetched on mount until the
+   * client navigated away and back.
+   *
+   * Thirty seconds, and it is CHEAP: `GET /trading/accounts` is one indexed
+   * read of `trading_accounts` in our own database. It does NOT cross to MT5 —
+   * the live figures are the account detail page, on demand, behind a throttle.
+   * So this tracks the mirror closely without adding a single call to the
+   * bridge's serialised MT5 session.
+   *
+   * The remaining delay is the mirror's own, not this screen's.
+   */
+  const accounts = useResource(
+    keys.tradingAccounts.all(),
+    (signal) => tradingApi.getAccounts(signal),
+    { refetchInterval: 30_000 },
   );
 
   /*
