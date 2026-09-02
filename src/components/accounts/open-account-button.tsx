@@ -11,6 +11,7 @@ import {
   type TradingEnvironment,
 } from '@/lib/api/trading';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * Open a trading account of ONE environment.
@@ -91,7 +92,7 @@ export function OpenAccountButton({
   const [open, setOpen] = React.useState(false);
 
   const availability = useResource<SelfServiceAvailability>(
-    ['trading-accounts', 'self-service'],
+    keys.tradingAccounts.selfService(),
     (signal) => tradingApi.getSelfServiceAvailability(signal),
   );
 

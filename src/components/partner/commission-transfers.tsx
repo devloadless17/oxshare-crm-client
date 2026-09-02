@@ -10,6 +10,7 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbWalletTransfer } from '@/lib/api/partner';
 import { formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * The commission a partner has already moved into their main wallet.
@@ -39,7 +40,7 @@ import { t } from '@/lib/i18n';
  * be reconciled against each other.
  */
 export function CommissionTransfers() {
-  const query = useResource<IbWalletTransfer[]>(['ib-wallet-transfers'], (signal) =>
+  const query = useResource<IbWalletTransfer[]>(keys.partner.walletTransfers(), (signal) =>
     partnerApi.walletTransfers(signal),
   );
 

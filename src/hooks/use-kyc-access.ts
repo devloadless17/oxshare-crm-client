@@ -5,6 +5,7 @@ import { useUser } from '@/context/UserContext';
 import { apiClient } from '@/lib/api/client';
 import type { components } from '@/lib/api/types.gen';
 import { isKycApproved, isKycPending, isKycRejected } from '@/lib/kyc-access';
+import { keys } from '@/lib/query-keys';
 
 type KycStatusDto = components['schemas']['KycStatusDto'];
 
@@ -63,7 +64,7 @@ export function useKycAccess() {
    * shape, and narrowing happens per consumer instead of per writer.
    */
   const { data: status, isPending } = useQuery({
-    queryKey: ['kyc-status'],
+    queryKey: keys.kyc.status(),
     queryFn: async () => (await apiClient.get<KycStatusDto | null>('/kyc/status')).data ?? null,
     select: (dto) => dto?.status ?? 'not_started',
     enabled: user?.emailVerified === true,

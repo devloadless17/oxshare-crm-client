@@ -28,6 +28,8 @@ import {
 } from '@/components/money/withdraw-states';
 import { presetsWithin } from '@/components/money/amount-presets';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
+import { useMoneyRefresh } from '@/hooks/use-money-refresh';
 
 /**
  * Request a withdrawal — CORE-07.
@@ -190,6 +192,8 @@ function WithdrawForm({
    */
   const idempotencyKey = React.useRef<string | null>(null);
 
+  const refreshMoney = useMoneyRefresh();
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -217,6 +221,10 @@ function WithdrawForm({
         },
         idempotencyKey.current,
       );
+      // The wallet has ALREADY fallen: a withdrawal debits at request time
+      // rather than placing a hold, so the confirmation screen and /wallet
+      // behind it would otherwise both show the pre-withdrawal balance.
+      await refreshMoney();
       onDone();
     } catch (err: unknown) {
       /*
@@ -574,8 +582,8 @@ function WithdrawForm({
 
 export default function WithdrawPage() {
   const [submitted, setSubmitted] = React.useState(false);
-  const wallets = useResource(['wallets'], (signal) => walletApi.getWallets(signal));
-  const methods = useResource(['withdrawal-methods'], (signal) =>
+  const wallets = useResource(keys.wallets.all(), (signal) => walletApi.getWallets(signal));
+  const methods = useResource(keys.paymentMethods.withdrawal(), (signal) =>
     paymentsApi.getWithdrawalMethods(signal),
   );
 

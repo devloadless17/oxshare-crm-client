@@ -10,6 +10,7 @@ import { useUser } from '@/context/UserContext';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi } from '@/lib/api/partner';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * One card, one choice, one button.
@@ -61,7 +62,7 @@ export function ApplyPanel({
    * deployment whose agencies are all closed would then show "nothing to apply
    * for" to somebody whose introducer's programme is waiting for them.
    */
-  const agencies = useResource(['partner', 'agencies'], (signal) => partnerApi.agencies(signal), {
+  const agencies = useResource(keys.partner.agencies(), (signal) => partnerApi.agencies(signal), {
     enabled: inherited === null,
   });
 

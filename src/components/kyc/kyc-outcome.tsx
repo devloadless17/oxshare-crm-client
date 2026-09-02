@@ -10,6 +10,7 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { clearKycDraft } from '@/lib/kyc-draft';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 type KycStatusDto = components['schemas']['KycStatusDto'];
 
@@ -37,7 +38,7 @@ export function KycOutcome() {
    * the same thing.
    */
   const statusQuery = useResource(
-    ['kyc-status'],
+    keys.kyc.status(),
     async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
   );
 

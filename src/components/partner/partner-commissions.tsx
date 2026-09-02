@@ -17,6 +17,7 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbCommissionRow } from '@/lib/api/partner';
 import { formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * Every commission this partner has earned, claim and credit alike.
@@ -55,7 +56,7 @@ import { t } from '@/lib/i18n';
 const PAGING = { noun: ['entry', 'entries'] as [string, string], pageSize: TABLE_PAGE_SIZE };
 
 export function PartnerCommissions() {
-  const query = useResource<IbCommissionRow[]>(['ib-commissions'], (signal) =>
+  const query = useResource<IbCommissionRow[]>(keys.partner.commissions(), (signal) =>
     partnerApi.commissions(signal),
   );
 

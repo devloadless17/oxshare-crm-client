@@ -15,6 +15,7 @@ import { AccountPositions } from '@/components/accounts/account-positions';
 import { AccountActivity } from '@/components/accounts/account-activity';
 import { AccountTransactions } from '@/components/accounts/account-transactions';
 import { AccountActions } from '@/components/accounts/account-actions';
+import { keys } from '@/lib/query-keys';
 
 /**
  * ONE trading account: what it holds now, what it has done, and what moved.
@@ -54,7 +55,7 @@ export default function AccountDetailPage() {
   const params = useParams<{ id: string }>();
   const id = typeof params.id === 'string' ? params.id : '';
 
-  const account = useResource(['trading-account', id], (signal) =>
+  const account = useResource(keys.tradingAccounts.detail(id), (signal) =>
     tradingApi.getAccount(id, signal),
   );
 
@@ -151,7 +152,7 @@ function AccountDetail({ account }: { account: TradingAccount }) {
    * it does not need the browser trying again on their behalf.
    */
   const snapshot = useResource(
-    ['trading-account-live', account.id],
+    keys.mt5Live.snapshot(account.id),
     (signal) => tradingApi.getAccountSnapshot(account.id, signal),
     { retry: 0 },
   );

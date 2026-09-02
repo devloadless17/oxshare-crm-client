@@ -31,6 +31,9 @@ import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { walletApi, type Wallet } from '@/lib/api/wallet';
 import { compareMoney, formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
+import { useMoneyRefresh } from '@/hooks/use-money-refresh';
+import { buildTransferSources } from '@/lib/transfer-sources';
 
 /**
  * Wallet ⇄ trading account, in two steps.
@@ -86,10 +89,10 @@ export default function TransferPage() {
 }
 
 function TransferPageContent() {
-  const accounts = useResource(['transferable-accounts'], (signal) =>
+  const accounts = useResource(keys.tradingAccounts.transferable(), (signal) =>
     tradingApi.getTransferableAccounts(signal),
   );
-  const wallets = useResource(['wallets'], (signal) => walletApi.getWallets(signal));
+  const wallets = useResource(keys.wallets.all(), (signal) => walletApi.getWallets(signal));
 
   /*
    * No page heading.
@@ -137,7 +140,6 @@ function TransferPageContent() {
  * can disagree and this cannot: a source IS a wallet or an account, and the
  * direction is read off it at submit time.
  */
-type Source = { kind: 'wallet'; currency: string } | { kind: 'account'; account: TradingAccount };
 
 /**
  * Where the money leaves, where it lands, and how much.
@@ -153,14 +155,6 @@ type Source = { kind: 'wallet'; currency: string } | { kind: 'account'; account:
  */
 const STEPS = [t('transfer.from'), t('transfer.to'), t('money.stepAmount')];
 
-/** One row of the step-one list, with what it is worth beside it. */
-interface SourceOption {
-  key: string;
-  source: Source;
-  title: string;
-  hint: string;
-}
-
 function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; wallets: Wallet[] }) {
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const [sourceKey, setSourceKey] = React.useState('');
@@ -169,6 +163,7 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [done, setDone] = React.useState(false);
+  const refreshMoney = useMoneyRefresh();
 
   /*
    * One key per intended transfer — R-5.2. A ref, because nothing renders from
@@ -178,48 +173,7 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
    */
   const idempotencyKey = React.useRef<string | null>(null);
 
-  /*
-   * Every source, RICHEST FIRST within its own kind.
-   *
-   * Wallets stay ahead of accounts — funding an account is the common direction,
-   * and a client arriving from "Fund account" is looking for their wallet — but
-   * within each group the largest balance leads, because that is the one most
-   * likely to cover what they came to move. A wallet with nothing in it is still
-   * listed: "you have no money here" differs from "this does not exist", and
-   * hiding it would leave somebody hunting for a currency they hold.
-   *
-   * `compareMoney` — decimal.js — never `Number()`. These are decimal STRINGS;
-   * the coercion is a lint error here and a text sort would put '9' above '100'.
-   * `.slice()` first, because the arrays are React Query's cached objects and
-   * sorting in place mutates what every other reader of those keys sees.
-   */
-  const walletSources: SourceOption[] = wallets
-    .slice()
-    .sort((a, b) => compareMoney(b.available, a.available))
-    .map((w) => ({
-      key: `wallet:${w.currency}`,
-      source: { kind: 'wallet', currency: w.currency },
-      title: t('transfer.walletLabel', { currency: w.currency }),
-      /*
-       * `available`, not `balance`: the difference is whatever is held against a
-       * pending withdrawal, and offering that as transferable produces a refusal
-       * the client cannot explain.
-       */
-      hint: t('money.availableBalance', { amount: formatMoney(w.available, w.currency) }),
-    }));
-
-  const accountSources: SourceOption[] = accounts
-    .slice()
-    .sort((a, b) => compareMoney(b.balance, a.balance))
-    .map((a) => ({
-      key: `account:${a.id}`,
-      source: { kind: 'account', account: a },
-      title: t('transfer.accountLabel', { login: a.login ?? t('accounts.loginPending') }),
-      hint: t('money.availableBalance', { amount: formatMoney(a.balance, a.currency) }),
-    }));
-
-  /* Flat, only to resolve the selected key back to its source. */
-  const sources = [...walletSources, ...accountSources];
+  const { walletSources, accountSources, sources } = buildTransferSources(wallets, accounts);
 
   /*
   /*
@@ -317,6 +271,8 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
         idempotencyKey.current,
       );
       idempotencyKey.current = null;
+      // Both ends moved: the wallet leg and the trading account.
+      await refreshMoney([[...keys.tradingAccounts.all()]]);
       setDone(true);
     } catch (err) {
       setError(apiErrorMessage(err, t('transfer.failed')));

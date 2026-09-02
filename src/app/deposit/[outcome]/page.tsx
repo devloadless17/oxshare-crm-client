@@ -9,6 +9,7 @@ import { PageLoader } from '@/components/ui/loader';
 import { MoneySheet } from '@/components/money/money-shell';
 import { depositsApi } from '@/lib/api/deposits';
 import { t } from '@/lib/i18n';
+import { useMoneyRefresh } from '@/hooks/use-money-refresh';
 
 /**
  * Where a gateway sends the client back after they pay.
@@ -72,6 +73,8 @@ export default function DepositOutcomePage() {
     reference ? 'checking' : 'failure',
   );
 
+  const refreshMoney = useMoneyRefresh();
+
   React.useEffect(() => {
     if (!reference) return;
 
@@ -86,6 +89,26 @@ export default function DepositOutcomePage() {
     depositsApi
       .settle(reference, method, controller.signal)
       .then((result) => {
+        /*
+         * REFRESH FIRST, on every settled outcome.
+         *
+         * This call is not a status check — it SETTLES, and a settlement
+         * credits the wallet (see the note on `depositsApi.settle`). The
+         * screen's next control is a link straight to /wallet, so without this
+         * the client followed a "deposit confirmed" message to a balance that
+         * had not moved. Reported.
+         *
+         * The socket cannot cover this one: the client has just come back from
+         * the provider's redirect, so the realtime connection is still
+         * handshaking while this runs, and Socket.IO has no replay for what it
+         * missed. A screen that moves money refreshes it itself.
+         *
+         * Not gated on `success`: a 'rejected' outcome releases the pending
+         * transaction, which changes the list just as a credit does. It is
+         * deliberately NOT awaited — the state below is what this component
+         * renders, and a slow refetch must not hold the answer back.
+         */
+        void refreshMoney();
         if (result.state === 'success') setState('success');
         else if (result.state === 'failure' || result.state === 'rejected') setState('failure');
         // Anything else is still in flight — including a failed ATTEMPT on a
@@ -103,7 +126,7 @@ export default function DepositOutcomePage() {
       });
 
     return () => controller.abort();
-  }, [reference, method, hinted]);
+  }, [reference, method, hinted, refreshMoney]);
 
   if (state === 'checking') {
     return (

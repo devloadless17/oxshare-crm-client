@@ -11,6 +11,7 @@ import { isPublicPath } from '@/lib/public-paths';
 import { clearSessionHint, markSessionHint } from '@/lib/session-hint';
 
 import type { components } from '@/lib/api/types.gen';
+import { keys } from '@/lib/query-keys';
 
 /**
  * Aliased from the schema generated out of the backend's Swagger, so a backend
@@ -122,7 +123,7 @@ export function UserProvider({
   // A query, not useEffect + useState: a signed-out visitor gets one 401 and
   // stays settled, instead of a render pass driven from an effect.
   const { data, isPending, error, refetch } = useQuery({
-    queryKey: ['user', 'me'],
+    queryKey: keys.session.me(),
     queryFn: async () => {
       const res = await apiClient.get<UserProfile>('/auth/me');
       startProactiveRefresh();

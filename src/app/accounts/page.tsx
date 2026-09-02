@@ -13,6 +13,7 @@ import { formatMoney } from '@/lib/money';
 import { t, type MessageKey } from '@/lib/i18n';
 import { OpenAccountButton } from '@/components/accounts/open-account-button';
 import { Tabs, TabPanel, type TabDefinition } from '@/components/ui/tabs';
+import { keys } from '@/lib/query-keys';
 
 /**
  * The client's MT5 trading accounts, live and demo.
@@ -50,7 +51,9 @@ const TABS: TabDefinition[] = [
 ];
 
 export default function AccountsPage() {
-  const accounts = useResource(['trading-accounts'], (signal) => tradingApi.getAccounts(signal));
+  const accounts = useResource(keys.tradingAccounts.all(), (signal) =>
+    tradingApi.getAccounts(signal),
+  );
 
   /*
    * `/trading/*` sits behind `EmailVerifiedGuard`, so for an unverified client

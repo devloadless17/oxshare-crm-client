@@ -33,6 +33,7 @@ import {
 } from '@/lib/notification-sound';
 import { resolveKind } from './notification-kinds';
 import { toastNotification } from './notification-toast';
+import { keys } from '@/lib/query-keys';
 
 /**
  * The notification bell, and the panel behind it — live since
@@ -61,8 +62,8 @@ import { toastNotification } from './notification-toast';
  * was read.
  */
 
-const COUNT_KEY = ['notifications', 'unread-count'] as const;
-const LIST_KEY = ['notifications'] as const;
+const COUNT_KEY = keys.notifications.unreadCount();
+const LIST_KEY = keys.notifications.all();
 const PAGE_SIZE = 30;
 
 export function NotificationsSheet() {
@@ -274,7 +275,7 @@ function NotificationsList({ unreadCount, enabled }: { unreadCount: number; enab
   const [markingAll, setMarkingAll] = React.useState(false);
 
   const query = useResource(
-    [...LIST_KEY, 'list'],
+    keys.notifications.list(),
     (signal) => notificationsApi.getNotifications({ limit: PAGE_SIZE }, signal),
     { enabled },
   );

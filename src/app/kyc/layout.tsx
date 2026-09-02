@@ -12,6 +12,7 @@ import { useUser } from '@/context/UserContext';
 import { PortalLayout } from '@/components/layout/portal-layout';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
 
@@ -142,7 +143,7 @@ function KycShell({ children }: { children: React.ReactNode }) {
   const kycReadable = user?.emailVerified === true;
 
   const config = useResource(
-    ['kyc-config'],
+    keys.kyc.config(),
     async (signal) => (await api.get<KycStepConfigDto[]>('/kyc/config', { signal })).data,
     { enabled: kycReadable },
   );

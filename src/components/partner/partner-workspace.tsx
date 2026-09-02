@@ -9,6 +9,7 @@ import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbOverview, type IbStatus } from '@/lib/api/partner';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * An approved partner's screen, top to bottom.
@@ -44,7 +45,7 @@ import { t } from '@/lib/i18n';
  * in.
  */
 export function ApprovedPanel({ account }: { account: NonNullable<IbStatus['account']> }) {
-  const overview = useResource<IbOverview>(['ib-overview'], (signal) =>
+  const overview = useResource<IbOverview>(keys.partner.overview(), (signal) =>
     partnerApi.overview(signal),
   );
 

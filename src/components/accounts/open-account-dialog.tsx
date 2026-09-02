@@ -26,6 +26,7 @@ import {
 } from '@/lib/api/trading';
 import { formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * The form that opens ONE trading account.
@@ -177,7 +178,14 @@ export function OpenAccountDialog({
       setError(null);
       setNeedsKyc(false);
       setOpened(account);
-      void queryClient.invalidateQueries({ queryKey: ['trading-accounts'] });
+      /*
+       * `tradingAccounts.all()` reaches the list AND the transfer/deposit
+       * pickers, which read `tradingAccounts.transferable()`. They used to be
+       * separate roots, so a client could open an account and not find it in
+       * the Transfer dropdown until a hard refresh.
+       */
+      void queryClient.invalidateQueries({ queryKey: keys.tradingAccounts.all() });
+      void queryClient.invalidateQueries({ queryKey: keys.dashboard.all() });
     },
     onError: (e: unknown) => {
       /*

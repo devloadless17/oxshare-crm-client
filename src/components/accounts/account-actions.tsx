@@ -24,6 +24,7 @@ import {
 import { apiErrorMessage } from '@/lib/api/errors';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * Everything a client can DO to one trading account, behind one menu.
@@ -85,8 +86,8 @@ export function AccountActions({ account }: { account: TradingAccount }) {
        * `trading-accounts`. Invalidating only the first leaves a stale caption
        * on the screen they navigate back to.
        */
-      void queryClient.invalidateQueries({ queryKey: ['trading-account', account.id] });
-      void queryClient.invalidateQueries({ queryKey: ['trading-accounts'] });
+      void queryClient.invalidateQueries({ queryKey: keys.tradingAccounts.detail(account.id) });
+      void queryClient.invalidateQueries({ queryKey: keys.tradingAccounts.all() });
     },
     onError: (e: unknown) => setNameError(apiErrorMessage(e, t('accounts.nameFailed'))),
   });

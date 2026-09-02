@@ -28,6 +28,7 @@ import { RequireAuth } from '@/components/auth/require-auth';
 import { UserMenu } from './user-menu';
 import { NotificationsSheet } from './notifications-sheet';
 import { t, type MessageKey } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 type KycStatusDto = components['schemas']['KycStatusDto'];
 
@@ -92,7 +93,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
   const closeMobile = () => setMobileOpen(false);
 
   const { data: kycStatus = 'not_started' } = useQuery({
-    queryKey: ['kyc-status'],
+    queryKey: keys.kyc.status(),
     queryFn: async () => (await apiClient.get<KycStatusDto | null>('/kyc/status')).data ?? null,
     select: (dto) => dto?.status ?? 'not_started',
     enabled: user?.emailVerified === true,
@@ -117,7 +118,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
    * a backoff storm, and the next navigation asks again.
    */
   const { data: externalLinks = [] } = useQuery({
-    queryKey: ['external-links'],
+    queryKey: keys.externalLinks.all(),
     queryFn: ({ signal }) => externalLinksApi.list(signal),
     staleTime: 5 * 60 * 1000,
     retry: false,

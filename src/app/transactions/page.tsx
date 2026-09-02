@@ -25,6 +25,7 @@ import {
 import { SignedAmount } from '@/components/money/signed-amount';
 import { t, type MessageKey } from '@/lib/i18n';
 import { movementLabelKey } from '@/lib/movement-label';
+import { keys } from '@/lib/query-keys';
 
 /**
  * The client's own transaction history — CORE-13's state machine, client side.
@@ -99,7 +100,7 @@ export default function TransactionsPage() {
   };
 
   const transactions = useResource(
-    ['transactions', query],
+    keys.transactions.list(query),
     (signal) => paymentsApi.getTransactions(query, signal),
     { enabled: !emailUnverified },
   );

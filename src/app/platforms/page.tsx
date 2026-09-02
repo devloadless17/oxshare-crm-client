@@ -7,6 +7,7 @@ import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { platformsApi, type PlatformKey, type PlatformLink } from '@/lib/api/platforms';
 import { t, type MessageKey } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * Where a client downloads the trading terminal.
@@ -57,7 +58,7 @@ const META: Record<PlatformKey, PlatformMeta> = {
 };
 
 export default function PlatformsPage() {
-  const platforms = useResource(['platforms'], (signal) => platformsApi.list(signal));
+  const platforms = useResource(keys.platforms.all(), (signal) => platformsApi.list(signal));
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6">
