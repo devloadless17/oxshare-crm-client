@@ -415,16 +415,23 @@ function parsePositions(value: unknown): AccountPosition[] | undefined {
     const openedAt = str('openedAt');
 
     /*
-     * `side` is required, and its absence is what this check exists to catch.
-     * The first version of the live payload carried MT5's numeric `action` and
-     * no label, so every pushed row rendered a blank Side column — a silent
-     * downgrade of the polled table, on the one screen where buy and sell are
-     * the difference between two opposite positions.
+     * `action` is required; `side` is NOT, because it is derivable from it.
+     *
+     * This asked for the label and dropped the whole array without one, which
+     * was too strict and cost a day. The server only learned to send `side` in
+     * a later release, so a portal deployed ahead of the CRM — the ordinary
+     * order, since a frontend ships in minutes and a backend does not — rejected
+     * every pushed row and silently fell back to polling. Live equity above a
+     * table that was not live, which is exactly what got reported.
+     *
+     * Requiring the DERIVABLE thing was the error. `action` is what MT5 actually
+     * sends and what cannot be reconstructed; the label is a rendering of it.
+     * So the label is taken from the server when it is there and computed when
+     * it is not, and a pushed row can no longer be lost to a version skew.
      */
     if (
       !ticket ||
       !symbol ||
-      !side ||
       volume === null ||
       priceOpen === null ||
       priceCurrent === null ||
@@ -440,7 +447,7 @@ function parsePositions(value: unknown): AccountPosition[] | undefined {
       ticket,
       symbol,
       action: it['action'],
-      side,
+      side: side ?? sideFromAction(it['action']),
       volume,
       priceOpen,
       priceCurrent,
@@ -457,6 +464,25 @@ function parsePositions(value: unknown): AccountPosition[] | undefined {
   }
 
   return rows;
+}
+
+/**
+ * MT5's numeric side, named, for a server that did not name it.
+ *
+ * A COMPATIBILITY SHIM and nothing more: `positionSideLabel` on the backend is
+ * the definition, this is what keeps a pushed row renderable when the CRM
+ * predates it. The vocabulary is already in this app anyway — the table matches
+ * on `'buy'` and `'sell'` to colour a row — so this adds no new concept, only a
+ * fallback for the one field that can be reconstructed.
+ *
+ * An unfamiliar code becomes `action <n>` rather than a blank, which is the rule
+ * the table's own comment states: a client can quote that to support, where an
+ * empty cell beside a real volume is what generates the ticket.
+ */
+function sideFromAction(action: number): string {
+  if (action === 0) return 'buy';
+  if (action === 1) return 'sell';
+  return `action ${action}`;
 }
 
 /**
