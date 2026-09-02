@@ -844,9 +844,14 @@ export const messages = {
   // when the page loads, and calling them real-time promises a stream that is
   // not there.
   'accounts.liveFiguresTitle': 'Live from MetaTrader 5',
-  'accounts.liveFiguresNote': 'Read from the trading server when this page loaded.',
-  'accounts.liveRefresh': 'Refresh',
-  'accounts.liveRefreshing': 'Refreshing…',
+  /*
+   * The state BEFORE the first read lands. It used to say "read from the
+   * trading server when this page loaded", which stopped being true when the
+   * panel started polling — and a note claiming the figure is as old as the
+   * page, on a panel refreshing every ten seconds, is worse than no note.
+   */
+  'accounts.liveFiguresNote': 'Live from MetaTrader 5',
+  'accounts.liveFiguresReadAt': 'Live from MetaTrader 5 · read at {time}',
   'accounts.equityLabel': 'Equity',
   'accounts.equityHint': 'Balance plus credit plus open profit — what you can act on.',
   'accounts.floatingLabel': 'Floating P/L',

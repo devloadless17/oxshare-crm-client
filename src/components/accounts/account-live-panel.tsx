@@ -42,11 +42,32 @@ import { t } from '@/lib/i18n';
  * transfer credits, and the transfer screen is where that is worth saying.
  */
 export function AccountLivePanel({ snapshot }: { snapshot: Resource<AccountSnapshot | null> }) {
+  const readAt = snapshot.updatedAt ? new Date(snapshot.updatedAt) : null;
+
   return (
     <section className="rounded-2xl border border-border bg-card p-5">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold">{t('accounts.liveFiguresTitle')}</h2>
-        <p className="text-xs text-muted-foreground">{t('accounts.liveFiguresNote')}</p>
+        {/*
+          WHEN these figures were read, in place of the Refresh button that used
+          to sit on this screen.
+
+          The button was doing two jobs — fetching, and reassuring somebody that
+          the number was current. The poll took over the first; this is the
+          second, and it is the more honest half: a timestamp says how old the
+          figure actually is, where a button only ever said that pressing it
+          would do something.
+
+          From React Query via `updatedAt`, not a `useState` set in an effect —
+          which is a lint error in this repo and would be a second source for a
+          fact the fetch already knows. `0` means nothing has landed yet, so the
+          undated note stands in until the first read.
+        */}
+        <p className="text-xs text-muted-foreground">
+          {readAt
+            ? t('accounts.liveFiguresReadAt', { time: readAt.toLocaleTimeString() })
+            : t('accounts.liveFiguresNote')}
+        </p>
       </header>
 
       <div className="mt-4">
