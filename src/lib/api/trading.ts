@@ -98,6 +98,15 @@ export type AccountSnapshot = components['schemas']['AccountSnapshotDto'];
 export type AccountPosition = components['schemas']['AccountPositionDto'];
 
 /**
+ * What the server did with this screen's request to be pushed live figures.
+ *
+ * `watching: false` means keep polling — see `tradingApi.watchAccount`. The
+ * `reason` is for a log, never for the client: "the trading server is full" is
+ * not something they can act on, and their figures are arriving regardless.
+ */
+export type AccountWatch = components['schemas']['AccountWatchDto'];
+
+/**
  * The landing page, in one response.
  *
  * One request rather than six because these panels are read in a single glance:
@@ -333,6 +342,37 @@ export const tradingApi = {
     const { data } = await apiClient.get<AccountPosition[]>(`/trading/accounts/${id}/positions`, {
       signal,
     });
+    return data;
+  },
+
+  /**
+   * Say this screen is OPEN, so the server pushes live figures to it.
+   *
+   * ## Why the screen has to keep saying so
+   *
+   * Nothing tells the trading server that a browser tab closed — a shut laptop
+   * and a backgrounded phone both send exactly nothing — so this registers a
+   * LEASE rather than a subscription. It expires unless it is renewed inside
+   * `ttlSeconds`, which is what stops an abandoned page costing MT5 reads for
+   * ever. `useLiveAccount` owns the heartbeat.
+   *
+   * ## `watching: false` is an ordinary answer
+   *
+   * Three reasons, and the screen's response to all of them is identical: keep
+   * polling `/live` and `/positions` the way it always did. The account has no
+   * MT5 login yet, or the bridge is already watching as many accounts as one
+   * round can cover, or it cannot be reached. None is an error, none is worth
+   * telling a client about, and the figures arrive either way — just less often.
+   *
+   * That is what makes this safe to call from a screen that already works: the
+   * live path is an enhancement, never a dependency.
+   */
+  async watchAccount(id: string, signal?: AbortSignal): Promise<AccountWatch> {
+    const { data } = await apiClient.post<AccountWatch>(
+      `/trading/accounts/${id}/watch`,
+      undefined,
+      { signal },
+    );
     return data;
   },
 

@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { Button } from '@/components/ui/button';
 import { useResource } from '@/hooks/use-resource';
+import { useLiveAccount } from '@/hooks/use-live-account';
 import { useUser } from '@/context/UserContext';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
@@ -164,34 +165,62 @@ function AccountDetail({ account }: { account: TradingAccount }) {
   )[account.status];
 
   /*
-   * ── LIVE, WITHOUT ANYBODY PRESSING ANYTHING ───────────────────────────────
+   * ── PUSHED WHILE THIS SCREEN IS OPEN ──────────────────────────────────────
    *
-   * Equity, floating P/L and margin move on every tick, so this panel was the
-   * one screen in the portal that was correct only at the instant somebody
-   * clicked Refresh. Asking a client to press a button to find out what their
-   * account is worth is asking them to do the polling themselves.
+   * The account screen tells the server it is being looked at, and the bridge
+   * reads this account on its own loop and pushes each reading over the socket
+   * the browser already holds. `useLiveAccount` writes those readings into the
+   * same query keys the two panels below render from, so nothing here has to
+   * thread a prop or hold a second copy.
    *
-   * TEN SECONDS, and the number is set by the throttle rather than by taste.
-   * `GET /accounts/:id/live` allows 12/min per client, so 6/min spends half the
-   * budget and leaves the rest for the focus refetch and a retry — polling at
-   * the limit would turn an ordinary tab-switch into a 429 on a money screen.
+   * WHY THIS EXISTS AT ALL, rather than a faster poll: every request to
+   * `/accounts/:id/live` crosses the bridge and takes the single MT5 session
+   * lock, so the cost scaled with VIEWERS × POLL RATE. That is what caps the
+   * route at 12/min, and it is why a livelier screen could not be bought by
+   * lowering the interval — a few dozen concurrent viewers already saturated
+   * the one session. Pushing makes the cost scale with ACCOUNTS BEING WATCHED
+   * instead: ten people on one account is one read, not ten.
+   */
+  const { live } = useLiveAccount(account.id);
+
+  /*
+   * ── THE POLL STAYS, AND SLOWS DOWN ────────────────────────────────────────
    *
-   * It costs nothing while nobody is looking: React Query does not poll a
-   * BACKGROUND tab (`refetchIntervalInBackground` is false by default), so a
-   * client who leaves this open in another window stops reading MT5 entirely,
-   * and `refetchOnWindowFocus` brings it current the moment they come back.
-   * That is what makes a ten-second poll on the bridge's single session lock
-   * defensible: it runs only while a person is actually watching it.
+   * It is not switched off when the push works, and that is the whole safety of
+   * this feature. Five things leave the feed silent — the socket is down, the
+   * bridge is unreachable or full, the account has no MT5 login yet, or the API
+   * predates the endpoint — and none of them are distinguishable from here. So
+   * the fallback is the behaviour this is falling back FROM: a ten-second poll,
+   * exactly as before.
+   *
+   * `live` reports that READINGS ARE ARRIVING rather than that the server agreed
+   * to send them, so a watch that is accepted and then goes quiet drops back to
+   * ten seconds on its own within `SILENCE_MS`.
+   *
+   * SIXTY seconds while pushed rather than nothing at all. A pushed reading and
+   * a polled one come from the same MT5 read, so the poll is not there to
+   * correct the feed — it is there so a feed that dies between two of these
+   * checks still leaves the screen with figures no older than a minute, and so
+   * `AsyncBoundary` keeps a real error to render if the route starts failing.
+   *
+   * TEN SECONDS is still set by the throttle, not by taste: 12/min per client,
+   * so 6/min leaves room for the focus refetch and a retry. Polling at the
+   * limit would turn an ordinary tab-switch into a 429 on a money screen.
+   *
+   * Either way it costs nothing while nobody is looking. React Query does not
+   * poll a BACKGROUND tab, so a client who leaves this open in another window
+   * stops reading MT5 entirely, and `refetchOnWindowFocus` brings it current the
+   * moment they come back.
    *
    * `retry: 0` stays. It crosses to MT5, and the default three retries turned
    * one failing load into a dozen requests, each waiting out the full read
    * timeout, all queued behind that same lock. With a poll running, a failed
-   * read is already retried ten seconds later by design.
+   * read is already retried by design.
    */
   const snapshot = useResource(
     keys.mt5Live.snapshot(account.id),
     (signal) => tradingApi.getAccountSnapshot(account.id, signal),
-    { retry: 0, refetchInterval: 10_000 },
+    { retry: 0, refetchInterval: live ? 60_000 : 10_000 },
   );
 
   return (
@@ -326,7 +355,7 @@ function AccountDetail({ account }: { account: TradingAccount }) {
         being read. Everything above settles once loaded, so putting the moving
         figures at the end lets the page come to rest from the top down.
       */}
-      <AccountPositions accountId={account.id} currency={account.currency} />
+      <AccountPositions accountId={account.id} currency={account.currency} live={live} />
     </div>
   );
 }

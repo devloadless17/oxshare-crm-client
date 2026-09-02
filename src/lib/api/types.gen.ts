@@ -1783,6 +1783,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/trading/accounts/{id}/watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Say this client is looking at the account, so live figures are pushed to them
+         * @description Registers a LEASE on the bridge: while it holds, the bridge reads this account on its own loop and pushes each reading to the socket as `account.live`. Nothing tells the bridge a browser tab closed, so the caller MUST re-register inside `ttlSeconds` or the watch expires — which is what stops an abandoned page costing MT5 reads for ever.
+         *
+         *     `watching: false` is an ordinary answer, never an error, and the fallback is the same for every reason it carries: keep polling `/accounts/:id/live`. A bridge that is down, full, or not configured costs the client nothing but the freshness they already had.
+         *
+         *     This route does NOT read MT5 and does not take the session lock, which is why it is throttled far more loosely than the two live reads beside it.
+         */
+        post: operations["TradingController_myAccountWatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/trading/accounts/{id}/positions": {
         parameters: {
             query?: never;
@@ -5157,6 +5181,20 @@ export interface components {
              * @example 62.40000000
              */
             floating: string;
+        };
+        AccountWatchDto: {
+            /** @description True when the bridge accepted the watch and live figures will be pushed over the socket. False means keep reading `/accounts/:id/live` — the screen works either way. */
+            watching: boolean;
+            /**
+             * @description Why the watch was not taken. `no-login` is a half-provisioned account with no MT5 login yet; `at-capacity` means the bridge is already watching as many accounts as one live round can cover, and refuses new ones so the viewers it already serves stay live; `unavailable` means the bridge is not configured or could not be reached. None of the three is an error, and a screen should render none of them.
+             * @enum {string}
+             */
+            reason?: "no-login" | "at-capacity" | "unavailable";
+            /**
+             * @description How long the bridge holds this watch without a heartbeat. The CALLER must re-register comfortably inside it — nothing tells the bridge a browser tab closed, so a watch is a lease that expires rather than a subscription that is cancelled. NULL when nothing was registered, in which case there is nothing to renew.
+             * @example 45
+             */
+            ttlSeconds: number | null;
         };
         AccountPositionDto: {
             /** @description MT5's position id — one per position, not per deal. */
@@ -9356,6 +9394,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccountSnapshotDto"];
+                };
+            };
+        };
+    };
+    TradingController_myAccountWatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountWatchDto"];
                 };
             };
         };

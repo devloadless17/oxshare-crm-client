@@ -33,26 +33,49 @@ import { keys } from '@/lib/query-keys';
  * of a feature — which is the distinction this screen could not draw before the
  * bridge exposed positions at all.
  */
-export function AccountPositions({ accountId, currency }: { accountId: string; currency: string }) {
+export function AccountPositions({
+  accountId,
+  currency,
+  /**
+   * Whether the page is receiving PUSHED readings for this account.
+   *
+   * Owned by the page rather than read here, because one watch feeds both this
+   * table and the live panel above it — `useLiveAccount` writes into both query
+   * keys from one socket event. A second copy of the hook in this component
+   * would register a second heartbeat for the same account and make the two
+   * panels disagree about whether the feed is up.
+   */
+  live = false,
+}: {
+  accountId: string;
+  currency: string;
+  live?: boolean;
+}) {
   /*
-   * POLLED on the same ten seconds as the snapshot beside it, and for a
-   * stronger reason: an open position's profit moves on every tick, and this is
-   * the panel a client watches WHILE the market moves. A number that only
-   * changed when they pressed a button was the one thing on this screen
-   * guaranteed to be out of date.
+   * POLLED, and the interval follows the feed for the same reason the snapshot's
+   * does — see the long note on `/accounts/[id]/page.tsx`.
+   *
+   * This panel has the stronger claim to being live of the two: an open
+   * position's profit moves on every tick, and this is the table a client
+   * watches WHILE the market moves. It is also the one whose pushed payload can
+   * legitimately be MISSING — the server drops the positions array when the
+   * event will not fit its notification channel — so the fallback poll is not
+   * only a safety net here, it is the delivery path for a client holding enough
+   * open trades. Sixty seconds while pushed is what bounds how stale that case
+   * can get.
    *
    * `GET /accounts/:id/positions` has its own 12/min bucket — the throttle is
-   * per route — so this spends half of its own budget rather than competing
-   * with the snapshot for one. React Query stops polling a background tab, so
-   * neither panel reads MT5 while nobody is looking.
+   * per route — so ten seconds spends half of its own budget rather than
+   * competing with the snapshot for one. React Query stops polling a background
+   * tab, so neither panel reads MT5 while nobody is looking.
    *
    * `retry: 0` for the reason the snapshot keeps it: this crosses the bridge's
-   * single MT5 lock, and a poll already retries ten seconds later.
+   * single MT5 lock, and a poll already retries by design.
    */
   const positions = useResource(
     keys.mt5Live.positions(accountId),
     (signal) => tradingApi.getAccountPositions(accountId, signal),
-    { retry: 0, refetchInterval: 10_000 },
+    { retry: 0, refetchInterval: live ? 60_000 : 10_000 },
   );
 
   /*
