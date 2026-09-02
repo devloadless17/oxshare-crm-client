@@ -1,41 +1,60 @@
 'use client';
 
 import * as React from 'react';
-import { Receipt } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
-import { DataTable, EmptyState, type Column } from '@/components/data-table';
 import { Tabs, type TabDefinition } from '@/components/ui/tabs';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
-import { tradingApi, type AccountDeal, type AccountStats } from '@/lib/api/trading';
-import { formatDecimal, formatMoney, isZeroMoney } from '@/lib/money';
-import { formatDealTime, moneySign, showsRealisedAmount, winRate } from '@/lib/account-stats';
+import { tradingApi, type AccountStats } from '@/lib/api/trading';
+import { formatDecimal, formatMoney } from '@/lib/money';
+import { formatDealTime, moneySign, winRate } from '@/lib/account-stats';
 import { todayIso } from '@/lib/date-range';
 import { t, type MessageKey } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
 /**
- * What this account did over a period: the statistics, and the deals behind them.
+ * How this account has PERFORMED over a period: the trading statistics.
  *
- * ## One request feeds both tables
+ * ## The deal list under these figures was removed deliberately
  *
- * `GET /trading/accounts/:id/history` returns the deals AND the statistics
- * computed from exactly those deals. Two requests would mean two round trips to
- * MT5 for one window and — worse — two windows that can disagree, so a client
- * would read totals describing one set beside a list showing another.
+ * This card used to carry an "Account history" table of every MT5 deal in the
+ * window beneath the stat cards. It is gone because it was the third list on one
+ * screen and the two beside it answer the questions a client actually opens this
+ * page with: "Deposits and withdrawals" shows the money in and out, and "Open
+ * positions" shows what is running right now.
  *
- * ## Everything is LIVE, and describes the selected period only
+ * **Know what went with it.** A client can no longer see their individual CLOSED
+ * TRADES anywhere in the portal — only the totals computed from them. That is a
+ * real loss and it was an accepted one, not an oversight, so anybody reading a
+ * stat card and looking for the rows behind it is not missing a bug.
  *
- * Read from the trading server on each view rather than from the CRM's ingested
- * table, which only ever holds what a background sweep has managed to copy. The
- * period is stated beside the figures because a statistics panel that does not
- * say what it covers gets read as all-time.
+ * `GET /trading/accounts/:id/history` still RETURNS those deals; the server
+ * computes the statistics from exactly the array it sends. Nothing renders it
+ * now, so the response carries rows this screen drops on the floor — which is
+ * the argument for a stats-only variant of that endpoint if the payload ever
+ * starts to matter.
+ *
+ * ## This is the CRM's own record, not a live MT5 read
+ *
+ * The endpoint serves `mt5_deals` — every deal the bridge has ingested, by
+ * ticket. It used to read the trading server on each view, and moving it here
+ * changed what this panel promises:
+ *
+ * - A trade that closed MINUTES ago may not be counted yet. Ingestion is a live
+ *   push plus a sweep every five minutes, so the lag is small and real.
+ * - Nothing here breaks when the bridge does. The live panel above and the
+ *   positions table below will show their error states while this one keeps
+ *   answering, which is correct — a closed deal is history and does not stop
+ *   being true because a connection dropped.
+ *
+ * The period is stated beside the figures either way, because a statistics panel
+ * that does not say what it covers gets read as all-time.
  *
  * ## Why the period options stop at 30 days
  *
- * MT5 truncates a request for a longer window silently rather than refusing it,
- * so the server caps the span at 31 days. Offering "this year" here would mean
- * offering a number that is quietly wrong.
+ * The server caps the window at 31, and the reason is no longer MT5's silent
+ * truncation — it is that the whole window is summed in one pass. Offering "this
+ * year" here would be asking for a total nobody has bounded.
  */
 const PERIODS: { value: string; days: number; key: MessageKey }[] = [
   { value: '7', days: 7, key: 'accounts.period7' },
@@ -56,9 +75,6 @@ export function AccountActivity({ accountId, currency }: { accountId: string; cu
   const history = useResource(
     keys.tradingAccounts.history(accountId, window.from, window.to),
     (signal) => tradingApi.getAccountHistory(accountId, window, signal),
-    // `retry: 0`: an MT5 read behind a single lock, with a Retry button in the
-    // error state. See the note on the snapshot query in the account page.
-    { retry: 0 },
   );
 
   const tabs: TabDefinition[] = PERIODS.map((option) => ({
@@ -89,14 +105,7 @@ export function AccountActivity({ accountId, currency }: { accountId: string; cu
         errorMessage={apiErrorMessage(history.error, t('accounts.activityLoadFailed'))}
         error={history.error}
       >
-        <div className="flex flex-col gap-6">
-          <StatsCards stats={history.data?.stats} currency={currency} dimmed={history.isFetching} />
-          <DealsTable
-            deals={history.data?.deals ?? []}
-            currency={currency}
-            dimmed={history.isFetching}
-          />
-        </div>
+        <StatsCards stats={history.data?.stats} currency={currency} dimmed={history.isFetching} />
       </AsyncBoundary>
     </section>
   );
@@ -111,8 +120,13 @@ export function AccountActivity({ accountId, currency }: { accountId: string; cu
  * activity", and the shared column widths force a percentage, a lot count and a
  * timestamp into the same narrow gutter.
  *
- * The tables on this screen stay tables: deals, transfers and positions are all
- * lists of like rows, which is what the shape is for.
+ * The tables on this screen stay tables: transfers and positions are lists of
+ * like rows, which is what the shape is for.
+ *
+ * These cards are now the WHOLE card. The stat grid used to sit under a
+ * "Trading statistics" sub-heading with the deal table under its own — with one
+ * section left, a second heading between the card's own title and the figures
+ * labels nothing.
  */
 function StatsCards({
   stats,
@@ -130,20 +144,21 @@ function StatsCards({
 
   return (
     <div>
-      <h3 className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-        {t('accounts.statsTitle')}
-      </h3>
-
       {/*
         WHY every figure is zero, on an account that plainly has activity.
 
         These statistics count CLOSED ROUND TRIPS only — that is what makes a win
         rate meaningful — so an account funded by deposits and transfers but never
         traded reports zero across the board. Correct, and unreadable without this
-        line: a full history table sits directly underneath, so a panel of zeros
-        above it reads as a broken screen rather than as "no trades yet", and the
-        first thing a client does about a broken screen is ask whether their money
-        is safe.
+        line: a panel of thirteen zeros reads as a broken screen rather than as
+        "no trades yet", and the first thing a client does about a broken screen
+        is ask whether their money is safe.
+
+        It matters MORE now than when it was written. The line then had a full
+        deal table under it, so a reader could at least see rows; with the table
+        gone these zeros are the only thing on the card, and the sentence is the
+        only thing standing between them and a support ticket. It must not point
+        at a table for the answer — which is why the copy no longer does.
 
         Shown only when the window really has no trades, so it never editorialises
         over real figures.
@@ -259,199 +274,6 @@ function buildStatCards(stats: AccountStats, currency: string): StatCard[] {
       ),
     },
   ];
-}
-
-/** The deal history for the same window, newest first. */
-function DealsTable({
-  deals,
-  currency,
-  dimmed,
-}: {
-  deals: AccountDeal[];
-  currency: string;
-  dimmed: boolean;
-}) {
-  const columns = React.useMemo(() => buildDealColumns(currency), [currency]);
-
-  return (
-    <div>
-      <h3 className="mb-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-        {t('accounts.historyTitle')}
-      </h3>
-      <DataTable
-        columns={columns}
-        rows={deals}
-        rowKey={(deal) => deal.ticket}
-        dimmed={dimmed}
-        empty={<EmptyState icon={Receipt} message={t('accounts.historyEmptyBody')} />}
-        // The whole window is in hand, so paging it here is a view concern and
-        // "page 2" means what it says — the case `clientPagination` documents.
-        clientPagination={{
-          pageSize: 25,
-          noun: [t('accounts.deal'), t('accounts.dealsPlural')],
-        }}
-      />
-    </div>
-  );
-}
-
-/**
- * MT5's action slugs, mapped to something a client reads.
- *
- * Keyed by the slug the API sends rather than by the numeric code, so this map
- * and the server's own labelling cannot disagree about what action 7 is.
- *
- * A code this map does not know falls through to `actionLabel` AS SENT — which
- * the API renders as `action 19` for an MT5 build newer than this list. That is
- * deliberately not blanked and not guessed: a client can quote an odd label to
- * support, where a blank type beside an amount is what generates the ticket.
- */
-const ACTION_LABELS: Record<string, MessageKey> = {
-  buy: 'accounts.dealBuy',
-  sell: 'accounts.dealSell',
-  balance: 'accounts.dealBalance',
-  credit: 'accounts.dealCredit',
-  charge: 'accounts.dealCharge',
-  correction: 'accounts.dealCorrection',
-  bonus: 'accounts.dealBonus',
-  commission: 'accounts.dealCommission',
-  commission_daily: 'accounts.dealCommission',
-  commission_monthly: 'accounts.dealCommission',
-  agent: 'accounts.dealCommission',
-  agent_daily: 'accounts.dealCommission',
-  agent_monthly: 'accounts.dealCommission',
-  interest: 'accounts.dealInterest',
-  dividend: 'accounts.dealDividend',
-  dividend_franked: 'accounts.dealDividend',
-  tax: 'accounts.dealTax',
-  buy_canceled: 'accounts.dealCanceled',
-  sell_canceled: 'accounts.dealCanceled',
-};
-
-function actionText(deal: AccountDeal): string {
-  const key = ACTION_LABELS[deal.actionLabel];
-  return key ? t(key) : deal.actionLabel;
-}
-
-function buildDealColumns(currency: string): Column<AccountDeal>[] {
-  return [
-    {
-      header: t('accounts.colTime'),
-      cell: (deal) => (
-        <span className="whitespace-nowrap tabular-nums">{formatDateTime(deal.dealtAt)}</span>
-      ),
-      sortable: true,
-      sortKey: 'dealtAt',
-      sortType: 'date',
-    },
-    {
-      header: t('accounts.colType'),
-      cell: (deal) => <span className="whitespace-nowrap">{actionText(deal)}</span>,
-    },
-    {
-      header: t('accounts.colSymbol'),
-      // A balance operation has no symbol worth showing — MT5 sends an empty
-      // string. An em dash, so the column reads "not applicable" rather than
-      // naming an instrument that was never traded.
-      cell: (deal) => <Muted>{deal.symbol || t('accounts.unknownValue')}</Muted>,
-    },
-    {
-      header: t('accounts.colVolume'),
-      align: 'right',
-      /*
-       * `0` on a funding row is NOISE, and it read as data.
-       *
-       * MT5 sends `volume: '0'` and `price: '0'` on every balance operation
-       * because neither concept applies — nothing was bought at no price. The
-       * table printed a bare `0` in both columns on all ten rows of an account
-       * whose history is entirely deposits and transfers, which says "zero lots
-       * were traded at a price of zero" rather than "this row is not a trade".
-       *
-       * An em dash is the same answer the Symbol column already gave, and the
-       * three now agree instead of two saying "not applicable" while a third
-       * asserts a quantity.
-       */
-      cell: (deal) =>
-        isZeroMoney(deal.volume) ? (
-          <Muted>{t('accounts.unknownValue')}</Muted>
-        ) : (
-          <span className="tabular-nums">{formatDecimal(deal.volume)}</span>
-        ),
-    },
-    {
-      header: t('accounts.colPrice'),
-      align: 'right',
-      // See Volume: a price of zero is "no price", not a price.
-      cell: (deal) =>
-        isZeroMoney(deal.price) ? (
-          <Muted>{t('accounts.unknownValue')}</Muted>
-        ) : (
-          <span className="tabular-nums">{formatDecimal(deal.price)}</span>
-        ),
-    },
-    {
-      header: t('accounts.colProfit'),
-      align: 'right',
-      sortable: true,
-      sortKey: 'profit',
-      // `money`, so amounts sort through decimal.js and '9' does not outrank
-      // '100' — the specific bug that sort type exists to close.
-      sortType: 'money',
-      cell: (deal) => <Profit deal={deal} currency={currency} />,
-    },
-    {
-      header: t('accounts.colTicket'),
-      align: 'right',
-      cell: (deal) => <span className="font-mono text-xs tabular-nums">{deal.ticket}</span>,
-    },
-  ];
-}
-
-/**
- * The AMOUNT cell — realised P/L on a trade, the sum moved on a funding row.
- *
- * ## `!closing` is not one case, and treating it as one HID REAL MONEY
- *
- * `closing` answers "did a TRADE realise a result", which is correctly false for
- * a deposit, a withdrawal, a credit or a CRM transfer — none of them close a
- * position. This returned the "pending" em dash for everything that was not a
- * closing trade, so an account funded with a $1,000 transfer showed a dash in
- * the only column carrying an amount. Every row on the screenshot that prompted
- * this fix was a real movement rendered as no movement.
- *
- * The two false cases need opposite treatment, which is why the branch is on
- * `isTrade` first:
- *
- * - An OPEN trade has not realised anything. Its `profit: '0'` is a placeholder,
- *   and formatting it as `$0.00` would claim a live position broke even. Em
- *   dash — the original reasoning, and still right.
- * - A BALANCE operation's amount is FINAL the moment it exists. There is no
- *   later row that will restate it, so a dash here loses the only number the
- *   row carries.
- *
- * A genuine zero on a funding row (a $0.00 correction) now prints as `$0.00`,
- * which is honest: that row really did move nothing, and it is a different claim
- * from "not applicable yet".
- */
-function Profit({ deal, currency }: { deal: AccountDeal; currency: string }) {
-  // The rule itself lives in `lib/account-stats`, pure and tested — it decides
-  // whether a client sees an amount at all, which is not a decision worth
-  // leaving un-pinned inside a cell renderer.
-  if (!showsRealisedAmount(deal)) {
-    return <span className="text-muted-foreground">{t('accounts.profitPending')}</span>;
-  }
-
-  return <Signed amount={deal.profit} currency={currency} />;
-}
-
-/**
- * A cell that is deliberately not a value — "this column does not apply here".
- *
- * Muted rather than plain, so a column of em dashes reads as absence at a glance
- * instead of competing with the figures beside it.
- */
-function Muted({ children }: { children: React.ReactNode }) {
-  return <span className="text-muted-foreground">{children}</span>;
 }
 
 /**

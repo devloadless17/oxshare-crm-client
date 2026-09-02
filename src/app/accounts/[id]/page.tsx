@@ -36,12 +36,21 @@ import { keys } from '@/lib/query-keys';
  * same way and a client practising deserves to see how they are doing. The demo
  * badge from the list carries through, so the environment is never in doubt.
  *
- * ## Four requests, not one
+ * ## Separate requests, split by what is still moving
  *
- * The account, the live snapshot, the statistics and the history are separate
- * because they FAIL separately and one of them crosses to a server we do not
- * own. A combined endpoint would mean an unreachable bridge blanking the
- * statistics and the history too — which are database reads that were fine. The
+ * The account, the history, the transfers, the live snapshot and the open
+ * positions are separate requests because they FAIL separately, and the line
+ * between them is whether the figure changes while it is being read:
+ *
+ * - **Database reads** — the account, its deal history and statistics, its
+ *   transfers. All of it answers from our own tables, so it survives the bridge
+ *   being unreachable.
+ * - **Bridge reads** — the live balance panel and the open positions. These
+ *   MUST cross to MT5: a balance and a floating P/L move on every tick, and a
+ *   stored copy would reach the client wearing the same label as a live one.
+ *
+ * A combined endpoint would collapse that distinction and let an unreachable
+ * bridge blank the history too, which is a database read that was fine. The
  * dashboard makes the opposite choice for the opposite reason: its panels are
  * read in one glance and must agree about the instant they describe.
  */

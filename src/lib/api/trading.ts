@@ -397,14 +397,20 @@ export const tradingApi = {
    * One window of this account's activity: the deals and the statistics from
    * exactly those deals.
    *
-   * Live from MT5 rather than from the CRM's ingested table, so the history is
-   * what the trading server says right now instead of what a sweep has managed
-   * to copy.
+   * Served from the CRM's own `mt5_deals` record, not read live from the trading
+   * server. Same deals by ticket — the bridge pushes each one live and re-sweeps
+   * a rolling 24-hour window — so the difference a client can notice is a lag of
+   * minutes on a deal that has only just closed. In exchange this panel keeps
+   * working while the bridge is down, and reaches further back than MT5 will
+   * answer for in one request.
+   *
+   * Unlike `getAccountSnapshot` and `getAccountPositions`, which MUST stay live:
+   * a balance and an open position move while somebody is looking at them.
    *
    * The window is CAPPED at 31 days server-side and rejected rather than
-   * truncated beyond that. Widening it is not a client-side decision: MT5
-   * silently truncates a larger request, and a short history that looks
-   * complete is worse than an error.
+   * truncated beyond that. Widening it is not a client-side decision: the whole
+   * window comes back in one array so the totals and the list provably describe
+   * the same rows, and paging the deals is what would have to change first.
    */
   async getAccountHistory(
     id: string,

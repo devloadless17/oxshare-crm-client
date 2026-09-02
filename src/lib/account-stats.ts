@@ -83,39 +83,6 @@ export function moneySign(value: string): MoneySign {
 }
 
 /**
- * Does this deal's amount column carry a FIGURE, or is it not yet decided?
- *
- * ## `closing` alone cannot answer this, and assuming it could hid real money
- *
- * `closing` comes from the server and means "a TRADE realised a result". It is
- * correctly false for a deposit, a withdrawal, a credit or a CRM transfer —
- * none of those close a position. The account screen branched on `!closing`
- * alone and rendered the "pending" em dash for all of them, so an account funded
- * by a $1,000 transfer showed a dash in the only column carrying an amount. Ten
- * real movements, every one displayed as no movement.
- *
- * The two false cases need OPPOSITE treatment:
- *
- * - An OPEN trade has realised nothing. Its `profit: '0'` is a placeholder, and
- *   formatting it as `$0.00` claims a live position broke even. Withhold it.
- * - A BALANCE operation's amount is FINAL the moment the row exists. Nothing
- *   later restates it, so withholding loses the only number the row has.
- *
- * Hence: withhold only for a trade that has not closed. A genuine `$0.00` on a
- * funding row then prints as `$0.00`, which is honest — that row really moved
- * nothing, a different claim from "not applicable yet".
- *
- * `actionLabel` rather than `closing` decides what a trade IS, because `closing`
- * is exactly what cannot tell an open trade from a deposit. `buy` and `sell` are
- * the only actions where the client is in the market, which is where the
- * backend's own `isTradeAction` draws the line.
- */
-export function showsRealisedAmount(deal: { actionLabel: string; closing: boolean }): boolean {
-  const isTrade = deal.actionLabel === 'buy' || deal.actionLabel === 'sell';
-  return !isTrade || deal.closing;
-}
-
-/**
  * A timestamp on an account screen, in the reader's own zone, 24-hour clock.
  *
  * ## The bug this closes: an invisible day boundary
