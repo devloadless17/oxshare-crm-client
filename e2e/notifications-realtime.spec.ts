@@ -211,8 +211,30 @@ test.describe('the bell updates without a refresh', () => {
     });
 
     await markEverythingRead(page);
-    const reason = `Realtime payload check ${Date.now()}`;
 
+    /*
+     * ⚠️ WAIT FOR THE SOCKET BEFORE CAUSING THE EVENT.
+     *
+     * `markEverythingRead` RELOADS, which destroys the socket and opens a new
+     * one, and Socket.IO has no replay: an event emitted while that handshake
+     * is still in flight is delivered to nobody and is gone. This test then
+     * failed on its own subject while the feature worked — the badge still
+     * appeared, because the reconnect handler re-syncs over HTTP, so the only
+     * symptom was the frame assertion.
+     *
+     * `40/realtime` is the Engine.IO frame for "namespace joined", which is
+     * exactly the moment the room exists to be emitted into. Waiting on the
+     * transport's own signal rather than on a sleep, so this cannot rot into a
+     * timing guess on a slower machine.
+     */
+    await expect
+      .poll(() => frames.some((f) => f.includes('40/realtime')), {
+        timeout: 20_000,
+        message: 'the realtime socket never joined its namespace',
+      })
+      .toBe(true);
+
+    const reason = `Realtime payload check ${Date.now()}`;
     await creditWallet('1.23000000', reason);
     await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: 20_000 });
 
@@ -285,5 +307,80 @@ test.describe('the bell updates without a refresh', () => {
      */
     await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: REALTIME_BUDGET_MS });
     expect(await markerSurvived(page)).toBe(true);
+  });
+});
+
+test.describe('the BALANCE updates without a refresh, not just the bell', () => {
+  /**
+   * ⚠️ THE REPORTED BUG: "when I fund a wallet the result doesn't appear in
+   * the wallet directly until I refresh."
+   *
+   * The bell tests above passed throughout it, and that is the point. The
+   * socket was fine, the toast was fine, the badge was fine — and
+   * `queryKeysFor` mapped `wallet.credited` to `[]`, so the one thing the
+   * client actually opened the page for did not move. A live notification
+   * about money, over a stale balance, is worse than no notification: it
+   * tells somebody the money arrived and then shows them it did not.
+   *
+   * `rebate.credited` and `commission.confirmed` had the same hole and are
+   * covered by `notification-kinds.test.ts`, which asserts all three refresh
+   * the wallet — they are harder to trigger from here (an ingested MT5 deal
+   * and an hourly confirm job) and the invalidation is identical.
+   */
+
+  /** The headline figure on the client's own wallet card. */
+  const balanceText = async (page: Page): Promise<string> => {
+    const heading = page.locator('p.tabular-nums').first();
+    await expect(heading).toBeVisible({ timeout: 20_000 });
+    return (await heading.textContent()) ?? '';
+  };
+
+  test('an operator crediting the wallet moves the figure the client is looking at', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.goto('/wallet');
+    const before = await balanceText(page);
+
+    // Same-document proof: this must not pass by way of a reload.
+    await plantMarker(page);
+
+    // A real admin action against the real endpoint — the exact thing the
+    // owner did by hand when he found this.
+    await creditWallet('7.77000000', 'e2e realtime balance');
+
+    await expect
+      .poll(async () => balanceText(page), {
+        timeout: REALTIME_BUDGET_MS,
+        message: 'the credited amount never reached the balance on screen',
+      })
+      .not.toBe(before);
+
+    expect(await markerSurvived(page), 'the page reloaded — this proves nothing').toBe(true);
+  });
+
+  test('the dashboard tiles move with it', async ({ page }) => {
+    /*
+     * The dashboard reads a DIFFERENT key from the wallet — one request
+     * carrying wallets, transactions and five server-side counts — so it went
+     * stale independently. A client who lands on the dashboard after a
+     * deposit is the common case, not an edge one.
+     */
+    test.setTimeout(120_000);
+    await page.goto('/dashboard');
+    const tiles = page.locator('main');
+    await expect(tiles).toBeVisible({ timeout: 20_000 });
+    const before = (await tiles.textContent()) ?? '';
+    await plantMarker(page);
+
+    await creditWallet('3.33000000', 'e2e realtime dashboard');
+
+    await expect
+      .poll(async () => (await tiles.textContent()) ?? '', {
+        timeout: REALTIME_BUDGET_MS,
+        message: 'the dashboard did not reflect a credit',
+      })
+      .not.toBe(before);
+    expect(await markerSurvived(page), 'the page reloaded — this proves nothing').toBe(true);
   });
 });

@@ -45,7 +45,7 @@ delegates to the pure `lib/route-guard.ts`.
 
 `<body>` is `h-dvh overflow-hidden` (`app/layout.tsx`). Every screen owns its own scroll
 container: the portal's `<main>`, `auth-shell`, and the full-screen error/not-found/session
-states. Without the cap the document scrolls *behind* whichever shell is already scrolling, and
+states. Without the cap the document scrolls _behind_ whichever shell is already scrolling, and
 the reader sees two scrollbars side by side on one screen — reported on `/partner` and fixed here
 rather than on that page, because the cause was the shell.
 
@@ -270,7 +270,7 @@ correct on `/transactions` would silently under-report a client's own trading he
 
   **The commission summary totals are BOUNDED, and the copy says so.** `GET /ib/commissions` caps
   its list server-side (200, newest first) and takes no parameters, so `lib/partner-earnings.ts`
-  sums *the rows it was given* — never "everything you have ever earned". The scope line under the
+  sums _the rows it was given_ — never "everything you have ever earned". The scope line under the
   tiles is what keeps that a true statement, and it is why the lifetime figure (summed over the
   whole ledger, in the database) is labelled differently and lives in the band above. Two money
   figures that differ with nothing saying which is which is the `/accounts/[id]` failure again.
@@ -458,6 +458,44 @@ answer that ships silently.
 - A range selected backwards is **normalised**, not refused.
 - `date-range.test.ts` and `transaction-filters.test.ts` pin both, and were mutation-checked.
 
+## Query keys come from the registry — `src/lib/query-keys.ts`
+
+Every `queryKey` and every `invalidateQueries` resolves through it; lint refuses an array
+literal in either position, and `queryKeysFor` returns the registry's own union type, so an
+invented key is a compile error. The twin registry in `oxshare-crm-admin` carries the full
+argument; the portal's own three bugs were:
+
+1. `queryKeysFor` mapped `wallet.credited`, `rebate.credited` and `commission.confirmed` —
+   the three kinds that ARE wallet credits — to `[]`. The client got the chime, the toast and
+   the bell badge, and a balance underneath that had not moved. **Reported.**
+2. Trading accounts were `['trading-accounts']` while the transfer and deposit pickers read
+   `['transferable-accounts']`, which nothing ever invalidated: open an account, go to
+   Transfer, and it is not in the list.
+3. `['kyc-status']` and `['kyc-config']` were separate roots, so no single invalidate could
+   cover the onboarding state.
+
+⚠️ **`mt5Live` is a root of its own, and must stay one.** `/accounts/:id/live` and its
+positions sibling are throttled 12/min per CLIENT and each takes the single MT5 session lock.
+Nested under `trading-accounts` they are prefix-matched by every bulk `tradingAccounts.all()`,
+so one "account opened" notification fires a burst of the most expensive read this system
+makes. `notification-kinds.test.ts` pins that nothing bulk-invalidates them — it caught this
+before it shipped.
+
+## A screen that MOVES money refreshes it itself — `hooks/use-money-refresh.ts`
+
+Four screens changed the balance and refreshed nothing, because none held a `QueryClient`:
+`/deposit/[outcome]` (its `settle()` CREDITS the wallet), `/withdraw` (the server debits on
+REQUEST, not on a hold), `/transfer`, and `/deposit`.
+
+**The socket is not a substitute, and the settle path is why.** The client has just returned
+from the provider's redirect, so the realtime connection is still handshaking while `settle()`
+runs — and Socket.IO has no replay for what it missed. Treat the socket as the thing that
+keeps OTHER tabs honest.
+
+**REFETCHED, never patched.** No `setQueryData` computing `balance - amount`: §6.1 bans
+client-side money arithmetic, and an optimistic balance is exactly the plausible invented
+number the wallet card's em-dash-not-zero rule exists to prevent.
+
 ## Money in the UI
 
 Balances arrive as **strings** (`'250.00000000'`) and stay strings all the way to the DOM.
@@ -572,6 +610,7 @@ admin's.
 
   `admin/` and `backend/` run much larger suites — 434 and ~1000 tests. The backend is where the
   money rules are actually enforced, and that remains the deepest coverage.
+
 - The README is create-next-app boilerplate and says port 3000 for the wrong reasons. Ignore it.
 
 <!-- BEGIN:nextjs-agent-rules -->
