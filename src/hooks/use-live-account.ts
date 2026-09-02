@@ -90,6 +90,20 @@ export interface LiveAccount {
    * describe the feed rather than the promise; see `SILENCE_MS`.
    */
   live: boolean;
+
+  /**
+   * Whether those readings are arriving WITH POSITIONS, which is a separate
+   * question and must not be folded into the one above.
+   *
+   * The server drops the positions array when an event will not fit
+   * `pg_notify`'s 8000 bytes, so a client with many open trades gets live
+   * account figures and NO pushed table. Reporting one flag for both told the
+   * positions table it was being fed when it was not, and it slowed its own
+   * fallback poll from ten seconds to sixty on the strength of it — leaving the
+   * client who needs that table most with the stalest copy of it, which is
+   * worse than before any of this existed.
+   */
+  positionsLive: boolean;
 }
 
 /**
@@ -118,6 +132,11 @@ export function useLiveAccount(accountId: string, enabled = true): LiveAccount {
   const queryClient = useQueryClient();
 
   const [lastPushAt, setLastPushAt] = React.useState<number | null>(null);
+  /*
+   * Tracked separately from `lastPushAt` rather than derived from it, because a
+   * reading can legitimately arrive WITHOUT positions — see `positionsLive`.
+   */
+  const [lastPositionsAt, setLastPositionsAt] = React.useState<number | null>(null);
 
   /*
    * ── THE HEARTBEAT ────────────────────────────────────────────────────────
@@ -260,6 +279,7 @@ export function useLiveAccount(accountId: string, enabled = true): LiveAccount {
        * position would keep seeing it.
        */
       if (push.positions) {
+        setLastPositionsAt(Number.isNaN(readAt) ? Date.now() : readAt);
         queryClient.setQueryData(keys.mt5Live.positions(accountId), push.positions, {
           updatedAt: Number.isNaN(readAt) ? Date.now() : readAt,
         });
@@ -287,9 +307,9 @@ export function useLiveAccount(accountId: string, enabled = true): LiveAccount {
     return () => clearInterval(timer);
   }, [enabled]);
 
-  const live = lastPushAt !== null && now - lastPushAt < SILENCE_MS;
+  const fresh = (at: number | null) => at !== null && now - at < SILENCE_MS;
 
-  return { live };
+  return { live: fresh(lastPushAt), positionsLive: fresh(lastPositionsAt) };
 }
 
 /**
@@ -343,10 +363,100 @@ export function parseLivePush(payload: Record<string, unknown> | undefined): Liv
     // as an em dash. A literal 0 there would read as a margin call.
     marginLevel: text('marginLevel'),
     readAt,
-    positions: Array.isArray(payload.positions)
-      ? (payload.positions as AccountPosition[])
-      : undefined,
+    positions: parsePositions(payload.positions),
   };
+}
+
+/**
+ * Narrow the position rows, or drop the whole array.
+ *
+ * ## Why this is not a cast
+ *
+ * It was one, and that was inconsistent with the care taken over the account
+ * figures three lines above: `profit` and `swap` reach `formatMoney` and
+ * `moneySign` exactly as `equity` does, so a row carrying JSON numbers renders a
+ * rounded P/L that looks entirely ordinary. Same boundary, same rule.
+ *
+ * ## ALL OR NOTHING, and that is deliberate
+ *
+ * One malformed row drops the array, which leaves the table on its polled copy
+ * rather than showing a partial book. A client's open positions are a SET — a
+ * table quietly missing the one row that failed to parse is a client who thinks
+ * they closed something they still hold, which is far worse than a table that
+ * is ten seconds old.
+ *
+ * `undefined` here therefore reads exactly like the server dropping the array:
+ * "unchanged, ask separately". The fallback poll is what answers.
+ */
+function parsePositions(value: unknown): AccountPosition[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const rows: AccountPosition[] = [];
+
+  for (const row of value) {
+    if (typeof row !== 'object' || row === null) return undefined;
+
+    const it = row as Record<string, unknown>;
+    const str = (key: string): string | null => {
+      const value = it[key];
+      return typeof value === 'string' ? value : null;
+    };
+    const nullableStr = (key: string) =>
+      it[key] === null || it[key] === undefined ? null : str(key);
+
+    const ticket = str('ticket');
+    const symbol = str('symbol');
+    const side = str('side');
+    const volume = str('volume');
+    const priceOpen = str('priceOpen');
+    const priceCurrent = str('priceCurrent');
+    const profit = str('profit');
+    const swap = str('swap');
+    const openedAt = str('openedAt');
+
+    /*
+     * `side` is required, and its absence is what this check exists to catch.
+     * The first version of the live payload carried MT5's numeric `action` and
+     * no label, so every pushed row rendered a blank Side column — a silent
+     * downgrade of the polled table, on the one screen where buy and sell are
+     * the difference between two opposite positions.
+     */
+    if (
+      !ticket ||
+      !symbol ||
+      !side ||
+      volume === null ||
+      priceOpen === null ||
+      priceCurrent === null ||
+      profit === null ||
+      swap === null ||
+      !openedAt ||
+      typeof it['action'] !== 'number'
+    ) {
+      return undefined;
+    }
+
+    rows.push({
+      ticket,
+      symbol,
+      action: it['action'],
+      side,
+      volume,
+      priceOpen,
+      priceCurrent,
+      // Null when unset. MT5 stores an absent stop as the price 0, and `0.00`
+      // in a stop-loss column reads as an order to close at zero.
+      stopLoss: nullableStr('stopLoss'),
+      takeProfit: nullableStr('takeProfit'),
+      profit,
+      swap,
+      commission: nullableStr('commission'),
+      comment: nullableStr('comment'),
+      openedAt,
+    });
+  }
+
+  return rows;
 }
 
 /**

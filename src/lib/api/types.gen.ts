@@ -5207,10 +5207,12 @@ export interface components {
              */
             action: number;
             /**
-             * @description The side, named. Unknown codes pass through raw.
-             * @enum {string}
+             * @description The side, named from MT5's numeric action. NOT a closed set: an unfamiliar code passes through as `action <n>` rather than being blanked, so a client can quote it to support. Render an unknown value AS IS — a blank cell beside a real volume and a real profit is what generates the ticket.
+             * @example buy
+             * @example sell
+             * @example action 7
              */
-            side: "buy" | "sell";
+            side: string;
             /** @example 1.00000000 */
             volume: string;
             /** @example 1.08542000 */

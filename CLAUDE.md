@@ -245,6 +245,21 @@ event will not fit `pg_notify`'s 8000 bytes, so absence means "unchanged, ask se
 `[]` there would tell a client holding three trades that they hold none — the accounts list shipped
 that exact bug once already.
 
+That contract is why the hook returns **two** flags. `live` says account figures are arriving;
+`positionsLive` says they are arriving WITH the table. Folding them into one told the positions
+table it was being fed when it was not, and it slowed its own fallback poll to 60s on the strength
+of it — so the client with the most open trades, the one whose array gets dropped, ended up with
+the stalest table. Worse than before the live path existed.
+
+⚠️ **A pushed position row must be the SAME SHAPE as a polled one.** Both fill the same table
+through the same generated type, so a field on one and not the other is not a type error — it is a
+column that empties itself when a reading arrives. `side` was omitted from the first live payload
+and every pushed row lost its Buy/Sell label while the equity above it updated perfectly.
+`positionSideLabel` on the backend is now the single definition both paths use, and
+`parseLivePush` rejects a row without it. A malformed row drops the WHOLE array: open positions are
+a set, and a table quietly missing one row is a client who thinks they closed something they still
+hold.
+
 - **`/partner`** is full width on **every** state — no `max-w-*`, no `mx-auto` on the route. The
   four non-approved states were briefly capped, on the reasoning that a lone "apply" card stretched
   across an ultrawide monitor is a line of text with a button off to the right. That reasoning is

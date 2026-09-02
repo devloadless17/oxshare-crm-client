@@ -91,6 +91,87 @@ describe('parseLivePush — what may reach a money formatter', () => {
   });
 });
 
+/**
+ * The position rows, which reach the same table the polled route fills.
+ *
+ * Both of these were shipped broken and are the reason the table looked dead
+ * while the equity above it updated: the payload carried MT5's numeric `action`
+ * and no `side` label, so every pushed row rendered a blank Buy/Sell column.
+ */
+describe('parseLivePush — the position rows', () => {
+  const POSITION: Record<string, unknown> = {
+    ticket: '90210',
+    symbol: 'EURUSD',
+    action: 0,
+    side: 'buy',
+    volume: '0.10000000',
+    priceOpen: '1.09000000',
+    priceCurrent: '1.09120000',
+    stopLoss: null,
+    takeProfit: null,
+    profit: '-12.40000000',
+    swap: '0.00000000',
+    commission: null,
+    comment: null,
+    openedAt: '2026-09-02T09:15:00.000Z',
+  };
+
+  const withPositions = (rows: unknown[]) => parseLivePush({ ...VALID, positions: rows });
+
+  it('accepts a well-formed row whole', () => {
+    const rows = withPositions([POSITION])?.positions;
+
+    expect(rows).toHaveLength(1);
+    expect(rows?.[0]?.side).toBe('buy');
+    expect(rows?.[0]?.profit).toBe('-12.40000000');
+    expect(rows?.[0]?.stopLoss).toBeNull();
+  });
+
+  /*
+   * THE bug this describe block exists for.
+   *
+   * `side` is what the table renders — `action` is the raw code beside it — so a
+   * payload without the label produces rows whose Buy/Sell column is empty. On
+   * the one screen where buy and sell are opposite positions, that is not a
+   * cosmetic gap.
+   */
+  it('rejects rows that carry the numeric action but no named side', () => {
+    const { side: _missing, ...withoutSide } = POSITION;
+    expect(withPositions([withoutSide])?.positions).toBeUndefined();
+  });
+
+  /*
+   * Same §6.1 rule as the account figures: `profit` and `swap` reach
+   * `formatMoney` and `moneySign`, so a row carrying JSON numbers renders a
+   * rounded P/L that looks entirely ordinary.
+   */
+  it('rejects a row whose money arrived as numbers', () => {
+    expect(withPositions([{ ...POSITION, profit: -12.4 }])?.positions).toBeUndefined();
+  });
+
+  /*
+   * ALL OR NOTHING. A client's open positions are a SET, and a table quietly
+   * missing the one row that failed to parse is a client who believes they
+   * closed something they still hold. Dropping the array leaves the polled copy
+   * on screen, which is merely old.
+   */
+  it('drops the whole array when a single row is malformed', () => {
+    const { ticket: _gone, ...broken } = POSITION;
+    expect(withPositions([POSITION, broken])?.positions).toBeUndefined();
+  });
+
+  /*
+   * An unfamiliar MT5 code arrives as `action <n>` and must survive. The DTO
+   * used to declare `enum: ['buy','sell']` while the server could send exactly
+   * this, so narrowing against that union would have rejected the rows the
+   * fallback exists to keep renderable.
+   */
+  it('keeps a side it does not recognise rather than refusing the row', () => {
+    const rows = withPositions([{ ...POSITION, action: 7, side: 'action 7' }])?.positions;
+    expect(rows?.[0]?.side).toBe('action 7');
+  });
+});
+
 describe('floatingFrom — equity minus balance minus credit', () => {
   const push = (over: Partial<LivePush>): LivePush => ({
     ...(parseLivePush(VALID) as LivePush),
