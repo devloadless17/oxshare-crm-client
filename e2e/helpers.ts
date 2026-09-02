@@ -477,11 +477,33 @@ export function newClient(): { email: string; password: string } {
  * that already has a choice alone.
  */
 export async function openDocumentStep(page: Page): Promise<void> {
-  await page.goto('/kyc/step/2');
+  await openTypedDocumentStep(page, 2, /passport/i);
+}
+
+/**
+ * Reach a document step with its upload tiles actually rendered.
+ *
+ * A document step shows a CHOICE of type first — Passport / ID card, or
+ * Utility bill / Bank statement / Tenancy agreement — and the tiles only exist
+ * once one is picked. A bare `goto` therefore lands on a step with no
+ * `input[type=file]` anywhere, which is indistinguishable from a broken step.
+ *
+ * That is what took the address case down in CI and not locally: a developer's
+ * fixture has usually already chosen a type and kept it, while a freshly
+ * seeded database has not, so `requirePrecondition` failed under E2E_STRICT
+ * saying "no document tiles rendered" — accurate, and about the fixture rather
+ * than the product.
+ */
+export async function openTypedDocumentStep(
+  page: Page,
+  step: number,
+  typeCard: RegExp,
+): Promise<void> {
+  await page.goto(`/kyc/step/${step}`);
   await page.waitForLoadState('networkidle');
   const uploader = page.locator('input[type="file"]').first();
   if (await uploader.count()) return;
-  const firstCard = page.getByRole('button', { name: /passport/i }).first();
+  const firstCard = page.getByRole('button', { name: typeCard }).first();
   if (await firstCard.isVisible().catch(() => false)) {
     await firstCard.click();
     await expect(page.locator('input[type="file"]').first()).toBeAttached({ timeout: 15_000 });

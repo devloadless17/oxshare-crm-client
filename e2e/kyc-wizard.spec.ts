@@ -1,6 +1,12 @@
 import { type Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { TINY_PNG, openDocumentStep, resetKycFixture, requirePrecondition } from './helpers';
+import {
+  TINY_PNG,
+  openDocumentStep,
+  openTypedDocumentStep,
+  resetKycFixture,
+  requirePrecondition,
+} from './helpers';
 
 /**
  * KYC onboarding, on the device it is actually used from.
@@ -255,13 +261,26 @@ test.describe('choosing a document but not confirming it', () => {
 
   test('keeps the field label visible while confirming', async ({ page }) => {
     /*
-     * The address step has TWO tiles — "Primary Page (Page 1)" and "Page 2 /
-     * Supporting Document" — and the preview state dropped the label, leaving
-     * two identical cards showing a camera filename like 8683608071553.jpg.
-     * That is what made one upload look like a duplicate of the other.
+     * Reported behaviour this guards: choosing a file swapped the tile for a
+     * preview and DROPPED its label, leaving cards that showed only a camera
+     * filename like 8683608071553.jpg — so on a step with more than one tile
+     * an operator could not tell which document each was for, and one upload
+     * looked like a duplicate of the other.
+     *
+     * ⚠️ This test asserted the literal text "Primary Page", and had not run
+     * in a long time. Migration 0072 deliberately retired that wording (a
+     * utility bill is one page; its part is "The Bill"), and the step's shape
+     * differs between a freshly migrated database and one an operator has
+     * edited in the KYC builder — three direct tiles in one, a type choice
+     * revealing parts in the other. The `requirePrecondition` above was
+     * skipping the whole case on any database of the second shape, so it went
+     * green by never running and its assertion quietly went stale.
+     *
+     * It reads the label OFF THE TILE now and asserts that same text survives
+     * the preview. That is the actual regression, it does not care which
+     * document types are configured, and it cannot go stale against a rename.
      */
-    await page.goto('/kyc/step/4');
-    await page.waitForLoadState('networkidle');
+    await openTypedDocumentStep(page, 4, /utility bill|bank statement|tenancy/i);
 
     const tiles = page.locator('input[type="file"]:not([capture])');
     requirePrecondition(
@@ -269,15 +288,27 @@ test.describe('choosing a document but not confirming it', () => {
       'no document tiles rendered for this KYC step',
     );
 
+    // The tile's own caption, whatever the configuration calls it. Read from
+    // the FIRST tile, which is the one the upload below goes into.
+    const tile = page.getByTestId('kyc-document-tile').first();
+    await expect(tile).toBeVisible();
+    // The FIRST paragraph is the caption; the ones after it are the hint and
+    // the state text. `textContent()` on the tile itself runs them together
+    // with no separator, which is why this reads the element and not the tile.
+    const labelBefore = ((await tile.locator('p').first().textContent()) ?? '').trim();
+    expect(labelBefore, 'the tile had no caption to begin with').not.toBe('');
+
     await tiles.first().setInputFiles({
       name: 'bill.png',
       mimeType: 'image/png',
       buffer: TINY_PNG,
     });
 
+    // Chosen and previewed, deliberately not confirmed — the state the label
+    // used to vanish in.
     await expect(page.getByRole('button', { name: /use this/i }).first()).toBeVisible();
     await expect(
-      page.getByText(/primary page/i).first(),
+      tile.getByText(labelBefore, { exact: false }),
       'the tile stopped saying which document it is for',
     ).toBeVisible();
   });

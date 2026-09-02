@@ -287,6 +287,12 @@ export function DocumentUploader({
         if (f) void choose(f);
       }}
       aria-describedby={isErrored ? `${field}-error` : undefined}
+      /* A handle for the e2e that guards the label surviving the preview
+         state (kyc-wizard.spec.ts). The tile is a div with no role and no
+         accessible name of its own — the alternative was a test coupled to
+         Tailwind class names, which breaks on a restyle and says nothing
+         about the behaviour. */
+      data-testid="kyc-document-tile"
       className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-200 min-h-[170px] w-full ${
         dragging
           ? 'border-ring bg-primary/10'
