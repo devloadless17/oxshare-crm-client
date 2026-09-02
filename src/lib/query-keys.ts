@@ -74,10 +74,6 @@ export const keys = {
     transferable: () => ['trading-accounts', 'transferable'] as const,
     selfService: () => ['trading-accounts', 'self-service'] as const,
     detail: (id: string) => ['trading-accounts', 'detail', id] as const,
-    /** The account's own deal history — a CRM-side paged read of `mt5_deals`,
-     *  cheap, and correctly refreshed with the account. */
-    history: (id: string, from: string, to: string) =>
-      ['trading-accounts', 'detail', id, 'history', from, to] as const,
   },
 
   /**

@@ -908,19 +908,6 @@ export const messages = {
   'accounts.colOpened': 'Opened',
   'accounts.openTerminal': 'Open MetaTrader 5',
 
-  // ── Activity: statistics and history over one window ──────────────────────
-  'accounts.activityTitle': 'Activity',
-  'accounts.activityPeriod': '{from} — {to}',
-  'accounts.activityLoading': 'Loading this account activity',
-  'accounts.activityLoadFailed': 'We could not load this account activity.',
-  // The options stop at 30 days because the trading server truncates a longer
-  // request silently — offering "this year" would offer a quietly wrong number.
-  'accounts.period7': 'Last 7 days',
-  'accounts.period30': 'Last 30 days',
-  'accounts.colMetric': 'Metric',
-  'accounts.colValue': 'Value',
-  'accounts.statsWinLossLabel': 'Won / lost',
-
   // ── Deposits and withdrawals on ONE account ───────────────────────────────
   //
   // "Deposits and withdrawals" from the ACCOUNT's point of view, which is the
@@ -949,56 +936,11 @@ export const messages = {
   'accounts.statePending': 'Pending',
   'accounts.stateFailed': 'Failed',
 
-  // ── Statistics ────────────────────────────────────────────────────────────
-  //
-  // No section heading here any more. The stat grid is the whole of the Activity
-  // card since the deal table under it was removed, and a sub-heading between the
-  // card's own title and its only content labels nothing.
-  'accounts.statsTrades': 'Closed trades',
-  'accounts.statsWinRate': 'Win rate',
-  'accounts.statsWinRateValue': '{rate}%',
-  // Spelled out rather than shown as "8 / 2", which reads as a fraction of the
-  // total — and wins and losses do NOT add up to the total when a trade closes
-  // flat.
-  'accounts.statsWinLoss': '{wins} won · {losses} lost',
-  'accounts.statsVolume': 'Volume',
-  'accounts.statsVolumeUnit': '{lots} lots',
-  'accounts.statsNetProfit': 'Realised P/L',
-  'accounts.statsGrossProfit': 'Gross profit',
-  'accounts.statsGrossLoss': 'Gross loss',
-  'accounts.statsBest': 'Best trade',
-  'accounts.statsWorst': 'Worst trade',
-  'accounts.statsCommission': 'Commission',
-  'accounts.statsSwap': 'Swap',
-  'accounts.statsFirstDeal': 'First activity',
-  'accounts.statsLastDeal': 'Last activity',
-  /*
-   * Neither of the next two strings may point at another panel for the answer.
-   *
-   * Both used to end "…in the history below", which was true while a deal table
-   * sat under these cards. It is gone, and the nearest replacement —
-   * "Deposits and withdrawals" — renders only for LIVE accounts, so pointing at
-   * it would be a sentence that is false on every demo account.
-   */
-  'accounts.statsEmptyBody': 'Statistics appear here once trades close on this account.',
-  /*
-   * Shown ABOVE the cards when the window has no closed trades but the account
-   * does have activity — the case `statsEmptyBody` cannot cover, because the
-   * cards render and every one of them reads zero.
-   *
-   * It names what is counted rather than apologising for the zeros: the reader's
-   * question is "why does this say nothing when I have funded this account", and
-   * "these count closed trades" answers it in one line.
-   */
-  'accounts.statsNoTradesNote':
-    'These figures count closed trades only. This account has no closed trades in this period — ' +
-    'deposits, withdrawals and transfers are not counted here.',
-
   // ── Table columns, shared across the account panels ───────────────────────
   //
-  // What is left of a longer block: the deal table these mostly belonged to was
-  // removed from the Activity card, and only the headers the transfers and
-  // positions tables still use survive it.
+  // What is left of a longer block: these mostly belonged to the deal table on
+  // the Activity card, and both that table and the card itself are gone. Only
+  // the headers the transfers and positions tables still use survive.
   'accounts.colTime': 'When',
   'accounts.colSymbol': 'Symbol',
   'accounts.colVolume': 'Volume',
