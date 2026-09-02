@@ -34,11 +34,13 @@ import { keys } from '@/lib/query-keys';
  * ## Why transfers and not the MT5 balance deals
  *
  * Both describe money moving on the account, and they are different records.
- * MT5's balance deals are in the activity history above, as the trading server
- * reports them. THIS is the CRM's own record of the same movements: it carries
- * the state a client actually needs — a transfer can be `pending` while the
- * bridge confirms, and that is the state somebody is looking for when they ask
- * where their money went. A deal only exists once it has already happened.
+ * MT5's balance deals are the trading server's version, and nothing in the
+ * portal renders them any more — the Activity card that did was removed from
+ * `/accounts/:id` along with the history request behind it. THIS is the CRM's
+ * own record of the same movements, and now the only one on the screen: it
+ * carries the state a client actually needs — a transfer can be `pending` while
+ * the bridge confirms, and that is the state somebody is looking for when they
+ * ask where their money went. A deal only exists once it has already happened.
  *
  * ## Filtered in the browser, and that is bounded
  *

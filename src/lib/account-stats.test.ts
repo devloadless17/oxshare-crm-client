@@ -1,51 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { moneySign, winRate } from './account-stats';
+import { moneySign } from './account-stats';
 
 /**
- * The two derivations on the trading-account statistics panel.
+ * The sign derivation behind every coloured money figure on the account panels.
  *
- * Both are here for the same reason `date-range.test.ts` is: the wrong answer
- * renders perfectly. A win rate computed against the wrong denominator is a
- * plausible percentage, and a P/L sign taken from a float is a plausible colour.
- * Neither throws, and neither is visible in review.
+ * Here for the same reason `date-range.test.ts` is: the wrong answer renders
+ * perfectly. A P/L sign taken from a float is a plausible colour — it does not
+ * throw, and it is not visible in review.
  *
  * Mutation-checked when written: each guarantee was deliberately broken and the
- * named test failed on the right assertion. One exception, recorded because it
- * matters more than the test does — the wrong win-rate denominator could not be
- * mutated IN, because `winRate` takes only `trades` and `wins` and `losses` is
- * not in scope to divide by. The type prevents it; the test below pins the
- * arithmetic that remains.
+ * named test failed on the right assertion.
+ *
+ * `winRate` was pinned here too, holding the one denominator rule that makes a
+ * win rate honest. It went when the Activity card and the history request behind
+ * it were removed from `/accounts/:id` — see the note in `account-stats.ts`
+ * before reviving those statistics.
  */
-
-describe('winRate — the denominator', () => {
-  /*
-   * THE regression this file exists for.
-   *
-   * `wins / (wins + losses)` is the obvious implementation and it is wrong,
-   * because a trade closing at exactly zero is neither a win nor a loss. This
-   * account won 8 of 20 — 40% — and the broken version reports 80%.
-   *
-   * The numbers are chosen so the two answers are far apart. An account with no
-   * scratch trades gives the same result either way, which is exactly why the
-   * bug survives on most test data.
-   */
-  it('divides by every closed trade, not by wins plus losses', () => {
-    expect(winRate({ trades: 20, wins: 8 })).toBe(40);
-  });
-
-  it('agrees with the naive version when nothing closed flat', () => {
-    expect(winRate({ trades: 10, wins: 7 })).toBe(70);
-  });
-
-  /*
-   * Null, never 0. "0% of no trades" is a statement about performance that has
-   * not happened, and the panel renders the null as an em dash — the same rule
-   * the wallet follows for a currency that has not been opened.
-   */
-  it('is null with no closed trades, rather than zero percent', () => {
-    expect(winRate({ trades: 0, wins: 0 })).toBeNull();
-  });
-});
 
 describe('moneySign — what colours a P/L figure', () => {
   /*

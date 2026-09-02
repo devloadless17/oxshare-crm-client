@@ -12,13 +12,12 @@ import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { t, type MessageKey } from '@/lib/i18n';
 import { AccountLivePanel } from '@/components/accounts/account-live-panel';
 import { AccountPositions } from '@/components/accounts/account-positions';
-import { AccountActivity } from '@/components/accounts/account-activity';
 import { AccountTransactions } from '@/components/accounts/account-transactions';
 import { AccountActions } from '@/components/accounts/account-actions';
 import { keys } from '@/lib/query-keys';
 
 /**
- * ONE trading account: what it holds now, what it has done, and what moved.
+ * ONE trading account: what it holds now, what moved, and what is running.
  *
  * ## The rule this screen exists to keep
  *
@@ -31,26 +30,38 @@ import { keys } from '@/lib/query-keys';
  *
  * ## Live and demo share this page, and differ in exactly one way
  *
- * Demo drops the money-movement action. Everything else — the MT5 figures, the
- * statistics, the history — is identical, because MT5 tracks a demo account the
- * same way and a client practising deserves to see how they are doing. The demo
- * badge from the list carries through, so the environment is never in doubt.
+ * Demo drops the money-movement panel and its action. Everything else — the MT5
+ * figures, the open positions — is identical, because MT5 tracks a demo account
+ * the same way and a client practising deserves to see how they are doing. The
+ * demo badge from the list carries through, so the environment is never in
+ * doubt.
+ *
+ * ## THE ACTIVITY CARD IS GONE, and with it the trading statistics
+ *
+ * This page used to carry an "Activity" card between the live panel and the
+ * transfers: a period picker over `GET /trading/accounts/:id/history`, rendering
+ * thirteen stat figures computed from the deals in the window. The card, that
+ * request and the strings behind it were removed together.
+ *
+ * **Know what went with it.** A client can no longer see closed-trade totals —
+ * win rate, realised P/L, volume, best and worst trade — anywhere in the portal.
+ * The endpoint still exists and still answers; nothing here calls it. Anybody
+ * looking for those figures is not chasing a bug.
  *
  * ## Separate requests, split by what is still moving
  *
- * The account, the history, the transfers, the live snapshot and the open
- * positions are separate requests because they FAIL separately, and the line
- * between them is whether the figure changes while it is being read:
+ * The account, the transfers, the live snapshot and the open positions are
+ * separate requests because they FAIL separately, and the line between them is
+ * whether the figure changes while it is being read:
  *
- * - **Database reads** — the account, its deal history and statistics, its
- *   transfers. All of it answers from our own tables, so it survives the bridge
- *   being unreachable.
+ * - **Database reads** — the account and its transfers. Both answer from our
+ *   own tables, so they survive the bridge being unreachable.
  * - **Bridge reads** — the live balance panel and the open positions. These
  *   MUST cross to MT5: a balance and a floating P/L move on every tick, and a
  *   stored copy would reach the client wearing the same label as a live one.
  *
  * A combined endpoint would collapse that distinction and let an unreachable
- * bridge blank the history too, which is a database read that was fine. The
+ * bridge blank the transfers too, which is a database read that was fine. The
  * dashboard makes the opposite choice for the opposite reason: its panels are
  * read in one glance and must agree about the instant they describe.
  */
@@ -292,8 +303,6 @@ function AccountDetail({ account }: { account: TradingAccount }) {
       </div>
 
       <AccountLivePanel snapshot={snapshot} />
-
-      <AccountActivity accountId={account.id} currency={account.currency} />
 
       {/*
         Deposits and withdrawals: LIVE accounts only.

@@ -98,63 +98,6 @@ export type AccountSnapshot = components['schemas']['AccountSnapshotDto'];
 export type AccountPosition = components['schemas']['AccountPositionDto'];
 
 /**
- * One deal on an account — a trade, or money moving.
- *
- * These are CLOSED deals from MT5. `closing` marks the ones that realised a
- * result: an opening deal carries `profit: '0'` because nothing has been
- * realised yet, so a P/L column must not treat the two alike.
- *
- * `actionLabel` is a stable slug (`buy`, `balance`, `commission`) with unknown
- * MT5 codes rendered as `action <n>` rather than blanked. Render the unknown
- * one AS IS — a client can quote it to support, where a blank row beside an
- * amount is what generates the ticket.
- */
-export type AccountDeal = components['schemas']['AccountDealDto'];
-
-/**
- * An account's realised performance OVER THE REQUESTED WINDOW.
- *
- * Not all-time. The figures are computed from exactly the deals returned
- * alongside them, so anything rendering `trades` without naming the period is
- * making a claim the data does not support — `AccountHistory` echoes `from` and
- * `to` for that reason.
- *
- * Closed round trips only; balance operations are excluded, because a deposit
- * is not a winning trade.
- *
- * **`wins + losses` need not equal `trades`.** A trade closing at exactly zero
- * is neither, and that is ordinary rather than a rounding artefact. A win rate
- * divides by `trades`, and the two counts must not be presented as a complete
- * partition of the total.
- *
- * `bestTrade` and `worstTrade` are null with no trades, deliberately not zero:
- * `'0'` beside a currency symbol claims there was a trade that broke even.
- */
-export type AccountStats = components['schemas']['AccountStatsDto'];
-
-/**
- * One window of an account's activity: the deals, and the statistics from them.
- *
- * One response rather than two because they are two views of a single live read.
- * Two requests would mean two round trips to MT5 and two windows that can
- * disagree — totals describing one set beside a list showing another.
- */
-export type AccountHistory = components['schemas']['AccountHistoryDto'];
-
-/**
- * The window to read. `YYYY-MM-DD`, INCLUSIVE at both ends.
- *
- * Omitted means the last 30 days. The server CAPS the span at 31 days and
- * refuses more rather than truncating, because MT5 silently truncates a larger
- * request — and a partial history that looks complete is the one answer this
- * must never give.
- */
-export interface AccountHistoryQuery {
-  from?: string;
-  to?: string;
-}
-
-/**
  * The landing page, in one response.
  *
  * One request rather than six because these panels are read in a single glance:
@@ -390,42 +333,6 @@ export const tradingApi = {
     const { data } = await apiClient.get<AccountPosition[]>(`/trading/accounts/${id}/positions`, {
       signal,
     });
-    return data;
-  },
-
-  /**
-   * One window of this account's activity: the deals and the statistics from
-   * exactly those deals.
-   *
-   * Served from the CRM's own `mt5_deals` record, not read live from the trading
-   * server. Same deals by ticket — the bridge pushes each one live and re-sweeps
-   * a rolling 24-hour window — so the difference a client can notice is a lag of
-   * minutes on a deal that has only just closed. In exchange this panel keeps
-   * working while the bridge is down, and reaches further back than MT5 will
-   * answer for in one request.
-   *
-   * Unlike `getAccountSnapshot` and `getAccountPositions`, which MUST stay live:
-   * a balance and an open position move while somebody is looking at them.
-   *
-   * The window is CAPPED at 31 days server-side and rejected rather than
-   * truncated beyond that. Widening it is not a client-side decision: the whole
-   * window comes back in one array so the totals and the list provably describe
-   * the same rows, and paging the deals is what would have to change first.
-   */
-  async getAccountHistory(
-    id: string,
-    query: AccountHistoryQuery = {},
-    signal?: AbortSignal,
-  ): Promise<AccountHistory> {
-    const params = new URLSearchParams();
-    if (query.from) params.set('from', query.from);
-    if (query.to) params.set('to', query.to);
-
-    const qs = params.toString();
-    const { data } = await apiClient.get<AccountHistory>(
-      qs ? `/trading/accounts/${id}/history?${qs}` : `/trading/accounts/${id}/history`,
-      { signal },
-    );
     return data;
   },
 

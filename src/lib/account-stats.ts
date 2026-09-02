@@ -1,49 +1,20 @@
 import Decimal from 'decimal.js';
-import type { AccountStats } from './api/trading';
 
 /**
- * The two derivations on the account statistics panel, kept out of the JSX.
+ * The derivations shared by the account panels, kept out of the JSX.
  *
  * Both have an obvious wrong answer that renders perfectly, which is the whole
- * reason they are here rather than inline: a win rate off by a few points and a
- * P/L coloured the wrong way both look exactly like working code.
+ * reason they are here rather than inline: a P/L coloured the wrong way and a
+ * timestamp that hides a day boundary both look exactly like working code.
+ *
+ * `winRate` used to live here too, computing the one figure on the Activity
+ * card whose obvious implementation — `wins / (wins + losses)` — was wrong,
+ * because a trade closing flat is neither. The card and the history request
+ * behind it were removed from `/accounts/:id`, so the function and its test went
+ * with them. Anything reviving those statistics must revive that denominator
+ * rule with them: the two versions agree on most accounts, which is exactly why
+ * the wrong one survives review.
  */
-
-/**
- * Closed trades that made money, as a percentage of ALL closed trades.
- *
- * ## The denominator is `trades`, never `wins + losses`
- *
- * A trade closing at exactly zero is neither a win nor a loss, and that is
- * ordinary rather than a rounding artefact — a scratch exit, or a position
- * closed at entry. Dividing by `wins + losses` silently drops those from the
- * denominator, so an account with 8 wins, 2 losses and 10 scratches reports 80%
- * when the honest figure is 40%. The two agree on most accounts, which is what
- * makes the wrong one survive review.
- *
- * ## Null with no trades, never zero
- *
- * "0% of no trades" is a statement about performance that has not happened.
- * The panel renders the null as an em dash, the same way the wallet renders a
- * currency that has not been opened — a figure nobody has earned yet is not a
- * figure of zero.
- *
- * Plain integer arithmetic is correct here: these are COUNTS, not money. §6.1
- * governs decimal strings from NUMERIC columns, and a count of trades is
- * neither.
- *
- * ## The parameter type is the real guard, and it is narrow on purpose
- *
- * `Pick<…, 'trades' | 'wins'>` rather than the whole `AccountStats`, so
- * `losses` is not in scope and the wrong denominator cannot be written here at
- * all. Widening this signature for convenience puts the bug back within reach —
- * the test below pins the arithmetic, but a type that makes a mistake
- * unrepresentable beats a test that catches it.
- */
-export function winRate(stats: Pick<AccountStats, 'trades' | 'wins'>): number | null {
-  if (stats.trades <= 0) return null;
-  return (stats.wins / stats.trades) * 100;
-}
 
 /**
  * Which way a signed money string points — what colours a P/L figure.
