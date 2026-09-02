@@ -21,7 +21,8 @@ src/components/                           async-boundary · backend-pending · q
 src/components/wallet/wallet-card         the balance card (see "Wallet cards" below)
 src/components/transactions/              transaction-filters — the toolbar AND `applyFilters`
 src/components/accounts/                  open-account-button · account-live-panel ·
-                                          account-stats-panel · account-history
+                                          account-positions · account-transactions ·
+                                          account-actions · open-account-dialog
 src/components/partner/               partner-workspace (root) · partner-header ·
                                           partner-summary · partner-ui (the design system) ·
                                           partner-tabs · partner-overview · partner-clients ·
@@ -30,7 +31,8 @@ src/components/partner/               partner-workspace (root) · partner-header
                                           commission-balances · commission-transfer-dialog ·
                                           apply-panel (the non-approved states, untouched)
 src/context/UserContext.tsx
-src/hooks/                                use-resource · use-hydrated
+src/hooks/                                use-resource · use-hydrated · use-realtime ·
+                                          use-live-account · use-money-refresh
 src/lib/api/                              client · auth · errors · wallet · trading · partner ·
                                           payments · index · types.gen.ts
 src/lib/                                  money · date-range · account-stats · countries-data ·
@@ -175,10 +177,10 @@ number.** Each carries the rule differently, and each has a specific bug it exis
   and nothing else — one network call to a server we do not own, multiplied by the number of
   accounts, is not worth it for a summary card. Live figures live on the detail route.
 
-- **`/accounts/[id]`** is the one account: live MT5 figures, realised statistics, and the account's
-  own deal history. **The MT5 bridge now EXISTS** (`../bridge`, ASP.NET wrapping the Manager API),
-  so equity, margin and floating P/L are real reads rather than the forbidden inventions they were
-  when only the list existed. What has NOT changed is which figures are honest — see below.
+- **`/accounts/[id]`** is the one account: live MT5 figures, its transfers, and its open positions.
+  **The MT5 bridge now EXISTS** (`../bridge`, ASP.NET wrapping the Manager API), so equity, margin
+  and floating P/L are real reads rather than the forbidden inventions they were when only the list
+  existed. What has NOT changed is which figures are honest — see below.
 
 ### `/accounts/[id]`: two balances, both labelled, and one floating figure
 
@@ -204,15 +206,44 @@ permanent, about this account), and an error (bridge unreachable — temporary, 
 Collapsing the last two into one "unavailable" tells a client whose account is fine that their
 broker is down, and both then wait for the wrong thing.
 
-Statistics count **closed round trips only** — `mt5/deal-codes.ts` on the backend decides what that
-means, and `AccountStatsDto` records why an opening deal (`profit: '0'`) must not be counted.
-`wins + losses` need NOT equal `trades`: a scratch exit is neither, so **a win rate divides by
-`trades`** — `lib/account-stats.ts` holds that rule and its test, because dividing by `wins +
-losses` gives a plausible percentage that is wrong only on accounts with flat exits.
+### The Activity card and the trading statistics were REMOVED
 
-The deal history is **paged and filtered server-side**, unlike `/transactions`. That is not a style
-difference: a deal history grows without bound, so the client-side filtering that is bounded and
-correct on `/transactions` would silently under-report a client's own trading here.
+This screen used to carry an "Activity" card — a period picker over
+`GET /trading/accounts/:id/history` rendering thirteen stat figures. The card, that request, its
+query key, the four response types and twenty-six strings went together, along with `winRate` in
+`lib/account-stats.ts` and its test.
+
+**Know what went with it:** a client can no longer see closed-trade totals — win rate, realised
+P/L, volume, best and worst trade — anywhere in the portal. The endpoint still exists and still
+answers; nothing calls it. Somebody reading this looking for those figures is not chasing a bug.
+
+If they ever come back, the rule that made them honest must come back too: `wins + losses` need NOT
+equal `trades` — a scratch exit is neither — so **a win rate divides by `trades`**. Dividing by
+`wins + losses` gives a plausible percentage that is wrong only on accounts with flat exits, which
+is exactly what lets it survive review. `account-stats.ts` keeps that note where the function was.
+
+### The live figures are PUSHED, and the poll is the fallback
+
+`useLiveAccount` registers a lease (`POST /trading/accounts/:id/watch`), the bridge reads the
+account on its own loop, and each reading arrives as `account.live` on the socket this browser
+already holds for its notifications. The hook writes it into the SAME query keys the two panels
+render from, so `AccountLivePanel` and `AccountPositions` need no new prop and `dataUpdatedAt`
+still drives the "read at" line — stamped with the READ time, not arrival.
+
+Polling did not go away; it slows to 60s while readings arrive and returns to 10s when they stop.
+**That is the whole safety of the feature.** Five things leave the feed silent — socket down, bridge
+unreachable, bridge at capacity, no MT5 login yet, API predating the endpoint — and the fallback is
+the behaviour it is falling back FROM. `live` therefore means A READING ARRIVED RECENTLY, not "the
+server said yes": a watch that is accepted and then goes quiet drops back on its own.
+
+**More watchers does not mean more live.** Every read takes the bridge's one MT5 session, so a
+viewer's figures refresh every `watched × read-cost`; the bridge caps the watched set and refuses
+new ones past it. `GET /admin/live` on the bridge is where the real latency is measured.
+
+⚠️ **An absent `positions` array in a push is NOT an empty one.** The server drops it when the
+event will not fit `pg_notify`'s 8000 bytes, so absence means "unchanged, ask separately". Writing
+`[]` there would tell a client holding three trades that they hold none — the accounts list shipped
+that exact bug once already.
 
 - **`/partner`** is full width on **every** state — no `max-w-*`, no `mx-auto` on the route. The
   four non-approved states were briefly capped, on the reasoning that a lone "apply" card stretched
@@ -595,10 +626,13 @@ admin's.
     never merges two currencies into one total, and never nets a reversal off the released figure.
     Each wrong version renders perfectly: a float total is right to the cent and wrong in the
     eighth decimal, and a merged total is a plausible number describing nothing.
-  - `src/lib/account-stats.test.ts` — that a win rate divides by `trades` and not by
-    `wins + losses` (the two agree on every account with no flat exits, which is what lets the
-    wrong one survive review), and that a P/L sign comes from decimal.js rather than from the
-    formatted string or a float — `'-0.00000001'` is a real loss.
+  - `src/lib/account-stats.test.ts` — that a P/L sign comes from decimal.js rather than from the
+    formatted string or a float: `'-0.00000001'` is a real loss. (Its win-rate half went with the
+    Activity card; the rule it pinned is recorded in `account-stats.ts`.)
+  - `src/hooks/use-live-account.test.ts` — the socket boundary on the account screen. That a
+    payload whose money arrived as NUMBERS is rejected rather than formatted, that a dropped
+    `positions` array stays distinguishable from an empty one, and that `floating` is computed
+    through decimal.js so a pushed figure and a polled one are the same string.
 
   All were mutation-checked when written: the guarantee was deliberately broken and each test
   failed on the right assertion. Add tests the same way — if you cannot describe the regression a
