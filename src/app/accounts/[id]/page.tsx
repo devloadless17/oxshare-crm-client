@@ -181,7 +181,7 @@ function AccountDetail({ account }: { account: TradingAccount }) {
    * the one session. Pushing makes the cost scale with ACCOUNTS BEING WATCHED
    * instead: ten people on one account is one read, not ten.
    */
-  const { live } = useLiveAccount(account.id);
+  const { live, positionsLive } = useLiveAccount(account.id);
 
   /*
    * ── THE POLL STAYS, AND SLOWS DOWN ────────────────────────────────────────
@@ -355,7 +355,18 @@ function AccountDetail({ account }: { account: TradingAccount }) {
         being read. Everything above settles once loaded, so putting the moving
         figures at the end lets the page come to rest from the top down.
       */}
-      <AccountPositions accountId={account.id} currency={account.currency} live={live} />
+      <AccountPositions
+        accountId={account.id}
+        currency={account.currency}
+        /*
+         * `positionsLive`, NOT `live`. The server drops the positions array when
+         * an event will not fit its notification channel, so a client with many
+         * open trades gets live account figures and no pushed table — and
+         * passing `live` here would slow that table's own fallback poll to sixty
+         * seconds on the strength of a feed it is not receiving.
+         */
+        live={positionsLive}
+      />
     </div>
   );
 }
