@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { Button } from '@/components/ui/button';
 import { useResource } from '@/hooks/use-resource';
@@ -36,12 +36,21 @@ import { keys } from '@/lib/query-keys';
  * same way and a client practising deserves to see how they are doing. The demo
  * badge from the list carries through, so the environment is never in doubt.
  *
- * ## Four requests, not one
+ * ## Separate requests, split by what is still moving
  *
- * The account, the live snapshot, the statistics and the history are separate
- * because they FAIL separately and one of them crosses to a server we do not
- * own. A combined endpoint would mean an unreachable bridge blanking the
- * statistics and the history too — which are database reads that were fine. The
+ * The account, the history, the transfers, the live snapshot and the open
+ * positions are separate requests because they FAIL separately, and the line
+ * between them is whether the figure changes while it is being read:
+ *
+ * - **Database reads** — the account, its deal history and statistics, its
+ *   transfers. All of it answers from our own tables, so it survives the bridge
+ *   being unreachable.
+ * - **Bridge reads** — the live balance panel and the open positions. These
+ *   MUST cross to MT5: a balance and a floating P/L move on every tick, and a
+ *   stored copy would reach the client wearing the same label as a live one.
+ *
+ * A combined endpoint would collapse that distinction and let an unreachable
+ * bridge blank the history too, which is a database read that was fine. The
  * dashboard makes the opposite choice for the opposite reason: its panels are
  * read in one glance and must agree about the instant they describe.
  */
@@ -144,17 +153,34 @@ function AccountDetail({ account }: { account: TradingAccount }) {
   )[account.status];
 
   /*
-   * `retry: 0` — this crosses to MT5, and there is a Refresh button right here.
+   * ── LIVE, WITHOUT ANYBODY PRESSING ANYTHING ───────────────────────────────
    *
-   * The default three retries turned one failing page load into a dozen
-   * requests, each waiting out the full read timeout, all queued behind the
-   * bridge's single MT5 lock. A person looking at an error with a button beside
-   * it does not need the browser trying again on their behalf.
+   * Equity, floating P/L and margin move on every tick, so this panel was the
+   * one screen in the portal that was correct only at the instant somebody
+   * clicked Refresh. Asking a client to press a button to find out what their
+   * account is worth is asking them to do the polling themselves.
+   *
+   * TEN SECONDS, and the number is set by the throttle rather than by taste.
+   * `GET /accounts/:id/live` allows 12/min per client, so 6/min spends half the
+   * budget and leaves the rest for the focus refetch and a retry — polling at
+   * the limit would turn an ordinary tab-switch into a 429 on a money screen.
+   *
+   * It costs nothing while nobody is looking: React Query does not poll a
+   * BACKGROUND tab (`refetchIntervalInBackground` is false by default), so a
+   * client who leaves this open in another window stops reading MT5 entirely,
+   * and `refetchOnWindowFocus` brings it current the moment they come back.
+   * That is what makes a ten-second poll on the bridge's single session lock
+   * defensible: it runs only while a person is actually watching it.
+   *
+   * `retry: 0` stays. It crosses to MT5, and the default three retries turned
+   * one failing load into a dozen requests, each waiting out the full read
+   * timeout, all queued behind that same lock. With a poll running, a failed
+   * read is already retried ten seconds later by design.
    */
   const snapshot = useResource(
     keys.mt5Live.snapshot(account.id),
     (signal) => tradingApi.getAccountSnapshot(account.id, signal),
-    { retry: 0 },
+    { retry: 0, refetchInterval: 10_000 },
   );
 
   return (
@@ -218,31 +244,25 @@ function AccountDetail({ account }: { account: TradingAccount }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void snapshot.refetch()}
-            loading={snapshot.isFetching}
-          >
-            {/*
-            The refresh mark while idle, the shared `Spinner` while in flight.
+          {/*
+            THE REFRESH BUTTON IS GONE, because the panel refreshes itself.
 
-            This was a `RefreshCw` carrying `animate-spin` only sometimes — named
-            in `ui/loader.tsx` as one of the fourteen spellings of "please wait"
-            that file replaced. It froze mid-rotation for every user with
-            reduce-motion on, because the blanket rule in globals.css cuts every
-            animation to 0.001ms and `animate-spin` obeys it; `loader-spin`,
-            which the shared Spinner uses, re-asserts the rotation past that
-            rule.
+            It was the client doing the polling by hand: the only way to find out
+            what an account was worth was to press a control, and a figure that
+            is correct only when somebody clicks is one that is wrong every other
+            second. The panel now reads MT5 every ten seconds while the tab is
+            visible — see the note on the snapshot query.
 
-            `loading` on the Button also disables it and sets `aria-busy`, which
-            is why the hand-written `disabled` is gone rather than kept beside
-            it. The icon is HIDDEN rather than spun so the two marks never stack —
-            Button renders its Spinner ahead of the children.
+            Nothing replaces it, deliberately. A button that duplicates a poll
+            invites exactly the refresh-mashing the 12/min throttle exists to
+            absorb, and the two remaining ways to force a read are both better:
+            switching back to the tab refetches on focus, and a failed read still
+            renders `AsyncBoundary`'s own retry.
+
+            What DOES replace it is saying the panel is live — `AccountLivePanel`
+            carries the read time, so "as of a moment ago" is on screen rather
+            than implied by a button nobody pressed.
           */}
-            {!snapshot.isFetching && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
-            {snapshot.isFetching ? t('accounts.liveRefreshing') : t('accounts.liveRefresh')}
-          </Button>
           {/*
             No "Open MetaTrader 5" button here any more.
 

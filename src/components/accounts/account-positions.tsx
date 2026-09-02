@@ -1,9 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { LineChart, RefreshCw } from 'lucide-react';
+import { LineChart } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
-import { Button } from '@/components/ui/button';
 import { DataTable, EmptyState, type Column } from '@/components/data-table';
 import { useResource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
@@ -35,12 +34,25 @@ import { keys } from '@/lib/query-keys';
  * bridge exposed positions at all.
  */
 export function AccountPositions({ accountId, currency }: { accountId: string; currency: string }) {
-  // `retry: 0`: an MT5 read with its own Refresh button — see the note on the
-  // snapshot query in the page for what the default three retries cost here.
+  /*
+   * POLLED on the same ten seconds as the snapshot beside it, and for a
+   * stronger reason: an open position's profit moves on every tick, and this is
+   * the panel a client watches WHILE the market moves. A number that only
+   * changed when they pressed a button was the one thing on this screen
+   * guaranteed to be out of date.
+   *
+   * `GET /accounts/:id/positions` has its own 12/min bucket — the throttle is
+   * per route — so this spends half of its own budget rather than competing
+   * with the snapshot for one. React Query stops polling a background tab, so
+   * neither panel reads MT5 while nobody is looking.
+   *
+   * `retry: 0` for the reason the snapshot keeps it: this crosses the bridge's
+   * single MT5 lock, and a poll already retries ten seconds later.
+   */
   const positions = useResource(
     keys.mt5Live.positions(accountId),
     (signal) => tradingApi.getAccountPositions(accountId, signal),
-    { retry: 0 },
+    { retry: 0, refetchInterval: 10_000 },
   );
 
   /*
@@ -68,31 +80,13 @@ export function AccountPositions({ accountId, currency }: { accountId: string; c
               : t('accounts.positionsLive')}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void positions.refetch()}
-          loading={positions.isFetching}
-        >
-          {/*
-            The refresh mark while idle, the shared `Spinner` while in flight.
-
-            This was a `RefreshCw` carrying `animate-spin` only sometimes — named
-            in `ui/loader.tsx` as one of the fourteen spellings of "please wait"
-            that file replaced. It froze mid-rotation for every user with
-            reduce-motion on, because the blanket rule in globals.css cuts every
-            animation to 0.001ms and `animate-spin` obeys it; `loader-spin`,
-            which the shared Spinner uses, re-asserts the rotation past that
-            rule.
-
-            `loading` on the Button also disables it and sets `aria-busy`, which
-            is why the hand-written `disabled` is gone rather than kept beside
-            it. The icon is HIDDEN rather than spun so the two marks never stack —
-            Button renders its Spinner ahead of the children.
-          */}
-          {!positions.isFetching && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
-          {positions.isFetching ? t('accounts.liveRefreshing') : t('accounts.liveRefresh')}
-        </Button>
+        {/*
+          No Refresh button: the panel polls itself every ten seconds while the
+          tab is visible. The read time above already says how current it is,
+          which is the honest version of what the button was standing in for —
+          and keeping both would invite the refresh-mashing the route's 12/min
+          throttle exists to absorb.
+        */}
       </header>
 
       <AsyncBoundary

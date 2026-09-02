@@ -844,9 +844,14 @@ export const messages = {
   // when the page loads, and calling them real-time promises a stream that is
   // not there.
   'accounts.liveFiguresTitle': 'Live from MetaTrader 5',
-  'accounts.liveFiguresNote': 'Read from the trading server when this page loaded.',
-  'accounts.liveRefresh': 'Refresh',
-  'accounts.liveRefreshing': 'Refreshing…',
+  /*
+   * The state BEFORE the first read lands. It used to say "read from the
+   * trading server when this page loaded", which stopped being true when the
+   * panel started polling — and a note claiming the figure is as old as the
+   * page, on a panel refreshing every ten seconds, is worse than no note.
+   */
+  'accounts.liveFiguresNote': 'Live from MetaTrader 5',
+  'accounts.liveFiguresReadAt': 'Live from MetaTrader 5 · read at {time}',
   'accounts.equityLabel': 'Equity',
   'accounts.equityHint': 'Balance plus credit plus open profit — what you can act on.',
   'accounts.floatingLabel': 'Floating P/L',
@@ -945,7 +950,10 @@ export const messages = {
   'accounts.stateFailed': 'Failed',
 
   // ── Statistics ────────────────────────────────────────────────────────────
-  'accounts.statsTitle': 'Trading statistics',
+  //
+  // No section heading here any more. The stat grid is the whole of the Activity
+  // card since the deal table under it was removed, and a sub-heading between the
+  // card's own title and its only content labels nothing.
   'accounts.statsTrades': 'Closed trades',
   'accounts.statsWinRate': 'Win rate',
   'accounts.statsWinRateValue': '{rate}%',
@@ -964,60 +972,36 @@ export const messages = {
   'accounts.statsSwap': 'Swap',
   'accounts.statsFirstDeal': 'First activity',
   'accounts.statsLastDeal': 'Last activity',
-  'accounts.statsEmptyBody':
-    'Statistics appear here once trades close on this account. Deposits and transfers show in ' +
-    'the history below.',
+  /*
+   * Neither of the next two strings may point at another panel for the answer.
+   *
+   * Both used to end "…in the history below", which was true while a deal table
+   * sat under these cards. It is gone, and the nearest replacement —
+   * "Deposits and withdrawals" — renders only for LIVE accounts, so pointing at
+   * it would be a sentence that is false on every demo account.
+   */
+  'accounts.statsEmptyBody': 'Statistics appear here once trades close on this account.',
   /*
    * Shown ABOVE the cards when the window has no closed trades but the account
    * does have activity — the case `statsEmptyBody` cannot cover, because the
    * cards render and every one of them reads zero.
    *
    * It names what is counted rather than apologising for the zeros: the reader's
-   * question is "why does this say nothing when the table below is full", and
-   * "these count closed trades" answers it in one line. Deliberately close in
-   * wording to `statsEmptyBody`, which answers the same question when there is
-   * nothing at all.
+   * question is "why does this say nothing when I have funded this account", and
+   * "these count closed trades" answers it in one line.
    */
   'accounts.statsNoTradesNote':
     'These figures count closed trades only. This account has no closed trades in this period — ' +
-    'deposits, withdrawals and transfers are listed in the history below.',
+    'deposits, withdrawals and transfers are not counted here.',
 
-  // ── History ───────────────────────────────────────────────────────────────
+  // ── Table columns, shared across the account panels ───────────────────────
   //
-  // "History" rather than "Transactions": this list is the account's deals from
-  // MT5, which is a different set from the wallet transactions on /transactions.
-  // One word for one thing.
-  'accounts.historyTitle': 'Account history',
-  'accounts.historyEmptyBody': 'Deals appear here as they close on the trading server.',
+  // What is left of a longer block: the deal table these mostly belonged to was
+  // removed from the Activity card, and only the headers the transfers and
+  // positions tables still use survive it.
   'accounts.colTime': 'When',
-  'accounts.colType': 'Type',
   'accounts.colSymbol': 'Symbol',
   'accounts.colVolume': 'Volume',
-  'accounts.colPrice': 'Price',
-  'accounts.colProfit': 'P/L',
-  'accounts.colTicket': 'Ticket',
-  // An opening deal has no realised result. An em dash, never '0.00', which
-  // would read as a trade that broke even.
-  'accounts.profitPending': '—',
-  // Two keys rather than one array — the catalogue is string-valued, and the
-  // pager takes a singular/plural pair. Matches `table.row` / `table.rows`.
-  'accounts.deal': 'deal',
-  'accounts.dealsPlural': 'deals',
-
-  // MT5 deal actions. Unknown codes fall through to the raw label from the API
-  // so support has something to quote.
-  'accounts.dealBuy': 'Buy',
-  'accounts.dealSell': 'Sell',
-  'accounts.dealBalance': 'Deposit / withdrawal',
-  'accounts.dealCredit': 'Credit',
-  'accounts.dealCharge': 'Charge',
-  'accounts.dealCorrection': 'Correction',
-  'accounts.dealBonus': 'Bonus',
-  'accounts.dealCommission': 'Commission',
-  'accounts.dealDividend': 'Dividend',
-  'accounts.dealTax': 'Tax',
-  'accounts.dealInterest': 'Interest',
-  'accounts.dealCanceled': 'Cancelled',
 
   'kyc.resumingTitle': 'Resuming Identity Verification',
   'kyc.resumingBody': 'Fetching your progress and loading your last active step…',
