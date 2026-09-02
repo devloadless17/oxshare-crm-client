@@ -28,6 +28,7 @@ import { formatMoney } from '@/lib/money';
 import { SignedAmount } from '@/components/money/signed-amount';
 import { t, type MessageKey } from '@/lib/i18n';
 import { movementLabelKey } from '@/lib/movement-label';
+import { keys } from '@/lib/query-keys';
 
 /**
  * The client's landing page, rendered from one request.
@@ -53,7 +54,9 @@ import { movementLabelKey } from '@/lib/movement-label';
  * second sentence would be a lie told to their face. See `dashboard-panels.tsx`.
  */
 export function DashboardBody() {
-  const dashboard = useResource<Dashboard>(['dashboard'], (signal) => dashboardApi.get(signal));
+  const dashboard = useResource<Dashboard>(keys.dashboard.all(), (signal) =>
+    dashboardApi.get(signal),
+  );
 
   /*
    * `/dashboard` sits behind `EmailVerifiedGuard`, so for an unverified client

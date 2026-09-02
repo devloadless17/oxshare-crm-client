@@ -11,9 +11,10 @@ import { Button } from '@/components/ui/button';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbStatus } from '@/lib/api/partner';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 export default function PartnerPage() {
-  const query = useResource<IbStatus>(['ib-status'], (signal) => partnerApi.status(signal));
+  const query = useResource<IbStatus>(keys.partner.status(), (signal) => partnerApi.status(signal));
 
   return (
     <div className="flex w-full flex-1 flex-col">

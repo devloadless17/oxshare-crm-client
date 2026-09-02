@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 
 import { DynamicStepRenderer } from '@/components/kyc/dynamic-step-renderer';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * Aliased from the generated schema, so the field-by-field reads below are checked
@@ -98,11 +99,11 @@ export function KycStepForm() {
    * the rejection notice on a returned KYC.
    */
   const configQuery = useResource(
-    ['kyc-config'],
+    keys.kyc.config(),
     async (signal) => (await api.get<KycStepConfigDto[]>('/kyc/config', { signal })).data,
   );
   const statusQuery = useResource(
-    ['kyc-status'],
+    keys.kyc.status(),
     async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
   );
 
@@ -364,7 +365,7 @@ export function KycStepForm() {
          * had JUST submitted straight back to step 1. Awaited, so the fresh
          * status is in the cache before the gate ever mounts.
          */
-        await queryClient.invalidateQueries({ queryKey: ['kyc-status'] });
+        await queryClient.invalidateQueries({ queryKey: keys.kyc.status() });
         router.push('/kyc/submitted');
         return;
       }
@@ -378,7 +379,7 @@ export function KycStepForm() {
         await api.post<{ message?: string }>('/kyc/submit');
         // Same reasoning as the review branch above: the gate must not decide
         // from a pre-submit cache entry.
-        await queryClient.invalidateQueries({ queryKey: ['kyc-status'] });
+        await queryClient.invalidateQueries({ queryKey: keys.kyc.status() });
         router.push('/kyc/submitted');
       }
     } catch (e: unknown) {

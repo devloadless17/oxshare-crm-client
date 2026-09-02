@@ -27,6 +27,8 @@ import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { walletApi, type Wallet } from '@/lib/api/wallet';
 import { formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
+import { useMoneyRefresh } from '@/hooks/use-money-refresh';
 
 /**
  * Deposit — CORE-06.
@@ -77,9 +79,11 @@ import { t } from '@/lib/i18n';
  * second stops and waits for a balance that is never coming.
  */
 export default function DepositPage() {
-  const methods = useResource(['payment-methods'], (signal) => depositsApi.listMethods(signal));
-  const wallets = useResource(['wallets'], (signal) => walletApi.getWallets(signal));
-  const accounts = useResource(['transferable-accounts'], (signal) =>
+  const methods = useResource(keys.paymentMethods.deposit(), (signal) =>
+    depositsApi.listMethods(signal),
+  );
+  const wallets = useResource(keys.wallets.all(), (signal) => walletApi.getWallets(signal));
+  const accounts = useResource(keys.tradingAccounts.transferable(), (signal) =>
     tradingApi.getTransferableAccounts(signal),
   );
 
@@ -178,6 +182,7 @@ function DepositFlow({
   const [amount, setAmount] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const refreshMoney = useMoneyRefresh();
   /*
    * The filed deposit AND the method it was filed against, captured together.
    *
@@ -266,6 +271,14 @@ function DepositFlow({
         idempotencyKey.current,
       );
       idempotencyKey.current = null;
+      /*
+       * A pending transaction row now exists. Not awaited: on the gateway path
+       * the browser is about to leave, and holding the redirect on a refetch
+       * the client will never see is the wrong trade. On the MANUAL path the
+       * page stays, and this is what puts the declared deposit on /transactions
+       * without a reload.
+       */
+      void refreshMoney();
 
       /*
        * A GATEWAY deposit goes STRAIGHT to the provider — no card in between.

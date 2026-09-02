@@ -19,6 +19,7 @@ import { partnerApi } from '@/lib/api/partner';
 import type { Wallet } from '@/lib/api/wallet';
 import { compareMoney, formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * Move one commission balance into the main wallet of the same currency.
@@ -108,10 +109,13 @@ export function CommissionTransferDialog({
        *    so both the paged list and the wallet page's "recent six" (keyed with
        *    its own limit) are covered by the one call.
        */
-      void queryClient.invalidateQueries({ queryKey: ['ib-overview'] });
-      void queryClient.invalidateQueries({ queryKey: ['ib-wallet-transfers'] });
-      void queryClient.invalidateQueries({ queryKey: ['wallets'] });
-      void queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      void queryClient.invalidateQueries({ queryKey: keys.partner.overview() });
+      void queryClient.invalidateQueries({ queryKey: keys.partner.walletTransfers() });
+      void queryClient.invalidateQueries({ queryKey: keys.wallets.all() });
+      void queryClient.invalidateQueries({ queryKey: keys.transactions.all() });
+      // The dashboard carries `wallets` and `recentTransactions` in one
+      // payload, so it went stale with the two above it.
+      void queryClient.invalidateQueries({ queryKey: keys.dashboard.all() });
     },
     onError: (e: unknown) => setError(apiErrorMessage(e, t('partner.commissionTransferFailed'))),
   });

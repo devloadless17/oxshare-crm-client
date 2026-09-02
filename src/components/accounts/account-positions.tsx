@@ -11,6 +11,7 @@ import { tradingApi, type AccountPosition } from '@/lib/api/trading';
 import { formatDecimal, formatMoney } from '@/lib/money';
 import { formatDealTime, moneySign } from '@/lib/account-stats';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * The account's OPEN positions, read live from MT5.
@@ -37,7 +38,7 @@ export function AccountPositions({ accountId, currency }: { accountId: string; c
   // `retry: 0`: an MT5 read with its own Refresh button — see the note on the
   // snapshot query in the page for what the default three retries cost here.
   const positions = useResource(
-    ['trading-account-positions', accountId],
+    keys.mt5Live.positions(accountId),
     (signal) => tradingApi.getAccountPositions(accountId, signal),
     { retry: 0 },
   );

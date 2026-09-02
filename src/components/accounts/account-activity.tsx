@@ -12,6 +12,7 @@ import { formatDecimal, formatMoney, isZeroMoney } from '@/lib/money';
 import { formatDealTime, moneySign, showsRealisedAmount, winRate } from '@/lib/account-stats';
 import { todayIso } from '@/lib/date-range';
 import { t, type MessageKey } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * What this account did over a period: the statistics, and the deals behind them.
@@ -53,7 +54,7 @@ export function AccountActivity({ accountId, currency }: { accountId: string; cu
    * serve the 30-day figures under a "7 days" heading until the fetch settled.
    */
   const history = useResource(
-    ['trading-account-history', accountId, window.from, window.to],
+    keys.tradingAccounts.history(accountId, window.from, window.to),
     (signal) => tradingApi.getAccountHistory(accountId, window, signal),
     // `retry: 0`: an MT5 read behind a single lock, with a Retry button in the
     // error state. See the note on the snapshot query in the account page.

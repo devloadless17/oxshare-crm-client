@@ -12,6 +12,7 @@ import {
 import { t, type MessageKey } from '@/lib/i18n';
 import { formatMoney } from '@/lib/money';
 import type { AppNotification } from '@/lib/api/notifications';
+import { keys, type PortalQueryKey } from '@/lib/query-keys';
 
 /**
  * The portal bell's kind catalogue — how a backend `{kind, params}` row
@@ -221,21 +222,73 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
 
 /**
  * Which DATA a kind refreshes — what makes the portal live rather than merely
- * chiming. A deposit settling or a withdrawal being decided changes the
- * wallet, the transaction list and the dashboard's aggregates, and a client
- * staring at a stale balance seconds after the "deposit confirmed" toast is
- * the exact contradiction this map removes. Prefix-matched so new money kinds
- * inherit the behaviour before this map learns their names.
+ * chiming. A client staring at a stale balance seconds after a "deposit
+ * confirmed" toast is the exact contradiction this map removes.
+ *
+ * ⚠️ It removed it for deposits, withdrawals and transfers, and NOT for the
+ * three kinds that are also wallet credits. `wallet.credited` (an operator
+ * crediting an account by hand), `rebate.credited` and `commission.confirmed`
+ * all fell through to `[]`, so the client got the chime, the toast and the
+ * bell badge — and a wallet still showing the old balance underneath. That was
+ * reported: "when I fund a wallet the result doesn't appear until I refresh."
+ *
+ * `rebate.credited` is the sharpest case, because this same file deep-links it
+ * to /wallet: the client was sent to a screen chosen for showing the money,
+ * which then did not show it.
+ *
+ * The return type is the registry's own union, so a key naming nothing is a
+ * compile error. Do not widen it to `string[][]`.
  */
-export function queryKeysFor(kind: string): string[][] {
+export function queryKeysFor(kind: string): readonly PortalQueryKey[] {
+  /*
+   * Everything that moves the balance. `wallet.` and the two commission kinds
+   * join the money family here rather than getting a branch of their own,
+   * because they change exactly the same three screens: a credit is a credit
+   * however it was earned.
+   *
+   * `transactions.all()` covers the list under every filter the client may
+   * have applied, and `dashboard.all()` the tiles, which are counted
+   * server-side and so cannot be derived from either.
+   */
   if (
     kind.startsWith('deposit.') ||
     kind.startsWith('withdrawal.') ||
-    kind.startsWith('transfer.')
+    kind.startsWith('transfer.') ||
+    kind.startsWith('wallet.') ||
+    kind.startsWith('rebate.') ||
+    kind.startsWith('commission.')
   ) {
-    return [['wallets'], ['transactions'], ['dashboard']];
+    const money = [keys.wallets.all(), keys.transactions.all(), keys.dashboard.all()];
+    /*
+     * A commission or a rebate also restates what the partner screen reports
+     * as earned — `GET /ib/overview` sums confirmed ledger entries, so the
+     * lifetime figure and the commission balances both just moved.
+     */
+    return kind.startsWith('rebate.') || kind.startsWith('commission.')
+      ? [...money, keys.partner.all()]
+      : money;
   }
-  if (kind.startsWith('kyc.')) return [['kyc-status'], ['dashboard']];
+
+  // `kyc.all()` covers the status the sidebar badge, the dashboard card and
+  // the outcome screen all share — one root since the registry landed.
+  if (kind.startsWith('kyc.')) return [keys.kyc.all(), keys.dashboard.all()];
+
+  /*
+   * Approval, rejection, suspension and restoration all change what /partner
+   * is allowed to render — an approved partner also has a commission wallet
+   * opened for them, which the overview carries.
+   */
+  if (kind.startsWith('partner.')) return [keys.partner.all(), keys.dashboard.all()];
+
+  /*
+   * A new account belongs in the list AND in the transfer/deposit pickers,
+   * which read `tradingAccounts.transferable()`. They share a root precisely
+   * so this cannot refresh one and miss the other.
+   */
+  if (kind.startsWith('trading_account.')) {
+    return [keys.tradingAccounts.all(), keys.dashboard.all()];
+  }
+
   return [];
 }
 

@@ -9,6 +9,7 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { relativeTime } from '@/lib/relative-time';
 import { Button } from '@/components/ui/button';
+import { keys } from '@/lib/query-keys';
 
 /**
  * Where this account is signed in, and a way to end any of it.
@@ -23,7 +24,7 @@ import { Button } from '@/components/ui/button';
  * distinguishes nothing.
  */
 export function SessionsList({ refreshToken }: { refreshToken?: number }) {
-  const sessions = useResource(['auth', 'sessions', refreshToken], (signal) =>
+  const sessions = useResource(keys.session.sessions(refreshToken), (signal) =>
     accountApi.listSessions(signal),
   );
 

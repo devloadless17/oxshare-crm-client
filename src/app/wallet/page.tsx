@@ -16,6 +16,7 @@ import { paymentsApi, type Transaction } from '@/lib/api/payments';
 import { SignedAmount } from '@/components/money/signed-amount';
 import { t, type MessageKey } from '@/lib/i18n';
 import { movementLabelKey } from '@/lib/movement-label';
+import { keys } from '@/lib/query-keys';
 
 /**
  * The client's balances, and the three things they can do with them.
@@ -61,13 +62,13 @@ import { movementLabelKey } from '@/lib/movement-label';
 const RECENT_LIMIT = 6;
 
 export default function WalletPage() {
-  const wallets = useResource(['wallets'], (signal) => walletApi.getWallets(signal));
+  const wallets = useResource(keys.wallets.all(), (signal) => walletApi.getWallets(signal));
   /*
    * The catalogue supplies each wallet's NAME. A failure here is not fatal —
    * `held` falls back to the code, so the cards still render — which is why this
    * is a separate resource rather than something the page blocks on.
    */
-  const currencies = useResource(['currencies'], (signal) => currenciesApi.list(signal));
+  const currencies = useResource(keys.currencies.all(), (signal) => currenciesApi.list(signal));
   const { user } = useUser();
 
   /*
@@ -90,7 +91,7 @@ export default function WalletPage() {
    * transactions screen's own paged one.
    */
   const transactions = useResource(
-    ['transactions', { limit: RECENT_LIMIT }],
+    keys.transactions.list({ limit: RECENT_LIMIT }),
     (signal) => paymentsApi.getTransactions({ limit: RECENT_LIMIT }, signal),
     { enabled: !emailUnverified },
   );

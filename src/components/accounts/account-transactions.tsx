@@ -12,6 +12,7 @@ import { paymentsApi, type Transfer } from '@/lib/api/payments';
 import { SignedAmount } from '@/components/money/signed-amount';
 import { formatDealTime } from '@/lib/account-stats';
 import { t, type MessageKey } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * Money in and out of THIS account: the wallet transfers that funded it and the
@@ -54,7 +55,9 @@ export function AccountTransactions({
   accountId: string;
   currency: string;
 }) {
-  const transfers = useResource(['transfers'], (signal) => paymentsApi.getTransfers(signal));
+  const transfers = useResource(keys.transactions.transfers(), (signal) =>
+    paymentsApi.getTransfers(signal),
+  );
 
   /*
    * A NEW array every time, never a sort or splice on `transfers.data` — that

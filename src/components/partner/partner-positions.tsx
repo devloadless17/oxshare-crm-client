@@ -14,6 +14,7 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbClientPosition } from '@/lib/api/partner';
 import { compareMoney, formatDecimal } from '@/lib/money';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 
 /**
  * What this partner's clients have open right now.
@@ -39,7 +40,7 @@ import { t } from '@/lib/i18n';
 const PAGING = { noun: ['position', 'positions'] as [string, string], pageSize: TABLE_PAGE_SIZE };
 
 export function PartnerPositions() {
-  const query = useResource<IbClientPosition[]>(['ib-positions'], (signal) =>
+  const query = useResource<IbClientPosition[]>(keys.partner.positions(), (signal) =>
     partnerApi.positions(signal),
   );
 
