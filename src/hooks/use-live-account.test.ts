@@ -128,16 +128,51 @@ describe('parseLivePush — the position rows', () => {
   });
 
   /*
-   * THE bug this describe block exists for.
+   * THE regression this block exists for, and it has bitten from both sides.
    *
-   * `side` is what the table renders — `action` is the raw code beside it — so a
-   * payload without the label produces rows whose Buy/Sell column is empty. On
-   * the one screen where buy and sell are opposite positions, that is not a
-   * cosmetic gap.
+   * `side` is what the table renders and `action` is the raw code beside it, so
+   * a payload without the label first produced rows with a blank Buy/Sell
+   * column. The fix over-corrected: requiring the label dropped the WHOLE array
+   * when a CRM predating it was still deployed, so the table fell back to
+   * polling under live equity — the same symptom, one layer down.
+   *
+   * Both are wrong for the same reason. The label is DERIVABLE from `action`,
+   * so it is never the thing to require: taken from the server when present,
+   * computed when not, and blank in neither case.
    */
-  it('rejects rows that carry the numeric action but no named side', () => {
+  it('derives the side when the server did not name it', () => {
     const { side: _missing, ...withoutSide } = POSITION;
-    expect(withPositions([withoutSide])?.positions).toBeUndefined();
+    const rows = withPositions([withoutSide])?.positions;
+
+    expect(rows).toHaveLength(1);
+    expect(rows?.[0]?.side).toBe('buy');
+  });
+
+  it('derives a sell from action 1', () => {
+    const { side: _missing, ...withoutSide } = POSITION;
+    const rows = withPositions([{ ...withoutSide, action: 1 }])?.positions;
+
+    expect(rows?.[0]?.side).toBe('sell');
+  });
+
+  /*
+   * `action` is the field that IS required, because it is the one MT5 actually
+   * sends and the one nothing can reconstruct.
+   */
+  it('rejects a row with no numeric action to derive from', () => {
+    const { action: _gone, side: _also, ...withoutAction } = POSITION;
+    expect(withPositions([withoutAction])?.positions).toBeUndefined();
+  });
+
+  /*
+   * A code this build has not heard of is named rather than blanked, whether the
+   * label came from the server or was derived here.
+   */
+  it('names an unfamiliar action rather than blanking it', () => {
+    const { side: _missing, ...withoutSide } = POSITION;
+    const rows = withPositions([{ ...withoutSide, action: 7 }])?.positions;
+
+    expect(rows?.[0]?.side).toBe('action 7');
   });
 
   /*
