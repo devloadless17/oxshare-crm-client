@@ -170,23 +170,42 @@ export function DateRangePicker({
   const hasSelection = value.from !== null || value.to !== null;
 
   return (
-    <div ref={containerRef} className={cn('relative', className)}>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => (open ? setOpen(false) : openPicker())}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label={label ?? t('transactions.filterDateRange')}
-        className="flex h-9 w-full items-center gap-2 rounded-lg border border-border bg-background px-3 text-xs font-medium transition-colors hover:bg-muted focus-outline"
-      >
-        <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <span
-          className={cn('flex-1 truncate text-start', !hasSelection && 'text-muted-foreground')}
+    <>
+      {/*
+        A scrim, on phones only, because there the panel is a viewport SHEET
+        rather than something attached to the trigger below it. Without one it
+        floats over the filter card it came from with nothing to say the page
+        behind is inert, and it covers the control it belongs to.
+
+        Deliberately OUTSIDE `containerRef`, and that placement is the whole
+        implementation: the `mousedown` listener above closes-and-commits on
+        anything the container does not contain, so tapping the scrim already
+        behaves exactly like tapping the page — which is the gesture it is
+        standing in for. Inside the container it would have needed a handler of
+        its own, on a div, to reproduce what it gets here for free.
+
+        `fixed` keeps it out of flow, so it is not laid out by whatever grid or
+        flex row the picker was dropped into.
+      */}
+      {open && <div className="fixed inset-0 z-40 bg-foreground/20 sm:hidden" aria-hidden="true" />}
+
+      <div ref={containerRef} className={cn('relative', className)}>
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => (open ? setOpen(false) : openPicker())}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-label={label ?? t('transactions.filterDateRange')}
+          className="flex h-9 w-full items-center gap-2 rounded-lg border border-border bg-background px-3 text-xs font-medium transition-colors hover:bg-muted focus-outline"
         >
-          {formatRangeLabel(value)}
-        </span>
-        {/*
+          <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span
+            className={cn('flex-1 truncate text-start', !hasSelection && 'text-muted-foreground')}
+          >
+            {formatRangeLabel(value)}
+          </span>
+          {/*
           The clear affordance is a SPAN, not a nested <button>.
 
           A button inside a button is invalid HTML and browsers recover from it
@@ -195,134 +214,163 @@ export function DateRangePicker({
           instead of opening. It carries `role="button"` and a key handler so it
           stays reachable without a mouse.
         */}
-        {hasSelection && (
-          <span
-            role="button"
-            tabIndex={0}
-            aria-label={t('transactions.filterClearDates')}
-            onClick={(event) => {
-              event.stopPropagation();
-              onChange(EMPTY_RANGE);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
+          {hasSelection && (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={t('transactions.filterClearDates')}
+              onClick={(event) => {
                 event.stopPropagation();
                 onChange(EMPTY_RANGE);
-              }
-            }}
-            className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
-          >
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div
-          role="dialog"
-          aria-label={t('transactions.filterDateRange')}
-          /*
-           * `end-0` rather than `start-0` — logical, so it flips under RTL.
-           *
-           * The popover is wider than its trigger, and these filters sit toward
-           * the right of a toolbar; anchoring to the leading edge would push it
-           * off-screen on a narrow desktop window. `z-50` clears the sticky
-           * table header, which is `z-20`.
-           */
-          /*
-           * ⚠️ `w-max` — WITHOUT IT THE POPOVER CANNOT BE WIDER THAN THE TRIGGER.
-           *
-           * This is the whole bug, and it is not obvious. An absolutely
-           * positioned box with `width: auto` is shrink-to-fit, which CSS defines
-           * as `min(max(preferred-minimum, available), preferred)` — and
-           * `available` is the width of the containing block. The containing
-           * block here is the `relative` wrapper around the trigger, one cell of
-           * the filter grid. So two calendars side by side were squeezed into a
-           * quarter-width toolbar column no matter how the grid inside was sized.
-           *
-           * `w-max` opts out: the box takes its max-content width, which is what
-           * the two months actually need. The trigger keeps its own width and is
-           * unaffected — it is a sibling, not a parent of this.
-           *
-           * ## The phone
-           *
-           * `max-w-[calc(100vw-2rem)]` caps it at the viewport with a 1rem
-           * margin either side, because `w-max` on its own would happily run off
-           * the screen. The second month is already hidden below `sm` (see
-           * below), so at that cap a phone shows one full month rather than a
-           * clipped pair. `end-0` anchors the popover's trailing edge to the
-           * trigger's, so it grows INWARD — off the leading edge is where a
-           * `start-0` version would disappear on a narrow window.
-           */
-          className="absolute end-0 z-50 mt-2 w-max max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-4 shadow-lg"
-        >
-          <div className="flex items-center justify-between px-1 pb-3">
-            <button
-              type="button"
-              onClick={() => setView(previousMonth(view.year, view.month))}
-              aria-label={t('transactions.calendarPrevMonth')}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onChange(EMPTY_RANGE);
+                }
+              }}
+              className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
             >
-              {/* Mirrored under RTL rather than swapped: "previous" points at
-                  the start of the line, which is the right in Arabic. */}
-              <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
-            </button>
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            </span>
+          )}
+        </button>
 
-            <div className="flex flex-1 justify-around gap-8 text-sm font-semibold">
-              <span>{monthLabel(view.year, view.month)}</span>
-              <span className="hidden sm:inline">{monthLabel(right.year, right.month)}</span>
+        {open && (
+          <div
+            role="dialog"
+            aria-label={t('transactions.filterDateRange')}
+            /*
+             * `end-0` rather than `start-0` — logical, so it flips under RTL.
+             *
+             * The popover is wider than its trigger, and these filters sit toward
+             * the right of a toolbar; anchoring to the leading edge would push it
+             * off-screen on a narrow desktop window. `z-50` clears the sticky
+             * table header, which is `z-20`.
+             */
+            /*
+             * ⚠️ `w-max` — WITHOUT IT THE POPOVER CANNOT BE WIDER THAN THE TRIGGER.
+             *
+             * This is the whole bug, and it is not obvious. An absolutely
+             * positioned box with `width: auto` is shrink-to-fit, which CSS defines
+             * as `min(max(preferred-minimum, available), preferred)` — and
+             * `available` is the width of the containing block. The containing
+             * block here is the `relative` wrapper around the trigger, one cell of
+             * the filter grid. So two calendars side by side were squeezed into a
+             * quarter-width toolbar column no matter how the grid inside was sized.
+             *
+             * `w-max` opts out: the box takes its max-content width, which is what
+             * the two months actually need. The trigger keeps its own width and is
+             * unaffected — it is a sibling, not a parent of this.
+             *
+             * ## The phone
+             *
+             * `max-w-[calc(100vw-2rem)]` caps it at the viewport with a 1rem
+             * margin either side, because `w-max` on its own would happily run off
+             * the screen. The second month is already hidden below `sm` (see
+             * below), so at that cap a phone shows one full month rather than a
+             * clipped pair. `end-0` anchors the popover's trailing edge to the
+             * trigger's, so it grows INWARD — off the leading edge is where a
+             * `start-0` version would disappear on a narrow window.
+             */
+            /*
+             * ## Below `sm` it is a SHEET, not a popover
+             *
+             * Anchored under its trigger, the calendar's own footer — the label,
+             * "Clear dates" and "Apply" — landed at y=867 on a 393x851 screen.
+             * It was reachable (the popover lives inside `<main>`, which scrolls)
+             * but it was off the bottom of the screen the moment it opened, on the
+             * one control where the primary action is the point: a half-open range
+             * ("from the 5th onward") can ONLY be committed with Apply.
+             *
+             * Reserving room below the trigger is not something this component can
+             * do — the trigger's position on the page is the caller's business, and
+             * on the transactions screen it is the fourth filter down. So below
+             * `sm` the panel stops being anchored at all: `fixed`, inset from both
+             * edges, pinned near the top of the viewport, which fits its ~440px
+             * height on any phone with room to spare.
+             *
+             * The `max-sm:` overrides neutralise each anchored-popover rule in
+             * turn — `absolute`/`end-0`/`mt-2` position it against the trigger, and
+             * `w-max` sizes it to two calendars. None of them mean anything once
+             * the panel is viewport-positioned.
+             *
+             * `fixed` resolves against the viewport only while no ancestor carries
+             * a transform, filter or `will-change` — any of those make that
+             * ancestor the containing block instead. `portal-layout`'s content
+             * column animates, so this is asserted rather than assumed:
+             * `e2e/ux-sweep.spec.ts` opens the picker at 393px and requires the
+             * Apply button to be inside the viewport.
+             */
+            className="absolute end-0 z-50 mt-2 w-max max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-4 shadow-lg max-sm:fixed max-sm:inset-x-4 max-sm:top-16 max-sm:mt-0 max-sm:w-auto max-sm:max-w-none max-sm:shadow-2xl"
+          >
+            <div className="flex items-center justify-between px-1 pb-3">
+              <button
+                type="button"
+                onClick={() => setView(previousMonth(view.year, view.month))}
+                aria-label={t('transactions.calendarPrevMonth')}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
+              >
+                {/* Mirrored under RTL rather than swapped: "previous" points at
+                  the start of the line, which is the right in Arabic. */}
+                <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
+              </button>
+
+              <div className="flex flex-1 justify-around gap-8 text-sm font-semibold">
+                <span>{monthLabel(view.year, view.month)}</span>
+                <span className="hidden sm:inline">{monthLabel(right.year, right.month)}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setView(nextMonth(view.year, view.month))}
+                aria-label={t('common.next')}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
+              >
+                <ChevronRight className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setView(nextMonth(view.year, view.month))}
-              aria-label={t('common.next')}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
-            >
-              <ChevronRight className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
-            </button>
-          </div>
-
-          <div className="flex gap-8">
-            <MonthGrid
-              year={view.year}
-              month={view.month}
-              range={draft}
-              today={today}
-              minDate={minDate}
-              maxDate={effectiveMax}
-              onDayClick={handleDayClick}
-            />
-            {/* The second month is desktop-only — see the component note. */}
-            <div className="hidden sm:block">
+            <div className="flex gap-8">
               <MonthGrid
-                year={right.year}
-                month={right.month}
+                year={view.year}
+                month={view.month}
                 range={draft}
                 today={today}
                 minDate={minDate}
                 maxDate={effectiveMax}
                 onDayClick={handleDayClick}
               />
+              {/* The second month is desktop-only — see the component note. */}
+              <div className="hidden sm:block">
+                <MonthGrid
+                  year={right.year}
+                  month={right.month}
+                  range={draft}
+                  today={today}
+                  minDate={minDate}
+                  maxDate={effectiveMax}
+                  onDayClick={handleDayClick}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-4">
-            <p className="text-xs text-muted-foreground">{formatRangeLabel(draft)}</p>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setDraft(EMPTY_RANGE);
-                  commit(EMPTY_RANGE);
-                }}
-              >
-                {t('transactions.filterClearDates')}
-              </Button>
-              {/*
+            <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground">{formatRangeLabel(draft)}</p>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setDraft(EMPTY_RANGE);
+                    commit(EMPTY_RANGE);
+                  }}
+                >
+                  {t('transactions.filterClearDates')}
+                </Button>
+                {/*
                 An explicit Apply, for the half-range case.
 
                 A completed range commits on the second click, so this is not
@@ -330,14 +378,15 @@ export function DateRangePicker({
                 date" is a legitimate filter that the click cycle alone can never
                 commit — without this button that range would be unreachable.
               */}
-              <Button type="button" size="sm" onClick={() => commit(draft)}>
-                {t('transactions.filterApply')}
-              </Button>
+                <Button type="button" size="sm" onClick={() => commit(draft)}>
+                  {t('transactions.filterApply')}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 }
 
