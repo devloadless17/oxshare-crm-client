@@ -1435,6 +1435,18 @@ export const messages = {
 
   'partner.clientsHeading': 'Clients you introduced',
   'partner.clientsCount': '{count} total · {verified} verified',
+  /*
+   * Shown only when the roster is larger than what one dashboard response
+   * carries. The count beside the filter is the TRUE total, counted server-side,
+   * so without this line the two figures disagree on screen and the reader is
+   * left to work out which one is lying.
+   *
+   * It names what the search covers rather than apologising for the cap: a
+   * partner filtering this table needs to know they are filtering the most
+   * recent rows, which is the same rule /transactions follows.
+   */
+  'partner.clientsCapped':
+    'Showing your {shown} most recent clients. Search and filters cover these rows.',
   'partner.clientsEmpty': 'No clients yet',
   'partner.clientsEmptyBody':
     'Share your referral link — clients who sign up through it appear here.',
