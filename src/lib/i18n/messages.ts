@@ -1344,12 +1344,6 @@ export const messages = {
   // Replaced `partner.levelLabel` in 0102. The rung answered "where do you
   // stand"; REACH answers the question a partner actually has, which is how far
   // down their own network they are paid on.
-  'partner.reachLabel': 'How far you earn',
-  'partner.reachValue': '{count} level(s) deep',
-  'partner.reachNote':
-    'You earn on trades closed by your own clients and by clients of partners up to {count} ' +
-    'level(s) below you. Nothing beyond that.',
-  'partner.reachNone': 'Your programme pays a client rebate rather than partner commission.',
   'partner.referralCodeLabel': 'Your referral code',
   'partner.referralLinkLabel': 'Your referral link',
   'partner.copy': 'Copy',
@@ -1431,8 +1425,6 @@ export const messages = {
     'These totals cover {currency} only — there is no exchange rate in this system to combine ' +
     'currencies with. You also hold commission in {others}; see the balances below.',
 
-  'partner.levelRateRevenue': '{rate}% revenue share',
-
   'partner.clientsHeading': 'Clients you introduced',
   'partner.clientsCount': '{count} total · {verified} verified',
   /*
@@ -1460,7 +1452,6 @@ export const messages = {
   'partner.subPartnersEmpty': 'No sub-partners yet',
   'partner.subPartnersEmptyBody':
     'Partners placed under you appear here, with the level they were assigned.',
-  'partner.subPartnerProgramme': 'On {programme}',
   'partner.subPartnerSuspended': 'Suspended',
   'partner.subPartnerActive': 'Active',
 
@@ -1482,42 +1473,21 @@ export const messages = {
   'partner.searchClients': 'Search by name',
   'partner.filterAll': 'All',
   'partner.colPartner': 'Partner',
-  'partner.colProgramme': 'Programme',
   'partner.colSince': 'Since',
 
   'partner.termsHeading': 'Your terms',
-  // ── The commission programme (FR-IB-06) ───────────────────────────────────
-  // The rates a partner is actually paid at. The LEVEL beside them is their
-  // placement in the chain and decides nothing about the money — showing its
-  // old `rateValue` as an earning rate is reading the wrong number off the
-  // wire, which is why these strings name the source of each one.
-  'partner.termsProgramme': 'Commission programme',
-  'partner.programmeLabel': 'Programme',
-  'partner.termsOwnClients': 'From your own clients',
-  // Depth 2 and beyond. Numbered rather than named, because "your partners'
-  // clients" stops being accurate at depth 3 — that is your partners' partners'
-  // clients, and a label that quietly means something else at every level is
-  // one a partner would misprice their own network on.
-  'partner.termsTier': '{depth} level(s) below you',
-  'partner.termsRebate': 'Back to your clients',
-  'partner.termsRate': '{rate}%',
-  'partner.termsOfRevenue':
-    'of the broker’s revenue on each closed position — nothing is earned on an open one, or on a ' +
-    'deposit, withdrawal or transfer',
-  // `rebate_only` is a real arrangement — the broker buys volume by handing the
-  // spread back — so this states it plainly rather than as a fault.
-  'partner.termsRebateOnly':
-    'Your clients are paid a rebate on their trading, and you do not earn commission on this ' +
-    'programme.',
-  'partner.termsNone': 'Your commission terms are being configured.',
+  // The one thing about a partner's arrangement this screen still states — and
+  // it is not a rate. The rate card went in 0112: the broker publishes it, and
+  // a portal copy goes stale the day the desk renegotiates.
   'partner.programmeProductsLabel': 'Account types your clients can open',
   // An EMPTY product list means unrestricted (see `IbAccountDto`), which is a
-  // different fact from having no programme — so it gets its own sentence
+  // different fact from being on no agency — so it gets its own sentence
   // rather than an empty list rendered as nothing.
   'partner.programmeUnrestricted': 'Your clients can open any account type the broker offers.',
-  'partner.programmeNone': 'No programme',
+  'partner.programmeNone': 'No agency',
   'partner.programmeNoneBody':
-    'You are not appointed under a specific programme. Contact support if you expected one.',
+    'You are not appointed under an agency, so your clients can open any account type the ' +
+    'broker offers.',
 
   'partner.subPartnersNote':
     'You earn on their clients too, at the difference between your rate and theirs. Only the ' +

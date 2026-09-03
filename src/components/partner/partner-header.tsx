@@ -11,9 +11,9 @@ import { t } from '@/lib/i18n';
  *
  * ## One surface, two bands
  *
- * The identity band states the facts a partner checks — am I still active, what
- * rung am I on, what programme do I sell, since when — as a label/value row
- * rather than as chips. Chips imply things you can click; these are read.
+ * The identity band states the facts a partner checks — am I still active,
+ * which agency do I sell under, since when — as a label/value row rather than
+ * as chips. Chips imply things you can click; these are read.
  *
  * The referral band beneath it is separated by a hairline rather than a gap,
  * because it is the same object: your standing and the code that produces it.
@@ -31,27 +31,19 @@ import { t } from '@/lib/i18n';
  * in a form you can paste. Both are here because partners use both, and deriving
  * one from the other by hand is where a typo costs an attribution.
  *
- * ## The level NAME comes from the overview, and this renders without it
+ * ## NO TERMS HERE (0112)
  *
- * `GET /ib/status` carries the level NUMBER; only `GET /ib/overview` carries its
- * name. So the name leads with the number as its qualifier, and while the
- * overview is still loading — or has failed — the number stands alone. "Am I
- * still a partner, and what is my link" must not wait on a second request.
+ * A `programmeName` prop stood here, and a level name before it — each stating
+ * the rate card a partner is paid on, above the fold. Both are gone: that card
+ * is a commercial arrangement the broker publishes, and a portal copy of it
+ * goes stale the day the desk renegotiates, with the partner reading the stale
+ * one and nothing saying so.
+ *
+ * What is left is what only this system knows: whether they are still active,
+ * since when, which agency they sell under, and the two strings that earn them
+ * money.
  */
-export function PartnerHeader({
-  account,
-  programmeName,
-}: {
-  account: NonNullable<IbStatus['account']>;
-  /**
-   * From `GET /ib/overview`. Absent while it loads, and if it fails.
-   *
-   * Replaced `levelName` in 0102 — with `ib_accounts.level` gone there is no
-   * rung to fall back to, and the programme is the fact worth carrying above
-   * the fold anyway: it is what this partner is paid on.
-   */
-  programmeName?: string;
-}) {
+export function PartnerHeader({ account }: { account: NonNullable<IbStatus['account']> }) {
   const hydrated = useHydrated();
   /*
    * Empty until hydration, because `window` does not exist on the server and a
@@ -85,12 +77,10 @@ export function PartnerHeader({
         */}
         <dl className="flex flex-wrap gap-x-10 gap-y-3">
           {/*
-            Rendered only once the overview has answered. The rung it replaced
-            could be filled in from `account` while the second request was in
-            flight; a programme name cannot, and a placeholder standing in for
-            the terms somebody is paid on is the wrong kind of guess.
+            The agency, which is the one thing about a partner's arrangement
+            this screen still states — because it is not a rate. It decides what
+            their clients may TRADE, and nothing else names it.
           */}
-          {programmeName && <Fact label={t('partner.programmeLabel')} value={programmeName} />}
           {account.agencyName && (
             <Fact label={t('partner.agencyLabel')} value={account.agencyName} />
           )}

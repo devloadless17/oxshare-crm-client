@@ -267,8 +267,8 @@ hold.
   PAGE also moved the heading inward, so the partner screen sat at a different width from every
   other screen and read as a different app.
 
-  The APPROVED screen reads identity → money → evidence: a header surface (status, level,
-  programme, and the referral code and link on one rule), then the four figures as one statement
+  The APPROVED screen reads identity → money → evidence: a header surface (status, agency, and the
+  referral code and link on one rule — no rate card, see below), then the four figures as one statement
   row, then every commission balance, then five tabs. The four non-approved states are untouched —
   `apply-panel.tsx` and the status panels in `page.tsx` were not part of the rebuild.
 
@@ -443,27 +443,26 @@ second row, because a client cannot see that wallet). `kind` is an OPEN set: bra
 `lib/movement-label.ts`, which three screens share, and which falls back to the direction for a
 kind this build has not heard of.
 
-### A partner's terms come from a named PROGRAMME, not from their level
+### The partner screen shows NO RATE CARD, and that is deliberate (0112)
 
-`GET /ib/overview` carries `programme` — name, `mode`, `level1Rate`, `level2Rate`, `rebateRate` —
-beside `level`. The two answer different questions and both are on the wire: the LADDER is where a
-partner stands, the PROGRAMME is what they are paid.
+`GET /ib/overview` carries **no terms at all**. It carried `programme` — a name, a `mode`, a
+per-depth tier ladder and a rebate — until 0112, and a `level` with its own `rateValue` before that
+(0102). Both are gone, and the same reasoning removed them.
 
-**`level.rateValue` decides nothing any more.** It is still on the response and rendering it as
-what somebody earns is reading the wrong number, correct to four decimal places. The terms panel
-shows the programme's rates and the level cell says only where they stand.
+A partner's rate card is a commercial arrangement between them and the broker, and the broker
+publishes it. A portal screen restating it is a SECOND COPY that disagrees the day the desk
+renegotiates — with the partner reading the stale one and nothing on the page saying so. The
+backend does not send it, so there is nothing here to render out of date.
 
-The two rates are per **DEPTH**: `level1Rate` is what they earn from their OWN clients,
-`level2Rate` from a sub-partner's. Labelling either "the level-N rate" tells a sub-partner the
-wrong number for business they introduced themselves.
+What the response carries is what only this system knows: what they have EARNED, their commission
+wallets, who they introduced, and who sits directly beneath them. `PartnerHeader` takes no
+`programmeName` prop, `partner-overview.tsx` has no rates cell and no reach cell, and
+`partner-network.tsx` has no terms column.
 
-`mode` is `commission_only | rebate_only | hybrid`, and `rebate_only` means the partner earns
-nothing while their clients are paid instead — a real arrangement the screen states plainly rather
-than presenting as a fault.
-
-**"Programme" now means the commission terms**, so the agency (وكالة) is labelled "Your agency".
-Two different things sharing one word on the screen that explains what somebody is paid is the
-ambiguity that rename exists to remove.
+**The one thing about a partner's arrangement this screen still states is their AGENCY** (وكالة) —
+because it is not a rate. It decides what their clients may TRADE, nothing else names it, and the
+`partner.programme*` strings that describe it were kept under those keys while their WORDING was
+corrected to say "agency".
 
 ### The client's rebate arrives as an ordinary wallet credit
 

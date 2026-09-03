@@ -66,10 +66,10 @@ export function ApprovedPanel({ account }: { account: NonNullable<IbStatus['acco
    */
   return (
     <div className="flex flex-col gap-5">
-      {/* The PROGRAMME name in the header, replacing the rung's (0102). It is
-          what a partner is paid on, so it is the one word worth carrying above
-          the fold. */}
-      <PartnerHeader account={account} programmeName={overview.data?.programme?.name} />
+      {/* NO rate card above the fold (0112). The programme name stood here,
+          and a rung's name before it — both stating terms the broker publishes
+          elsewhere, which is a second copy that goes stale on renegotiation. */}
+      <PartnerHeader account={account} />
 
       <AsyncBoundary
         status={overview.status}

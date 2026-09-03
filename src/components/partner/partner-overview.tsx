@@ -12,7 +12,6 @@ import {
   formatDate,
 } from '@/components/partner/partner-ui';
 import type { IbOverview, IbStatus } from '@/lib/api/partner';
-import { formatDecimal } from '@/lib/money';
 import { t } from '@/lib/i18n';
 
 /**
@@ -49,111 +48,34 @@ export function PartnerOverview({
   /** Switches tab, because these panels hand the reader on to the full list. */
   onNavigate: (tab: string) => void;
 }) {
-  const { programme, referredClients, subPartners, verifiedReferredCount } = data;
+  const { referredClients, subPartners, verifiedReferredCount } = data;
   const activePartners = subPartners.filter((partner) => partner.active).length;
   const unverified = referredClients.length - verifiedReferredCount;
 
   return (
     <div className="space-y-5">
       {/*
-        The terms: what you are paid, how far it reaches, and what you may sell.
-        One surface split by hairlines rather than three cards, because a
-        partner reads them as one answer to "what is my arrangement".
+        ── THE RATE CARD IS NOT ON THIS SCREEN (0112) ────────────────────────
+
+        Two cells stood here: the partner's own rates — a named programme with
+        its per-depth ladder — and the REACH those rates travelled. A rung with
+        its own `rateValue` had stood there before them (0102), deciding nothing
+        while reading exactly like what a partner earns.
+
+        Both are gone, and not because they were wrong. A partner's rate card is
+        a commercial arrangement between them and the broker, and the broker
+        publishes it; a portal screen restating it is a second copy that
+        disagrees the day the desk renegotiates — with the partner reading the
+        stale one and no way to tell.
+
+        What a partner cannot look up elsewhere is what they have EARNED, who
+        they introduced, and who sits beneath them. That is what this page is
+        now, plus the one thing the broker does decide per agency: what their
+        clients may TRADE.
       */}
       <Surface>
         <SectionHeader title={t('partner.termsHeading')} />
-        <div className="grid gap-px bg-border lg:grid-cols-3">
-          {/*
-            THE RATES, and the PROGRAMME is the only place they come from.
-
-            A rung with its own `rateValue` used to sit beside this, deciding
-            nothing while reading exactly like what a partner earns — the wrong
-            number, correct to four decimal places, on the one screen where
-            somebody looks to understand their pay. It went in 0102.
-          */}
-          <div className={`${CELL} p-5`}>
-            <p className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-              {t('partner.termsProgramme')}
-            </p>
-            {programme ? (
-              <>
-                <p className="mt-2 text-xl font-semibold tracking-tight">{programme.name}</p>
-
-                <dl className="mt-4 space-y-3">
-                  {/*
-                    Per DEPTH, and labelled that way. "Level 1" and "level 2" as
-                    bare words read as the RUNG, which is a different fact and
-                    the one a sub-partner would misprice their own business on.
-
-                    The LIST is the ladder: as many rows as the programme
-                    reaches. A fixed pair of rates could not describe a
-                    three-level programme at all, and a partner on one would
-                    have been shown two of their three rates with nothing
-                    saying the third existed.
-                  */}
-                  {programme.mode !== 'rebate_only' &&
-                    programme.tiers.map((tier, index) => (
-                      <Rate
-                        key={tier.depth}
-                        label={
-                          index === 0
-                            ? t('partner.termsOwnClients')
-                            : t('partner.termsTier', { depth: String(tier.depth) })
-                        }
-                        rate={tier.rate}
-                        lead={index === 0}
-                      />
-                    ))}
-                  {programme.mode !== 'commission_only' && (
-                    <Rate
-                      label={t('partner.termsRebate')}
-                      rate={programme.rebateRate}
-                      lead={programme.mode === 'rebate_only'}
-                    />
-                  )}
-                </dl>
-
-                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                  {programme.mode === 'rebate_only'
-                    ? t('partner.termsRebateOnly')
-                    : t('partner.termsOfRevenue')}
-                </p>
-              </>
-            ) : (
-              // The row can only be missing if the catalogue was edited from
-              // under this partner, which the foreign key prevents. Saying so
-              // beats an empty cell if it ever happens.
-              <p className="mt-2 text-xs text-muted-foreground">{t('partner.termsNone')}</p>
-            )}
-          </div>
-
-          {/*
-            REACH, which is what the rung cell used to occupy and never answered.
-            It said "Master Partner, level 1" — a placement — while the question
-            a partner has is how far down their own network they are paid on.
-            That is the tier COUNT, and it is stated in words rather than left
-            to be counted off the rates beside it.
-          */}
-          <div className={`${CELL} p-5`}>
-            <p className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-              {t('partner.reachLabel')}
-            </p>
-            {programme && programme.mode !== 'rebate_only' && programme.tiers.length > 0 ? (
-              <>
-                <p className="mt-2 text-xl font-semibold tracking-tight">
-                  {t('partner.reachValue', { count: String(programme.tiers.length) })}
-                </p>
-                <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-                  {t('partner.reachNote', { count: String(programme.tiers.length) })}
-                </p>
-              </>
-            ) : (
-              // `rebate_only` pays no partner at any depth — a real arrangement,
-              // and one the screen must not present as an error.
-              <p className="mt-2 text-xs text-muted-foreground">{t('partner.reachNone')}</p>
-            )}
-          </div>
-
+        <div className="bg-border">
           <div className={`${CELL} p-5`}>
             <p className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
               {t('partner.agencyLabel')}
@@ -298,7 +220,7 @@ export function PartnerOverview({
                 rows={subPartners.slice(0, PREVIEW).map((partner) => ({
                   key: partner.userId,
                   name: partner.name,
-                  meta: `${t('partner.subPartnerProgramme', { programme: partner.programName })} · ${formatDate(partner.since)}`,
+                  meta: formatDate(partner.since),
                   pill: (
                     <Pill tone={partner.active ? 'success' : 'warning'}>
                       {partner.active
@@ -341,19 +263,6 @@ export function PartnerOverview({
  * rather than a colour one: a coloured number on a money screen should mean a
  * state, and this one does not.
  */
-function Rate({ label, rate, lead }: { label: string; rate: string; lead?: boolean }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd
-        className={`font-semibold tracking-tight tabular-nums ${lead ? 'text-2xl' : 'text-base'}`}
-      >
-        {t('partner.termsRate', { rate: formatDecimal(rate) })}
-      </dd>
-    </div>
-  );
-}
-
 /** How many rows a preview shows before handing off to its own tab. */
 const PREVIEW = 5;
 
