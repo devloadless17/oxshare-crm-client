@@ -37,18 +37,19 @@ export type IbEarnings = components['schemas']['IbEarningsDto'];
 export type IbReferredClient = components['schemas']['IbReferredClientDto'];
 export type IbSubPartner = components['schemas']['IbSubPartnerDto'];
 
-/**
- * The TERMS a partner is paid on — their named programme (FR-IB-06).
+/*
+ * ── `IbProgramSummary` IS GONE (0112), and nothing replaces it ─────────────
  *
- * `IbLevelSummary` used to sit beside it, carrying the RUNG they stood on and a
- * `rateValue` that decided nothing — so a screen could read the wrong number
- * off the wire and be correct to four decimal places. It went in 0102.
+ * It carried the partner's own rate card — a named programme, its per-depth
+ * ladder and its rebate — onto their dashboard. `IbLevelSummary` had gone
+ * before it (0102), carrying a rung and a `rateValue` that decided nothing.
  *
- * `tiers` is per DEPTH, not per rung: depth 1 is what they earn from their OWN
- * clients, depth 2 from a sub-partner's, and the COUNT is how far their
- * earnings reach.
+ * The response carries NO terms at all now. A partner's rate card is a
+ * commercial arrangement between them and the broker, and the broker publishes
+ * it; a portal screen restating it is a second copy that disagrees the day the
+ * desk renegotiates. What a partner cannot look up elsewhere — what they have
+ * EARNED, who they introduced, who sits beneath them — is what is left.
  */
-export type IbProgramSummary = components['schemas']['IbProgramSummaryDto'];
 
 /** One commission entry, with the status that says whether it is money yet. */
 export type IbCommissionRow = components['schemas']['IbCommissionRowDto'];
