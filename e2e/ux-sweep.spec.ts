@@ -251,3 +251,120 @@ test.describe('no standalone screen is a dead end', () => {
     });
   }
 });
+
+/**
+ * The checks above measure the DOCUMENT. This block measures what is on the
+ * SCREEN, which is a different question and the one three real defects hid
+ * behind.
+ *
+ * `document.scrollWidth` is the classic mobile-overflow test and it is blind to
+ * exactly the shapes that go wrong on a phone:
+ *
+ *  1. An overlay positioned outside the viewport does not widen the document.
+ *     The account menu's "Theme ▸" submenu opened to the SIDE of a menu already
+ *     anchored to the right edge, so at 393px Radix flipped it left and it hung
+ *     off the parent over the page — reported from a real phone, with every
+ *     width check passing.
+ *  2. An overlay BELOW the fold is on nobody's radar at all. The date-range
+ *     picker's Apply button opened at y=867 on an 851px screen, and Apply is
+ *     the only way to commit a half-open range.
+ *  3. Overflow INSIDE a scroll container is overflow the document never sees.
+ *     The transactions table is 839px wide in a 359px box, so Status — the
+ *     answer to "did my withdrawal go through" — sat 300px off the right edge
+ *     behind an overlay scrollbar a phone only draws while a finger is moving.
+ *
+ * All three are fixed. These assertions are what stop them coming back, and
+ * they are written against the phone viewport because none of them is visible
+ * at 1280px.
+ */
+test.describe('what is open is on the screen, at 393px', () => {
+  test.use({ viewport: { width: 393, height: 851 } });
+
+  /** Every box fully inside the viewport, or the names of the ones that are not. */
+  async function offScreen(page: Page, selector: string): Promise<string[]> {
+    return page.evaluate((sel) => {
+      const bad: string[] = [];
+      document.querySelectorAll(sel).forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) return;
+        const escapes =
+          r.left < -1 ||
+          r.top < -1 ||
+          r.right > window.innerWidth + 1 ||
+          r.bottom > window.innerHeight + 1;
+        if (escapes)
+          bad.push(
+            `${(el.textContent ?? '').trim().slice(0, 24) || el.tagName} at [${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.right)},${Math.round(r.bottom)}] in ${window.innerWidth}x${window.innerHeight}`,
+          );
+      });
+      return bad;
+    }, selector);
+  }
+
+  test('the account menu, and the theme control inside it', async ({ page }) => {
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: /account menu/i }).click();
+    await page.getByRole('menuitem', { name: /theme/i }).click();
+
+    // All three theme options land in the menu that is already open. As a
+    // submenu they were a second panel that had nowhere to go on a phone.
+    for (const name of [/^light$/i, /^dark$/i, /^system$/i]) {
+      await expect(page.getByRole('menuitemradio', { name })).toBeVisible();
+    }
+    await expect(page.getByRole('menu')).toHaveCount(1);
+
+    expect(
+      await offScreen(page, '[role="menu"], [role="menuitemradio"]'),
+      'part of the account menu is off the phone screen',
+    ).toEqual([]);
+  });
+
+  test('the date-range picker, including the button that commits it', async ({ page }) => {
+    await page.goto('/transactions');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: /date range/i }).click();
+
+    const panel = page.getByRole('dialog', { name: /date range/i });
+    await expect(panel).toBeVisible();
+
+    /*
+     * Apply specifically, not just the panel. A completed range commits on the
+     * second day click, so this button is the ONLY way to commit "from the 5th
+     * onward, no end date" — a filter that is otherwise unreachable on a phone.
+     */
+    const apply = panel.getByRole('button', { name: /apply/i });
+    const box = await apply.boundingBox();
+    expect(box, 'the Apply button has no box').not.toBeNull();
+    expect(
+      box!.y + box!.height,
+      `Apply ends ${Math.round(box!.y + box!.height)}px down an 851px screen — below the fold`,
+    ).toBeLessThanOrEqual(851);
+
+    expect(await offScreen(page, '[role="dialog"]'), 'the picker is off the screen').toEqual([]);
+  });
+
+  test('no table needs a sideways drag to read', async ({ page }) => {
+    await page.goto('/transactions');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('table')).toBeVisible();
+
+    const overflow = await page.evaluate(() => {
+      const bad: string[] = [];
+      document.querySelectorAll('table').forEach((table) => {
+        // The nearest ancestor that actually scrolls is what the table has to fit.
+        let box: HTMLElement | null = table.parentElement;
+        while (box && getComputedStyle(box).overflowX === 'visible') box = box.parentElement;
+        if (!box) return;
+        if (table.scrollWidth > box.clientWidth + 1)
+          bad.push(`${table.scrollWidth}px table in a ${box.clientWidth}px box`);
+      });
+      return bad;
+    });
+
+    expect(
+      overflow,
+      'a table is wider than its scroll box — its right-hand columns are reachable only by a drag with no visible affordance',
+    ).toEqual([]);
+  });
+});

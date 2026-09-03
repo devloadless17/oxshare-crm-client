@@ -17,16 +17,26 @@ import { t } from '@/lib/i18n';
  * of how much sat below the fold. That treatment gets worse exactly as a partner
  * succeeds — the one with two hundred clients had the least usable view of them.
  *
- * ## Filtering here is CLIENT-SIDE, and that is bounded
+ * ## Filtering here is CLIENT-SIDE over a CAPPED list, and the copy says so
  *
- * `IbOverviewDto.referredClients` is documented as the whole list ("a partner
- * may read every client they introduced") and takes no query parameters. So a
- * filter over it covers the real set, the counts are honest, and a sort orders
- * everything rather than one page.
+ * `referredClients` used to be documented as the whole list, and this file
+ * carried the warning that "if that field ever grows paging, this must move
+ * server-side". It did: the query behind it had no LIMIT at all, so a partner
+ * with fifty thousand referrals transferred fifty thousand rows to render this
+ * table, and the screen got slower exactly as they succeeded. It is capped at
+ * 200 now.
  *
- * IF THAT FIELD EVER GROWS PAGING, this must move server-side. Filtering one
- * page and calling it a filter over the book would under-report a partner's own
- * clients — the same failure /transactions guards against.
+ * So the honest handling, until a dedicated cursor-paged roster endpoint exists:
+ *
+ *  - the COUNTS come from `referredClientCount` and `verifiedReferredCount`,
+ *    which the server counts in SQL over every referral. Never from
+ *    `referredClients.length`, which is the count of what FITTED;
+ *  - the filter still runs over the rows in hand, and the screen states that it
+ *    is searching the most recent 200 rather than implying it searched the book.
+ *
+ * A filter that quietly covers a subset while the count beside it claims the
+ * whole is the failure /transactions guards against, and the fix there was the
+ * same: say what is being searched.
  *
  * The EMAIL is absent server-side, deliberately: a partner is owed attribution,
  * not their referrals' contact details.
@@ -125,13 +135,31 @@ export function PartnerClients({ data }: { data: IbOverview }) {
               {t('partner.clientUnverified')}
             </FilterChip>
           </div>
+          {/*
+            The TRUE totals, from the server's own count over every referral —
+            not `referredClients.length`, which counts only the rows that fitted
+            under the cap.
+          */}
           <span className="ms-auto text-xs text-muted-foreground tabular-nums">
             {t('partner.clientsCount', {
-              count: data.referredClients.length,
+              count: data.referredClientCount,
               verified: data.verifiedReferredCount,
             })}
           </span>
         </div>
+      )}
+
+      {/*
+        SAID, not implied, when the list in hand is not the whole book.
+        The count beside the filter is the true total, so without this line the
+        two disagree on screen and the reader is left to guess which is wrong.
+        Rendered only when it is actually true, so an ordinary partner never
+        sees it.
+      */}
+      {data.referredClientCount > data.referredClients.length && (
+        <p className="text-xs text-muted-foreground">
+          {t('partner.clientsCapped', { shown: data.referredClients.length })}
+        </p>
       )}
 
       <div className={TABLE_FRAME}>

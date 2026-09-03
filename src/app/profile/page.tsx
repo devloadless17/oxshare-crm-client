@@ -79,7 +79,22 @@ export default function ProfilePage() {
         onAvatarChanged={() => void refetchUser()}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] xl:items-start">
+      {/*
+        `minmax(0,1fr)` on the ONE-column case too, not just at `xl`.
+
+        A grid column defaults to `auto`, which is floored at its content's
+        MIN-content width — so a single child that refuses to shrink widens the
+        column and every card on the page bleeds past the page gutter. That is
+        what happened at 393px: the email field's `truncate` span still reports
+        its full unwrapped width as min-content (a flex item's `min-width` is
+        `auto` until told otherwise), and all four panels sat 7px past the right
+        margin, clipped rather than scrolling — so the defect was invisible to
+        the `document.scrollWidth` sweep in `e2e/ux-sweep.spec.ts`.
+
+        `min-w-0` on that span (see `Field`) fixes the cause; this caps the
+        column so the NEXT stubborn child overflows itself instead of the page.
+      */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] xl:items-start">
         {/* Reference rail: short, static, read once. */}
         <div className="space-y-6">
           <Panel title={t('profile.detailsTitle')}>
@@ -261,7 +276,14 @@ function Field({
         {label}
       </dt>
       <dd className="mt-1 flex items-center gap-2 text-sm text-foreground">
-        <span className="truncate">{value?.trim() || t('profile.notProvided')}</span>
+        {/*
+          `min-w-0` is what makes `truncate` actually truncate here. A flex
+          item's `min-width` is `auto`, which floors it at min-content — and
+          `truncate`'s `white-space: nowrap` makes min-content the WHOLE
+          unwrapped string. So a long email did not ellipsis; it pushed the
+          card, its panel and the page grid wider than the screen.
+        */}
+        <span className="min-w-0 truncate">{value?.trim() || t('profile.notProvided')}</span>
         {hint && (
           <span
             className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { TransactionDetails } from '@/components/transactions/transaction-details';
-import { Receipt } from 'lucide-react';
+import { ChevronRight, Receipt } from 'lucide-react';
 import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
 import { AsyncBoundary } from '@/components/async-boundary';
@@ -155,9 +155,23 @@ export default function TransactionsPage() {
        * simply does nothing. Every sortable column below names its own field.
        */
       sortKey: 'createdAt',
-      cell: (tx) => (
-        <span className="text-muted-foreground">{new Date(tx.createdAt).toLocaleString()}</span>
-      ),
+      /*
+       * Date over time on a phone, one line from `md` up.
+       *
+       * `toLocaleString()` is a single ~20-character string, and it was the
+       * widest column here — on a 393px screen it alone claimed more than a
+       * third of the table. Splitting it costs nothing on a wide screen (the
+       * two spans sit side by side) and buys the room the columns below need.
+       */
+      cell: (tx) => {
+        const at = new Date(tx.createdAt);
+        return (
+          <span className="text-muted-foreground">
+            <span className="block md:inline">{at.toLocaleDateString()}</span>{' '}
+            <span className="block md:inline">{at.toLocaleTimeString()}</span>
+          </span>
+        );
+      },
     },
     {
       header: t('transactions.colType'),
@@ -177,7 +191,38 @@ export default function TransactionsPage() {
        * and the dashboard all render the same names, and they carried three
        * copies of it until a fourth kind arrived.
        */
-      cell: (tx) => <span className="font-medium">{t(movementLabelKey(tx))}</span>,
+      /*
+       * `whitespace-normal` below `md` ONLY.
+       *
+       * `DataTable` sets `whitespace-nowrap` on every cell so rows keep one
+       * height and the eye has a rhythm to follow — right on a wide screen, and
+       * the reason this table could not shrink on a narrow one: a table's
+       * min-content width is the sum of its cells', and a cell that may not
+       * wrap has no min-content smaller than its longest line. Letting THIS
+       * cell wrap (it is the one carrying a folded-in second line) is what lets
+       * the table resolve to the 359px it actually has.
+       */
+      cellClassName: 'max-md:whitespace-normal',
+      cell: (tx) => (
+        <span className="font-medium">
+          {t(movementLabelKey(tx))}
+          {/*
+            Method and currency FOLD IN HERE below `md`, where their own columns
+            are hidden — see the note on the Currency column. They are a
+            second, muted line rather than a wider row.
+          */}
+          <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground md:hidden">
+            {/*
+              Inline flow, not a flex row. As a flex row a long method name
+              ("Added by our team") wrapped inside its own item and left the
+              separator and the currency stranded on a line of their own. Two
+              inline spans and a literal dot wrap as one sentence, which is what
+              this is.
+            */}
+            <MethodCell tx={tx} /> · {tx.currency}
+          </span>
+        </span>
+      ),
     },
     {
       header: t('transactions.colAmount'),
@@ -195,12 +240,48 @@ export default function TransactionsPage() {
       // wallet's activity list and the dashboard's rendered the same ternary
       // three times, which is how a colour ends up changed in two of them.
       cell: (tx) => (
-        <SignedAmount direction={tx.direction} amount={tx.amount} currency={tx.currency} />
+        <span className="inline-flex flex-col items-end gap-1">
+          <SignedAmount direction={tx.direction} amount={tx.amount} currency={tx.currency} />
+          {/*
+            The STATUS, on the phone, under the amount it describes.
+
+            This is the column that made the mobile fix necessary rather than
+            cosmetic: "did my withdrawal go through" is the question this screen
+            exists to answer, and at 393px the Status column sat 300px off the
+            right-hand edge of a table whose horizontal scrollbar is an overlay
+            a phone only draws WHILE scrolling. A client had no way to know
+            there was anything to scroll to.
+          */}
+          <span className="md:hidden">
+            <StateBadge state={tx.state} kind={tx.kind} />
+          </span>
+        </span>
       ),
     },
     {
       header: t('transactions.colCurrency'),
       sortKey: 'currency',
+      /*
+       * ── The three hidden columns, and why hiding is the fix ───────────────
+       *
+       * This table is 839px wide. Its scroll container on a 393px screen is
+       * 359px, so Currency, Method, Status and the details link all sat off the
+       * right-hand edge — reachable only by a horizontal drag with no visible
+       * affordance, because a phone draws overlay scrollbars and only while the
+       * finger is moving. The page passed the `document.scrollWidth` check in
+       * `e2e/ux-sweep.spec.ts` the whole time: the overflow is INSIDE a
+       * scroll container, so the document itself still fits.
+       *
+       * Each of these is folded into a column that stays: currency and method
+       * under the type, status under the amount. Nothing is dropped — the row
+       * carries the same six facts, stacked instead of strung out.
+       *
+       * Sorting by these three goes with them below `md`, which is the honest
+       * trade: the filter panel above already filters by status and currency,
+       * and a sort header nobody can see is not a feature.
+       */
+      headerClassName: 'hidden md:table-cell',
+      cellClassName: 'hidden md:table-cell',
       cell: (tx) => <span className="text-muted-foreground">{tx.currency}</span>,
     },
     {
@@ -221,11 +302,17 @@ export default function TransactionsPage() {
        * from", which their statement could not previously give them.
        */
       header: t('transactions.colMethod'),
+      // Folded under the Type cell below `md` — see the Currency column.
+      headerClassName: 'hidden md:table-cell',
+      cellClassName: 'hidden md:table-cell',
       cell: (tx) => <MethodCell tx={tx} />,
     },
     {
       header: t('transactions.colStatus'),
       sortKey: 'state',
+      // Folded under the Amount cell below `md` — see the Currency column.
+      headerClassName: 'hidden md:table-cell',
+      cellClassName: 'hidden md:table-cell',
       /*
        * The BADGE alone. `rejectionReason` used to print underneath it — a
        * provider's own sentence wrapped across two lines inside a status cell,
@@ -249,9 +336,17 @@ export default function TransactionsPage() {
         <button
           type="button"
           onClick={() => setDetail(tx)}
+          /*
+           * `aria-label` unconditionally, because the visible words disappear
+           * below `md` and a chevron announces as nothing. The label is the
+           * same either way, so what a screen reader says does not depend on
+           * the width of the screen.
+           */
+          aria-label={t('transactions.detailOpen')}
           className="focus-outline rounded px-2 py-1 text-xs font-medium text-link hover:underline"
         >
-          {t('transactions.detailOpen')}
+          <span className="hidden md:inline">{t('transactions.detailOpen')}</span>
+          <ChevronRight className="h-4 w-4 rtl:-scale-x-100 md:hidden" aria-hidden="true" />
         </button>
       ),
     },
@@ -343,63 +438,75 @@ export default function TransactionsPage() {
               off entirely once `onSortChange` is passed.
             */}
             <TransactionDetails tx={detail} onClose={() => setDetail(null)} />
-            <DataTable
-              fill
-              caption={t('transactions.title')}
-              columns={columns}
-              rows={rows}
-              rowKey={(tx) => tx.id}
-              dimmed={transactions.isFetching}
-              sortColumn={sort.column ?? undefined}
-              sortDirection={sort.direction}
-              onSortChange={(column, direction) => {
-                /*
-                 * ⚠️ TWO states here, not `DataTable`'s three — and the third one
-                 * made the Date header impossible to toggle.
-                 *
-                 * `DataTable` cycles asc → desc → null, where null means "back to
-                 * the list's own default order". That is right for a queue whose
-                 * default is something other than the column being clicked. Here
-                 * the default IS this column: the API orders by `createdAt desc`
-                 * when no sort is given.
-                 *
-                 * So Date started active-descending, the first click cycled it to
-                 * null, and null was resolved back to `createdAt desc` — the
-                 * state it was already in. The header could never leave
-                 * descending however many times it was pressed, while every other
-                 * column worked. "Stuck on one side" is exactly that.
-                 *
-                 * A null now FLIPS the active column instead of clearing it,
-                 * which makes every header a plain two-state toggle. Nothing is
-                 * lost: "unsorted" is not a state this endpoint has — it always
-                 * orders by something — so the third click was only ever a way
-                 * back to a default that one column already occupied.
-                 */
-                setSort((current) =>
-                  column === null
-                    ? {
-                        column: current.column,
-                        direction: current.direction === 'asc' ? 'desc' : 'asc',
-                      }
-                    : { column, direction: direction ?? 'asc' },
-                );
-                setPage(1);
-              }}
-              pagination={{
-                page,
-                pageSize,
-                total,
-                onPageChange: setPage,
-                onPageSizeChange: (size) => {
-                  setPageSize(size);
-                  // Page 4 at 25 a page is past the end at 100 a page, which
-                  // comes back empty and reads as "no results".
+            {/*
+              Tighter cell padding below `md`, reached through the table rather
+              than through `DataTable`.
+
+              `DataTable` is a TWIN of the admin app's, compared byte for byte
+              by `scripts/check-twins.sh`, so a padding change there is a change
+              to every operator table in the console as a side effect of a
+              client screen. Four columns at `px-4` spend 128px of a 359px
+              screen on whitespace; `px-2` gives half of it back, and only here.
+            */}
+            <div className="flex min-h-0 flex-1 flex-col max-md:[&_td]:px-2 max-md:[&_th]:px-2">
+              <DataTable
+                fill
+                caption={t('transactions.title')}
+                columns={columns}
+                rows={rows}
+                rowKey={(tx) => tx.id}
+                dimmed={transactions.isFetching}
+                sortColumn={sort.column ?? undefined}
+                sortDirection={sort.direction}
+                onSortChange={(column, direction) => {
+                  /*
+                   * ⚠️ TWO states here, not `DataTable`'s three — and the third one
+                   * made the Date header impossible to toggle.
+                   *
+                   * `DataTable` cycles asc → desc → null, where null means "back to
+                   * the list's own default order". That is right for a queue whose
+                   * default is something other than the column being clicked. Here
+                   * the default IS this column: the API orders by `createdAt desc`
+                   * when no sort is given.
+                   *
+                   * So Date started active-descending, the first click cycled it to
+                   * null, and null was resolved back to `createdAt desc` — the
+                   * state it was already in. The header could never leave
+                   * descending however many times it was pressed, while every other
+                   * column worked. "Stuck on one side" is exactly that.
+                   *
+                   * A null now FLIPS the active column instead of clearing it,
+                   * which makes every header a plain two-state toggle. Nothing is
+                   * lost: "unsorted" is not a state this endpoint has — it always
+                   * orders by something — so the third click was only ever a way
+                   * back to a default that one column already occupied.
+                   */
+                  setSort((current) =>
+                    column === null
+                      ? {
+                          column: current.column,
+                          direction: current.direction === 'asc' ? 'desc' : 'asc',
+                        }
+                      : { column, direction: direction ?? 'asc' },
+                  );
                   setPage(1);
-                },
-                noun: [t('table.row'), t('table.rows')],
-              }}
-              empty={<EmptyState icon={Receipt} message={t('transactions.noMatches')} />}
-            />
+                }}
+                pagination={{
+                  page,
+                  pageSize,
+                  total,
+                  onPageChange: setPage,
+                  onPageSizeChange: (size) => {
+                    setPageSize(size);
+                    // Page 4 at 25 a page is past the end at 100 a page, which
+                    // comes back empty and reads as "no results".
+                    setPage(1);
+                  },
+                  noun: [t('table.row'), t('table.rows')],
+                }}
+                empty={<EmptyState icon={Receipt} message={t('transactions.noMatches')} />}
+              />
+            </div>
           </div>
         )}
       </AsyncBoundary>

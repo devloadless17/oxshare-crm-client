@@ -45,10 +45,41 @@ describe('the header account menu', () => {
     await user.click(screen.getByRole('button', { name: /account menu/i }));
 
     expect(await screen.findByRole('menuitem', { name: /profile/i })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: /theme/i })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /log out/i })).toBeInTheDocument();
     // The identity repeats inside — the shared-device check.
     expect(screen.getByText('client@oxshare.com')).toBeInTheDocument();
+  });
+
+  /*
+   * `Theme ▸` expands IN PLACE — the regression this pins.
+   *
+   * As a `DropdownMenuSub` it opened a second panel to the SIDE of a menu
+   * already anchored to the right edge of the header. At 393px there is no room
+   * there, so Radix flipped it left and it hung off the parent over the page
+   * content. The three options arriving in the SAME menu is what makes that
+   * impossible to reintroduce, and `queryByRole('menu')` staying at one panel is
+   * how this test can tell "expanded below" from "flew out beside".
+   *
+   * Asserting them as `menuitemradio` also pins that the control is still a
+   * radio group rather than three loose buttons.
+   */
+  it('expands Light, Dark and System into the same menu', async () => {
+    const user = userEvent.setup();
+    render(<UserMenu collapsed variant="header" />);
+    await user.click(screen.getByRole('button', { name: /account menu/i }));
+
+    const theme = await screen.findByRole('menuitem', { name: /theme/i });
+    // Collapsed to start with, exactly as the submenu row was.
+    expect(theme).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('menuitemradio')).not.toBeInTheDocument();
+
+    await user.click(theme);
+
+    for (const name of [/^light$/i, /^dark$/i, /^system$/i]) {
+      expect(await screen.findByRole('menuitemradio', { name })).toBeInTheDocument();
+    }
+    // One panel, not two: the options are rows in the menu that was already open.
+    expect(screen.getAllByRole('menu')).toHaveLength(1);
   });
 
   it('a failed sign-out keeps the menu open and says so INSIDE it', async () => {

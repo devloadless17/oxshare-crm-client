@@ -4477,11 +4477,16 @@ export interface components {
             programme: components["schemas"]["IbProgramSummaryDto"] | null;
             earnings: components["schemas"]["IbEarningsDto"];
             commissionWallets: components["schemas"]["WalletDto"][];
-            /** @description Newest first. The whole list — a partner may read every client they introduced. */
+            /** @description Newest first, and CAPPED at 200. This is a dashboard payload, not a roster: an unbounded list made the partner screen slower exactly as a partner succeeded. Read `referredClientCount` for how many there actually are — never this array’s length, which is the count of what fitted. */
             referredClients: components["schemas"]["IbReferredClientDto"][];
-            /** @description Partners directly beneath this one. */
+            /** @description Partners directly beneath this one, newest first, CAPPED at 200. FR-IB-17 gives a parent visibility of its sub-tree EARNINGS — which `earnings` carries in full — rather than an unbounded roster. */
             subPartners: components["schemas"]["IbSubPartnerDto"][];
-            /** @description How many referred clients have completed KYC — the ones who can actually fund. */
+            /**
+             * @description How many clients this partner has introduced, counted in SQL. Distinct from `referredClients.length`, which is capped — a screen showing a total must read THIS.
+             * @example 1284
+             */
+            referredClientCount: number;
+            /** @description How many referred clients have completed KYC — the ones who can actually fund. Counted in SQL over every referral, not by filtering the capped `referredClients` array. */
             verifiedReferredCount: number;
         };
         IbCommissionRowDto: {
