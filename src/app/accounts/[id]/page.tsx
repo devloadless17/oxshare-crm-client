@@ -334,26 +334,15 @@ function AccountDetail({ account }: { account: TradingAccount }) {
       <AccountLivePanel snapshot={snapshot} />
 
       {/*
-        Deposits and withdrawals: LIVE accounts only.
+        Open positions ABOVE the money history, which reverses the order this
+        page used to have.
 
-        A demo account cannot receive a transfer — `TransfersService` refuses a
-        demo destination and `/trading/accounts/transferable` never offers one —
-        so this panel would be permanently empty there. An empty
-        "Deposits and withdrawals" table on a practice account is not a neutral
-        blank: it invites a client to hunt for the control that would fill it, on
-        an account where real money is not the point.
-
-        Gated HERE rather than inside the component, so its absence from a demo
-        account is visible in this file rather than buried in a component that
-        silently renders nothing.
-      */}
-      {isLive && <AccountTransactions accountId={account.id} currency={account.currency} />}
-
-      {/*
-        Open positions last, and that ordering is deliberate rather than
-        leftover: it is the only panel on this page that changes while it is
-        being read. Everything above settles once loaded, so putting the moving
-        figures at the end lets the page come to rest from the top down.
+        The old order put the settled panels first and the moving one last, so
+        the page came to rest from the top down. That reasoning was sound and it
+        lost to a stronger one: what a client opens this screen to see is what
+        their account is doing NOW. Positions are that; deposits and withdrawals
+        are a record of what already happened, which is worth keeping and worth
+        scrolling for.
       */}
       <AccountPositions
         accountId={account.id}
@@ -367,6 +356,22 @@ function AccountDetail({ account }: { account: TradingAccount }) {
          */
         live={positionsLive}
       />
+
+      {/*
+        Deposits and withdrawals LAST, and LIVE accounts only.
+
+        A demo account cannot receive a transfer — `TransfersService` refuses a
+        demo destination and `/trading/accounts/transferable` never offers one —
+        so this panel would be permanently empty there. An empty
+        "Deposits and withdrawals" table on a practice account is not a neutral
+        blank: it invites a client to hunt for the control that would fill it, on
+        an account where real money is not the point.
+
+        Gated HERE rather than inside the component, so its absence from a demo
+        account is visible in this file rather than buried in a component that
+        silently renders nothing.
+      */}
+      {isLive && <AccountTransactions accountId={account.id} currency={account.currency} />}
     </div>
   );
 }
