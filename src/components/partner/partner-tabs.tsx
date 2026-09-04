@@ -1,12 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { Coins, LayoutGrid, Network, Users } from 'lucide-react';
+import { ArrowLeftRight, Coins, LayoutGrid, Network, Users } from 'lucide-react';
 import { Tabs, TabPanel, type TabDefinition } from '@/components/ui/tabs';
 import { PartnerOverview } from '@/components/partner/partner-overview';
 import { PartnerClients } from '@/components/partner/partner-clients';
 import { PartnerNetwork } from '@/components/partner/partner-network';
 import { PartnerCommissions } from '@/components/partner/partner-commissions';
+import { PartnerTransfers } from '@/components/partner/partner-transfers';
 import type { IbOverview, IbStatus } from '@/lib/api/partner';
 import { t } from '@/lib/i18n';
 
@@ -65,6 +66,19 @@ const TABS: TabDefinition[] = [
   { value: 'clients', label: t('partner.tabClients'), icon: <Users className={ICON} /> },
   { value: 'network', label: t('partner.tabNetwork'), icon: <Network className={ICON} /> },
   { value: 'commissions', label: t('partner.tabCommissions'), icon: <Coins className={ICON} /> },
+  /*
+   * MOVED OUT of the Commission tab, where it was a short unpaged panel.
+   *
+   * It answers a different question — Commission is "what have I earned", this
+   * is "what have I taken out" — and sharing a tab made the second read as a
+   * footnote to the first. It was also capped at whatever the endpoint returned,
+   * with no pager and no count, so it got less useful with every transfer.
+   */
+  {
+    value: 'transfers',
+    label: t('partner.tabTransfers'),
+    icon: <ArrowLeftRight className={ICON} />,
+  },
 ];
 
 /* Document flow, like the rest of this screen — the table's own floor is
@@ -103,6 +117,10 @@ export function PartnerTabs({
 
       <TabPanel value="commissions" activeValue={tab} idPrefix="partner" className={PANEL}>
         <PartnerCommissions />
+      </TabPanel>
+
+      <TabPanel value="transfers" activeValue={tab} idPrefix="partner" className={PANEL}>
+        <PartnerTransfers />
       </TabPanel>
     </div>
   );

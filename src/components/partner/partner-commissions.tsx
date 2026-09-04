@@ -4,7 +4,6 @@ import { Coins } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { DataTable, EmptyState, type Column } from '@/components/data-table';
 import { CommissionSummary } from '@/components/partner/commission-summary';
-import { CommissionTransfers } from '@/components/partner/commission-transfers';
 import {
   Pill,
   TABLE_FRAME,
@@ -45,8 +44,13 @@ import { keys } from '@/lib/query-keys';
  * and the gap between the two columns is the maturation window made visible
  * rather than described.
  *
- * `CommissionTransfers` reads a second endpoint nothing rendered at all.
- * Together they close the loop a partner walks: earned → released → moved.
+ * The transfers that used to sit beside it are their own TAB now
+ * (`PartnerTransfers`). They answer "what have I taken out", which is a
+ * different question from this tab's "what have I earned" — and as a panel
+ * they were an unpaged list capped at ten rows, so the screen meant to answer
+ * "where did my money go" stopped being able to as soon as a partner moved
+ * money often. Between the two tabs a partner still walks the whole loop:
+ * earned → released → moved.
  */
 /*
  * Ten rows a page, matching the frame's height — see `TABLE_PAGE_SIZE`. A page
@@ -148,30 +152,15 @@ export function PartnerCommissions() {
     >
       <div className="flex flex-col gap-5">
         {/*
-          The summary is hidden when there is nothing to summarise, and the
-          transfer list takes the width in that case. A row of zeroes beside an
+          Hidden when there is nothing to summarise: a row of zeroes above an
           empty table is two ways of saying the same nothing.
+
+          It takes the full width now. "Moved to your wallet" used to sit beside
+          it and is its own TAB — it answers "what have I taken out", which is a
+          different question from this tab's "what have I earned", and as a
+          panel it was an unpaged list that got less useful with every transfer.
         */}
-        {rows.length > 0 ? (
-          /*
-           * `items-stretch` is the DEFAULT for a grid, and it was not enough:
-           * the stretched thing was this wrapper `div`, while the `Surface`
-           * inside it sized to its own content and left the shorter card
-           * floating against a taller neighbour.
-           *
-           * So the wrapper is told to be a flex column and the panels are told
-           * to fill it — `h-full` on each, which reaches the `Surface` itself
-           * rather than the box around it.
-           */
-          <div className="grid items-stretch gap-5 xl:grid-cols-3">
-            <div className="flex flex-col xl:col-span-2">
-              <CommissionSummary rows={rows} className="h-full" />
-            </div>
-            <CommissionTransfers className="h-full" />
-          </div>
-        ) : (
-          <CommissionTransfers />
-        )}
+        {rows.length > 0 && <CommissionSummary rows={rows} />}
 
         <div className={TABLE_FRAME}>
           <DataTable
