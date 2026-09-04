@@ -1694,6 +1694,29 @@ export const messages = {
    */
   'accounts.actionsLabel': 'Actions',
   'accounts.renameAction': 'Change name',
+  /*
+   * Topping a DEMO account back up.
+   *
+   * The copy never uses "deposit" or "funds" — both mean real money everywhere
+   * else in this portal, and a client who reads either on a practice account is
+   * owed no ambiguity about which kind of money just moved.
+   */
+  'accounts.topUpAction': 'Add practice money',
+  'accounts.topUpTitle': 'Add practice money',
+  'accounts.topUpBody':
+    'This tops up your demo balance so you can keep practising. It is not real money and cannot ' +
+    'be withdrawn.',
+  'accounts.topUpAmountLabel': 'Amount',
+  'accounts.topUpCeilingHint': 'Up to {max} {currency} at a time.',
+  'accounts.topUpSubmit': 'Add to balance',
+  'accounts.topUpSubmitting': 'Adding…',
+  'accounts.topUpDoneTitle': 'Practice money added',
+  // The CREDITED figure. The API caps an over-large request rather than
+  // refusing it, so this may be less than what was typed — which is exactly
+  // why the message states an amount instead of just saying "done".
+  'accounts.topUpDone': '{amount} {currency} has been added to your demo balance.',
+  'accounts.topUpFailed': 'Could not add practice money to this account.',
+
   'accounts.renameTitle': 'Change account name',
   'accounts.nameLabel': 'Account name',
   /*

@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftRight, KeyRound, MailCheck, MoreHorizontal, Pencil } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeftRight, KeyRound, MailCheck, MoreHorizontal, Pencil, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -105,7 +105,73 @@ export function AccountActions({ account }: { account: TradingAccount }) {
     },
   });
 
+  /*
+   * ── Demo top-up ──────────────────────────────────────────────────────────
+   *
+   * Offered on DEMO accounts only, which is the exact complement of `canFund`
+   * below: practice money is added here, real money by transfer. The server
+   * refuses the wrong one either way — this only decides which item is drawn.
+   *
+   * `status` is checked too. A closed or suspended demo account is not one the
+   * broker wants traded, and crediting it would be an odd thing to offer.
+   */
+  const canTopUp = account.environment === 'demo' && account.status === 'active';
+
+  const [toppingUp, setToppingUp] = React.useState(false);
+  const [topUpAmount, setTopUpAmount] = React.useState('');
+  const [topUpError, setTopUpError] = React.useState<string | null>(null);
+  const [toppedUp, setToppedUp] = React.useState<string | null>(null);
+
+  /*
+   * The ceiling, fetched only once the dialog is OPEN.
+   *
+   * It is the operator's setting, so hardcoding it in the portal would let the
+   * number a client is told and the number enforced differ by a deploy — the
+   * mistake `maxDemoDeposit` was added to the self-service payload to end.
+   *
+   * `enabled` keeps it off the page's critical path: an account nobody is
+   * topping up should not pay for this request.
+   */
+  const availability = useQuery({
+    queryKey: keys.tradingAccounts.selfService(),
+    queryFn: ({ signal }) => tradingApi.getSelfServiceAvailability(signal),
+    enabled: toppingUp,
+    staleTime: 5 * 60_000,
+  });
+
+  const openTopUp = () => {
+    setTopUpAmount('');
+    setTopUpError(null);
+    setToppingUp(true);
+  };
+
+  const topUp = useMutation({
+    mutationFn: () => tradingApi.fundDemoAccount(account.id, topUpAmount.trim()),
+    onSuccess: async (result) => {
+      setToppingUp(false);
+      /*
+       * The CREDITED figure, not the typed one. The API clamps an over-large
+       * request to the ceiling rather than refusing it, so reporting what was
+       * asked for would tell a client they received money they did not.
+       */
+      setToppedUp(result.amount);
+      /*
+       * Both the account itself and the list: the balance changed, and the list
+       * card renders it too. Awaited so the dialog's success message and the
+       * figures behind it cannot disagree for a frame.
+       */
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: keys.tradingAccounts.detail(account.id) }),
+        queryClient.invalidateQueries({ queryKey: keys.tradingAccounts.all() }),
+      ]);
+    },
+    onError: (e: unknown) => {
+      setTopUpError(apiErrorMessage(e, t('accounts.topUpFailed')));
+    },
+  });
+
   const trimmed = name.trim();
+  const topUpTrimmed = topUpAmount.trim();
 
   /*
    * Funding is offered on LIVE, ACTIVE accounts only — the same pair the
@@ -138,6 +204,12 @@ export function AccountActions({ account }: { account: TradingAccount }) {
                 <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />
                 {t('accounts.fundAccount')}
               </Link>
+            </DropdownMenuItem>
+          )}
+          {canTopUp && (
+            <DropdownMenuItem onSelect={openTopUp}>
+              <Wallet className="h-4 w-4" aria-hidden="true" />
+              {t('accounts.topUpAction')}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onSelect={openRename}>
@@ -198,6 +270,96 @@ export function AccountActions({ account }: { account: TradingAccount }) {
         </DialogContent>
       </Dialog>
 
+      {/* ── Top up a demo account ────────────────────────────────────────── */}
+      <Dialog open={toppingUp} onOpenChange={(next) => !next && setToppingUp(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('accounts.topUpTitle')}</DialogTitle>
+          </DialogHeader>
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!topUpTrimmed || topUp.isPending) return;
+              void topUp.mutateAsync().catch(() => undefined);
+            }}
+          >
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {t('accounts.topUpBody')}
+            </p>
+            <Label htmlFor="top-up-amount" className="mt-1">
+              {t('accounts.topUpAmountLabel')}
+            </Label>
+            <Input
+              id="top-up-amount"
+              value={topUpAmount}
+              autoFocus
+              inputMode="decimal"
+              placeholder="10000.00"
+              onChange={(e) => {
+                setTopUpAmount(e.target.value);
+                setTopUpError(null);
+              }}
+            />
+            {/*
+              The ceiling, once it has loaded. Absent rather than guessed while
+              the request is in flight: a placeholder figure that later changes
+              is worse than no figure, because the client reads the first one.
+            */}
+            {availability.data && (
+              <p className="text-[11px] text-muted-foreground">
+                {t('accounts.topUpCeilingHint', {
+                  max: formatCeiling(availability.data.maxDemoDeposit),
+                  currency: account.currency,
+                })}
+              </p>
+            )}
+            {topUpError && (
+              <p role="alert" className="text-xs text-destructive">
+                {topUpError}
+              </p>
+            )}
+            <DialogFooter className="mt-2">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setToppingUp(false)}>
+                {t('accounts.passwordCancel')}
+              </Button>
+              {/*
+                Disabled while in flight, which is the ONLY guard against a
+                double credit: this endpoint is deliberately not idempotent,
+                because topping up the same amount twice is a legitimate thing
+                for a client to do ten minutes apart.
+              */}
+              <Button type="submit" size="sm" disabled={!topUpTrimmed || topUp.isPending}>
+                {topUp.isPending ? t('accounts.topUpSubmitting') : t('accounts.topUpSubmit')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── What the top-up actually credited ────────────────────────────── */}
+      <Dialog open={toppedUp !== null} onOpenChange={(next) => !next && setToppedUp(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('accounts.topUpDoneTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="flex gap-2 rounded-lg border border-success/40 bg-success/10 p-3">
+            <Wallet className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+            <p className="text-xs leading-relaxed">
+              {t('accounts.topUpDone', {
+                amount: toppedUp ?? '',
+                currency: account.currency,
+              })}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button size="sm" onClick={() => setToppedUp(null)}>
+              {t('common.close')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Reset both passwords ─────────────────────────────────────────── */}
       <Dialog open={confirming} onOpenChange={(next) => !next && setConfirming(false)}>
         <DialogContent>
@@ -254,4 +416,18 @@ export function AccountActions({ account }: { account: TradingAccount }) {
       )}
     </>
   );
+}
+
+/**
+ * Thousands separators on the ceiling, whole units only.
+ *
+ * The same helper `open-account-dialog` uses on the same number, deliberately
+ * duplicated rather than shared: it is two lines of presentation, and a
+ * `lib/money` export for it would invite use on figures that are actually
+ * money, where §6.1 says a decimal string must not be reformatted for display
+ * without going through the real formatter.
+ */
+function formatCeiling(amount: string): string {
+  const whole = amount.split('.')[0] ?? amount;
+  return whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }

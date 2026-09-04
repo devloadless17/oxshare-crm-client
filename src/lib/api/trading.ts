@@ -201,6 +201,23 @@ export interface PasswordResetResult {
   credentialsSentTo: string;
 }
 
+/**
+ * What a demo top-up actually credited.
+ *
+ * `amount` is the CLAMPED figure, not what was asked for: the API caps a
+ * request at the broker's ceiling rather than refusing it, so this is the only
+ * honest number to report back. `balance` is MT5's own read after the credit,
+ * or null when that read failed — the money still landed, and the sweep
+ * reconciles the column shortly.
+ */
+export interface DemoFundingResult {
+  id: string;
+  login: string;
+  amount: string;
+  dealId: string;
+  balance: string | null;
+}
+
 /** The name MT5 now holds for the account, echoed back after a rename. */
 export interface RenameResult {
   login: string;
@@ -293,6 +310,26 @@ export const tradingApi = {
    */
   async renameAccount(id: string, name: string): Promise<RenameResult> {
     const { data } = await apiClient.patch<RenameResult>(`/trading/accounts/${id}`, { name });
+    return data;
+  },
+
+  /**
+   * Add practice money to a DEMO account.
+   *
+   * A demo balance is consumed by practising, so an account traded down to
+   * nothing is a practice account that can no longer be practised on. Before
+   * this the only remedy was opening another one.
+   *
+   * The server refuses a live account — real money arrives by transfer, which
+   * posts both sides of the movement — and CLAMPS an over-large amount to the
+   * broker's ceiling rather than refusing it, so the returned `amount` is what
+   * was actually credited and may be less than what was asked for. Show that
+   * figure, not the one typed.
+   */
+  async fundDemoAccount(id: string, amount: string): Promise<DemoFundingResult> {
+    const { data } = await apiClient.post<DemoFundingResult>(`/trading/accounts/${id}/fund`, {
+      amount,
+    });
     return data;
   },
 
