@@ -972,8 +972,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The last few commission transfers, newest first
-         * @description A short list to sit beside the balance it explains. The FULL history is in `GET /payments/transactions`, which carries these rows alongside every other movement — a partner's own money should not be split across two histories that have to be reconciled against each other.
+         * Commission moved out of the commission wallet, newest first
+         * @description Every transfer, newest first, with the wallet numbers at both ends. It was capped at TEN while it rendered as a short panel beside the balance it explains; it is now a paged tab of its own, and a cap that silently hid a partner’s older transfers was the reason it could not answer “where did my money go”. These rows also appear in `GET /payments/transactions` alongside every other movement — a partner's own money should not be split across two histories that have to be reconciled against each other.
          */
         get: operations["IbController_myWalletTransfers"];
         put?: never;
@@ -3661,6 +3661,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/transfers/stuck": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How many transfers have been pending long enough to need a person
+         * @description Counts transfers still pending past the resume scheduler’s own staleness threshold — the same condition that raises the `money.transfer_stuck` alert. No money has moved on any of them: a wallet is debited only once MT5 confirms.
+         */
+        get: operations["AdminMoneyController_stuckTransfers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/transfers/{id}/abandon": {
         parameters: {
             query?: never;
@@ -4538,6 +4558,16 @@ export interface components {
              * @example 950.00000000
              */
             mainBalance?: string;
+            /**
+             * @description The COMMISSION wallet the money left, by its wallet number.
+             * @example W-4820199
+             */
+            fromWalletNumber?: string | null;
+            /**
+             * @description The MAIN wallet the money arrived in, by its wallet number.
+             * @example W-4820188
+             */
+            toWalletNumber?: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -6599,6 +6629,23 @@ export interface components {
             /** @description True when nothing is wrong. Read this rather than testing the array length — it is the field the service decides, and a future check can make it false without adding a wallet discrepancy. */
             balanced: boolean;
         };
+        StuckTransfersDto: {
+            /**
+             * @description Transfers still pending past the staleness threshold. No money has moved on any of them.
+             * @example 1
+             */
+            count: number;
+            /**
+             * Format: date-time
+             * @description When the OLDEST of them was requested, or null when there are none.
+             */
+            oldestAt: string | null;
+            /**
+             * @description The threshold itself, in minutes. Sent so the copy can name it without the frontend keeping its own copy of a number this side owns and can change.
+             * @example 15
+             */
+            thresholdMinutes: number;
+        };
         AbandonTransferDto: {
             /**
              * @description What the broker’s record showed. Reaches the client on the failed transfer, and is the audit trail for a decision nothing in this system could make on its own.
@@ -8547,6 +8594,8 @@ export interface operations {
                 /** @description Restrict to one client. */
                 clientUserId?: string;
                 status?: "pending" | "confirmed" | "reversed";
+                /** @description commission (paid to the partner) or rebate (paid back to the trading client). Absent returns both, which is what makes this one screen rather than two. */
+                kind?: "commission" | "rebate";
                 sort?: "createdAt" | "amount" | "status" | "depth";
                 order?: "asc" | "desc";
             };
@@ -12109,6 +12158,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LedgerListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminMoneyController_stuckTransfers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StuckTransfersDto"];
                 };
             };
         };

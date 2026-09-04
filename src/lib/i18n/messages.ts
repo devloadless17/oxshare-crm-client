@@ -1549,6 +1549,24 @@ export const messages = {
   // The short list that explains the balance beside it. The FULL history is
   // /transactions, which carries these rows alongside every other movement.
   'partner.transfersHeading': 'Moved to your wallet',
+  /*
+   * The TAB label — "Withdrawals" would be wrong and "Moved to your wallet" was
+   * vague.
+   *
+   * Nothing leaves the platform here: this is commission moving from the
+   * COMMISSION wallet to the MAIN one, which is the step before a withdrawal
+   * rather than the withdrawal itself. Calling it a withdrawal would have a
+   * partner looking for money that is still on the platform.
+   *
+   * "Payouts" and "Commission withdrawn" were both rejected for the same
+   * reason: a payout is what the broker pays out, and a withdrawal takes money
+   * off the platform. This is the partner moving their own already-earned money
+   * between their own two wallets, and the label says exactly that.
+   */
+  'partner.tabTransfers': 'Commission transfers',
+  'partner.colFromWallet': 'From wallet',
+  'partner.colToWallet': 'To wallet',
+  'partner.colCurrency': 'Currency',
   'partner.transfersLoading': 'Loading your commission transfers…',
   'partner.transfersFailed': 'Could not load your commission transfers.',
   'partner.transfersEmpty': 'You have not moved any commission yet',
