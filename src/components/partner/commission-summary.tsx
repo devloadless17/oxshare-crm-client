@@ -38,13 +38,21 @@ import { t } from '@/lib/i18n';
  * holds more than one, because "In USD" above the only figures on the screen is
  * noise.
  */
-export function CommissionSummary({ rows }: { rows: IbCommissionRow[] }) {
+export function CommissionSummary({
+  rows,
+  /* Passed through to `Surface` so the caller can make this fill a grid track —
+     the panel itself has to carry the height, not the box around it. */
+  className,
+}: {
+  rows: IbCommissionRow[];
+  className?: string;
+}) {
   const summaries = React.useMemo(() => summariseCommissions(rows), [rows]);
 
   if (summaries.length === 0) return null;
 
   return (
-    <Surface>
+    <Surface className={className}>
       <SectionHeader
         title={t('partner.summaryHeading')}
         description={t('partner.summaryScope', { count: rows.length })}

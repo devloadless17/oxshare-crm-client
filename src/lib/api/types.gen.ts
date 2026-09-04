@@ -942,28 +942,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/ib/positions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Open trades belonging to this partner's direct clients
-         * @description DIRECT clients only. A sub-partner’s clients are somebody else’s book — this partner earns on them through the chain, but listing them here would hand one partner a view of another’s client list.
-         *
-         *     Open positions only: a closed trade already appears in the commission list as the thing it produced.
-         */
-        get: operations["IbController_positions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/ib/agencies": {
         parameters: {
             query?: never;
@@ -1693,6 +1671,26 @@ export interface paths {
          * @description Changes the account holder's name as MT5 records it, so it updates what the client sees in their terminal and on statements. Nothing is stored CRM-side.
          */
         patch: operations["TradingController_renameAccount"];
+        trace?: never;
+    };
+    "/v1/trading/accounts/{id}/fund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Top up a demo trading account with practice money
+         * @description Demo accounts only — a live account is funded by transferring from a wallet, which posts both sides of the movement. The amount is capped at the operator ceiling reported as `maxDemoDeposit`; a larger request is clamped rather than refused, so a mistyped extra zero still leaves a working account.
+         */
+        post: operations["TradingController_fundDemoAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/trading/accounts/self-service": {
@@ -3663,6 +3661,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/transfers/{id}/abandon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Release a stuck transfer — frees the hold and tells the client why
+         * @description For a transfer the MT5 bridge left pending: the movement never reached the trading server, so the hold is released and the money becomes spendable again. Refuses anything that is not still pending.
+         *
+         *     ⚠️ Only after checking the broker’s own record. If MT5 DID apply the movement, releasing the hold lets the client spend money that has already left — which is the one thing the executor refuses to guess at, and the reason this is a person’s decision.
+         */
+        post: operations["AdminMoneyController_abandonTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/transactions/export": {
         parameters: {
             query?: never;
@@ -4483,21 +4503,6 @@ export interface components {
              */
             confirmedAt?: string | null;
         };
-        IbClientPositionDto: {
-            /** Format: uuid */
-            id: string;
-            clientName: string;
-            symbol: string;
-            /** @enum {string} */
-            side: "buy" | "sell";
-            /** @description Lots. */
-            volume: string;
-            openPrice: string;
-            /** @description Floating, and it moves. Shown because a partner asks "is my book alive", not so they can act on it — they have no control over a client’s trade. */
-            profit?: string | null;
-            /** Format: date-time */
-            openedAt: string;
-        };
         PublicAgencyDto: {
             /** Format: uuid */
             id: string;
@@ -4674,13 +4679,15 @@ export interface components {
             level: number;
             /** @example Main Partner */
             name: string;
+            /** @description What this tier is for, in the desk’s own words. Nothing computes with it. */
+            description: string | null;
             /** @description A disabled rung pays nobody standing on it. Disabling is refused while partners are there — see the service. */
             enabled: boolean;
             /**
              * @description How the PARTNER’s leg is priced.
              * @enum {string}
              */
-            commissionMode: "percent" | "per_lot";
+            commissionMode: "percent" | "per_lot" | "share_of_parent";
             /**
              * @description The partner’s share of broker revenue, as a percentage. Read in `percent` mode.
              * @example 30.0000
@@ -4695,7 +4702,7 @@ export interface components {
              * @description How the CLIENT’s rebate is priced.
              * @enum {string}
              */
-            rebateMode: "percent" | "per_lot";
+            rebateMode: "percent" | "per_lot" | "share_of_parent";
             /** @example 0.0000 */
             rebateRate: string;
             /** @example 2.00000000 */
@@ -4732,11 +4739,12 @@ export interface components {
             level: number;
             /** @example Sub Partner */
             name: string;
+            description?: string | null;
             /**
              * @default percent
              * @enum {string}
              */
-            commissionMode: "percent" | "per_lot";
+            commissionMode: "percent" | "per_lot" | "share_of_parent";
             /** @example 30.0000 */
             commissionRate?: string;
             /** @example 10.00000000 */
@@ -4745,7 +4753,7 @@ export interface components {
              * @default percent
              * @enum {string}
              */
-            rebateMode: "percent" | "per_lot";
+            rebateMode: "percent" | "per_lot" | "share_of_parent";
             /** @example 0.0000 */
             rebateRate?: string;
             /** @example 2.00000000 */
@@ -4757,12 +4765,13 @@ export interface components {
         };
         UpdateIbLevelDto: {
             name?: string;
+            description?: string | null;
             /** @enum {string} */
-            commissionMode?: "percent" | "per_lot";
+            commissionMode?: "percent" | "per_lot" | "share_of_parent";
             commissionRate?: string;
             commissionAmountPerLot?: string;
             /** @enum {string} */
-            rebateMode?: "percent" | "per_lot";
+            rebateMode?: "percent" | "per_lot" | "share_of_parent";
             rebateRate?: string;
             rebateAmountPerLot?: string;
             /** @enum {string} */
@@ -5046,6 +5055,13 @@ export interface components {
              * @example Swing trading
              */
             name: string;
+        };
+        FundDemoAccountDto: {
+            /**
+             * @description How much practice money to add. Positive decimal string, capped by the operator ceiling reported as `maxDemoDeposit` on /trading/accounts/self-service.
+             * @example 10000.00
+             */
+            amount: string;
         };
         TradingAccountDto: {
             id: string;
@@ -5512,10 +5528,10 @@ export interface components {
              */
             maxDemoDeposit: string;
             /**
-             * @description How many levels a commission programme’s ladder may reach. Defaults to 2 — the committed two-level structure (Feature List Rev 9, IB-17). Bounds what may be SAVED: lowering it leaves existing programmes paying exactly what they paid before.
-             * @example 2
+             * @description Seconds between commission payouts, and how long an accrual matures first. 60 credits a partner about a minute after the trade closes.
+             * @example 3600
              */
-            ibMaxLevels: number;
+            ibCommissionIntervalSeconds: number;
             /** Format: date-time */
             updatedAt?: string | null;
             updatedByName?: string | null;
@@ -5530,8 +5546,11 @@ export interface components {
              * @example 1000000.00
              */
             maxDemoDeposit: string;
-            /** @example 2 */
-            ibMaxLevels: number;
+            /**
+             * @description Seconds between commission payouts, and how long an accrual matures before it is payable. One number for both: either alone leaves the other as the real delay. 60 = a partner is credited about a minute after the trade closes.
+             * @example 3600
+             */
+            ibCommissionIntervalSeconds: number;
         };
         SmtpSettingsDto: {
             /** @example smtp.postmarkapp.com */
@@ -6579,6 +6598,13 @@ export interface components {
             totalDifference: string;
             /** @description True when nothing is wrong. Read this rather than testing the array length — it is the field the service decides, and a future check can make it false without adding a wallet discrepancy. */
             balanced: boolean;
+        };
+        AbandonTransferDto: {
+            /**
+             * @description What the broker’s record showed. Reaches the client on the failed transfer, and is the audit trail for a decision nothing in this system could make on its own.
+             * @example Checked MT5 deal history for 6480824 — the 1,000 never reached the account.
+             */
+            reason: string;
         };
         AdminTransactionSummaryRowDto: {
             /** @enum {string} */
@@ -8329,25 +8355,6 @@ export interface operations {
             };
         };
     };
-    IbController_positions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["IbClientPositionDto"][];
-                };
-            };
-        };
-    };
     IbController_openAgencies: {
         parameters: {
             query?: never;
@@ -9280,6 +9287,29 @@ export interface operations {
         };
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TradingController_fundDemoAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FundDemoAccountDto"];
+            };
+        };
+        responses: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12079,6 +12109,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LedgerListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminMoneyController_abandonTransfer: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A unique value per intended action, reused only when retrying that same one. The state guard makes a REPLAYED CAUSE a no-op — a second abandon finds the transfer already failed — and this makes a replayed REQUEST one too (PLATFORM-CONVENTIONS R-5.2). */
+                "idempotency-key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbandonTransferDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferDto"];
                 };
             };
         };

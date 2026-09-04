@@ -64,6 +64,18 @@ const text = (value: unknown): string | undefined =>
 const moneyVars = (params: AppNotification['params']) => ({
   amount: formatMoney(str(params.amount), str(params.currency)),
 });
+/*
+ * A payout SUMMARY: the amount and how many trades it covers.
+ *
+ * `count` is what separates "you were paid $148.08" from "you were paid $148.08
+ * across 188 trades", and the second is the one a partner can reconcile. It
+ * defaults to '1' so a row written before the summary change still reads as a
+ * sentence rather than showing the placeholder.
+ */
+const payoutVars = (params: AppNotification['params']) => ({
+  amount: formatMoney(str(params.amount), str(params.currency)),
+  count: str(params.count) || '1',
+});
 const moneyReasonVars = (params: AppNotification['params']) => ({
   amount: formatMoney(str(params.amount), str(params.currency)),
   reason: text(params.reason),
@@ -129,7 +141,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     icon: Percent,
     titleKey: 'notifications.kindCommissionConfirmedTitle',
     bodyKey: 'notifications.kindCommissionConfirmedBody',
-    vars: moneyVars,
+    vars: payoutVars,
     href: '/partner',
   },
   /*
@@ -144,7 +156,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     icon: Percent,
     titleKey: 'notifications.kindRebateCreditedTitle',
     bodyKey: 'notifications.kindRebateCreditedBody',
-    vars: moneyVars,
+    vars: payoutVars,
     href: '/wallet',
   },
   'partner.approved': {
