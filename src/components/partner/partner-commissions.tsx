@@ -153,11 +153,21 @@ export function PartnerCommissions() {
           empty table is two ways of saying the same nothing.
         */}
         {rows.length > 0 ? (
-          <div className="grid gap-5 xl:grid-cols-3">
-            <div className="xl:col-span-2">
-              <CommissionSummary rows={rows} />
+          /*
+           * `items-stretch` is the DEFAULT for a grid, and it was not enough:
+           * the stretched thing was this wrapper `div`, while the `Surface`
+           * inside it sized to its own content and left the shorter card
+           * floating against a taller neighbour.
+           *
+           * So the wrapper is told to be a flex column and the panels are told
+           * to fill it — `h-full` on each, which reaches the `Surface` itself
+           * rather than the box around it.
+           */
+          <div className="grid items-stretch gap-5 xl:grid-cols-3">
+            <div className="flex flex-col xl:col-span-2">
+              <CommissionSummary rows={rows} className="h-full" />
             </div>
-            <CommissionTransfers />
+            <CommissionTransfers className="h-full" />
           </div>
         ) : (
           <CommissionTransfers />

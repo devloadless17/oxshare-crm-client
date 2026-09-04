@@ -39,7 +39,13 @@ import { keys } from '@/lib/query-keys';
  * — a partner's own money should not be split across two histories that have to
  * be reconciled against each other.
  */
-export function CommissionTransfers() {
+export function CommissionTransfers({
+  /* Passed through to `Surface` so the caller can make this fill a grid track —
+     the panel itself has to carry the height, not the box around it. */
+  className,
+}: {
+  className?: string;
+} = {}) {
   const query = useResource<IbWalletTransfer[]>(keys.partner.walletTransfers(), (signal) =>
     partnerApi.walletTransfers(signal),
   );
@@ -47,7 +53,7 @@ export function CommissionTransfers() {
   const transfers = query.data ?? [];
 
   return (
-    <Surface>
+    <Surface className={className}>
       <SectionHeader
         title={t('partner.transfersHeading')}
         action={
