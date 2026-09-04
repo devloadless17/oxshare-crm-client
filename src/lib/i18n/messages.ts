@@ -1208,9 +1208,15 @@ export const messages = {
   // and the two arrive from the same event, so a shared word would make them
   // indistinguishable in the bell.
   'notifications.kindRebateCreditedTitle': 'Rebate credited',
-  'notifications.kindRebateCreditedBody': '{amount} was added to your wallet.',
+  // ── ONE MESSAGE PER RUN, NOT PER TRADE ──────────────────────────────────
+  // These were written per accrual, so a client closing a thousand positions
+  // got a thousand bell rows. They summarise a payout run now, and `{count}`
+  // is what makes that legible — "$148.08 across 188 trades" is a sentence
+  // somebody can act on; the same total with no count reads as one payment.
+  'notifications.kindRebateCreditedBody':
+    '{amount} was added to your wallet from {count} trade(s).',
   'notifications.kindCommissionConfirmedBody':
-    'A commission of {amount} was credited to your wallet.',
+    'Commission of {amount} was credited to your wallet from {count} trade(s).',
   'notifications.kindPartnerApprovedTitle': 'Partner application approved',
   'notifications.kindPartnerApprovedBody':
     'Welcome to the partner programme. Your referral link is ready.',
