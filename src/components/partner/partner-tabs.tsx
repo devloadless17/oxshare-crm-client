@@ -1,13 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { Coins, LayoutGrid, LineChart, Network, Users } from 'lucide-react';
+import { Coins, LayoutGrid, Network, Users } from 'lucide-react';
 import { Tabs, TabPanel, type TabDefinition } from '@/components/ui/tabs';
 import { PartnerOverview } from '@/components/partner/partner-overview';
 import { PartnerClients } from '@/components/partner/partner-clients';
 import { PartnerNetwork } from '@/components/partner/partner-network';
 import { PartnerCommissions } from '@/components/partner/partner-commissions';
-import { PartnerPositions } from '@/components/partner/partner-positions';
 import type { IbOverview, IbStatus } from '@/lib/api/partner';
 import { t } from '@/lib/i18n';
 
@@ -32,9 +31,25 @@ import { t } from '@/lib/i18n';
  * the page already holds, passed as props — so moving between them is instant
  * and no two panels can show figures from two different instants.
  *
- * Commission and Open positions own their reads, and `TabPanel` renders nothing
- * while inactive, so neither fires on a visit that only wanted the headline.
- * Those two are the expensive lists.
+ * Commission owns its read, and `TabPanel` renders nothing while inactive, so
+ * it does not fire on a visit that only wanted the headline.
+ *
+ * ## THE OPEN POSITIONS TAB IS GONE, and it could not have been fixed in place
+ *
+ * It read `GET /ib/positions`, which queries the `positions` TABLE — created
+ * empty on purpose and written by nothing, because a stored profit is stale the
+ * moment it is saved. So the tab was permanently blank on a platform with live
+ * trades, which reads as "your clients are not trading".
+ *
+ * The obvious repair is what the account screen does: read live from MT5. That
+ * is one bridge call per client ACCOUNT, serialised behind the single session
+ * lock — a partner with fifty clients holding two accounts each is a hundred
+ * round trips on every page load, blocking every other client on the platform
+ * meanwhile.
+ *
+ * It was removed instead. FR-IB-17 owes a partner visibility of their sub-tree
+ * EARNINGS, and the commission tab carries every closed trade that paid them —
+ * which is what they are actually owed, and what only this system knows.
  *
  * ## Local state, not the URL
  *
@@ -50,7 +65,6 @@ const TABS: TabDefinition[] = [
   { value: 'clients', label: t('partner.tabClients'), icon: <Users className={ICON} /> },
   { value: 'network', label: t('partner.tabNetwork'), icon: <Network className={ICON} /> },
   { value: 'commissions', label: t('partner.tabCommissions'), icon: <Coins className={ICON} /> },
-  { value: 'positions', label: t('partner.tabPositions'), icon: <LineChart className={ICON} /> },
 ];
 
 /* Document flow, like the rest of this screen — the table's own floor is
@@ -89,10 +103,6 @@ export function PartnerTabs({
 
       <TabPanel value="commissions" activeValue={tab} idPrefix="partner" className={PANEL}>
         <PartnerCommissions />
-      </TabPanel>
-
-      <TabPanel value="positions" activeValue={tab} idPrefix="partner" className={PANEL}>
-        <PartnerPositions />
       </TabPanel>
     </div>
   );

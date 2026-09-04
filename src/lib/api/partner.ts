@@ -54,8 +54,16 @@ export type IbSubPartner = components['schemas']['IbSubPartnerDto'];
 /** One commission entry, with the status that says whether it is money yet. */
 export type IbCommissionRow = components['schemas']['IbCommissionRowDto'];
 
-/** One open trade belonging to a client this partner introduced. */
-export type IbClientPosition = components['schemas']['IbClientPositionDto'];
+/*
+ * `IbClientPosition` IS GONE, with `GET /ib/positions`.
+ *
+ * The endpoint read the `positions` TABLE — created empty on purpose and
+ * written by nothing — so it always answered an empty list, and the partner
+ * screen read as "your clients are not trading". Reading it live is one bridge
+ * call per client ACCOUNT behind the single MT5 session lock, which does not
+ * scale; a partner's EARNINGS are what they are owed, and the commission list
+ * carries every closed trade that paid them.
+ */
 
 /** An agency (وكالة) a client may apply to be appointed under. */
 export type Agency = components['schemas']['PublicAgencyDto'];
@@ -145,12 +153,6 @@ export const partnerApi = {
    */
   async commissions(signal?: AbortSignal): Promise<IbCommissionRow[]> {
     const { data } = await apiClient.get<IbCommissionRow[]>('/ib/commissions', { signal });
-    return data;
-  },
-
-  /** Open trades of this partner's DIRECT clients. */
-  async positions(signal?: AbortSignal): Promise<IbClientPosition[]> {
-    const { data } = await apiClient.get<IbClientPosition[]>('/ib/positions', { signal });
     return data;
   },
 
