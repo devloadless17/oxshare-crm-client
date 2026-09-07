@@ -4,7 +4,9 @@ import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@/context/UserContext';
 import { useKycAccess } from '@/hooks/use-kyc-access';
+import { usePartnerAccess } from '@/hooks/use-partner-access';
 import { requiresApprovedKyc } from '@/lib/kyc-access';
+import { isPartnerRoute } from '@/lib/partner-access';
 import { loginPathFor } from '@/lib/return-to';
 import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/loader';
@@ -54,6 +56,17 @@ const EMAIL_VERIFIED_PATHS = [
 
 /** Where an unverified client is sent to finish verifying. */
 const VERIFY_EMAIL_PATH = '/verify-email/pending';
+
+/**
+ * Where a client the partner ladder can never hold is sent from `/partner`.
+ *
+ * The dashboard, not an error screen: their sidebar does not carry the entry
+ * (`visibleNavItems` hides it on the same signal), so the only ways here are a
+ * typed URL, an old bookmark or a shared link — and each of those deserves the
+ * portal's front page rather than a refusal about a programme the navigation
+ * never offered them.
+ */
+const PARTNER_HIDDEN_PATH = '/dashboard';
 
 /**
  * Where a client without an approved identity check is sent from a money route.
@@ -204,6 +217,24 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   // this component holds the first paint for the profile itself.
   const kycUnresolved = onMoneyRoute && kyc.isLoading;
 
+  /*
+   * The partner-page gate, on the same pattern as the KYC one above and with
+   * the same discipline: never act while the answer is in flight.
+   *
+   * `hidden` is true only for a client the ladder can never hold — introduced
+   * by a partner on the deepest enabled level, with no partner account and no
+   * application to look at (`lib/partner-access.ts` argues each condition).
+   * The sidebar drops the entry on the same signal; this closes the typed-URL
+   * door, and the backend refuses the application regardless. A failed
+   * `/ib/status` read leaves `hidden` false, so an outage shows the page
+   * rather than hiding it — failing open is one explanatory screen, failing
+   * closed is a page that vanishes because a request dropped.
+   */
+  const partner = usePartnerAccess();
+  const onPartnerRoute = isPartnerRoute(pathname);
+  const partnerBlocked = onPartnerRoute && !partner.isLoading && partner.hidden;
+  const partnerUnresolved = onPartnerRoute && partner.isLoading;
+
   const redirectTo = signedOut
     ? loginPathFor(pathname, typeof window === 'undefined' ? '' : window.location.search)
     : needsVerification
@@ -218,7 +249,9 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
          */
         kycBlocked
         ? KYC_PATH
-        : null;
+        : partnerBlocked
+          ? PARTNER_HIDDEN_PATH
+          : null;
 
   React.useEffect(() => {
     if (redirectTo) router.replace(redirectTo);
@@ -242,8 +275,10 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   // `kycUnresolved` joins the two existing reasons to hold the paint: on a money
   // route the KYC answer is as load-bearing as the profile itself, and rendering
   // the withdrawal form to someone about to be bounced off it is the same bug
-  // this component was written to fix, one gate further in.
-  if (isLoading || redirectTo || kycUnresolved) return <SessionCheck />;
+  // this component was written to fix, one gate further in. `partnerUnresolved`
+  // is the same hold on /partner — the page must not flash for a client about
+  // to be redirected off it.
+  if (isLoading || redirectTo || kycUnresolved || partnerUnresolved) return <SessionCheck />;
 
   return <>{children}</>;
 }

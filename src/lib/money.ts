@@ -18,8 +18,15 @@ import Decimal from 'decimal.js';
  * in both.
  */
 
-/** Display scale. The stored scale is 8; we round for humans, never for maths. */
-const DISPLAY_SCALE = 2;
+/**
+ * Display scale. The stored scale is 8; we round for humans, never for maths.
+ *
+ * Exported as the FALLBACK for `floorToScale` when the currency catalogue has
+ * not loaded — every currency this platform holds declares 2, so falling back
+ * to it offers the right figure in practice and, when it is ever wrong, offers
+ * slightly LESS rather than an amount the server would refuse.
+ */
+export const DISPLAY_SCALE = 2;
 
 const SYMBOLS: Record<string, string> = { USD: '$' };
 
@@ -58,6 +65,33 @@ export function formatMoney(value: string, currency: string, fallback = '—'): 
  * is a string comparison that breaks the moment the API returns `'0'` or
  * `'0.0'` instead of the current fixed 8dp shape.
  */
+/**
+ * The largest value at `scale` that is not MORE than `value` — floor, never round.
+ *
+ * For "use max" buttons. A wallet holds NUMERIC(28,8) and commission and rebates
+ * are percentages, so a balance can legitimately carry sub-cent value that no
+ * payout rail can send: the API refuses an amount with more decimal places than
+ * the currency declares (D-77), so offering the raw balance would produce a
+ * server refusal the client cannot explain — the exact failure the "use max"
+ * comment on the withdraw screen already warns about, reached a second way.
+ *
+ * DOWN, always. Rounding up offers money the client does not have and trades one
+ * refusal for another.
+ *
+ * Returns the input unchanged if it will not parse: this feeds a convenience
+ * button, and a button that silently produces "0" is worse than one that
+ * produces what the server will judge for itself.
+ */
+export function floorToScale(value: string, scale: number): string {
+  try {
+    const d = new Decimal(value);
+    if (!d.isFinite()) return value;
+    return d.toDecimalPlaces(scale, Decimal.ROUND_DOWN).toFixed(scale);
+  } catch {
+    return value;
+  }
+}
+
 export function isZeroMoney(value: string): boolean {
   try {
     return new Decimal(value).isZero();
