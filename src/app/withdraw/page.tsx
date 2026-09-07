@@ -7,7 +7,8 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { walletApi, type Wallet } from '@/lib/api/wallet';
 import { paymentsApi, type WithdrawalMethod } from '@/lib/api/payments';
 import { newIdempotencyKey } from '@/lib/api/client';
-import { compareMoney, formatMoney, isZeroMoney } from '@/lib/money';
+import { compareMoney, floorToScale, formatMoney, isZeroMoney } from '@/lib/money';
+import { useCurrencyScale } from '@/hooks/use-currency-scale';
 import { Button } from '@/components/ui/button';
 import { WithdrawalDestinationField } from '@/components/money/withdrawal-fields';
 import {
@@ -100,6 +101,9 @@ function WithdrawForm({
   methods: WithdrawalMethod[];
   onDone: () => void;
 }) {
+  // How many decimals each currency allows. Called here rather than threaded
+  // from the page: it never gates rendering, so it needs no prop.
+  const scaleOf = useCurrencyScale();
   /*
    * EVERY wallet, richest first — not just the funded ones.
    *
@@ -506,8 +510,21 @@ function WithdrawForm({
                  * server as a string and the server re-derives every constraint
                  * (R-5.1). No comparison happens on this side.
                  */
+                /*
+                 * FLOORED to the currency's scale as well. A balance can carry
+                 * sub-cent value no rail can send (commission is a percentage
+                 * of NUMERIC(28,8)), and the API refuses those amounts (D-77) —
+                 * so the raw figure is a second way to reach the refusal this
+                 * comment already warns about. The remainder stays in the
+                 * wallet.
+                 */
                 max={
-                  selected ? { amount: selected.available, label: t('money.useMax') } : undefined
+                  selected
+                    ? {
+                        amount: floorToScale(selected.available, scaleOf(selected.currency)),
+                        label: t('money.useMax'),
+                      }
+                    : undefined
                 }
                 hint={
                   selected
@@ -586,7 +603,6 @@ export default function WithdrawPage() {
   const methods = useResource(keys.paymentMethods.withdrawal(), (signal) =>
     paymentsApi.getWithdrawalMethods(signal),
   );
-
   /*
    * ONE boundary over BOTH resources, rather than a form that renders while its
    * method list is still loading. The method decides what the destination field
