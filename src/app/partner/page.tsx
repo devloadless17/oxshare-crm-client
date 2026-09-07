@@ -54,6 +54,18 @@ function PartnerState({ status, onChanged }: { status: IbStatus; onChanged: () =
         reason={application.rejectionReason}
         onReapply={onChanged}
         inherited={status.inheritedAgency ?? null}
+        /*
+         * `chain_full` closes re-application permanently: the ladder has no
+         * rung beneath this client's introducer, and `POST /ib/apply` refuses
+         * them. The rejection stays readable — hiding a delivered decision
+         * reads as the product losing it, which is why `partnerPageHidden`
+         * keeps this page for anyone with an application — but the "apply
+         * again" invitation is replaced with the API's own sentence rather
+         * than leading to a form whose submission is already refused.
+         */
+        reapplyClosedReason={
+          status.ineligibleCode === 'chain_full' ? status.ineligibleReason : null
+        }
       />
     );
   }
@@ -98,11 +110,18 @@ function RejectedPanel({
   reason,
   onReapply,
   inherited,
+  reapplyClosedReason,
 }: {
   reason: string | null;
   onReapply: () => void;
   /** Carried through to the form — a re-application inherits exactly as a first one does. */
   inherited: IbStatus['inheritedAgency'];
+  /**
+   * The API's sentence when re-applying is permanently closed (`chain_full`),
+   * null when the door is open. It REPLACES the "you can apply again" body —
+   * both sentences beside each other is a screen contradicting itself.
+   */
+  reapplyClosedReason: string | null;
 }) {
   const [reapplying, setReapplying] = React.useState(false);
 
@@ -114,7 +133,7 @@ function RejectedPanel({
         icon={XCircle}
         tone="destructive"
         heading={t('partner.rejectedHeading')}
-        body={t('partner.rejectedReapply')}
+        body={reapplyClosedReason ?? t('partner.rejectedReapply')}
       >
         {reason && (
           <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-left">
@@ -126,11 +145,13 @@ function RejectedPanel({
         )}
       </StatusPanel>
 
-      <div className="flex justify-center">
-        <Button type="button" onClick={() => setReapplying(true)}>
-          {t('partner.reapply')}
-        </Button>
-      </div>
+      {!reapplyClosedReason && (
+        <div className="flex justify-center">
+          <Button type="button" onClick={() => setReapplying(true)}>
+            {t('partner.reapply')}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
