@@ -6,7 +6,7 @@ import { AmountField, AmountPresets, MoneySection } from '@/components/money/mon
 import type { PaymentMethod } from '@/lib/api/deposits';
 import type { TradingAccount } from '@/lib/api/trading';
 import type { Wallet } from '@/lib/api/wallet';
-import { formatMoney } from '@/lib/money';
+import { DISPLAY_SCALE, formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
 
 /**
@@ -87,6 +87,40 @@ export function amountProblem(method: PaymentMethod, amount: string): string | n
     return null; // Let the server phrase "that is not a number".
   }
   if (!value.isFinite() || !value.isPositive()) return null;
+
+  /*
+   * MORE PRECISION THAN THE RAIL CAN TAKE — checked here, first.
+   *
+   * Without it the screen contradicted itself. The pay button renders the
+   * amount through `formatMoney`, which rounds HALF-UP for display, so typing
+   * `50.129` produced a button promising "Pay $50.13" — while the server, which
+   * suggested rounding DOWN, answered "Try 50.12 USD". Two different numbers for
+   * one input, on one screen, and clicking the button failed.
+   *
+   * The button was the worse half: `formatMoney` is a DISPLAY helper, right for
+   * a balance and wrong for a control that promises an exact payment. Catching
+   * the problem here means the CTA never gets to make that promise.
+   *
+   * Rounded HALF-UP to match what the client is already being shown, and what
+   * they meant — a deposit has no balance to overshoot, so there is nothing to
+   * protect by rounding down. (A WITHDRAWAL is the opposite and still floors:
+   * suggesting more than the client holds trades one refusal for another.)
+   */
+  /*
+   * DISPLAY_SCALE deliberately — the same constant `formatMoney` rounds to.
+   * The defect being fixed is a mismatch between what is CHECKED and what is
+   * SHOWN, so the check has to read from the display's own number or it can
+   * drift apart again. The server remains authoritative and derives its bound
+   * from the currency and the rail (D-77); this is the client-side echo.
+   */
+  if (value.decimalPlaces() > DISPLAY_SCALE) {
+    return t('deposit.amountTooPrecise', {
+      method: method.name,
+      currency: method.currency,
+      places: String(DISPLAY_SCALE),
+      suggestion: value.toFixed(DISPLAY_SCALE, Decimal.ROUND_HALF_UP),
+    });
+  }
 
   const { min, max } = bounds(method);
   if (min && value.lessThan(min)) {

@@ -1839,6 +1839,11 @@ export const messages = {
   'deposit.toAccountHint': 'Funded automatically once the payment clears.',
   'deposit.amountRange': 'Between {min} and {max}',
   'deposit.amountBelowMin': 'The minimum deposit is {min}.',
+  // Names the rail rather than the currency: "USD takes 2 decimal places" reads
+  // as a fact about money, which invites arguing with it. "Whish Money takes
+  // USD to 2 decimal places" is a fact about the rail the client just chose.
+  'deposit.amountTooPrecise':
+    '{method} takes {currency} to {places} decimal places. Use {suggestion} instead.',
   'deposit.amountAboveMax': 'The maximum deposit is {max}.',
   'deposit.pay': 'Pay {amount}',
 
