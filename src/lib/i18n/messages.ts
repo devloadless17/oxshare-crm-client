@@ -1318,8 +1318,8 @@ export const messages = {
    */
   'partner.inheritedAgency': 'Your programme',
   'partner.inheritedAgencyHint':
-    'You were introduced by a partner, so you join their programme and sell the same products. ' +
-    'This is not something you choose.',
+    'Selected for you automatically: you were introduced by a partner, so you join their ' +
+    'programme and sell the same products. Nothing to fill in here.',
   // Not a validation error: an operator has configured nothing to apply for,
   // and naming that is more useful than a message about an unshown field.
   'partner.noAgenciesOffered':
