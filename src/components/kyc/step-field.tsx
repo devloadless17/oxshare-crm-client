@@ -15,12 +15,7 @@ import { COUNTRY_CODE_BY_NAME } from '@/lib/countries-data';
 import { DocumentUploader } from './document-uploader';
 import { SelfieCamera } from './selfie-camera';
 import { t } from '@/lib/i18n';
-import {
-  MAX_DATE_OF_BIRTH,
-  NATIVE_SELECT_THRESHOLD,
-  textInputHints,
-  type KycFieldConfig,
-} from './field-hints';
+import { MAX_DATE_OF_BIRTH, textInputHints, type KycFieldConfig } from './field-hints';
 
 /**
  * One configured KYC field, rendered.
@@ -194,56 +189,33 @@ export function StepField({
             isErrored ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5' : ''
           }
         >
-          {optionsList.length > NATIVE_SELECT_THRESHOLD ? (
-            /*
-             * A NATIVE select for long lists.
-             *
-             * Nationality and country are ~250 options each, and the styled
-             * Select renders them as a custom listbox — on a phone that is a
-             * 250-item scroll with no letter jump. A native select opens the OS
-             * picker, which every mobile platform gives type-ahead and a wheel.
-             *
-             * Switched on LIST LENGTH rather than by sniffing the device: the
-             * length IS the problem, and user-agent tests are wrong somewhere by
-             * definition. Short configured lists keep the styled control.
-             *
-             * The flag icons are lost here. That is the trade — a decoration,
-             * for being able to find your country on the device most clients
-             * use. Adding search to the shared `ui/select` twin would change the
-             * admin app too, which this has no business doing.
-             */
-            <select
-              value={val}
-              onChange={(e) => onChange(field.name, e.target.value)}
-              autoComplete={field.name === 'country' ? 'country-name' : undefined}
-              className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">{t('kyc.selectField', { label: field.label.toLowerCase() })}</option>
+          {/*
+           * The styled Select for EVERY list length, on an explicit
+           * instruction. A native <select> used to take over past 20 options
+           * (nationality and country are ~250 each) because the OS picker
+           * gives phones type-ahead and a wheel — that trade was reversed for
+           * one control that looks the same as every other field on the form,
+           * flags included. If long-list picking on phones comes back as a
+           * complaint, the answer is a search box inside the dropdown, not
+           * the native control's page-grey chrome.
+           */}
+          <Select value={val} onValueChange={(selected) => onChange(field.name, selected)}>
+            <SelectTrigger>
+              <SelectValue
+                placeholder={t('kyc.selectField', { label: field.label.toLowerCase() })}
+              />
+            </SelectTrigger>
+            <SelectContent>
               {optionsList.map((opt) => (
-                <option key={`${opt.value}-${opt.label}`} value={opt.value}>
-                  {opt.label}
-                </option>
+                <SelectItem key={`${opt.value}-${opt.label}`} value={opt.value}>
+                  <span className="flex items-center gap-2">
+                    {opt.flagCode && <CountryFlagIcon code={opt.flagCode} />}
+                    <span>{opt.label}</span>
+                  </span>
+                </SelectItem>
               ))}
-            </select>
-          ) : (
-            <Select value={val} onValueChange={(selected) => onChange(field.name, selected)}>
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={t('kyc.selectField', { label: field.label.toLowerCase() })}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {optionsList.map((opt) => (
-                  <SelectItem key={`${opt.value}-${opt.label}`} value={opt.value}>
-                    <span className="flex items-center gap-2">
-                      {opt.flagCode && <CountryFlagIcon code={opt.flagCode} />}
-                      <span>{opt.label}</span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+            </SelectContent>
+          </Select>
         </div>
       </div>
     );

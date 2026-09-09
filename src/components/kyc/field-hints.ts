@@ -14,14 +14,12 @@ export const MAX_DATE_OF_BIRTH = new Date(Date.now() - 18 * 365.25 * 24 * 60 * 6
   .toISOString()
   .split('T')[0];
 
-/**
- * Above this many options, a dropdown stops being a dropdown.
- *
- * 20 is roughly where scrolling a custom listbox on a phone becomes worse than
- * the OS picker. Country and nationality (~250 each) are far past it; a
- * configured `select` field with a handful of choices is not.
+/*
+ * `NATIVE_SELECT_THRESHOLD` IS GONE. It switched long lists (country,
+ * nationality) to a native <select> for the OS picker's type-ahead; that was
+ * reversed on an explicit instruction so every select on the form is the
+ * styled one — see the comment at the select branch in `step-field.tsx`.
  */
-export const NATIVE_SELECT_THRESHOLD = 20;
 
 /**
  * Browser hints for a free-text profile field, keyed on the field's machine name.

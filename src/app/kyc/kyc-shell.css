@@ -15,7 +15,21 @@
  */
 
 .kyc-shell {
-  min-height: 100vh;
+  /*
+   * The shell OWNS its scroll. The document never scrolls in this app —
+   * <body> is h-dvh overflow-hidden (see app/layout.tsx) — so a shell that
+   * merely grows (the old min-height: 100vh) has everything past the first
+   * viewport CLIPPED, not scrollable: reported as "the KYC page cannot be
+   * scrolled" on exactly the steps tall enough to need it (two uploaders,
+   * the selfie). A bounded height plus overflow-y is the same pattern the
+   * portal <main> and auth-shell use.
+   *
+   * dvh, not vh: on a phone 100vh is the viewport with the URL bar
+   * RETRACTED, so a vh-sized box is taller than what is visible and the
+   * bottom of the form hides behind the browser chrome.
+   */
+  height: 100dvh;
+  overflow-y: auto;
   background: var(--background);
   color: var(--foreground);
 }

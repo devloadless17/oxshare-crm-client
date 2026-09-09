@@ -10,6 +10,7 @@ import { apiErrorCode, apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 /**
  * What this screen has concluded. Exhaustive, and each case renders differently.
@@ -383,14 +384,14 @@ function VerifyEmailForm() {
                 <label htmlFor="resend-email" className="sr-only">
                   {t('auth.verify.emailPlaceholder')}
                 </label>
-                <input
+                <Input
                   id="resend-email"
                   type="email"
                   autoComplete="email"
                   placeholder={t('auth.verify.emailPlaceholder')}
                   value={resendEmail}
                   onChange={(e) => setResendEmail(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-xs text-foreground focus-outline"
+                  className="h-11"
                 />
                 <Button
                   type="button"

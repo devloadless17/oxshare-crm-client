@@ -10,6 +10,7 @@ import { t } from '@/lib/i18n';
 import { RedirectIfAuthenticated } from '@/components/auth/redirect-if-authenticated';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { PageLoader } from '@/components/ui/loader';
 
 /**
@@ -174,15 +175,18 @@ function RegisterForm() {
                   {t('auth.register.firstName')}
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <input
+                  <User
+                    className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <Input
                     id="firstName"
                     type="text"
                     required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder={t('auth.register.firstNamePlaceholder')}
-                    className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="h-11 pl-10"
                   />
                 </div>
               </div>
@@ -192,15 +196,18 @@ function RegisterForm() {
                   {t('auth.register.lastName')}
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <input
+                  <User
+                    className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <Input
                     id="lastName"
                     type="text"
                     required
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder={t('auth.register.lastNamePlaceholder')}
-                    className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="h-11 pl-10"
                   />
                 </div>
               </div>
@@ -211,15 +218,18 @@ function RegisterForm() {
                 {t('auth.register.email')}
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <input
+                <Mail
+                  className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
                   id="email"
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t('auth.login.emailPlaceholder')}
-                  className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="h-11 pl-10"
                 />
               </div>
             </div>
@@ -229,21 +239,24 @@ function RegisterForm() {
                 {t('auth.register.password')}
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <input
+                <Lock
+                  className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={t('auth.login.passwordPlaceholder')}
-                  className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-10 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="h-11 pl-10 pr-11"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                  className="absolute right-3 top-2.5 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
+                  className="absolute right-3 top-3 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
