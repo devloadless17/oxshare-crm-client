@@ -9,10 +9,47 @@ export type KycFieldConfig = components['schemas']['KycFieldConfigDto'];
  * render body (or in a `useMemo`, which React may re-run at any time) makes the
  * component impure: two renders a millisecond apart can disagree. The value is
  * fresh per page load, and the real check is server-side (`kyc-profile.ts`).
+ *
+ * ## Calendar years, not 365.25 of them
+ *
+ * This subtracted `18 * 365.25` DAYS. The server counts calendar years
+ * (`ageInYears`, month-and-day compared), and 18 calendar years is 6574 or 6575
+ * days depending on how many 29 Februaries they span — never 6574.5. So the two
+ * definitions of "18" disagreed by up to a day, in BOTH directions:
+ *
+ *   - a client whose 18th birthday is TODAY was refused by the picker, on the
+ *     one day it matters most to them, while the server would have accepted;
+ *   - a client who turns 18 TOMORROW could pick their date, fill the rest of
+ *     the flow, upload three documents and only then be refused at submit.
+ *
+ * Subtracting 18 from the year is the same arithmetic the server does, so the
+ * picker's boundary and the rule's boundary are the same date by construction
+ * rather than by two approximations landing close enough.
+ *
+ * ## The 29 February clamp
+ *
+ * On 29 February the target year is not a leap year, and `Date.UTC(y, 1, 29)`
+ * ROLLS FORWARD to 1 March. Left alone that hands back a cap one day too late:
+ * `ageInYears` reads a 1 March birthday as not yet reached on 29 February, so
+ * the picker would have offered a date the server then refused. Clamped to the
+ * last day of the intended month (28 February), which is the latest date of
+ * birth the server actually accepts on that day.
  */
-export const MAX_DATE_OF_BIRTH = new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000)
-  .toISOString()
-  .split('T')[0];
+/**
+ * Exported for the test, which pins the boundary on fixed days rather than on
+ * whatever day the suite happens to run — including 29 February, which is
+ * unreachable from `new Date()` for three years out of four.
+ */
+export function latestDateOfBirthFor(minimumAgeYears: number, asOf: Date): string {
+  const year = asOf.getUTCFullYear() - minimumAgeYears;
+  const month = asOf.getUTCMonth();
+  const cap = new Date(Date.UTC(year, month, asOf.getUTCDate()));
+  // Day 0 of the NEXT month is the last day of this one.
+  const clamped = cap.getUTCMonth() === month ? cap : new Date(Date.UTC(year, month + 1, 0));
+  return clamped.toISOString().split('T')[0]!;
+}
+
+export const MAX_DATE_OF_BIRTH = latestDateOfBirthFor(18, new Date());
 
 /*
  * `NATIVE_SELECT_THRESHOLD` IS GONE. It switched long lists (country,
