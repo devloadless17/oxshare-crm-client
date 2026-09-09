@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Handshake } from 'lucide-react';
+import { CheckCircle2, Handshake } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KycGateDialog } from '@/components/kyc/kyc-gate-dialog';
 import { useKycAccess } from '@/hooks/use-kyc-access';
@@ -187,11 +187,20 @@ export function ApplyPanel({
         {inherited && (
           <div className="mt-8 space-y-3">
             <h3 className="text-sm font-semibold">{t('partner.inheritedAgency')}</h3>
-            <div className="rounded-xl border border-border bg-muted/40 p-4">
-              <p className="text-sm font-semibold">{inherited.name}</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                {t('partner.inheritedAgencyHint')}
-              </p>
+            {/*
+              Drawn as an option ALREADY CHOSEN — the same look a picked radio
+              card gets below — rather than as a grey note. "Selected for you"
+              is the message, and the muted box read as something being wrong
+              or disabled next to a submit button.
+            */}
+            <div className="flex gap-3 rounded-xl border border-primary bg-primary/5 p-4">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">{inherited.name}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {t('partner.inheritedAgencyHint')}
+                </p>
+              </div>
             </div>
           </div>
         )}
