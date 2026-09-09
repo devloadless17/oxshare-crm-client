@@ -118,7 +118,7 @@ export function PhoneInput({
         type="button"
         disabled={disabled}
         onClick={() => setOpen(!open)}
-        className="flex h-9 items-center justify-between gap-1.5 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs font-semibold ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer min-w-[92px]"
+        className="flex h-9 items-center justify-between gap-1.5 rounded-lg border border-input bg-card px-2.5 py-1.5 text-xs font-semibold ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer min-w-[92px]"
       >
         <span className="flex items-center gap-2 truncate">
           <CountryFlagIcon code={selectedCountry.code} />

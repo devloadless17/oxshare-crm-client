@@ -8,6 +8,7 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = React.useState('');
@@ -64,15 +65,19 @@ export default function ForgotPasswordPage() {
                   {t('auth.register.email')}
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <input
+                  <Mail
+                    className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <Input
                     id="email"
                     type="email"
+                    autoComplete="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t('auth.login.emailPlaceholder')}
-                    className="flex h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="h-11 pl-10"
                   />
                 </div>
               </div>
