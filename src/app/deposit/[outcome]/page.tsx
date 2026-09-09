@@ -130,7 +130,9 @@ export default function DepositOutcomePage() {
 
   if (state === 'checking') {
     return (
-      <div className="w-full">
+      // Same fill as the settled render below, so the answer replacing the
+      // spinner does not resize the page around it.
+      <div className="flex w-full flex-1 flex-col">
         <PageLoader label={t('deposit.checking')} />
       </div>
     );
@@ -160,9 +162,19 @@ export default function DepositOutcomePage() {
   const Icon = view.icon;
 
   return (
-    <div className="w-full">
-      <MoneySheet>
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 p-6 text-center">
+    /*
+     * `flex-1` root, `flex-1` sheet, `flex-1` content: the outcome TAKES THE
+     * FRAME rather than sitting as a short card over dead space — the same
+     * treatment the partner status panels give a single-message screen. The
+     * old `min-h-[40vh]` floor went with it; the frame is the height now.
+     *
+     * `shadow-none` is a per-screen override, not a MoneySheet change: the
+     * deposit/withdraw/transfer forms keep their raised card, while a
+     * full-height sheet with a drop shadow reads as a card that failed to fit.
+     */
+    <div className="flex w-full flex-1 flex-col">
+      <MoneySheet className="flex flex-1 flex-col shadow-none">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
           <span className={`flex h-14 w-14 items-center justify-center rounded-full ${view.tone}`}>
             <Icon className="h-7 w-7" aria-hidden="true" />
           </span>
@@ -178,11 +190,13 @@ export default function DepositOutcomePage() {
             </p>
           </div>
 
+          {/* Both actions the SAME size — the hierarchy is carried by the
+              variant (filled vs outline), not by one button being smaller. */}
           <div className="flex w-full max-w-xs flex-col gap-2 pt-2">
             <Button asChild size="lg">
               <Link href="/wallet">{t('deposit.backToWallet')}</Link>
             </Button>
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="lg">
               <Link href={state === 'failure' ? '/deposit' : '/transactions'}>
                 {state === 'failure' ? t('deposit.tryAgain') : t('deposit.trackIt')}
               </Link>
