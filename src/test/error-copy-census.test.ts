@@ -165,8 +165,11 @@ describe('the census can see what it is censusing', () => {
      * not drift as screens are added or removed.
      */
     const arrowBeforeCopy = boundaryTags().filter(({ tag }) => {
-      const [beforeCopy] = tag.split('errorMessage=');
-      return tag.includes('errorMessage=') && beforeCopy.includes('=>');
+      const at = tag.indexOf('errorMessage=');
+      // `indexOf` rather than destructuring `split`: under `noUncheckedIndexedAccess`
+      // the first element of a split is `string | undefined`, and a `!` there would
+      // be exactly the unchecked assumption this file exists to refuse.
+      return at !== -1 && tag.slice(0, at).includes('=>');
     });
 
     expect(
