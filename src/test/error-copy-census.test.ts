@@ -125,13 +125,55 @@ function boundaryTags(): { file: string; line: number; tag: string }[] {
  * anybody writes.
  */
 describe('the census can see what it is censusing', () => {
+  /*
+   * A CENSUS THAT FINDS NOTHING AGREES WITH EVERY RULE ANYBODY WRITES, so the
+   * rules below are worth nothing without these two.
+   *
+   * ⚠️ THE FIRST VERSION OF THIS GUARD WAS ITSELF VACUOUS, and it is a better
+   * lesson than the defect it was written to catch. It floored the count at
+   * `> 10` and passed here — but only because of where this app happens to put
+   * its props. Truncation blinds a tag only when its ARROW comes before its
+   * `errorMessage`; in the admin app that is 7 tags of 43, so a truncating
+   * scanner still returns 36 and sails past any floor of 10 or 30. Same guard,
+   * same mutation, opposite verdict — decided by prop ORDER rather than by
+   * correctness. `crm-6a` measured that and it is why the second assertion
+   * exists.
+   */
   it('finds the AsyncBoundary call sites, with their props intact', () => {
     const tags = boundaryTags();
-    expect(tags.length, 'no AsyncBoundary found — every rule below is vacuous').toBeGreaterThan(10);
+    // Floored just under the measured 18, like the coverage and suite floors:
+    // an ordinary regression guard, and NOT the proof of correctness — that is
+    // the case below.
+    expect(tags.length, 'no AsyncBoundary found — every rule below is vacuous').toBeGreaterThan(15);
     expect(
       tags.filter(({ tag }) => /\berrorMessage=/.test(tag)).length,
       'no tag carries errorMessage — the scan is truncating before the props',
-    ).toBeGreaterThan(10);
+    ).toBeGreaterThan(15);
+  });
+
+  it('reads past an arrow function to reach the props after it', () => {
+    /*
+     * THE ORDERING-INDEPENDENT PROOF, and the only one of these two that
+     * actually pins the scanner.
+     *
+     * `onRetry={() => …}` contains a `>`, which is exactly what a
+     * `>`-terminated scan mistakes for the end of the tag. So a tag whose
+     * onRetry sits BEFORE its errorMessage is the shape a truncating scanner
+     * cannot see past — and finding one proves the scan survives an arrow,
+     * whatever the ratio happens to be that day. 17 of this app's 18 tags are
+     * that shape; admin's are 7 of 43. The assertion holds either way and does
+     * not drift as screens are added or removed.
+     */
+    const arrowBeforeCopy = boundaryTags().filter(({ tag }) => {
+      const [beforeCopy] = tag.split('errorMessage=');
+      return tag.includes('errorMessage=') && beforeCopy.includes('=>');
+    });
+
+    expect(
+      arrowBeforeCopy.length,
+      'no tag places an arrow function before its errorMessage, so nothing here proves ' +
+        'the scanner reads past one. Either the app changed shape or the scan is truncating.',
+    ).toBeGreaterThan(0);
   });
 });
 
