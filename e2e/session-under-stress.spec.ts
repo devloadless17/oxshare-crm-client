@@ -1,6 +1,7 @@
 import { request } from '@playwright/test';
 import { expect, test } from './fixtures';
 import {
+  portalLogin,
   adminApiSession,
   API_NODE_BASE,
   APP_ORIGIN,
@@ -76,12 +77,12 @@ test('an admin changing the sign-in email ends the live portal session', async (
         await boot.post(`${API_NODE_BASE}/auth/verify-email`, { headers: origin, data: { token } })
       ).ok(),
     ).toBe(true);
-    const login = await boot.post(`${API_NODE_BASE}/auth/login`, {
-      headers: origin,
-      data: { email: client.email, password: client.password },
-    });
-    requirePrecondition(login.status() === 429, 'portal login is rate limited right now');
-    expect(login.ok()).toBe(true);
+    const login = await portalLogin(
+      boot,
+      { email: client.email, password: client.password },
+      origin,
+    );
+    expect(login.ok(), `portal sign-in answered ${login.status()}`).toBe(true);
 
     const ctx = await browser.newContext({ storageState: await boot.storageState() });
     const page = await ctx.newPage();

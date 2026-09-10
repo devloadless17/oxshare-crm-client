@@ -1,6 +1,7 @@
 import { request } from '@playwright/test';
 import { expect, test } from './fixtures';
 import {
+  portalLogin,
   API_NODE_BASE,
   APP_ORIGIN,
   isApi,
@@ -57,12 +58,12 @@ test('the whole recovery journey, end to end', async ({ page }) => {
         })
       ).ok(),
     ).toBe(true);
-    const login = await preReset.post(`${API_NODE_BASE}/auth/login`, {
-      headers: origin,
-      data: { email: client.email, password: client.password },
-    });
-    requirePrecondition(login.status() === 429, 'portal login is rate limited right now');
-    expect(login.ok()).toBe(true);
+    const login = await portalLogin(
+      preReset,
+      { email: client.email, password: client.password },
+      origin,
+    );
+    expect(login.ok(), `sign-in before the reset answered ${login.status()}`).toBe(true);
     expect((await preReset.get(`${API_NODE_BASE}/auth/me`, { headers: origin })).ok()).toBe(true);
   });
 
@@ -106,11 +107,23 @@ test('the whole recovery journey, end to end', async ({ page }) => {
         });
         expect(oldLogin.status(), 'the OLD password still signs in').toBe(401);
 
-        const newLogin = await probe.post(`${API_NODE_BASE}/auth/login`, {
-          headers: origin,
-          data: { email: client.email, password: client.password + '-NEW' },
-        });
-        expect(newLogin.ok(), 'the NEW password does not sign in').toBe(true);
+        /*
+         * Through `portalLogin`, so a 429 waits rather than arriving here as a
+         * falsy `ok()`. This assertion names a PRODUCT defect, and it sits two
+         * lines after another login against a 5/min cap — so without the wait it
+         * would report "the new password does not sign in" for a queue of tests
+         * sharing a rate limit, which is a confident claim about the wrong thing.
+         * The status is in the message for the same reason.
+         */
+        const newLogin = await portalLogin(
+          probe,
+          { email: client.email, password: client.password + '-NEW' },
+          origin,
+        );
+        expect(
+          newLogin.ok(),
+          `the NEW password does not sign in — /auth/login answered ${newLogin.status()}`,
+        ).toBe(true);
 
         // Single-use: replaying the spent token must change nothing.
         const replay = await probe.post(`${API_NODE_BASE}/auth/reset-password`, {
