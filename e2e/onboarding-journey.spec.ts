@@ -123,11 +123,39 @@ test('revisiting the spent link says "already verified", not "failed"', async ({
    * the status and body here does not fix it; it makes the next occurrence say
    * what happened instead of describing a missing element.
    */
-  const verifying = page.waitForResponse((r) => isApi(r, '/auth/verify-email', 'POST'), {
-    timeout: 20_000,
-  });
-  await page.goto(verifyLink);
-  const replayed = await verifying;
+  /*
+   * ── CAUSE FOUND, 10 Sep ──────────────────────────────────────────────────
+   * The instrumentation below answered its own question on the first CI run
+   * after it landed:
+   *
+   *   POST /auth/verify-email answered 429: RATE_LIMITED
+   *
+   * Not a broken screen. `verify-email` carries no @Throttle of its own, so it
+   * takes the global cap, and this file runs under TWO projects — chromium goes
+   * first and spends the budget, mobile follows and is refused. That is why it
+   * only ever failed on [mobile], and why it never reproduced locally where the
+   * projects are not queued back to back against a warm limiter.
+   *
+   * So it is waited out, like every other cap in these suites. The cap is
+   * correct; the test was walking into it.
+   */
+  const attemptReplay = async () => {
+    const pending = page.waitForResponse((r) => isApi(r, '/auth/verify-email', 'POST'), {
+      timeout: 20_000,
+    });
+    await page.goto(verifyLink);
+    return pending;
+  };
+
+  let replayed = await attemptReplay();
+  for (let attempt = 0; replayed.status() === 429 && attempt < 3; attempt++) {
+    // eslint-disable-next-line no-console
+    console.log('↻ verify-email rate limited; waiting 65s…');
+    test.setTimeout(65_000 + 120_000);
+    await new Promise((r) => setTimeout(r, 65_000));
+    replayed = await attemptReplay();
+  }
+
   const body = await replayed.text().catch(() => '<unreadable>');
   const outcome = `POST /auth/verify-email answered ${replayed.status()}: ${body.slice(0, 200)}`;
 

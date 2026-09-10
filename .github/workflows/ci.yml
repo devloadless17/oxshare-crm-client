@@ -270,6 +270,15 @@ jobs:
           # The portal's dev server is 3000 in the localhost topology; the admin
           # is not started here at all, and the API only needs a valid origin.
           PORTAL_URL: http://localhost:3000
+          # E2E ONLY — the counter goes permissive, the guard stays wired.
+          # `env.validation.ts` refuses to boot with this in production, because
+          # these limits ARE the §8.4 control on credential stuffing. It exists
+          # because the browser suites met the real caps and WAITED them out:
+          # ~5.4 minutes of sleeping in a 20-minute job, and the largest class of
+          # flakes this project has — a rate limit reported variously as a
+          # rejected password, a broken invite, a navigation timeout and a
+          # missing screen. The limits stay covered by three backend suites.
+          RELAX_RATE_LIMITS: '1'
           ADMIN_URL: http://localhost:3002
           # Ephemeral and CI-only. Real deployments supply their own; these
           # exist to satisfy the boot-time validation, which refuses to start on
