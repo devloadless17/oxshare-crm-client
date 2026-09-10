@@ -166,7 +166,32 @@ test('a client under the deepest rung is locked out of the programme everywhere'
 
   // The address is proven the way a person proves it: through the mailbox.
   const mail = await waitForMail(client.email, { subject: /verify/i, timeoutMs: 20_000 });
+
+  /*
+   * WAIT FOR THE VERIFICATION TO LAND, not just for the page to render.
+   *
+   * `/auth/verify-email` performs the POST in a `useEffect`, so `goto` resolves
+   * as soon as the document loads — BEFORE the request that actually verifies
+   * the address. Signing in immediately afterwards raced it, and login answered
+   * 403 EMAIL_NOT_VERIFIED, which is the API being exactly right: an unverified
+   * address may not hold a session.
+   *
+   * The failure therefore read as "login is broken for introduced clients" when
+   * nothing was broken at all, which is why the response is awaited and
+   * asserted here rather than left to surface three steps later as somebody
+   * else's status code. A verification that genuinely fails now says so, on the
+   * line that did it.
+   */
+  const verifying = page.waitForResponse((res) => isApi(res, '/auth/verify-email', 'POST'), {
+    timeout: 20_000,
+  });
   await page.goto(linkIn(mail, APP_ORIGIN));
+  const verified = await verifying;
+  expect(
+    verified.ok(),
+    `verify-email answered ${verified.status()} — the address is not verified, so the ` +
+      'sign-in below would fail with 403 EMAIL_NOT_VERIFIED for a reason that is not login',
+  ).toBe(true);
 
   /*
    * SIGN IN, unconditionally. `POST /auth/register` sets no auth cookies —
