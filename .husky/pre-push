@@ -36,7 +36,33 @@
 # shell history of whoever chose it.
 
 repo_root=$(git rev-parse --show-toplevel) || exit 0
-gate="$repo_root/../scripts/ci-local.sh"
+
+# TWO CANDIDATES, and the second is the one that survives a fresh machine.
+#
+# `crm/scripts/ci-local.sh` is the documented path and the one the README names,
+# but it is a SYMLINK in `crm/` — and `crm/` is not a git repo, so those symlinks
+# are version-controlled NOWHERE. They exist on the machine that made them. Clone
+# the four repos plus docs onto a new box and `crm/scripts/` does not exist at
+# all, this hook takes its fail-open branch, and the gate that replaced CI does
+# not run — quietly, on every push, on every fresh checkout.
+#
+# That is this project's own rule broken by its newest gate: "a gate that exists
+# on one machine is not a gate." The fail-open is still correct — blocking on a
+# missing prerequisite is the mistake this hook already made twice — but failing
+# open EVERY TIME is indistinguishable from having no hook.
+#
+# `docs/scripts/` is the real home and docs IS a cloned repo, so the second
+# candidate resolves without anything having been symlinked by hand.
+for candidate in \
+  "$repo_root/../scripts/ci-local.sh" \
+  "$repo_root/../docs/scripts/ci-local.sh"
+do
+  if [ -e "$candidate" ]; then
+    gate="$candidate"
+    break
+  fi
+done
+gate="${gate:-$repo_root/../scripts/ci-local.sh}"
 
 # ⚠️ -x, NOT -f. A gate that is PRESENT but NOT EXECUTABLE passes `-f`, reaches
 # the invocation below, and dies with "Permission denied" — exit 126, which
