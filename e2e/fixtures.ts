@@ -41,9 +41,44 @@ export const test = base.extend<{ persistRotation: void }>({
       await use();
       context.off('response', onResponse);
       if (rotated && typeof storageState === 'string') {
-        // Through the live-check: a successful rotation followed by a sign-out
-        // (or a cleared jar) must never overwrite the file with nothing.
-        await persistStateIfLive(context, storageState).catch(() => undefined);
+        /*
+         * Through the live-check: a successful rotation followed by a sign-out
+         * (or a cleared jar) must never overwrite the file with nothing.
+         *
+         * ⚠️ A REFUSAL HERE LEAVES THE FILE POISONED, AND USED TO SAY NOTHING.
+         *
+         * `persistStateIfLive` THROWS when the context holds no refresh cookie,
+         * and refusing is correct — saving a signed-out jar would sign out every
+         * later test. But the refusal and the damage are the same event: this
+         * test rotated the token, so the token in the FILE is already spent. The
+         * next test replays it, reuse detection revokes the whole family, and
+         * every test after that is signed out for reasons that read as a dozen
+         * unrelated failures — which is precisely the outcome this fixture
+         * exists to prevent, arriving through its own escape hatch.
+         *
+         * The catch was `() => undefined`, so a run could not be told apart from
+         * one where the persist succeeded. That is what made a real occurrence
+         * INFERABLE rather than diagnosable: a full portal run failed 22 tests
+         * this way on 10 Sep 2026, the shape matched this file's own docblock
+         * exactly, and it could not be confirmed because nothing recorded
+         * whether this line fired.
+         *
+         * It still does not throw — failing an unrelated test for a fixture
+         * problem would mislabel it, which is the mistake this suite has made
+         * before. It just stops being silent.
+         */
+        await persistStateIfLive(context, storageState).catch((error: unknown) => {
+          console.warn(
+            `[e2e] STORAGE STATE NOT PERSISTED after a token rotation: ${
+              error instanceof Error ? error.message : String(error)
+            }\n` +
+              `      ${storageState} still holds the PREVIOUS refresh token, which this test ` +
+              'has already rotated.\n' +
+              '      The next test to replay it will trip reuse detection and sign out every ' +
+              'test after it.\n' +
+              '      If later tests fail as unexplained sign-outs, this line is why.',
+          );
+        });
       }
     },
     { auto: true },
