@@ -6,6 +6,7 @@ import {
   request as apiRequest,
   test,
   type APIRequestContext,
+  type APIResponse,
   type BrowserContext,
   type Page,
   type Response,
@@ -615,6 +616,51 @@ export function linkIn(mail: { text: string; html: string }, appOrigin: string):
  * for a reason that is not a defect, which is the same "ignore the red build"
  * failure by the opposite route. Those stay `test.skip`.
  */
+/**
+ * Sign in to the PORTAL, waiting out the rate limit instead of reporting it.
+ *
+ * ## Why this exists
+ *
+ * `POST /auth/login` is capped at 5/minute per IP. Three specs handled that by
+ * calling `requirePrecondition(status === 429, 'portal login is rate limited')`,
+ * which under E2E_STRICT turns contention into a FAILED journey — and a rate
+ * limit is not an unmet precondition. `requirePrecondition` is for a fixture
+ * that should be there and is not; a 429 is a transient fact about the harness,
+ * and the established answer to it everywhere else in this suite is to WAIT.
+ * `adminApiSession` has waited it out since the day it was written, and the
+ * browser login path waits at line ~305. These three were the outliers.
+ *
+ * ## The worse half: an ambiguous assertion
+ *
+ * Other sites asserted `expect(login.ok()).toBe(true)` with a message naming a
+ * PRODUCT defect — "the NEW password does not sign in". `ok()` is a boolean, so
+ * a 429 and a genuinely rejected password produce the identical failure, and the
+ * message confidently names the wrong one. That sent a reader looking at the
+ * password-reset flow for a fault that was a queue of tests sharing a cap.
+ *
+ * This is the same shape as a timeout being indistinguishable from the defect a
+ * test exists to detect: a failure message is a claim, and a claim that cannot
+ * tell two causes apart will eventually name the wrong one.
+ *
+ * So: wait out a 429, and return the response so the caller asserts on a status
+ * that means what it says.
+ */
+export async function portalLogin(
+  ctx: APIRequestContext,
+  credentials: { email: string; password: string },
+  headers: Record<string, string>,
+): Promise<APIResponse> {
+  for (;;) {
+    const login = await ctx.post(`${API_NODE_BASE}/auth/login`, { headers, data: credentials });
+    if (login.status() !== 429) return login;
+    // Waited out, never weakened — the same choice every other login here makes.
+    // eslint-disable-next-line no-console
+    console.log(`↻ portal login rate limited; waiting ${RATE_LIMIT_WINDOW_MS / 1000}s…`);
+    test.setTimeout(RATE_LIMIT_WINDOW_MS + 60_000);
+    await new Promise((r) => setTimeout(r, RATE_LIMIT_WINDOW_MS));
+  }
+}
+
 export function requirePrecondition(condition: boolean, reason: string): void {
   if (!condition) return;
   if (process.env['E2E_STRICT'] === '1') {

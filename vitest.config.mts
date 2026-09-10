@@ -98,6 +98,7 @@ export default defineConfig({
      * arriving through the runner.
      *
      * Measured 10 Sep 2026, same machine, back to back:
+     *   uncapped         17/38 files, 165 tests, 21 errors  (incomplete)
      *   uncapped         23/38 files, 251 tests, 15 errors  (incomplete)
      *   maxWorkers: 4    38/38 files, 383 tests, 0 errors   36.7s
      *   maxWorkers: 4    38/38 files, 383 tests, 0 errors   33.0s
