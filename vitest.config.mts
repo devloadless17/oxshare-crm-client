@@ -160,12 +160,35 @@ export default defineConfig({
        * figure without protecting anything.
        *
        * They may only ever go up.
+       *
+       * ⚠️ RE-BASED 11 Sep 2026, and the reason is not "the suite grew". The
+       * floor above was correct when it was set and then did not move for three
+       * weeks while the suite went from 23 files / 298 tests to 41 / 399. By
+       * then the measurement had reached statements 32.64, branches 25.83,
+       * functions 27.56, lines 33.30 — a TEN-POINT lag on a block whose own
+       * comment says "pin a point or two under them".
+       *
+       * That gap is what makes it worth a note rather than a bump. A floor ten
+       * points under the measurement would not catch a regression that undid a
+       * THIRD of this repo's coverage: enforced, passing, and covering far less
+       * than this comment claims for it. Same family as the guards that shipped
+       * vacuous the same night — a check whose stated reach and actual reach had
+       * come apart, with nothing failing.
+       *
+       * THE MARGIN IS DELIBERATE AND IS NOT ROUNDING. Five cases here skip by
+       * ENVIRONMENT (four `isMobile`, one `!CROSS`), so the measurement is not a
+       * constant across machines. A floor set flush against one machine's figure
+       * reddens somewhere else for a reason that is not a regression — and a
+       * threshold that reddens for environment reasons is the same defect as a
+       * gate that blocks on a missing prerequisite: people stop believing its
+       * refusals and route around it. ~1.5 points under, by the same reasoning
+       * the backend's floor uses.
        */
       thresholds: {
-        lines: 23,
-        functions: 18,
-        branches: 18,
-        statements: 23,
+        lines: 31,
+        functions: 26,
+        branches: 24,
+        statements: 31,
       },
     },
   },
