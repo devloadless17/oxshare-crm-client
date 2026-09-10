@@ -953,7 +953,7 @@ export interface paths {
          * The partner programmes (وكالة) open for application
          * @description What an applicant chooses between, with the products each one carries spelled out by name. Disabled agencies are ABSENT rather than greyed out: nobody here can answer "when does it reopen", and offering a choice that will be refused is a poor way to learn it is closed.
          *
-         *     An empty list means no programme is configured yet. The portal should let the client apply anyway — an agency is optional on the application, so a deployment that has not set them up still takes partners.
+         *     An empty list means no programme is open, and there is nothing to apply for — the portal says so instead of offering a button that can only be refused. An applicant introduced by a partner never consults this list at all: their programme is inherited, not chosen.
          */
         get: operations["IbController_openAgencies"];
         put?: never;
@@ -1019,7 +1019,7 @@ export interface paths {
         put?: never;
         /**
          * Apply to become a partner
-         * @description Requires a verified identity (KYC level 1). Refuses a second application while one is still awaiting review, and refuses outright if the client is already a partner. `agencyId` names the programme applied for and must be one GET /ib/agencies returned.
+         * @description Requires a verified identity (KYC level 1). Refuses a second application while one is still awaiting review, and refuses outright if the client is already a partner. `agencyId` names the programme applied for and must be one GET /ib/agencies returned — OMITTED by an applicant introduced by a partner, whose programme is inherited from the introducer and cannot be chosen.
          */
         post: operations["IbController_apply"];
         delete?: never;
@@ -2981,6 +2981,26 @@ export interface paths {
         patch: operations["AdminComplianceController_claimKyc"];
         trace?: never;
     };
+    "/v1/admin/kyc/{userId}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Hand a claimed KYC back to the queue (under_review → submitted)
+         * @description The way out of a claim. A reviewer who picked a submission up and cannot finish it — reassigned, off shift, or moved out of that territory — would otherwise leave a row that looks taken to everyone else. Gated exactly like a decision, because approve and reject already accept an under_review row from any reviewer who can see it: a claim is advisory, never a lock. Refuses a submission that has already been DECIDED — reopening one is reject's job, with a reason attached.
+         */
+        patch: operations["AdminComplianceController_releaseKyc"];
+        trace?: never;
+    };
     "/v1/admin/kyc/{userId}/approve": {
         parameters: {
             query?: never;
@@ -4583,15 +4603,15 @@ export interface components {
         CreateIbApplicationDto: {
             /**
              * Format: uuid
-             * @description Which agency the applicant wants to be appointed under. Required — it decides what they may sell, and there is no "any" option.
+             * @description Which agency the applicant wants to be appointed under. Required for an applicant who chooses; omitted when they were introduced by a partner — the programme is inherited from the introducer and anything sent here is ignored.
              */
-            agencyId: string;
+            agencyId?: string;
             /** @description Why the client wants to introduce business. Shown to the reviewer verbatim. */
             motivation?: string;
             website?: string;
         };
         ApproveIbApplicationDto: {
-            /** @description The partner who introduced them. Omitted or null means they deal direct. */
+            /** @description The parent to nest the new partner under. OMITTED means "the reviewer did not say" — the introducer recorded at registration becomes the parent, which is the ordinary case. An explicit NULL roots them: they deal with the broker directly at level 1, whoever introduced them. */
             parentIbUserId?: string | null;
             /**
              * Format: uuid
@@ -4714,10 +4734,10 @@ export interface components {
             /** @description A disabled rung pays nobody standing on it. Disabling is refused while partners are there — see the service. */
             enabled: boolean;
             /**
-             * @description How the PARTNER’s leg is priced.
+             * @description How the PARTNER’s leg is priced. Always `per_lot` on anything saved since 0117; the other two appear only on rungs configured before it.
              * @enum {string}
              */
-            commissionMode: "percent" | "per_lot" | "share_of_parent";
+            commissionMode: "per_lot" | "percent" | "share_of_parent";
             /**
              * @description The partner’s share of broker revenue, as a percentage. Read in `percent` mode.
              * @example 30.0000
@@ -4729,10 +4749,10 @@ export interface components {
              */
             commissionAmountPerLot: string | null;
             /**
-             * @description How the CLIENT’s rebate is priced.
+             * @description How the CLIENT’s rebate is priced. Always `per_lot` on anything saved since 0117.
              * @enum {string}
              */
-            rebateMode: "percent" | "per_lot" | "share_of_parent";
+            rebateMode: "per_lot" | "percent" | "share_of_parent";
             /** @example 0.0000 */
             rebateRate: string;
             /** @example 2.00000000 */
@@ -4771,19 +4791,19 @@ export interface components {
             name: string;
             description?: string | null;
             /**
-             * @default percent
+             * @default per_lot
              * @enum {string}
              */
-            commissionMode: "percent" | "per_lot" | "share_of_parent";
+            commissionMode: "per_lot";
             /** @example 30.0000 */
             commissionRate?: string;
             /** @example 10.00000000 */
             commissionAmountPerLot?: string;
             /**
-             * @default percent
+             * @default per_lot
              * @enum {string}
              */
-            rebateMode: "percent" | "per_lot" | "share_of_parent";
+            rebateMode: "per_lot";
             /** @example 0.0000 */
             rebateRate?: string;
             /** @example 2.00000000 */
@@ -4797,11 +4817,11 @@ export interface components {
             name?: string;
             description?: string | null;
             /** @enum {string} */
-            commissionMode?: "percent" | "per_lot" | "share_of_parent";
+            commissionMode?: "per_lot";
             commissionRate?: string;
             commissionAmountPerLot?: string;
             /** @enum {string} */
-            rebateMode?: "percent" | "per_lot" | "share_of_parent";
+            rebateMode?: "per_lot";
             rebateRate?: string;
             rebateAmountPerLot?: string;
             /** @enum {string} */
@@ -5410,6 +5430,17 @@ export interface components {
             /** @description Omit for the group default. MT5 clamps to what the group allows. */
             leverage?: number;
         };
+        CreatedMt5AccountDto: {
+            id: string;
+            login: string;
+            group: string;
+            currency: string;
+            leverage: number;
+            /** @enum {string} */
+            environment: "live" | "demo";
+            credentialsSentTo?: string;
+            maskedFields?: string[];
+        };
         Mt5BalanceDto: {
             /**
              * @description Positive decimal. Direction carries the sign.
@@ -5980,6 +6011,7 @@ export interface components {
              * @enum {number}
              */
             verificationLevel: 0 | 1;
+            phone?: string | null;
             country?: string;
             /** Format: date-time */
             createdAt?: string;
@@ -6194,6 +6226,7 @@ export interface components {
             /** Format: date-time */
             reviewedAt?: string;
             reviewedBy?: string;
+            reviewedByName?: string | null;
             rejectionReason?: string;
             rejectedFields?: string[];
             personalInfo?: {
@@ -6225,6 +6258,7 @@ export interface components {
             /** Format: date-time */
             reviewedAt?: string;
             reviewedBy?: string;
+            reviewedByName?: string | null;
             rejectionReason?: string;
             rejectedFields?: string[];
             personalInfo?: {
@@ -9596,11 +9630,13 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CreatedMt5AccountDto"];
+                };
             };
         };
     };
@@ -11085,6 +11121,27 @@ export interface operations {
         };
     };
     AdminComplianceController_claimKyc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KycSubmissionDto"];
+                };
+            };
+        };
+    };
+    AdminComplianceController_releaseKyc: {
         parameters: {
             query?: never;
             header?: never;
