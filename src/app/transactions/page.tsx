@@ -15,7 +15,6 @@ import {
   TransactionFilters,
   type Filters,
 } from '@/components/transactions/transaction-filters';
-import { apiErrorMessage } from '@/lib/api/errors';
 import {
   MANUAL_ADMIN_PROVIDER,
   paymentsApi,
@@ -375,7 +374,7 @@ export default function TransactionsPage() {
         label={t('transactions.loading')}
         endpoints={['GET /payments/transactions']}
         onRetry={() => void transactions.refetch()}
-        errorMessage={apiErrorMessage(transactions.error, t('transactions.loadFailed'))}
+        errorMessage={t('transactions.loadFailed')}
         error={transactions.error}
         fill
       >

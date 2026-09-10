@@ -650,7 +650,7 @@ export default function WithdrawPage() {
             void wallets.refetch();
             void methods.refetch();
           }}
-          errorMessage={apiErrorMessage(wallets.error ?? methods.error, t('withdraw.loadFailed'))}
+          errorMessage={t('withdraw.loadFailed')}
           error={wallets.error ?? methods.error}
         >
           <WithdrawForm

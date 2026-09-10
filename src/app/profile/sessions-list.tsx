@@ -37,7 +37,7 @@ export function SessionsList({ refreshToken }: { refreshToken?: number }) {
         label={t('profile.sessionsLoading')}
         endpoints={['GET /auth/sessions']}
         onRetry={() => void sessions.refetch()}
-        errorMessage={apiErrorMessage(sessions.error, t('profile.sessionsLoadFailed'))}
+        errorMessage={t('profile.sessionsLoadFailed')}
         error={sessions.error}
       >
         <ul className="divide-y divide-border rounded-xl border border-border bg-card">

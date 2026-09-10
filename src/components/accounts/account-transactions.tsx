@@ -7,7 +7,6 @@ import { AsyncBoundary } from '@/components/async-boundary';
 import { Button } from '@/components/ui/button';
 import { DataTable, EmptyState, type Column } from '@/components/data-table';
 import { useResource } from '@/hooks/use-resource';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { paymentsApi, type Transfer } from '@/lib/api/payments';
 import { SignedAmount } from '@/components/money/signed-amount';
 import { formatDealTime } from '@/lib/account-stats';
@@ -95,7 +94,7 @@ export function AccountTransactions({
         label={t('accounts.transactionsLoading')}
         endpoints={['GET /payments/transfers']}
         onRetry={() => void transfers.refetch()}
-        errorMessage={apiErrorMessage(transfers.error, t('accounts.transactionsLoadFailed'))}
+        errorMessage={t('accounts.transactionsLoadFailed')}
         error={transfers.error}
       >
         <DataTable

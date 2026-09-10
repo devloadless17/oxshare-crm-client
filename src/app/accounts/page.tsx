@@ -7,7 +7,6 @@ import { AsyncBoundary } from '@/components/async-boundary';
 import { Button } from '@/components/ui/button';
 import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { formatMoney } from '@/lib/money';
 import { t, type MessageKey } from '@/lib/i18n';
@@ -153,7 +152,7 @@ export default function AccountsPage() {
         label={t('accounts.loading')}
         endpoints={['GET /trading/accounts']}
         onRetry={() => void accounts.refetch()}
-        errorMessage={apiErrorMessage(accounts.error, t('accounts.loadFailed'))}
+        errorMessage={t('accounts.loadFailed')}
         error={accounts.error}
         fill
       >

@@ -123,7 +123,7 @@ function TransferPageContent() {
         label={t('transfer.loading')}
         endpoints={['GET /trading/accounts/transferable', 'POST /payments/transfers']}
         onRetry={() => accounts.refetch()}
-        errorMessage={apiErrorMessage(accounts.error, t('transfer.loadFailed'))}
+        errorMessage={t('transfer.loadFailed')}
         error={accounts.error}
         fill
       >

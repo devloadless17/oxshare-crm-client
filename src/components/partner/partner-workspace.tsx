@@ -6,7 +6,6 @@ import { PartnerHeader } from '@/components/partner/partner-header';
 import { PartnerSummary } from '@/components/partner/partner-summary';
 import { PartnerTabs } from '@/components/partner/partner-tabs';
 import { useResource } from '@/hooks/use-resource';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbOverview, type IbStatus } from '@/lib/api/partner';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
@@ -76,7 +75,7 @@ export function ApprovedPanel({ account }: { account: NonNullable<IbStatus['acco
         label={t('partner.overviewLoading')}
         endpoints={['GET /ib/overview']}
         onRetry={() => overview.refetch()}
-        errorMessage={apiErrorMessage(overview.error, t('partner.overviewLoadFailed'))}
+        errorMessage={t('partner.overviewLoadFailed')}
         error={overview.error}
       >
         {overview.data ? <PartnerBody data={overview.data} account={account} /> : null}

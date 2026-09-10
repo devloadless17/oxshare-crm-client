@@ -117,7 +117,7 @@ export default function DepositPage() {
         label={t('deposit.loadingMethods')}
         endpoints={['GET /payments/methods', 'POST /payments/deposits']}
         onRetry={() => methods.refetch()}
-        errorMessage={apiErrorMessage(methods.error, t('deposit.methodsFailed'))}
+        errorMessage={t('deposit.methodsFailed')}
         error={methods.error}
       >
         <DepositFlow

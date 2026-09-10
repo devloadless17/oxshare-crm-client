@@ -22,7 +22,6 @@ import {
 } from '@/components/dashboard/dashboard-panels';
 import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { dashboardApi, type Dashboard } from '@/lib/api/trading';
 import { formatMoney } from '@/lib/money';
 import { SignedAmount } from '@/components/money/signed-amount';
@@ -76,7 +75,7 @@ export function DashboardBody() {
       label={t('dashboard.loading')}
       endpoints={['GET /dashboard']}
       onRetry={() => void dashboard.refetch()}
-      errorMessage={apiErrorMessage(dashboard.error, t('dashboard.loadFailed'))}
+      errorMessage={t('dashboard.loadFailed')}
       error={dashboard.error}
       // See the note on the page root: the fill chain is what lets the spinner
       // centre in the remaining space instead of inside its own min-height.

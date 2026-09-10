@@ -5,7 +5,6 @@ import { LineChart } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { DataTable, EmptyState, type Column } from '@/components/data-table';
 import { useResource } from '@/hooks/use-resource';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { tradingApi, type AccountPosition } from '@/lib/api/trading';
 import { formatDecimal, formatMoney } from '@/lib/money';
 import { formatDealTime, moneySign } from '@/lib/account-stats';
@@ -117,7 +116,7 @@ export function AccountPositions({
         label={t('accounts.positionsLoading')}
         endpoints={['GET /trading/accounts/:id/positions']}
         onRetry={() => void positions.refetch()}
-        errorMessage={apiErrorMessage(positions.error, t('accounts.positionsLoadFailed'))}
+        errorMessage={t('accounts.positionsLoadFailed')}
         error={positions.error}
       >
         <DataTable
