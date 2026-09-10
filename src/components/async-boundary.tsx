@@ -4,7 +4,7 @@ import { BackendPending } from '@/components/backend-pending';
 import { PageLoader } from '@/components/ui/loader';
 import type { ResourceStatus } from '@/hooks/use-resource';
 import { t } from '@/lib/i18n';
-import { apiErrorRequestId } from '@/lib/api/errors';
+import { apiErrorMessage, apiErrorRequestId } from '@/lib/api/errors';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -156,12 +156,38 @@ export function AsyncBoundary({
 
   if (status === 'error') {
     const requestId = apiErrorRequestId(error);
+    /*
+     * BOTH SENTENCES — and this branch was dropping the OPPOSITE half from the
+     * one its admin twin dropped, which is the more interesting half of the
+     * story.
+     *
+     * Admin rendered `apiErrorMessage(error, errorMessage ?? generic)`, and that
+     * helper prefers `response.data.message`, which `AllExceptionsFilter` puts
+     * on every envelope — so the caller's line was unreachable for any error
+     * with a body. This file rendered `errorMessage ?? genericError` and never
+     * looked at the API's message AT ALL, so a client saw "Something went wrong"
+     * for a 400 that had said exactly what was wrong.
+     *
+     * Two near-twins, one branch, opposite losses, and `check:twins` could not
+     * see it: `async-boundary.tsx` is EXCLUDED from that check because the two
+     * apps use different loader components. An exclusion granted for a rendering
+     * difference had quietly come to cover a behavioural one.
+     *
+     * The two messages answer different questions and neither replaces the
+     * other. The caller's line says WHAT FAILED AND WHAT IT MEANS HERE; the
+     * API's says WHY. So the caller's line leads, the API's follows as detail,
+     * and the detail is dropped when it would only repeat the line above it.
+     */
+    const detail = apiErrorMessage(error, '');
+    const headline = errorMessage ?? (detail || t('common.genericError'));
+    const showDetail = detail !== '' && detail !== headline;
     const card = (
       <div
         className="rounded-xl border border-border bg-card p-8 text-center space-y-3"
         role="alert"
       >
-        <p className="text-sm text-muted-foreground">{errorMessage ?? t('common.genericError')}</p>
+        <p className="text-sm text-muted-foreground">{headline}</p>
+        {showDetail && <p className="text-xs text-muted-foreground/80">{detail}</p>}
         {/*
           The id the API already logged with this failure. Rendered small and
           selectable rather than hidden behind a "details" toggle: its whole
