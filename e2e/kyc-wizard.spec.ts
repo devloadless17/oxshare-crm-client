@@ -200,17 +200,29 @@ test.describe('the KYC wizard', () => {
     await expect(page.locator('input[type="date"]')).toBeVisible();
   });
 
-  test('uses the OS picker for the 250-option country list', async ({ page }) => {
-    // A custom listbox of ~250 entries is a 250-item scroll on a phone with no
-    // letter-jump. Long lists fall back to a native select for that reason.
+  test('every dropdown is the styled select — the native control is gone', async ({ page }) => {
+    /*
+     * REVERSED, on an explicit instruction. Long lists used to fall back to a
+     * native <select> for the OS picker's type-ahead, and this test pinned
+     * that. Every select on the form is the styled control now, so country
+     * and nationality look like every other field, flags included. If
+     * long-list picking on phones comes back as a complaint, the answer is a
+     * search box inside the dropdown, not the native control's page-grey
+     * chrome — see the note in step-field.tsx.
+     */
     await page.goto('/kyc/step/1');
     // The fields render from `/kyc/config`, so the form does not exist until
     // that request lands. Asserting before it does was a race in this spec, not
     // a defect in the page.
     await page.waitForLoadState('networkidle');
 
-    const nativeSelects = page.locator('select');
-    expect(await nativeSelects.count()).toBeGreaterThan(0);
+    expect(await page.locator('select').count()).toBe(0);
+    const styled = page.getByRole('combobox');
+    expect(await styled.count()).toBeGreaterThan(0);
+    // And the styled listbox actually opens and offers the long list.
+    await styled.first().click();
+    await expect(page.getByRole('option').first()).toBeVisible();
+    await page.keyboard.press('Escape');
   });
 
   test('fits a 393px screen without sideways scrolling', async ({ page, isMobile }) => {
@@ -228,6 +240,22 @@ test.describe('the KYC wizard', () => {
 });
 
 test.describe('choosing a document but not confirming it', () => {
+  /*
+   * The SAME per-test reset the wizard describe above runs, and for the same
+   * reason — it was missing here, which is why these cases passed alone and
+   * failed after their siblings.
+   *
+   * `resetUploader` puts the WIDGET back; this puts the ROW back. Without it
+   * an earlier test's confirmed upload survives in `kyc_submissions`, the
+   * step renders the uploaded tile rather than an empty one, and
+   * `input[type=file]` never appears at all — a 60-second timeout that reads
+   * as "the uploader is broken" when the fixture is simply dirty.
+   */
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/kyc');
+    await resetKycFixture(page);
+  });
+
   test('says "confirm it", not "please upload"', async ({ page }) => {
     /*
      * Reported from the running app: "I'm getting please upload while I already

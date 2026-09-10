@@ -129,8 +129,14 @@ export default defineConfig({
        * spec and not the line. Whether a session survives a refresh is not a
        * question about viewport width; what mobile is FOR still runs in full.
        */
+      /*
+       * `partner-journey` joins for the same reason as the rest of the list:
+       * it REGISTERS an account and signs in three identities per run, and
+       * doubling that under a second project spends the 10-per-hour
+       * registration cap on a question that is not about viewport width.
+       */
       testIgnore:
-        /(auth-session|account-security|emailed-links|password-reset-journey|session-lifecycle|session-matrix|session-under-stress)\.spec\.ts/,
+        /(auth-session|account-security|emailed-links|password-reset-journey|partner-journey|session-lifecycle|session-matrix|session-under-stress)\.spec\.ts/,
     },
   ],
 
