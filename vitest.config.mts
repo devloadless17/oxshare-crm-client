@@ -75,6 +75,53 @@ export default defineConfig({
      * retry count.
      */
     retry: 2,
+    /*
+     * CAPPED — and the 18 Aug conclusion above is superseded, not ignored.
+     *
+     * That note measured `maxThreads: 8` and concluded capping "neither fixed
+     * the flake nor paid for itself". Two things have changed since, and both
+     * matter:
+     *
+     *   the KNOB — 8 threads is ABOVE the memory ceiling, not under it. Every
+     *     worker carries its own jsdom, this box has ~5.9 GB with 1-2 GB free
+     *     once a dev server is up, and vitest defaults to availableParallelism
+     *     (22 here). Eight was measured on the ceiling; four is a cap meant to
+     *     sit beneath it. The admin repo's config records the same finding from
+     *     the other direction, on 21 Aug.
+     *   the SUITE — 38 files now, not the smaller set that was measured.
+     *
+     * Uncapped today the suite does not merely flake, it cannot COMPLETE:
+     * fifteen of thirty-eight files fail with "Failed to start forks worker /
+     * Timeout waiting for worker to respond", and vitest reports the survivors
+     * as a pass — 23 files, 251 tests, 15 unhandled errors, exit 0. A partial
+     * run that reports green is the failure this repo keeps finding elsewhere,
+     * arriving through the runner.
+     *
+     * Measured 10 Sep 2026, same machine, back to back:
+     *   uncapped         23/38 files, 251 tests, 15 errors  (incomplete)
+     *   maxWorkers: 4    38/38 files, 383 tests, 0 errors   36.7s
+     *   maxWorkers: 4    38/38 files, 383 tests, 0 errors   33.0s
+     *   maxWorkers: 4    38/38 files, 383 tests, 0 errors   29.5s
+     *
+     * ⚠️ THE FAILURE IS MEMORY-DEPENDENT, WHICH MAKES THE CAP MORE NECESSARY
+     * RATHER THAN LESS. Re-measured the same day with ~3.3 GB free instead of
+     * ~680 MB, uncapped completed all 38 files. So "uncapped always truncates"
+     * would be too strong; what is true is that uncapped SOMETIMES truncates,
+     * decided by how much memory happens to be free — a dev server up, another
+     * suite running, a second session on the box.
+     *
+     * An intermittent partial pass is worse than a reliable one. A reliable
+     * failure gets noticed and fixed; this one reports 23/38 as green on a busy
+     * machine and 38/38 on a quiet one, so the same commit "passes" or "passes
+     * less" depending on nothing anybody controls, and the difference is
+     * invisible unless somebody reads the file count. The cap removes the
+     * dependence, which is the property worth having.
+     *
+     * `retry: 2` above stays: it addresses a different failure (an assertion
+     * starved of CPU) and the two are complementary. If a machine ever wants
+     * more, raise it deliberately and re-measure — never uncap it silently.
+     */
+    maxWorkers: 4,
     testTimeout: 20_000,
     hookTimeout: 20_000,
     coverage: {
