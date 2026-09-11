@@ -35,8 +35,8 @@ function wrap() {
 
 describe('a resource whose BACKGROUND refetch fails', () => {
   it('keeps serving the stale data — and says `ready`, not `error`', async () => {
-    const fetcher = vi
-      .fn()
+    const fetcher = vi.fn<() => Promise<unknown>>();
+    fetcher
       .mockResolvedValueOnce({ rows: ['first'] })
       .mockRejectedValue(new Error('the endpoint is down'));
 
@@ -47,7 +47,10 @@ describe('a resource whose BACKGROUND refetch fails', () => {
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(result.current.data).toEqual({ rows: ['first'] });
 
-    const outcome = await act(async () => result.current.refetch());
+    let outcome!: { isError: boolean };
+    await act(async () => {
+      outcome = await result.current.refetch();
+    });
 
     /*
      * THE MEASUREMENT. Both assertions are the point:
@@ -61,9 +64,27 @@ describe('a resource whose BACKGROUND refetch fails', () => {
      * `unknown`, and it is the only channel through which a caller can learn
      * this happened.
      */
-    expect(result.current.status, 'a failed background refetch is INVISIBLE in status').toBe(
-      'ready',
-    );
+    /*
+     * ⚠️ `waitFor`, NOT a bare assertion, and the reason is the finding.
+     *
+     * The observer SNAPSHOT LAGS the query. Measured: immediately after the
+     * failed refetch this reads `ready`; force one UNRELATED re-render and the
+     * same query reads `error` with the data still present. So the old
+     * behaviour was not "silently stale" — it was NON-DETERMINISTIC, and which
+     * outcome a screen got depended on whether anything else happened to
+     * re-render it: a sibling's state, a parent update, a modal opening.
+     *
+     * That is why this could never be reproduced consistently, and why a bare
+     * assertion here passes for the wrong reason — it reads the lagging
+     * snapshot rather than the settled answer.
+     *
+     * `refreshFailed` makes it deterministic: the data we hold keeps being
+     * shown, and the failure is reported rather than blanking the screen.
+     */
+    await waitFor(() => {
+      expect(result.current.status, 'held data keeps being shown, deterministically').toBe('ready');
+      expect(result.current.refreshFailed, 'and the failure is REPORTED, not swallowed').toBe(true);
+    });
     expect(result.current.data, 'and the stale rows are still on screen').toEqual({
       rows: ['first'],
     });
@@ -82,8 +103,6 @@ describe('a resource whose BACKGROUND refetch fails', () => {
      * return type is `{ isError }` and not `unknown` — and why a caller that
      * fires it and forgets, or invalidates instead, has no way to know at all.
      */
-    expect(result.current.status).toBe('ready');
-    expect((result.current as unknown as Record<string, unknown>)['isStale']).toBeUndefined();
   });
 
   it('reports a SUCCESSFUL refresh as not-an-error, so the channel discriminates', async () => {
@@ -92,20 +111,25 @@ describe('a resource whose BACKGROUND refetch fails', () => {
      * return `isError: true` unconditionally and the assertion above would still
      * pass — a signal that reports a problem nobody has.
      */
-    const fetcher = vi.fn().mockResolvedValue({ rows: ['fine'] });
+    const fetcher = vi.fn<() => Promise<unknown>>();
+    fetcher.mockResolvedValue({ rows: ['fine'] });
 
     const { result } = renderHook(() => useResource(['probe', 'clean'], () => fetcher()), {
       wrapper: wrap(),
     });
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
-    const outcome = await act(async () => result.current.refetch());
+    let outcome!: { isError: boolean };
+    await act(async () => {
+      outcome = await result.current.refetch();
+    });
 
     expect(outcome.isError).toBe(false);
   });
 
   it('still reports a FIRST load failure as error, which is the covered case', async () => {
-    const fetcher = vi.fn().mockRejectedValue(new Error('down from the start'));
+    const fetcher = vi.fn<() => Promise<unknown>>();
+    fetcher.mockRejectedValue(new Error('down from the start'));
 
     const { result } = renderHook(() => useResource(['probe', 'first'], () => fetcher()), {
       wrapper: wrap(),
