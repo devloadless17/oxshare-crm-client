@@ -2,18 +2,18 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { LineChart, TrendingUp } from 'lucide-react';
+import { LineChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { Dashboard, Position } from '@/lib/api/trading';
-import { formatDecimal, formatMoney } from '@/lib/money';
+import type { Dashboard } from '@/lib/api/trading';
+import { formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
 
 /**
- * The dashboard's shared shell, plus the two panels that read trading data.
+ * The dashboard's shared shell, plus the panel that reads trading data.
  *
  * Split out of `dashboard-body.tsx` because that file crossed the 340-line lint
  * ceiling. The seam is deliberate rather than arbitrary: everything here is
- * about TRADING (positions, accounts) or is a layout primitive the whole
+ * about TRADING (accounts) or is a layout primitive the whole
  * dashboard shares, while what stays behind is money (wallets, transactions).
  */
 
@@ -98,114 +98,6 @@ export function StatTile({
       <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums">{value}</p>
       {hint && <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>}
     </div>
-  );
-}
-
-/**
- * Open positions.
- *
- * ## Empty for everyone today, and the copy is careful about why
- *
- * Nothing writes to `positions` until an MT5 bridge exists, so this renders
- * empty for every client. The QUERY is real — the emptiness is an answer the
- * database gave rather than a hardcoded state, which is the whole reason the
- * table was created ahead of the feed.
- *
- * The message says trades are not SYNCED, never "you have no trades". A client
- * who opened a position this morning would still see zero here, and the second
- * sentence would be a falsehood told to somebody in a position to know better.
- * The terminal is named as the source of truth and linked, so the panel is a
- * boundary rather than a broken feature.
- */
-export function PositionsPanel({ positions }: { positions: Position[] }) {
-  return (
-    <Panel heading={t('dashboard.positionsHeading')} icon={TrendingUp}>
-      {positions.length === 0 ? (
-        <div className="space-y-3 p-8 text-center">
-          <p className="text-sm font-semibold">{t('dashboard.positionsEmpty')}</p>
-          <p className="mx-auto max-w-md text-xs leading-relaxed text-muted-foreground">
-            {t('dashboard.positionsEmptyBody')}
-          </p>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/platforms">{t('nav.platforms')}</Link>
-          </Button>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border text-left text-muted-foreground">
-                <th className="px-5 py-2.5 font-semibold">{t('dashboard.positionsColSymbol')}</th>
-                <th className="px-5 py-2.5 font-semibold">{t('dashboard.positionsColSide')}</th>
-                <th className="px-5 py-2.5 text-right font-semibold">
-                  {t('dashboard.positionsColVolume')}
-                </th>
-                <th className="px-5 py-2.5 text-right font-semibold">
-                  {t('dashboard.positionsColOpenPrice')}
-                </th>
-                <th className="px-5 py-2.5 font-semibold">{t('dashboard.positionsColAccount')}</th>
-                <th className="px-5 py-2.5 font-semibold">{t('dashboard.positionsColOpened')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {positions.map((position) => (
-                <PositionRow key={position.id} position={position} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Panel>
-  );
-}
-
-function PositionRow({ position }: { position: Position }) {
-  const isBuy = position.side === 'buy';
-  return (
-    <tr className="border-b border-border transition-colors last:border-0 hover:bg-muted/30">
-      <td className="px-5 py-3 font-semibold">{position.symbol}</td>
-      <td className="px-5 py-3">
-        <span
-          className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
-            isBuy
-              ? 'border-success/20 bg-success/10 text-success'
-              : 'border-destructive/20 bg-destructive/10 text-destructive'
-          }`}
-        >
-          {isBuy ? t('dashboard.sideBuy') : t('dashboard.sideSell')}
-        </span>
-      </td>
-      {/*
-        Volumes and prices are decimal STRINGS and go through `formatDecimal`.
-
-        This used to print them VERBATIM, on the reasoning that they must never
-        be coerced — which is the right rule and the wrong conclusion, the same
-        confusion the admin wallets list had. Formatting is not coercion:
-        `formatDecimal` parses with decimal.js and returns a string, so the value
-        is never a float at any point. What it removes is the STORAGE SCALE —
-        `NUMERIC(28,10)` pads XAUUSD to `2351.3800000000`, and ten decimal places
-        of trailing zeros are the column's shape, not the price.
-
-        Deliberately NOT `formatMoney`: a price is not money. That helper fixes
-        two places and appends a currency, which would round EURUSD's `1.0851100`
-        to `1.09` and destroy the digits a trader reads the row for. This trims
-        trailing zeros, keeps every significant one, and groups the thousands —
-        so a JPY pair keeps its three places, a major keeps its five, and gold
-        reads `2,351.38`.
-      */}
-      <td className="px-5 py-3 text-right font-mono tabular-nums">
-        {formatDecimal(position.volume)}
-      </td>
-      <td className="px-5 py-3 text-right font-mono tabular-nums">
-        {formatDecimal(position.openPrice)}
-      </td>
-      <td className="px-5 py-3 font-mono text-muted-foreground">
-        {position.login ?? t('accounts.loginPending')}
-      </td>
-      <td className="px-5 py-3 whitespace-nowrap text-muted-foreground">
-        {new Date(position.openedAt).toLocaleDateString()}
-      </td>
-    </tr>
   );
 }
 
