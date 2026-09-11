@@ -76,7 +76,26 @@ export default function TransactionsPage() {
   const emailUnverified = user !== null && user.emailVerified === false;
 
   const [filters, setFilters] = React.useState<Filters>(INITIAL_FILTERS);
-  const [sort, setSort] = React.useState<{ column: string | null; direction: 'asc' | 'desc' }>({
+  /*
+   * The sorts the API will actually accept, named here rather than implied.
+   *
+   * This list IS `ListTransactionsQueryDto`'s `@IsIn(TRANSACTION_SORT_FIELDS)`
+   * on the server. Anything outside it comes back 400 — "sort must be one of
+   * the following values: createdAt, amount, direction, currency, state" —
+   * which this screen renders as "Could not load your transactions" over an
+   * empty page, so a sort header that reorders nothing takes the whole history
+   * with it.
+   *
+   * `SORTABLE` is what makes `sort.column` a UNION rather than a `string`, so
+   * the cast that used to sit on the query object is gone and a column naming
+   * a field the API cannot sort is now a compile error instead of a 400.
+   */
+  const SORTABLE = ['createdAt', 'amount', 'direction', 'currency', 'state'] as const;
+  type SortColumn = (typeof SORTABLE)[number];
+  const isSortable = (key: string): key is SortColumn =>
+    (SORTABLE as readonly string[]).includes(key);
+
+  const [sort, setSort] = React.useState<{ column: SortColumn | null; direction: 'asc' | 'desc' }>({
     column: 'createdAt',
     direction: 'desc',
   });
@@ -93,7 +112,7 @@ export default function TransactionsPage() {
    */
   const query: TransactionQuery = {
     ...toQuery(filters),
-    sort: (sort.column ?? undefined) as TransactionQuery['sort'],
+    sort: sort.column ?? undefined,
     order: sort.column ? sort.direction : undefined,
     page,
     limit: pageSize,
@@ -481,13 +500,26 @@ export default function TransactionsPage() {
                    * orders by something — so the third click was only ever a way
                    * back to a default that one column already occupied.
                    */
+                  /*
+                   * A column the API cannot sort is IGNORED rather than sent.
+                   *
+                   * `DataTable` hands back a `string`, so this is the boundary
+                   * where it becomes one of the five the server accepts. It
+                   * should now be unreachable — a column is only sortable if it
+                   * declares a `sortKey`, and every one here names a real field
+                   * — but this is the line that decides what goes on the wire,
+                   * and the failure it prevents costs the client their entire
+                   * history rather than one column's ordering.
+                   */
                   setSort((current) =>
                     column === null
                       ? {
                           column: current.column,
                           direction: current.direction === 'asc' ? 'desc' : 'asc',
                         }
-                      : { column, direction: direction ?? 'asc' },
+                      : isSortable(column)
+                        ? { column, direction: direction ?? 'asc' }
+                        : current,
                   );
                   setPage(1);
                 }}
