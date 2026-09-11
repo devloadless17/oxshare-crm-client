@@ -241,6 +241,18 @@ export interface OpenAccountInput {
   startingBalance?: string;
 }
 
+/**
+ * One movement of money on an MT5 account with no trade behind it — a dealer
+ * credit, debit, bonus or correction.
+ *
+ * A THIRD kind of money record, and the distinction matters on screen: a
+ * `Transaction` is a deposit or withdrawal against the wallet, a `Transfer`
+ * moves between the wallet and an account, and one of THESE has no wallet leg
+ * and no ledger entry at all. It happened on MT5 and the CRM only observes it.
+ */
+export type BalanceMovement = components['schemas']['BalanceMovementDto'];
+export type BalanceMovementPage = components['schemas']['BalanceMovementPageDto'];
+
 export const tradingApi = {
   /**
    * Every account this client holds, live first then demo, newest first within
@@ -446,6 +458,24 @@ export const tradingApi = {
       query ? `/trading/positions?${query}` : '/trading/positions',
       { signal: options.signal },
     );
+    return data;
+  },
+
+  /**
+   * Money moved ON the client's MT5 accounts with no trade behind it.
+   *
+   * Exists because a dealer adjustment has no wallet leg and no ledger entry by
+   * design, so it appears in neither `getTransactions` nor `getTransfers` — and
+   * before this read, nowhere a client could look. An admin could credit or
+   * DEBIT their trading account and their own history showed nothing.
+   *
+   * `truncated` says when the window held more than one response carries. A
+   * capped list that does not say it is capped is a number the reader trusts.
+   */
+  async getBalanceMovements(signal?: AbortSignal): Promise<BalanceMovementPage> {
+    const { data } = await apiClient.get<BalanceMovementPage>('/trading/balance-movements', {
+      signal,
+    });
     return data;
   },
 };

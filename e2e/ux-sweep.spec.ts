@@ -36,7 +36,32 @@ import { expect, test } from './fixtures';
  */
 
 /** Signed-in pages, which carry the portal chrome. */
-const PRIVATE = ['/dashboard', '/accounts', '/wallet', '/transactions', '/platforms', '/profile'];
+/*
+ * ⚠️ `/transfer`, `/deposit` and `/withdraw` were MISSING from this list until
+ * 11 Sep 2026 — the three screens that actually move a client's money, absent
+ * from the sweep whose stated purpose is that sideways scrolling "is the single
+ * most common mobile layout defect and is invisible at 1280px".
+ *
+ * They are also the screens most likely to be used on a phone: a client checks
+ * a balance at a desk and moves money from wherever they are. The six that WERE
+ * covered are the ones you look at; the three that were not are the ones you
+ * act on.
+ *
+ * Nothing excluded them on purpose — they are simply newer than the list, which
+ * is how a census that names its subjects by hand fails. It cannot report what
+ * it was never told about, and it looks identical to a passing one.
+ */
+const PRIVATE = [
+  '/dashboard',
+  '/accounts',
+  '/wallet',
+  '/transactions',
+  '/platforms',
+  '/profile',
+  '/transfer',
+  '/deposit',
+  '/withdraw',
+];
 
 /** Standalone screens: no chrome, so they must offer their own way onward. */
 const STANDALONE = [
@@ -161,7 +186,41 @@ test.describe('no page scrolls sideways on a phone', () => {
       const overflow = await page.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,
         clientWidth: document.documentElement.clientWidth,
+        // The page's OWN content area, not the whole document — see below.
+        main: (document.querySelector('main')?.innerText ?? '').trim().length,
       }));
+
+      /*
+       * NON-VACUITY FIRST. A page that rendered NOTHING — a blank error
+       * boundary, a crashed hydration, a redirect to a screen this jar is not
+       * signed in for — cannot scroll sideways, so it passes the assertion
+       * below for the one reason that should fail it.
+       *
+       * Not hypothetical: the admin app's copy of this sweep passed
+       * `/invite/accept` for exactly that reason, measuring a fifty-character
+       * "invalid link" apology instead of the form it was written to check.
+       *
+       * ⚠️ MEASURED ON `main`, NOT ON `document.body`, AND THE DIFFERENCE IS THE
+       * WHOLE POINT. Body text includes the nav chrome — about a hundred
+       * characters of it — so a page that rendered only its shell still reads as
+       * substantial, which is precisely the case this guard exists to catch.
+       *
+       * The floor is deliberately LOW because two legitimate screens are terse,
+       * measured rather than assumed:
+       *
+       *     /withdraw  47   step 1 of a 3-step wizard: pick a method
+       *     /deposit   57   the same
+       *     /transfer 181   ·  /auth/forgot-password 131  ·  /wallet 519
+       *
+       * A first attempt thresholded body text at 200 and failed all three of
+       * those for being sparse rather than broken. A guard that flags correct
+       * screens gets deleted, and takes the real cases with it.
+       */
+      expect(
+        overflow.main,
+        `${path} rendered an EMPTY <main> at 393px — the width assertion below ` +
+          'would pass on a page that rendered only its navigation',
+      ).toBeGreaterThan(20);
 
       expect(
         overflow.scrollWidth,
