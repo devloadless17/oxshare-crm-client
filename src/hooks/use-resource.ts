@@ -61,8 +61,21 @@ export interface Resource<T> {
    * holds the answer.
    */
   updatedAt: number;
-  /** Resolves once the refetch settles, so callers can await it. */
-  refetch: () => Promise<unknown>;
+  /**
+   * Resolves once the refetch settles, so callers can await it — AND says
+   * whether it worked.
+   *
+   * It returned `Promise<unknown>`, which let a caller await the settle and gave
+   * it no way to know the outcome. React Query RESOLVES this promise with a
+   * result object on failure rather than rejecting, so the natural-looking
+   * `try { await refetch() } catch` is dead code — and the profile's session
+   * list shipped exactly that, reporting a successful sign-out while the row it
+   * failed to refresh stayed on screen.
+   *
+   * `isError` is the minimum a caller needs to tell "the screen is up to date"
+   * from "the screen is stale and I know it".
+   */
+  refetch: () => Promise<{ isError: boolean }>;
 }
 
 /**

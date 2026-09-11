@@ -159,6 +159,14 @@ export const messages = {
   'profile.sessionRevoke': 'Sign out',
   'profile.sessionRevoking': 'Signing out...',
   'profile.sessionRevokeFailed': 'Could not sign that session out. Please try again.',
+  /*
+   * A DIFFERENT sentence, because it is a different world. The sign-out
+   * SUCCEEDED and only the list failed to refresh; saying "could not sign that
+   * session out" would report the opposite of what happened and invite the
+   * client to do it again.
+   */
+  'profile.sessionRevokedListStale':
+    'Signed out — but this list could not be refreshed. Reload the page to see it.',
   // Every session predating the metadata columns has no user agent. Saying so
   // beats an empty cell, which reads as a failed load.
   'profile.sessionNoDetails': 'No device details recorded',
