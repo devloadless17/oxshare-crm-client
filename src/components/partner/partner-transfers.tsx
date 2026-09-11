@@ -10,7 +10,6 @@ import {
   formatDate,
 } from '@/components/partner/partner-ui';
 import { useResource } from '@/hooks/use-resource';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbWalletTransfer } from '@/lib/api/partner';
 import { formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
@@ -131,7 +130,7 @@ export function PartnerTransfers() {
         label={t('partner.transfersLoading')}
         endpoints={['GET /ib/wallet/transfers']}
         onRetry={() => query.refetch()}
-        errorMessage={apiErrorMessage(query.error, t('partner.transfersFailed'))}
+        errorMessage={t('partner.transfersFailed')}
         error={query.error}
       >
         {rows.length === 0 ? (

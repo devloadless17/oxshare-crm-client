@@ -241,9 +241,36 @@ test.describe('the bell updates without a refresh', () => {
     // The transport spoke, and said which event — otherwise the badge could
     // have come from a poll and this test would rot into silence. Polled,
     // because the frame and the DOM update race by a few milliseconds.
+    /*
+     * REPORT WHAT THE SOCKET ACTUALLY SAID, not just that the string was absent.
+     *
+     * This fails in CI on [mobile] and passes locally, repeatedly, and "expected
+     * true, received false" cannot tell the two candidates apart: a socket that
+     * was SILENT (so the badge above came from the 60s poll, which is the defect
+     * this assertion exists to catch) versus a socket that spoke and used a name
+     * this check does not match.
+     *
+     * Those want opposite fixes, so the message now carries the distinct frame
+     * kinds seen. Same approach that resolved `onboarding-journey:94`, which had
+     * survived several runs describing a missing element and named its own cause
+     * — a 429 — on the first run after it was instrumented.
+     */
+    const seen = () => {
+      const kinds = new Set<string>();
+      for (const f of frames) {
+        for (const m of f.matchAll(/"([a-z_]+\.[a-z_]+)"/g)) if (m[1]) kinds.add(m[1]);
+      }
+      return [...kinds];
+    };
+
     await expect
       .poll(() => frames.join('\n').includes('notification.created'), {
         timeout: REALTIME_BUDGET_MS * 2,
+        message:
+          'the socket never carried `notification.created`. If it carried NOTHING, the bell ' +
+          'above was updated by the poll and the realtime path is not working; if it carried ' +
+          'other events, this check is matching the wrong name. Frame kinds seen: ' +
+          `[${seen().join(', ')}] across ${frames.length} frames.`,
       })
       .toBe(true);
   });

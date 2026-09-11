@@ -76,6 +76,9 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  /* Read ONCE and normalised, so the mark and the "Create account" line cannot
+     disagree about what the code is — the register page does the same. */
+  const referralCode = searchParams.get('ref')?.trim().toUpperCase() || undefined;
   const { refetchUser } = useUser();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -192,11 +195,35 @@ function LoginForm() {
     <AuthShell
       heading={t('auth.login.heading')}
       subheading={t('auth.login.tagline')}
+      /* The MARK keeps `?ref=` too. It points at this same page, so without
+         this a visitor mid-detour loses the code by clicking the logo and the
+         "Create account" line below then carries nothing. */
+      homeHref={
+        referralCode ? `/auth/login?ref=${encodeURIComponent(referralCode)}` : '/auth/login'
+      }
       footer={
         <>
           {t('auth.login.noAccount')}{' '}
+          {/*
+            CARRIES `?ref=` BACK, completing the round trip.
+
+            This page does nothing with a referral code — it is not read, not
+            sent, not displayed. It is carried so that a visitor who arrived
+            from a partner's link, detoured here, and goes back to register
+            still has it. Without this the pair of links loses attribution
+            silently: the register page's banner disappears and the client is
+            attributed to nobody, permanently, since `referredByIbUserId` is
+            written once at registration and no route anywhere can set it after.
+
+            Passing a parameter a page ignores looks like dead code and is the
+            opposite: it is the only reason the code survives the detour.
+          */}
           <Link
-            href="/auth/register"
+            href={
+              referralCode
+                ? `/auth/register?ref=${encodeURIComponent(referralCode)}`
+                : '/auth/register'
+            }
             className="font-semibold text-link hover:underline rounded-xs focus-outline"
           >
             {t('auth.login.register')}

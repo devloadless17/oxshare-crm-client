@@ -12,7 +12,6 @@ import {
   type Tone,
 } from '@/components/partner/partner-ui';
 import { useResource } from '@/hooks/use-resource';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbCommissionRow } from '@/lib/api/partner';
 import { formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
@@ -147,7 +146,7 @@ export function PartnerCommissions() {
       label={t('partner.commissionsLoading')}
       endpoints={['GET /ib/commissions']}
       onRetry={() => query.refetch()}
-      errorMessage={apiErrorMessage(query.error, t('partner.commissionsFailed'))}
+      errorMessage={t('partner.commissionsFailed')}
       error={query.error}
     >
       <div className="flex flex-col gap-5">

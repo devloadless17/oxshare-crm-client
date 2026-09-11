@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { useResource } from '@/hooks/use-resource';
 import { useLiveAccount } from '@/hooks/use-live-account';
 import { useUser } from '@/context/UserContext';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { t, type MessageKey } from '@/lib/i18n';
 import { AccountLivePanel } from '@/components/accounts/account-live-panel';
@@ -106,7 +105,7 @@ export default function AccountDetailPage() {
         label={t('accounts.detailLoading')}
         endpoints={['GET /trading/accounts/:id']}
         onRetry={() => void account.refetch()}
-        errorMessage={apiErrorMessage(account.error, t('accounts.detailLoadFailed'))}
+        errorMessage={t('accounts.detailLoadFailed')}
         error={account.error}
       >
         {/*

@@ -114,10 +114,52 @@ test.describe('the sessions list', () => {
       let remaining = await revokeButtons.count();
       expect(remaining, 'the second session never appeared in the list').toBeGreaterThan(0);
 
+      /*
+       * The count alone cannot say WHY it did not fall, and it blamed the wrong
+       * thing when it did not.
+       *
+       * A refused sign-out and a list that failed to refresh look identical to a
+       * count assertion: `SessionRow` renders the failure INLINE — it sets the
+       * error, deliberately does not clear it, and sets `busy` false — so the
+       * button comes back as "Sign out" and the count stays exactly where it
+       * was. That is what a crosshost run produced: ten buttons, click one,
+       * still ten across all 24 polls, reported as "the list did not update"
+       * while a `role="alert"` sat in the row saying the sign-out was refused.
+       *
+       * So assert BOTH, together, and let the alert be the one that speaks: if a
+       * revoke is refused this now fails naming the refusal instead of accusing
+       * the list of being stale. Same class as the 403-for-the-wrong-reason trap
+       * in the §14 walk — a true assertion that describes two different worlds
+       * and names the wrong one.
+       */
+      /*
+       * The alert is found BY ROLE, never by its text — and this exact assertion
+       * was written by text first, which did not work.
+       *
+       * `handleRevoke` renders `apiErrorMessage(err, t('profile.sessionRevokeFailed'))`,
+       * and the fallback is only reached when the error carries no message of its
+       * own. Forcing every DELETE to 500 proved it: the row rendered "Request
+       * failed with status code 500", the regex for the fallback copy matched
+       * NOTHING, and the spec fell straight back to blaming the count — the very
+       * failure this block exists to prevent, reproduced by the fix for it.
+       *
+       * That is class 10 in one sentence: a bug class tried in ONE SPELLING is
+       * not tested. The role is the property; the sentence is one of its values.
+       *
+       * Scoped to the ROWS. The profile page carries an unrelated page-level
+       * alert (a toast container), and matching that would make this fail for a
+       * reason that has nothing to do with signing a session out — swapping one
+       * wrong-reason failure for another.
+       */
+      const revokeFailed = page.getByRole('listitem').getByRole('alert');
+
       while (remaining > 0) {
         await revokeButtons.first().click();
         remaining -= 1;
-        await expect(revokeButtons).toHaveCount(remaining);
+        await expect(async () => {
+          await expect(revokeFailed, 'a sign-out was REFUSED by the API').toHaveCount(0);
+          await expect(revokeButtons).toHaveCount(remaining);
+        }).toPass({ timeout: 15_000 });
       }
       await expect(page.getByText(/this device/i)).toHaveCount(1);
 

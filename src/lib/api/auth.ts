@@ -40,9 +40,28 @@ export type MessageResponse = components['schemas']['MessageResponseDto'];
 export type VerifyEmailResponse = components['schemas']['VerifyEmailResponseDto'];
 
 /**
- * `{ message, userId }` — registration does NOT return tokens, because the
- * account is unverified until the emailed link is followed. Aliasing this is what
- * caught the backend briefly documenting the route as returning tokens.
+ * `{ message }` — and the shape is deliberately that thin.
+ *
+ * Registration does NOT return tokens, because the account is unverified until
+ * the emailed link is followed. Aliasing this is what caught the backend briefly
+ * documenting the route as returning tokens.
+ *
+ * ⚠️ IT ALSO NO LONGER RETURNS `userId`, AND THAT ABSENCE IS A SECURITY
+ * PROPERTY RATHER THAN A TIDY-UP. This docblock said `{ message, userId }` until
+ * 11 Sep 2026, which was accurate and described a membership oracle: an
+ * unused address answered 201 WITH a `userId` and a registered one answered 201
+ * WITHOUT it — same status, same message, so the PRESENCE OF THE KEY told any
+ * anonymous caller whether an address held an account.
+ *
+ * Everything around it was already careful — the endpoint does not throw on a
+ * taken address, it emails the real holder, and it returns the identical
+ * sentence. One extra key defeated all of it.
+ *
+ * So the two responses are now byte-identical, and the test that guards it
+ * asserts IDENTICAL BODIES rather than "no userId": a rule naming one field
+ * passes against a response that later grows a different distinguishing one.
+ * If anything here ever needs the new account's id, that is a change to the
+ * oracle, not a convenience.
  */
 export type RegistrationResponse = components['schemas']['RegistrationResponseDto'];
 

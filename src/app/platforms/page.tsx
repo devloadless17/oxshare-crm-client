@@ -4,7 +4,6 @@ import { Apple, Download, Monitor, Smartphone } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { Button } from '@/components/ui/button';
 import { useResource } from '@/hooks/use-resource';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { platformsApi, type PlatformKey, type PlatformLink } from '@/lib/api/platforms';
 import { t, type MessageKey } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
@@ -72,7 +71,7 @@ export default function PlatformsPage() {
         label={t('platforms.loading')}
         endpoints={['GET /platforms']}
         onRetry={() => void platforms.refetch()}
-        errorMessage={apiErrorMessage(platforms.error, t('platforms.loadFailed'))}
+        errorMessage={t('platforms.loadFailed')}
         error={platforms.error}
         // Centres the spinner in the space actually left below the header,
         // rather than inside its own min-height.

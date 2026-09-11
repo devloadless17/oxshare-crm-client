@@ -159,6 +159,14 @@ export const messages = {
   'profile.sessionRevoke': 'Sign out',
   'profile.sessionRevoking': 'Signing out...',
   'profile.sessionRevokeFailed': 'Could not sign that session out. Please try again.',
+  /*
+   * A DIFFERENT sentence, because it is a different world. The sign-out
+   * SUCCEEDED and only the list failed to refresh; saying "could not sign that
+   * session out" would report the opposite of what happened and invite the
+   * client to do it again.
+   */
+  'profile.sessionRevokedListStale':
+    'Signed out — but this list could not be refreshed. Reload the page to see it.',
   // Every session predating the metadata columns has no user agent. Saying so
   // beats an empty cell, which reads as a failed load.
   'profile.sessionNoDetails': 'No device details recorded',
@@ -1866,34 +1874,10 @@ export const messages = {
   'dashboard.largestBalanceNote': 'Your biggest single wallet',
   'dashboard.statWallets': 'Wallets',
   'dashboard.statWalletsNote': 'Currencies you hold',
-  'dashboard.statOpenPositionsNote': 'Trades running now',
   'dashboard.statPendingTxNote': 'Waiting on our review',
   'dashboard.statReferred': 'Clients introduced',
   'dashboard.statReferredNote': 'Through your referral code',
-  'dashboard.statOpenPositions': 'Open positions',
   'dashboard.statReferredClients': 'Clients referred',
-  'dashboard.positionsHeading': 'Open positions',
-  'dashboard.positionsEmpty': 'No open positions',
-  /*
-   * The honest sentence for an empty positions panel.
-   *
-   * It says trades are not SYNCED yet rather than "you have no trades", because
-   * those are different claims and only the first is one this system can make:
-   * nothing writes to `positions` until an MT5 bridge exists, so a client who
-   * traded this morning would still see zero here. Same rule as the wallet's
-   * missing-wallet-is-not-a-zero.
-   */
-  'dashboard.positionsEmptyBody':
-    'Trades opened in MetaTrader 5 are not synced to the portal yet. Your terminal is the source ' +
-    'of truth for live positions.',
-  'dashboard.positionsColSymbol': 'Symbol',
-  'dashboard.positionsColSide': 'Side',
-  'dashboard.positionsColVolume': 'Volume',
-  'dashboard.positionsColOpenPrice': 'Open price',
-  'dashboard.positionsColAccount': 'Account',
-  'dashboard.positionsColOpened': 'Opened',
-  'dashboard.sideBuy': 'Buy',
-  'dashboard.sideSell': 'Sell',
   'dashboard.accountsHeading': 'Trading accounts',
   'dashboard.accountsEmpty': 'No trading accounts yet',
   'dashboard.accountsEmptyBody': 'Your MT5 accounts appear here once they are opened.',

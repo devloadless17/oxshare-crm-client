@@ -37,16 +37,12 @@ export function SessionsList({ refreshToken }: { refreshToken?: number }) {
         label={t('profile.sessionsLoading')}
         endpoints={['GET /auth/sessions']}
         onRetry={() => void sessions.refetch()}
-        errorMessage={apiErrorMessage(sessions.error, t('profile.sessionsLoadFailed'))}
+        errorMessage={t('profile.sessionsLoadFailed')}
         error={sessions.error}
       >
         <ul className="divide-y divide-border rounded-xl border border-border bg-card">
           {(sessions.data ?? []).map((session) => (
-            <SessionRow
-              key={session.id}
-              session={session}
-              onRevoked={() => void sessions.refetch()}
-            />
+            <SessionRow key={session.id} session={session} onRevoked={sessions.refetch} />
           ))}
         </ul>
       </AsyncBoundary>
@@ -54,16 +50,55 @@ export function SessionsList({ refreshToken }: { refreshToken?: number }) {
   );
 }
 
-function SessionRow({ session, onRevoked }: { session: Session; onRevoked: () => void }) {
+/**
+ * Exported for its own test. The two failure branches below are opposite facts
+ * about the world and are unreachable from `SessionsList` without standing up a
+ * query client and a failing endpoint — so they are driven directly.
+ */
+export function SessionRow({
+  session,
+  onRevoked,
+}: {
+  session: Session;
+  /**
+   * Awaited AND inspected — see `handleRevoke`. The result is checked rather
+   * than caught, because a failed refetch resolves rather than rejecting.
+   */
+  onRevoked: () => Promise<{ isError: boolean }>;
+}) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  /*
+   * TWO AWAITS, AND TWO DIFFERENT FAILURES — they used to be one, and the second
+   * was invisible.
+   *
+   * This was `onRevoked()` un-awaited behind a `void`, so the moment the DELETE
+   * came back the row reported success and the refresh of the list was nobody's
+   * business. If that refresh then failed or never landed, the revoked session
+   * STAYED ON SCREEN looking live, with no error anywhere — and the client's
+   * reasonable response is to click Sign out again on a session that is already
+   * gone.
+   *
+   * `useResource`'s own docblock says the thing: *"Resolves once the refetch
+   * settles, so callers can await it."* The list was not.
+   *
+   * The two failures get different sentences because they are opposite facts. A
+   * refused DELETE means the session is still live and trying again is right. A
+   * successful DELETE with a stale list means the session IS gone and trying
+   * again is pointless — telling that client "could not sign that session out"
+   * reports the reverse of what happened.
+   *
+   * `busy` now spans BOTH steps, so the button stays "Signing out…" until the
+   * list actually reflects the change rather than until the request returns.
+   * That is also what makes the state honest at every instant: there is no
+   * moment where the control offers to sign out a session already signed out.
+   */
   const handleRevoke = async () => {
     setBusy(true);
     setError(null);
     try {
       await accountApi.revokeSession(session.id);
-      onRevoked();
     } catch (err: unknown) {
       setError(apiErrorMessage(err, t('profile.sessionRevokeFailed')));
       // Deliberately NOT cleared in a `finally` alongside `busy` — the row must
@@ -72,6 +107,20 @@ function SessionRow({ session, onRevoked }: { session: Session; onRevoked: () =>
       setBusy(false);
       return;
     }
+
+    /*
+     * CHECKED, NOT CAUGHT — and the first version of this was a dead branch.
+     *
+     * `useResource.refetch` is `query.refetch()`, and React Query RESOLVES that
+     * promise with a result object when the fetch fails; it does not reject. So
+     * `try { await onRevoked() } catch` could never run, and the "signed out but
+     * the list is stale" message was unreachable code that read as handling.
+     *
+     * Caught by mutating the GET to 500 and watching the spec pass anyway — the
+     * branch had to be made to fire before it could be believed.
+     */
+    const result = await onRevoked();
+    if (result.isError) setError(t('profile.sessionRevokedListStale'));
     setBusy(false);
   };
 

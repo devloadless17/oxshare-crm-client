@@ -2788,6 +2788,34 @@ export interface paths {
         patch: operations["AdminClientsController_changeClientEmail"];
         trace?: never;
     };
+    "/v1/admin/clients/{id}/referrer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Record the partner who introduced a client, when none is recorded
+         * @description Attribution is captured in ONE place — `?ref=` on the registration screen — and both portal auth cross-links dropped it, so a client who followed a partner link, clicked "Sign in", then "Create an account" registered attributed to nobody. Permanently: `referred_by_ib_user_id` was written at registration and nowhere else.
+         *
+         *     ⚠️ **NULL to A only.** A client who already has a referrer answers **409 REFERRER_ALREADY_SET**. Re-pointing attribution would move a partner’s client and their future commissions to somebody else, which `docs/` forbids — and the refusal is in the service rather than in a screen so this route cannot become that flow later.
+         *
+         *     Takes the CODE the client reports, never a partner id: looking a partner up means picking one off a list, which is the shape of choosing who gets paid.
+         *
+         *     Three distinct refusals, because they need three sentences — `REFERRAL_CODE_UNKNOWN` (a typo), `REFERRAL_SELF` (the client’s own code), and `REFERRAL_PARTNER_INACTIVE` (the code was RIGHT; that partner is suspended).
+         *
+         *     Does NOT backdate: commission reads attribution at accrual time, so this pays on deals not yet accrued and restates nothing already credited.
+         */
+        patch: operations["AdminClientsController_setClientReferrer"];
+        trace?: never;
+    };
     "/v1/admin/clients/{id}/status": {
         parameters: {
             query?: never;
@@ -2999,6 +3027,30 @@ export interface paths {
          * @description The way out of a claim. A reviewer who picked a submission up and cannot finish it — reassigned, off shift, or moved out of that territory — would otherwise leave a row that looks taken to everyone else. Gated exactly like a decision, because approve and reject already accept an under_review row from any reviewer who can see it: a claim is advisory, never a lock. Refuses a submission that has already been DECIDED — reopening one is reject's job, with a reason attached.
          */
         patch: operations["AdminComplianceController_releaseKyc"];
+        trace?: never;
+    };
+    "/v1/admin/kyc/{userId}/personal-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Correct a date of birth or address on an APPROVED submission (CORE-18)
+         * @description The one state where the client cannot correct their own details. `saveStep` lets them edit while not_started, in_progress or rejected and correctly locks submitted and under_review; APPROVED had no path at all, and the refusal on POST /kyc/reset told the client to contact support — who had neither the field nor a route. The only lever left was to REJECT the verification for a typo, which drops verificationLevel to 0 and shuts the money doors.
+         *
+         *     RE-VALIDATED through the same rules as submission. A corrected value that is impossible, in the future or under 18 answers **409**, not 400: that is a fact about the RECORD, not about what was typed, and the operator has just found a different problem — a rejection rather than an edit. `details.kind` names which rule.
+         *
+         *     Audited as `kyc.identity_correct` against the SUBMISSION, with the value on both sides.
+         */
+        patch: operations["AdminComplianceController_correctKycIdentity"];
         trace?: never;
     };
     "/v1/admin/kyc/{userId}/approve": {
@@ -4055,8 +4107,6 @@ export interface components {
         RegistrationResponseDto: {
             /** @example Registration successful. Please check your email to verify your account. */
             message: string;
-            /** @description The new user id. Absent when no account was created — including when one already existed, which this endpoint deliberately does not disclose. No session exists until the email is verified. */
-            userId?: string;
         };
         VerifyEmailDto: {
             /**
@@ -6093,10 +6143,16 @@ export interface components {
             tradingAccounts?: components["schemas"]["ProfileTradingAccountDto"][];
             /** @description Absent without ib.view, and absent when nobody introduced this client — the UI tells the two apart by its own permission check. */
             referrer?: components["schemas"]["ProfileReferrerDto"];
-            /** @description Capped — see referredShown. Absent without ib.view; empty when none. */
+            /** @description Newest first, and CAPPED at one screen — read `referredTotal` for how many there actually are, NEVER this array’s length, which is the count of what fitted. Absent without ib.view; empty when none — those are different facts. SCOPED to the reader’s territory, like every other client row. */
             referredClients?: components["schemas"]["ProfileReferredClientDto"][];
-            /** @description How many referredClients were returned; the list is capped for one screen. */
+            /** @description How many referredClients were RETURNED — the size of what fitted on one screen. Useless alone and it was, until `referredTotal` landed: the cap is published nowhere, so `referredShown: 50` cannot be told from a partner with exactly fifty. The PAIR is what a screen needs — "50 of 213" — and neither half gets there without the other. */
             referredShown?: number;
+            /**
+             * @description How many clients this client introduced IN TOTAL, counted in SQL and SCOPED to the reader’s territory. Distinct from `referredClients.length`, which is capped — a screen showing a total must read THIS. Present exactly when `referredClients` is, so "may not see" stays absent rather than zero.
+             *
+             *     ⚠️ It is the reader’s count, not the partner’s: a scoped admin sees how many of this partner’s clients fall inside their own territory, matching what GET /admin/clients?referredBy= returns for them. An unscoped total here would put "50 of 213" above a filtered list of 60.
+             */
+            referredTotal?: number;
             maskedFields: string[];
         };
         UpdateClientProfileDto: {
@@ -6136,6 +6192,13 @@ export interface components {
         ChangeClientEmailDto: {
             /** @example layla.haddad@example.com */
             email: string;
+        };
+        SetClientReferrerDto: {
+            /**
+             * @description The partner’s referral code, as the client reports it. Case-insensitive and trimmed, exactly as registration resolves it. Refused with distinct codes when it matches no partner, names the client themselves, or names a suspended partner.
+             * @example PARTNER01
+             */
+            referralCode: string;
         };
         ClientStatusDto: {
             /**
@@ -6275,6 +6338,15 @@ export interface components {
             /** Format: date-time */
             archivedAt: string;
         };
+        CorrectKycIdentityDto: {
+            /**
+             * @description ISO date. RE-VALIDATED through the same rules as submission: an impossible, future or under-18 date is REFUSED with 409, not 400 — that is a fact about the record rather than about what was typed.
+             * @example 1985-04-12
+             */
+            dateOfBirth?: string;
+            /** @example 12 Rue Verdun, Beirut */
+            address?: string;
+        };
         RejectDto: {
             /** @description Free-text reason, when not using a configured reasonId. */
             reason?: string;
@@ -6307,12 +6379,14 @@ export interface components {
             /** @example First Name */
             label: string;
             /** @enum {string} */
-            type: "text" | "date" | "phone" | "select" | "file" | "camera" | "checkbox";
+            type: "text" | "date" | "phone" | "select" | "file" | "camera" | "checkbox" | "doc:passport" | "doc:national_id" | "doc:driving_license" | "doc:residence_permit" | "doc:utility_bill" | "doc:bank_statement" | "doc:tenancy_agreement";
             required: boolean;
             /** @description Choices, for type: select. */
             options?: string[];
             /** @example As shown on your ID */
             hint?: string;
+            /** @description Hydrated from `type` on read. Accepted on write and ignored. */
+            document?: Record<string, never>;
         };
         KycStepDto: {
             id?: string;
@@ -10721,6 +10795,8 @@ export interface operations {
                 kycStatus?: "not_started" | "in_progress" | "submitted" | "under_review" | "approved" | "rejected";
                 /** @description Tag SLUG, not id (ADM-14). */
                 tag?: string;
+                /** @description Clients introduced by this partner (users.referred_by_ib_user_id). Scoped like every other filter — a reader still only sees their own territory. A value that is not a client id is a 400, never a silently unfiltered list. */
+                referredBy?: string;
                 sort?: "createdAt" | "email" | "firstName" | "status" | "verificationLevel" | "country";
                 order?: "asc" | "desc";
             };
@@ -10835,6 +10911,31 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ChangeClientEmailDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientAccountDto"];
+                };
+            };
+        };
+    };
+    AdminClientsController_setClientReferrer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetClientReferrerDto"];
             };
         };
         responses: {
@@ -11169,6 +11270,31 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KycSubmissionDto"];
+                };
+            };
+        };
+    };
+    AdminComplianceController_correctKycIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrectKycIdentityDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

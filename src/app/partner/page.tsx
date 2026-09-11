@@ -8,7 +8,6 @@ import { ApplyPanel } from '@/components/partner/apply-panel';
 import { ApprovedPanel } from '@/components/partner/partner-workspace';
 import { useResource } from '@/hooks/use-resource';
 import { Button } from '@/components/ui/button';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi, type IbStatus } from '@/lib/api/partner';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
@@ -23,7 +22,7 @@ export default function PartnerPage() {
         label={t('partner.loading')}
         endpoints={['GET /ib/status']}
         onRetry={() => query.refetch()}
-        errorMessage={apiErrorMessage(query.error, t('partner.loadFailed'))}
+        errorMessage={t('partner.loadFailed')}
         error={query.error}
         fill
       >

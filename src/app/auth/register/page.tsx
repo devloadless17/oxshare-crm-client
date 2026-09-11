@@ -54,6 +54,14 @@ function RegisterForm() {
    * too, so the two agree about what the client is being shown.
    */
   const referralCode = useSearchParams().get('ref')?.trim().toUpperCase() || undefined;
+  /*
+   * ONE expression for every route out of this page, because the bug was a
+   * route that did not use it. Built once and handed to both the mark and the
+   * "Sign in" line.
+   */
+  const signInHref = referralCode
+    ? `/auth/login?ref=${encodeURIComponent(referralCode)}`
+    : '/auth/login';
   const [firstName, setFirstName] = React.useState('');
   const [lastName, setLastName] = React.useState('');
   const [email, setEmail] = React.useState('');
@@ -125,7 +133,13 @@ function RegisterForm() {
   };
 
   return (
-    <AuthShell heading={t('auth.register.heading')} subheading={t('auth.register.tagline')}>
+    <AuthShell
+      heading={t('auth.register.heading')}
+      subheading={t('auth.register.tagline')}
+      /* The MARK carries the code too, not only the "Sign in" line below.
+         Clicking the logo is the same detour through a different control. */
+      homeHref={signInHref}
+    >
       <div className="space-y-6">
         <div className="space-y-5">
           {/*
@@ -271,8 +285,24 @@ function RegisterForm() {
 
         <p className="text-center text-xs text-muted-foreground">
           {t('auth.register.hasAccount')}{' '}
+          {/*
+            CARRIES THE REFERRAL CODE, and that is not tidiness.
+
+            `?ref=` is read from the URL and never stored — see the comment on
+            `referralCode` above, which says nothing about it needs to survive a
+            reload. It needs to survive ONE LINK. A client who follows a
+            partner's link, thinks they already have an account, clicks here,
+            finds they do not and comes back through the login page's own
+            "create an account" link lands on a BARE /auth/register: the banner
+            silently disappears and they register attributed to nobody.
+
+            That is permanent. `referredByIbUserId` is written once at
+            registration and there is no route, service method or admin screen
+            anywhere that can set it afterwards — so a partner loses that client
+            for good, and nothing records that it happened.
+          */}
           <Link
-            href="/auth/login"
+            href={signInHref}
             className="font-semibold text-link hover:underline rounded-xs focus-outline"
           >
             {t('auth.register.signIn')}

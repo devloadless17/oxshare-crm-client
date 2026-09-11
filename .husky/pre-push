@@ -1,0 +1,137 @@
+#!/usr/bin/env sh
+#
+# THE GATE THAT USED TO BE GITHUB ACTIONS.
+#
+# .github/workflows/ci.yml ran type-check, format:check, lint, test with coverage
+# and build on every push. The Actions allowance for this account was spent on
+# 10 Sep 2026, so that gate stopped firing — and nothing local replaced it AT THE
+# MOMENT IT FIRED. The remaining checks were the Claude Stop hook and
+# scripts/ci-local.sh run BY HAND, neither of which happens on push.
+#
+# The consequence, observed the same evening: a commit landed with `tsc --noEmit`
+# failing and was caught only because somebody happened to run verify afterwards.
+# The system worked, but only because a person ran it.
+#
+# ## Why pre-PUSH and not pre-commit
+#
+# .husky/pre-commit is fast on purpose and argues for it: a commit gate that takes
+# minutes gets bypassed with --no-verify, and a bypassed gate is worse than an
+# honest CI failure. That reasoning is unchanged and this does not touch it.
+# Committing stays cheap. Pushing is rare, is where CI used to fire, and is the
+# last point before work leaves this machine.
+#
+# ## It delegates rather than restates
+#
+# scripts/ci-local.sh already mirrors ci.yml command-for-command and says so in its
+# own header. A second list of steps here would be a second thing to keep in step
+# — the exact drift this layer exists to prevent.
+#
+# ## It fails OPEN when the script is missing, and says so loudly
+#
+# A colleague may have this repo checked out without its siblings, and blocking
+# every push on an absent sibling directory would make the hook the problem. Same
+# convention as check:twins. A MISSING gate is reported; a FAILING gate blocks.
+#
+# Deliberate bypass is still `git push --no-verify`, which at least appears in the
+# shell history of whoever chose it.
+
+repo_root=$(git rev-parse --show-toplevel) || exit 0
+
+# ── ⚠️ OPT-IN. THIS DOES NOTHING UNLESS OXSHARE_PREPUSH_VERIFY IS SET ────────
+#
+# It ran for EVERYBODY until 11 Sep 2026, and that was wrong. A push is a normal
+# thing a colleague does several times a day, and this gate made every one of
+# them wait — minutes in the frontends, about TEN in the backend, where the suite
+# starts a real Postgres. It printed three lines, went silent for the whole
+# Testcontainers step, and from outside was indistinguishable from a hang.
+#
+# That is the failure this hook was written to prevent, in the dimension nobody
+# tested: not "does it refuse correctly" but "what does it look like while it
+# works". A gate people wait on and cannot read is one they route around, and the
+# route around is `--no-verify` permanently rather than once.
+#
+# The owner keeps it and carries the cost on purpose — they are the one who
+# answers for CI being green. Everybody else pushes at the speed of a push.
+#
+#   export OXSHARE_PREPUSH_VERIFY=1     # in your shell profile, to opt IN
+#
+# Deliberately an ENV VAR rather than a committed flag: a file would either be in
+# the repo (and therefore on every machine, which is what we are undoing) or
+# gitignored (and therefore a gate that exists on one machine, which this project
+# has a rule about). A variable is honestly per-developer and says so.
+#
+# This is NOT a weakening of the gate. `scripts/ci-local.sh verify <repo>` is the
+# same command, runs the same eight checks, and is one line to type before a
+# push. What changed is who pays for it by default.
+if [ -z "${OXSHARE_PREPUSH_VERIFY:-}" ]; then
+  exit 0
+fi
+
+# TWO CANDIDATES, and the second is the one that survives a fresh machine.
+#
+# `crm/scripts/ci-local.sh` is the documented path and the one the README names,
+# but it is a SYMLINK in `crm/` — and `crm/` is not a git repo, so those symlinks
+# are version-controlled NOWHERE. They exist on the machine that made them. Clone
+# the four repos plus docs onto a new box and `crm/scripts/` does not exist at
+# all, this hook takes its fail-open branch, and the gate that replaced CI does
+# not run — quietly, on every push, on every fresh checkout.
+#
+# That is this project's own rule broken by its newest gate: "a gate that exists
+# on one machine is not a gate." The fail-open is still correct — blocking on a
+# missing prerequisite is the mistake this hook already made twice — but failing
+# open EVERY TIME is indistinguishable from having no hook.
+#
+# `docs/scripts/` is the real home and docs IS a cloned repo, so the second
+# candidate resolves without anything having been symlinked by hand.
+for candidate in \
+  "$repo_root/../scripts/ci-local.sh" \
+  "$repo_root/../docs/scripts/ci-local.sh"
+do
+  if [ -e "$candidate" ]; then
+    gate="$candidate"
+    break
+  fi
+done
+gate="${gate:-$repo_root/../scripts/ci-local.sh}"
+
+# ⚠️ -x, NOT -f. A gate that is PRESENT but NOT EXECUTABLE passes `-f`, reaches
+# the invocation below, and dies with "Permission denied" — exit 126, which
+# BLOCKS the push while naming a line number inside this hook and saying nothing
+# about the code being pushed. Reproduced on this file: chmod -x gives 126 and a
+# blocked push, chmod +x runs the gate.
+#
+# That is the THIRD cause of one failure: the dash/pipefail bug in this hook's
+# first version, Docker being unreachable in the backend's, and now a lost exec
+# bit. The rule covering all three: A MISSING PREREQUISITE AND A FAILING GATE
+# MUST NOT SHARE AN EXIT CODE. The first time somebody is blocked by a gate that
+# is not about their code, they learn the gate lies, and the fix they reach for
+# is --no-verify permanently rather than locally.
+#
+# Not hypothetical: the scripts are committed 100755 and every repo here has
+# core.fileMode=true, so a clone is fine — but an archive extract, a copy off a
+# filesystem with no exec bits, or a checkout with core.fileMode=false loses it,
+# and the last is the usual state on a Windows mount. This project runs on WSL.
+#
+# The two prerequisite cases are reported SEPARATELY because they need different
+# fixes: one is a missing checkout, the other is one chmod. Found by crm-6a.
+if [ ! -e "$gate" ]; then
+  echo "pre-push: $gate not found — the local CI stand-in is not reachable from here." >&2
+  echo "pre-push: PUSHING UNVERIFIED. Run scripts/ci-local.sh verify client by hand." >&2
+  exit 0
+fi
+
+if [ ! -x "$gate" ]; then
+  echo "pre-push: $gate is present but NOT EXECUTABLE, so the gate cannot run." >&2
+  echo "pre-push: PUSHING UNVERIFIED. Fix with: chmod +x \"$gate\"" >&2
+  exit 0
+fi
+
+# ⚠️ NOT `sh "$gate"`. ci-local.sh declares `#!/usr/bin/env bash` and uses
+# `set -o pipefail`, which dash — /bin/sh on Debian and Ubuntu — does not have.
+# Invoking it through `sh` made it die on line 55 having checked NOTHING, and
+# exit 2. That still blocks the push, so it looks like a working gate; it is a
+# gate that refuses every push for a reason unrelated to the code, which is the
+# fastest possible route to somebody adding --no-verify permanently. Caught by
+# running the hook against a deliberately broken file rather than by reading it.
+echo "pre-push: running the gate CI used to run (scripts/ci-local.sh verify client)"
+"$gate" verify client

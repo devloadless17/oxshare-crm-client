@@ -6,7 +6,6 @@ import { CheckCircle2, Clock, XCircle } from 'lucide-react';
 import api from '@/lib/api';
 import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { clearKycDraft } from '@/lib/kyc-draft';
 import { t } from '@/lib/i18n';
@@ -60,7 +59,7 @@ export function KycOutcome() {
       label={t('common.loading')}
       endpoints={['GET /kyc/status']}
       onRetry={() => statusQuery.refetch()}
-      errorMessage={apiErrorMessage(statusQuery.error, t('kyc.statusLoadFailed'))}
+      errorMessage={t('kyc.statusLoadFailed')}
       error={statusQuery.error}
     >
       {status !== null && (

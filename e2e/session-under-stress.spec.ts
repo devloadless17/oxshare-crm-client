@@ -1,7 +1,6 @@
 import { request } from '@playwright/test';
 import { expect, test } from './fixtures';
 import {
-  portalLogin,
   adminApiSession,
   API_NODE_BASE,
   APP_ORIGIN,
@@ -9,6 +8,7 @@ import {
   linkIn,
   newClient,
   routeHit,
+  isApi,
   waitForMail,
   requirePrecondition,
 } from './helpers';
@@ -77,16 +77,40 @@ test('an admin changing the sign-in email ends the live portal session', async (
         await boot.post(`${API_NODE_BASE}/auth/verify-email`, { headers: origin, data: { token } })
       ).ok(),
     ).toBe(true);
-    const login = await portalLogin(
-      boot,
-      { email: client.email, password: client.password },
-      origin,
-    );
-    expect(login.ok(), `portal sign-in answered ${login.status()}`).toBe(true);
-
-    const ctx = await browser.newContext({ storageState: await boot.storageState() });
+    /*
+     * SIGNED IN THROUGH THE BROWSER, not by handing it Node's cookie jar.
+     *
+     * This used to log in with the `boot` request context and transfer
+     * `storageState()` into the browser. That works on localhost and CANNOT work
+     * cross-host, which is the topology this suite exists to reproduce:
+     * `topology.ts` dials the API from Node as `localhost:PORT` — deliberately,
+     * "the same server, by a name Node resolves" — while the browser dials
+     * `api.crm.localhost:PORT`. The session cookies are scoped to the host that
+     * set them, so the jar handed over was for a host the page never talks to,
+     * the dashboard rendered signed-out, and the wallet link never appeared.
+     *
+     * It failed as "the product did not render a link". It was the harness
+     * assuming one host. Signing in through the form puts the cookies on the
+     * host the browser actually uses, which is true in BOTH topologies — and it
+     * is also the journey a client makes, which the transfer never was.
+     *
+     * Found by running crosshost for the first time; it had been passing on
+     * localhost and silently topology-dependent.
+     */
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const page = await ctx.newPage();
     try {
+      await page.goto('/auth/login');
+      await expect(page.getByPlaceholder('you@example.com')).toBeVisible({ timeout: 20_000 });
+      await page.getByPlaceholder('you@example.com').fill(client.email);
+      await page.locator('input[type="password"]').fill(client.password);
+      const [login] = await Promise.all([
+        page.waitForResponse((r) => isApi(r, '/auth/login', 'POST')),
+        page.getByRole('button', { name: /sign in/i }).click(),
+      ]);
+      requirePrecondition(login.status() === 429, 'portal login is rate limited right now');
+      expect(login.ok(), `portal sign-in answered ${login.status()}`).toBe(true);
+
       await page.goto('/dashboard');
       await expect(page.getByRole('link', { name: /wallet/i }).first()).toBeVisible();
 

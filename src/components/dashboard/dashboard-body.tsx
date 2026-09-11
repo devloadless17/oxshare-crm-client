@@ -6,23 +6,15 @@ import {
   Landmark,
   LineChart,
   Receipt,
-  TrendingUp,
   Users,
   Wallet as WalletIcon,
 } from 'lucide-react';
 import Decimal from 'decimal.js';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { MoneyAction } from '@/components/kyc/money-action';
-import {
-  AccountsPanel,
-  Empty,
-  Panel,
-  PositionsPanel,
-  StatTile,
-} from '@/components/dashboard/dashboard-panels';
+import { AccountsPanel, Empty, Panel, StatTile } from '@/components/dashboard/dashboard-panels';
 import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { dashboardApi, type Dashboard } from '@/lib/api/trading';
 import { formatMoney } from '@/lib/money';
 import { SignedAmount } from '@/components/money/signed-amount';
@@ -44,14 +36,6 @@ import { keys } from '@/lib/query-keys';
  *
  * Every number here now comes from `GET /dashboard`, which counts rows. Nothing
  * is derived, projected or defaulted.
- *
- * ## The positions panel is the one to be careful with
- *
- * It renders empty for everyone, because nothing writes to `positions` until an
- * MT5 bridge exists. The QUERY is real, so the emptiness is a database answer —
- * and the copy says trades are not SYNCED rather than "you have no trades",
- * because a client who traded this morning would still see zero here and the
- * second sentence would be a lie told to their face. See `dashboard-panels.tsx`.
  */
 export function DashboardBody() {
   const dashboard = useResource<Dashboard>(keys.dashboard.all(), (signal) =>
@@ -76,7 +60,7 @@ export function DashboardBody() {
       label={t('dashboard.loading')}
       endpoints={['GET /dashboard']}
       onRetry={() => void dashboard.refetch()}
-      errorMessage={apiErrorMessage(dashboard.error, t('dashboard.loadFailed'))}
+      errorMessage={t('dashboard.loadFailed')}
       error={dashboard.error}
       // See the note on the page root: the fill chain is what lets the spinner
       // centre in the remaining space instead of inside its own min-height.
@@ -88,7 +72,7 @@ export function DashboardBody() {
 }
 
 function Panels({ data }: { data: Dashboard }) {
-  const { wallets, recentTransactions, tradingAccounts, openPositions, stats } = data;
+  const { wallets, recentTransactions, tradingAccounts, stats } = data;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6">
@@ -123,12 +107,6 @@ function Panels({ data }: { data: Dashboard }) {
           label={t('dashboard.statTradingAccounts')}
           value={String(stats.totalAccounts)}
           hint={t('accounts.liveCount', { count: stats.liveAccounts })}
-        />
-        <StatTile
-          icon={TrendingUp}
-          label={t('dashboard.statOpenPositions')}
-          value={String(stats.openPositions)}
-          hint={t('dashboard.statOpenPositionsNote')}
         />
         <StatTile
           icon={Receipt}
@@ -217,7 +195,6 @@ function Panels({ data }: { data: Dashboard }) {
         </Panel>
       </div>
 
-      <PositionsPanel positions={openPositions} />
       <AccountsPanel accounts={tradingAccounts} />
     </div>
   );

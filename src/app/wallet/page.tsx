@@ -9,7 +9,6 @@ import { WalletCard } from '@/components/wallet/wallet-card';
 import { WalletCarousel, type CarouselEntry } from '@/components/wallet/wallet-carousel';
 import { useUser } from '@/context/UserContext';
 import { useResource } from '@/hooks/use-resource';
-import { apiErrorMessage } from '@/lib/api/errors';
 import { walletApi } from '@/lib/api/wallet';
 import { currenciesApi } from '@/lib/api/currencies';
 import { paymentsApi, type Transaction } from '@/lib/api/payments';
@@ -181,7 +180,7 @@ export default function WalletPage() {
         label={t('wallet.loading')}
         endpoints={['GET /wallet']}
         onRetry={() => wallets.refetch()}
-        errorMessage={apiErrorMessage(wallets.error, t('wallet.loadFailed'))}
+        errorMessage={t('wallet.loadFailed')}
         error={wallets.error}
       >
         <div className="space-y-6">
