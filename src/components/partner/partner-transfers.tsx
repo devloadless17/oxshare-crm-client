@@ -134,11 +134,23 @@ export function PartnerTransfers() {
         error={query.error}
       >
         {rows.length === 0 ? (
-          <EmptyPanel
-            icon={Receipt}
-            title={t('partner.transfersEmpty')}
-            body={t('partner.transfersEmptyBody')}
-          />
+          /*
+           * The SAME floor the table gets, so the tab does not change height
+           * when the first transfer lands.
+           *
+           * `EmptyPanel` centres itself with `h-full flex-1`, which resolves
+           * against its parent — and the boundary above has no height of its
+           * own, so without a floor here the panel collapsed to its own text
+           * and the tab was a third the height of every other one. Switching
+           * to it from Commission moved the page under the reader's cursor.
+           */
+          <div className={TABLE_FRAME}>
+            <EmptyPanel
+              icon={Receipt}
+              title={t('partner.transfersEmpty')}
+              body={t('partner.transfersEmptyBody')}
+            />
+          </div>
         ) : (
           <>
             <div className={TABLE_FRAME}>
