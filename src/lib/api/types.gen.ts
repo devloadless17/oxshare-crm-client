@@ -3001,6 +3001,30 @@ export interface paths {
         patch: operations["AdminComplianceController_releaseKyc"];
         trace?: never;
     };
+    "/v1/admin/kyc/{userId}/personal-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Correct a date of birth or address on an APPROVED submission (CORE-18)
+         * @description The one state where the client cannot correct their own details. `saveStep` lets them edit while not_started, in_progress or rejected and correctly locks submitted and under_review; APPROVED had no path at all, and the refusal on POST /kyc/reset told the client to contact support — who had neither the field nor a route. The only lever left was to REJECT the verification for a typo, which drops verificationLevel to 0 and shuts the money doors.
+         *
+         *     RE-VALIDATED through the same rules as submission. A corrected value that is impossible, in the future or under 18 answers **409**, not 400: that is a fact about the RECORD, not about what was typed, and the operator has just found a different problem — a rejection rather than an edit. `details.kind` names which rule.
+         *
+         *     Audited as `kyc.identity_correct` against the SUBMISSION, with the value on both sides.
+         */
+        patch: operations["AdminComplianceController_correctKycIdentity"];
+        trace?: never;
+    };
     "/v1/admin/kyc/{userId}/approve": {
         parameters: {
             query?: never;
@@ -6093,10 +6117,16 @@ export interface components {
             tradingAccounts?: components["schemas"]["ProfileTradingAccountDto"][];
             /** @description Absent without ib.view, and absent when nobody introduced this client — the UI tells the two apart by its own permission check. */
             referrer?: components["schemas"]["ProfileReferrerDto"];
-            /** @description Capped — see referredShown. Absent without ib.view; empty when none. */
+            /** @description Newest first, and CAPPED at one screen — read `referredTotal` for how many there actually are, NEVER this array’s length, which is the count of what fitted. Absent without ib.view; empty when none — those are different facts. SCOPED to the reader’s territory, like every other client row. */
             referredClients?: components["schemas"]["ProfileReferredClientDto"][];
-            /** @description How many referredClients were returned; the list is capped for one screen. */
+            /** @description How many referredClients were RETURNED — the size of what fitted on one screen. Useless alone and it was, until `referredTotal` landed: the cap is published nowhere, so `referredShown: 50` cannot be told from a partner with exactly fifty. The PAIR is what a screen needs — "50 of 213" — and neither half gets there without the other. */
             referredShown?: number;
+            /**
+             * @description How many clients this client introduced IN TOTAL, counted in SQL and SCOPED to the reader’s territory. Distinct from `referredClients.length`, which is capped — a screen showing a total must read THIS. Present exactly when `referredClients` is, so "may not see" stays absent rather than zero.
+             *
+             *     ⚠️ It is the reader’s count, not the partner’s: a scoped admin sees how many of this partner’s clients fall inside their own territory, matching what GET /admin/clients?referredBy= returns for them. An unscoped total here would put "50 of 213" above a filtered list of 60.
+             */
+            referredTotal?: number;
             maskedFields: string[];
         };
         UpdateClientProfileDto: {
@@ -6274,6 +6304,15 @@ export interface components {
             addressProof?: components["schemas"]["KycAddressProofDto"];
             /** Format: date-time */
             archivedAt: string;
+        };
+        CorrectKycIdentityDto: {
+            /**
+             * @description ISO date. RE-VALIDATED through the same rules as submission: an impossible, future or under-18 date is REFUSED with 409, not 400 — that is a fact about the record rather than about what was typed.
+             * @example 1985-04-12
+             */
+            dateOfBirth?: string;
+            /** @example 12 Rue Verdun, Beirut */
+            address?: string;
         };
         RejectDto: {
             /** @description Free-text reason, when not using a configured reasonId. */
@@ -10723,6 +10762,8 @@ export interface operations {
                 kycStatus?: "not_started" | "in_progress" | "submitted" | "under_review" | "approved" | "rejected";
                 /** @description Tag SLUG, not id (ADM-14). */
                 tag?: string;
+                /** @description Clients introduced by this partner (users.referred_by_ib_user_id). Scoped like every other filter — a reader still only sees their own territory. A value that is not a client id is a 400, never a silently unfiltered list. */
+                referredBy?: string;
                 sort?: "createdAt" | "email" | "firstName" | "status" | "verificationLevel" | "country";
                 order?: "asc" | "desc";
             };
@@ -11171,6 +11212,31 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KycSubmissionDto"];
+                };
+            };
+        };
+    };
+    AdminComplianceController_correctKycIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrectKycIdentityDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

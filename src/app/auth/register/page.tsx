@@ -271,8 +271,26 @@ function RegisterForm() {
 
         <p className="text-center text-xs text-muted-foreground">
           {t('auth.register.hasAccount')}{' '}
+          {/*
+            CARRIES THE REFERRAL CODE, and that is not tidiness.
+
+            `?ref=` is read from the URL and never stored — see the comment on
+            `referralCode` above, which says nothing about it needs to survive a
+            reload. It needs to survive ONE LINK. A client who follows a
+            partner's link, thinks they already have an account, clicks here,
+            finds they do not and comes back through the login page's own
+            "create an account" link lands on a BARE /auth/register: the banner
+            silently disappears and they register attributed to nobody.
+
+            That is permanent. `referredByIbUserId` is written once at
+            registration and there is no route, service method or admin screen
+            anywhere that can set it afterwards — so a partner loses that client
+            for good, and nothing records that it happened.
+          */}
           <Link
-            href="/auth/login"
+            href={
+              referralCode ? `/auth/login?ref=${encodeURIComponent(referralCode)}` : '/auth/login'
+            }
             className="font-semibold text-link hover:underline rounded-xs focus-outline"
           >
             {t('auth.register.signIn')}

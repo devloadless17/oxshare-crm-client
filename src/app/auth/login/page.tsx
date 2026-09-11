@@ -195,8 +195,26 @@ function LoginForm() {
       footer={
         <>
           {t('auth.login.noAccount')}{' '}
+          {/*
+            CARRIES `?ref=` BACK, completing the round trip.
+
+            This page does nothing with a referral code — it is not read, not
+            sent, not displayed. It is carried so that a visitor who arrived
+            from a partner's link, detoured here, and goes back to register
+            still has it. Without this the pair of links loses attribution
+            silently: the register page's banner disappears and the client is
+            attributed to nobody, permanently, since `referredByIbUserId` is
+            written once at registration and no route anywhere can set it after.
+
+            Passing a parameter a page ignores looks like dead code and is the
+            opposite: it is the only reason the code survives the detour.
+          */}
           <Link
-            href="/auth/register"
+            href={
+              searchParams.get('ref')
+                ? `/auth/register?ref=${encodeURIComponent(searchParams.get('ref') ?? '')}`
+                : '/auth/register'
+            }
             className="font-semibold text-link hover:underline rounded-xs focus-outline"
           >
             {t('auth.login.register')}
