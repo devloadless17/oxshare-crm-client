@@ -132,7 +132,26 @@ test.describe('the sessions list', () => {
        * in the §14 walk — a true assertion that describes two different worlds
        * and names the wrong one.
        */
-      const revokeFailed = page.getByText(/could not sign that session out/i);
+      /*
+       * The alert is found BY ROLE, never by its text — and this exact assertion
+       * was written by text first, which did not work.
+       *
+       * `handleRevoke` renders `apiErrorMessage(err, t('profile.sessionRevokeFailed'))`,
+       * and the fallback is only reached when the error carries no message of its
+       * own. Forcing every DELETE to 500 proved it: the row rendered "Request
+       * failed with status code 500", the regex for the fallback copy matched
+       * NOTHING, and the spec fell straight back to blaming the count — the very
+       * failure this block exists to prevent, reproduced by the fix for it.
+       *
+       * That is class 10 in one sentence: a bug class tried in ONE SPELLING is
+       * not tested. The role is the property; the sentence is one of its values.
+       *
+       * Scoped to the ROWS. The profile page carries an unrelated page-level
+       * alert (a toast container), and matching that would make this fail for a
+       * reason that has nothing to do with signing a session out — swapping one
+       * wrong-reason failure for another.
+       */
+      const revokeFailed = page.getByRole('listitem').getByRole('alert');
 
       while (remaining > 0) {
         await revokeButtons.first().click();
