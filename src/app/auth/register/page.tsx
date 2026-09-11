@@ -54,6 +54,14 @@ function RegisterForm() {
    * too, so the two agree about what the client is being shown.
    */
   const referralCode = useSearchParams().get('ref')?.trim().toUpperCase() || undefined;
+  /*
+   * ONE expression for every route out of this page, because the bug was a
+   * route that did not use it. Built once and handed to both the mark and the
+   * "Sign in" line.
+   */
+  const signInHref = referralCode
+    ? `/auth/login?ref=${encodeURIComponent(referralCode)}`
+    : '/auth/login';
   const [firstName, setFirstName] = React.useState('');
   const [lastName, setLastName] = React.useState('');
   const [email, setEmail] = React.useState('');
@@ -125,7 +133,13 @@ function RegisterForm() {
   };
 
   return (
-    <AuthShell heading={t('auth.register.heading')} subheading={t('auth.register.tagline')}>
+    <AuthShell
+      heading={t('auth.register.heading')}
+      subheading={t('auth.register.tagline')}
+      /* The MARK carries the code too, not only the "Sign in" line below.
+         Clicking the logo is the same detour through a different control. */
+      homeHref={signInHref}
+    >
       <div className="space-y-6">
         <div className="space-y-5">
           {/*
@@ -288,9 +302,7 @@ function RegisterForm() {
             for good, and nothing records that it happened.
           */}
           <Link
-            href={
-              referralCode ? `/auth/login?ref=${encodeURIComponent(referralCode)}` : '/auth/login'
-            }
+            href={signInHref}
             className="font-semibold text-link hover:underline rounded-xs focus-outline"
           >
             {t('auth.register.signIn')}

@@ -76,6 +76,9 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  /* Read ONCE and normalised, so the mark and the "Create account" line cannot
+     disagree about what the code is — the register page does the same. */
+  const referralCode = searchParams.get('ref')?.trim().toUpperCase() || undefined;
   const { refetchUser } = useUser();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -192,6 +195,12 @@ function LoginForm() {
     <AuthShell
       heading={t('auth.login.heading')}
       subheading={t('auth.login.tagline')}
+      /* The MARK keeps `?ref=` too. It points at this same page, so without
+         this a visitor mid-detour loses the code by clicking the logo and the
+         "Create account" line below then carries nothing. */
+      homeHref={
+        referralCode ? `/auth/login?ref=${encodeURIComponent(referralCode)}` : '/auth/login'
+      }
       footer={
         <>
           {t('auth.login.noAccount')}{' '}
@@ -211,8 +220,8 @@ function LoginForm() {
           */}
           <Link
             href={
-              searchParams.get('ref')
-                ? `/auth/register?ref=${encodeURIComponent(searchParams.get('ref') ?? '')}`
+              referralCode
+                ? `/auth/register?ref=${encodeURIComponent(referralCode)}`
                 : '/auth/register'
             }
             className="font-semibold text-link hover:underline rounded-xs focus-outline"

@@ -38,16 +38,35 @@ export function AuthShell({
   subheading,
   children,
   footer,
+  homeHref = '/auth/login',
 }: {
   heading: string;
   subheading?: string;
   children: React.ReactNode;
   /** The "no account? register" line. Optional — reset screens have no next step. */
   footer?: React.ReactNode;
+  /**
+   * Where the MARK points. Defaults to sign-in, which is home for a signed-out
+   * visitor.
+   *
+   * It is a prop rather than something this file works out because a referral
+   * code must survive it. A visitor landing on `/auth/register?ref=CODE` and
+   * clicking the logo used to arrive at a bare `/auth/login`, and from there
+   * "Create account" led to a bare `/auth/register` — attribution silently
+   * gone, which is money. The explicit "Sign in" cross-link was fixed for
+   * exactly this and the MARK beside it was not: the same journey through a
+   * different control, found by walking §14 journey 2 by hand.
+   *
+   * Passed down rather than read here with `useSearchParams()`, which would opt
+   * this server component — and therefore all five auth screens — into client
+   * rendering. `app/auth/login/page.tsx` documents that cost. The pages that
+   * already know the code are the ones that hand it over.
+   */
+  homeHref?: string;
 }) {
   return (
     <main className="flex h-dvh overflow-y-auto bg-background">
-      <BrandPanel />
+      <BrandPanel homeHref={homeHref} />
 
       {/* The form column. `min-w-0` so a long error message wraps instead of
           widening the flex child and pushing the brand panel off-screen. */}
@@ -55,7 +74,7 @@ export function AuthShell({
         <div className="w-full max-w-[26rem]">
           {/* The mark, on the form side, for the viewports where the brand
               panel is hidden. `lg:hidden` rather than duplicated markup. */}
-          <Link href="/auth/login" className="mb-8 inline-flex items-center gap-2.5 lg:hidden">
+          <Link href={homeHref} className="mb-8 inline-flex items-center gap-2.5 lg:hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/oxshare-mark.svg" alt="" className="h-7 w-auto" />
             <span className="text-lg font-semibold tracking-tight text-foreground">
@@ -87,7 +106,7 @@ export function AuthShell({
  * `hidden lg:flex`: below that width it would push the form below the fold, and
  * a marketing panel that delays the form is worse than no panel.
  */
-function BrandPanel() {
+function BrandPanel({ homeHref }: { homeHref: string }) {
   return (
     <div className="relative hidden w-[46%] max-w-[36rem] flex-col justify-between overflow-hidden bg-auth-panel px-12 py-14 lg:flex">
       {/*
@@ -104,7 +123,7 @@ function BrandPanel() {
         style={{ background: 'radial-gradient(circle, var(--primary) 0%, transparent 70%)' }}
       />
 
-      <Link href="/auth/login" className="relative flex items-center gap-3">
+      <Link href={homeHref} className="relative flex items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
         <span className="text-xl font-semibold tracking-tight text-auth-panel-foreground">
