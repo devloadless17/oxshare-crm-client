@@ -98,6 +98,20 @@ export type AccountSnapshot = components['schemas']['AccountSnapshotDto'];
 export type AccountPosition = components['schemas']['AccountPositionDto'];
 
 /**
+ * One deal MT5 booked on an account — a trade leg, or a balance operation.
+ *
+ * `closing` is the field that matters for a CLOSED-TRADE view: it is true when
+ * the deal REALISED a result rather than opening a position, which is the only
+ * reliable way to tell the two apart. `entry` carries MT5's raw code (0 in,
+ * 1 out, 2 inout, 3 out_by) and reading it directly means reimplementing that
+ * mapping in the browser; the server already did it.
+ */
+export type AccountDeal = components['schemas']['AccountDealDto'];
+
+/** Closed-trade totals plus the deals behind them, for one window. */
+export type AccountHistory = components['schemas']['AccountHistoryDto'];
+
+/**
  * What the server did with this screen's request to be pushed live figures.
  *
  * `watching: false` means keep polling — see `tradingApi.watchAccount`. The
@@ -377,6 +391,51 @@ export const tradingApi = {
    */
   async getAccountPositions(id: string, signal?: AbortSignal): Promise<AccountPosition[]> {
     const { data } = await apiClient.get<AccountPosition[]>(`/trading/accounts/${id}/positions`, {
+      signal,
+    });
+    return data;
+  },
+
+  /**
+   * An account's CLOSED trades and their totals, for a date window.
+   *
+   * ## ⚠️ Nothing called this for a while, and that was the bug
+   *
+   * The portal's "Activity" card was removed and this reader went with it, so
+   * the endpoint kept answering and no screen ever asked. A client could not see
+   * a closed trade anywhere in the portal — which reads as "my history is empty"
+   * rather than as a missing feature, because the open-positions table beside it
+   * rendered perfectly and an account with nothing open looks the same either
+   * way.
+   *
+   * ## A DATABASE read, unlike positions
+   *
+   * `mt5_deals` is our own table, populated by the bridge as it ingests deals.
+   * So this survives MT5 being unreachable, needs no polling, and does not
+   * compete for the bridge's single session lock — the opposite of
+   * `getAccountPositions`, which must cross to MT5 because a floating P/L moves
+   * on every tick.
+   *
+   * That is also why it can be paged over a window rather than read whole: a
+   * closed trade never changes after the fact.
+   *
+   * ## The window, and the cap
+   *
+   * `from` and `to` are `YYYY-MM-DD` and INCLUSIVE at both ends. Omitted, the
+   * server answers the last 30 days. `deals` is capped server-side, so a very
+   * busy window returns the newest and a screen must not present the count as a
+   * total.
+   *
+   * `stats` is computed over the deals IN THE WINDOW, not over the account's
+   * lifetime. A screen showing a win rate has to say which period it describes.
+   */
+  async getAccountHistory(
+    id: string,
+    params: { from?: string; to?: string } = {},
+    signal?: AbortSignal,
+  ): Promise<AccountHistory> {
+    const { data } = await apiClient.get<AccountHistory>(`/trading/accounts/${id}/history`, {
+      params,
       signal,
     });
     return data;

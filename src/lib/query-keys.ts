@@ -74,6 +74,21 @@ export const keys = {
     transferable: () => ['trading-accounts', 'transferable'] as const,
     selfService: () => ['trading-accounts', 'self-service'] as const,
     detail: (id: string) => ['trading-accounts', 'detail', id] as const,
+    /*
+     * CLOSED trades for one account, keyed by the window as well as the id.
+     *
+     * Under `trading-accounts` and NOT under `mt5Live`, deliberately: this reads
+     * `mt5_deals`, which is our own table, so it survives the bridge being down
+     * and costs no MT5 session lock. The note below explains why that root is
+     * kept for bridge reads alone — putting a database read there would make it
+     * a casualty of every deliberate exclusion that namespace exists for.
+     *
+     * The WINDOW is part of the key because it is part of the answer: the stats
+     * are computed over the deals in it, so two periods are two different
+     * results and must not share a cache entry.
+     */
+    history: (id: string, window: { from?: string; to?: string } = {}) =>
+      ['trading-accounts', 'history', id, window.from ?? '', window.to ?? ''] as const,
   },
 
   /**

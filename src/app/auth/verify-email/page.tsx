@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { PageLoader, Spinner } from '@/components/ui/loader';
 import { api } from '@/lib/api';
+import { useUser } from '@/context/UserContext';
 import { apiErrorCode, apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { AuthShell } from '@/components/auth/auth-shell';
@@ -107,7 +108,28 @@ function VerifyEmailForm() {
    * ALREADY VERIFIED, which is neither a success to celebrate nor a failure to
    * apologise for. Every combination below is reachable and distinct.
    */
-  const [outcome, setOutcome] = React.useState<Outcome>({ kind: 'verifying' });
+  const [redeemed, setOutcome] = React.useState<Outcome>({ kind: 'verifying' });
+
+  /*
+   * The THIRD way this screen can know the address is confirmed, after the tab's
+   * own memory and the API's `already_verified`.
+   *
+   * `sessionStorage` dies with the tab, so the memory covers a refresh and a
+   * Back within one sitting and nothing else. Close the browser, reopen it, and
+   * press Back — or restore a tab, or run Safari in private mode where
+   * `sessionStorage` THROWS — and a verified, signed-in client arrived at a
+   * tokenless URL and was told "Verification Failed". Which is UX-01 again,
+   * through the one door it did not close.
+   *
+   * No extra request: `UserProvider` has already asked `/auth/me` for the whole
+   * app, and this only reads the answer.
+   */
+  const { user, isLoading: sessionLoading, hadSession } = useUser();
+  const sessionSaysVerified = user?.emailVerified === true;
+  // Still worth waiting for: a marker says this browser has been signed in, so
+  // the answer is coming and may well turn a red screen green. Without a marker
+  // there is nothing to wait for, and a signed-out visitor must not be held.
+  const sessionPending = sessionLoading && hadSession;
 
   // Auto-Redirect Timer State
   const [countdown, setCountdown] = React.useState(5);
@@ -147,8 +169,13 @@ function VerifyEmailForm() {
       if (!token) {
         /*
          * No token in the URL. Before concluding that something is wrong, ask
-         * whether THIS TAB already verified — the success path strips the token
-         * and lands here on purpose (see `rememberOutcome`).
+         * the two things that might already know the address is confirmed:
+         * THIS TAB (the success path strips the token and lands here on purpose
+         * — see `rememberOutcome`), and failing that the SESSION.
+         *
+         * The session answer may still be in flight, so this branch can end in
+         * `verifying` and be reached again by the effect below. "We do not know
+         * yet" must not render as "something went wrong".
          *
          * The functional update is not a style choice. This effect re-runs when
          * the token LEAVES the URL, which is something this screen does to
@@ -156,11 +183,7 @@ function VerifyEmailForm() {
          * had just been concluded with "the token is missing". A conclusion
          * already reached must never be downgraded by a URL change.
          */
-        setOutcome((prev) =>
-          prev.kind !== 'verifying'
-            ? prev
-            : (recallOutcome() ?? { kind: 'invalid', message: t('auth.verify.missingToken') }),
-        );
+        setOutcome((prev) => (prev.kind !== 'verifying' ? prev : (recallOutcome() ?? prev)));
         return;
       }
 
@@ -185,6 +208,33 @@ function VerifyEmailForm() {
     attempted.current = token;
     void executeVerification();
   }, [token]);
+
+  /*
+   * Settle the TOKENLESS arrival from what the SESSION says.
+   *
+   * Derived during render rather than stored: it is a function of the redemption
+   * state and the session answer, and a second copy in state could only ever
+   * disagree with them. It also arrives on the FIRST render that has the answer,
+   * with no effect pass in between painting the wrong screen briefly.
+   *
+   * Three outcomes, and the order is the point:
+   *
+   *   signed in + verified   → `already`. The client is fine and is told so,
+   *                            with the same way onward as a fresh success.
+   *   still asking           → keep waiting. Never a red screen on "unknown".
+   *   no session, or not     → the honest refusal, unchanged. Nobody here can
+   *   verified                 tell us who they are, so a resend form is the
+   *                            right ending.
+   *
+   * Only ever UPGRADES a `verifying`, so it cannot overwrite a real
+   * verification, a real expiry or a throttle that has already been concluded.
+   */
+  const outcome: Outcome =
+    redeemed.kind !== 'verifying' || token || sessionPending
+      ? redeemed
+      : sessionSaysVerified
+        ? { kind: 'already' }
+        : { kind: 'invalid', message: t('auth.verify.missingToken') };
 
   /*
    * Settled, and settled WELL — the address is confirmed, however it got there.
@@ -221,22 +271,43 @@ function VerifyEmailForm() {
     router.replace('/auth/verify-email');
   }, [settledOk, token, router]);
 
+  /*
+   * The countdown COUNTS. It does not navigate.
+   *
+   * `router.push` used to live inside the `setCountdown` updater, and React runs
+   * an updater during RENDER — so this navigated while another component was
+   * rendering, which React reports as "Cannot update a component (`Router`)
+   * while rendering a different component" and which StrictMode can run twice,
+   * pushing the same entry twice. Counting and navigating are two jobs; the
+   * effect below owns the second.
+   */
   React.useEffect(() => {
     if (!settledOk) return;
 
     const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          router.push('/auth/login');
-          return 0;
-        }
-        return prev - 1;
-      });
+      setCountdown((prev) => (prev <= 0 ? 0 : prev - 1));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [settledOk, router]);
+  }, [settledOk]);
+
+  /*
+   * Leave when the count reaches zero.
+   *
+   * `replace`, not `push`, and it is the same argument the token-stripping
+   * effect above makes: this screen is a step that has been COMPLETED, and
+   * pushing it leaves it sitting in history for the Back button to re-enter.
+   * A client who verifies, signs in, and then presses Back should walk out of
+   * the flow, not back into its last screen.
+   *
+   * `/auth/login` is right for both audiences: a signed-out client gets the
+   * form they need, and a signed-in one is moved on to their dashboard by
+   * `proxy.ts` without the form ever being rendered.
+   */
+  React.useEffect(() => {
+    if (!settledOk || countdown > 0) return;
+    router.replace('/auth/login');
+  }, [settledOk, countdown, router]);
 
   // Resend Cooldown Timer Effect
   React.useEffect(() => {
