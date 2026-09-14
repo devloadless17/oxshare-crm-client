@@ -60,13 +60,6 @@ export const keys = {
     list: (query: Params) => ['transactions', 'list', query] as const,
     /** Wallet-to-trading-account movements — a different endpoint. */
     transfers: () => ['transactions', 'transfers'] as const,
-    /**
-     * Money moved ON an MT5 account with no trade behind it — a dealer credit,
-     * debit, bonus or correction. A THIRD endpoint, and a third kind of record:
-     * these have no wallet leg and no ledger entry, so they appear in neither
-     * of the two above.
-     */
-    balanceMovements: () => ['transactions', 'balanceMovements'] as const,
   },
 
   dashboard: {

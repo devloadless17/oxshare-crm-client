@@ -411,24 +411,6 @@ export const messages = {
   'transactions.loadFailed': 'Could not load your transactions.',
   'transactions.empty': 'No transactions yet',
 
-  /*
-   * The MT5 adjustments section. Its own heading and note, because these are a
-   * different KIND of record from the wallet transactions above — they moved
-   * money on the trading account and never touched the wallet, and a client who
-   * reads them as wallet activity would go looking for a balance that never
-   * changed.
-   */
-  'transactions.mt5Title': 'Trading account adjustments',
-  'transactions.mt5Note':
-    'Money your broker moved directly on an MT5 account — credits, corrections and bonuses. ' +
-    'These do not affect your wallet balance.',
-  'transactions.mt5Empty': 'No adjustments in this period.',
-  'transactions.mt5Account': 'Account',
-  'transactions.mt5Reason': 'Reason',
-  'transactions.mt5Truncated':
-    'Showing the 500 most recent. Older adjustments are not listed here.',
-  'transactions.mt5LoadFailed': 'Could not load trading account adjustments.',
-  'transactions.mt5Loading': 'Loading adjustments…',
   'transactions.emptyBody': 'Deposits and withdrawals will appear here as they happen.',
   'transactions.colDate': 'Date',
   'transactions.colType': 'Type',
