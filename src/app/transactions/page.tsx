@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { TransactionDetails } from '@/components/transactions/transaction-details';
-import { Mt5Adjustments } from '@/components/transactions/mt5-adjustments';
 import { ChevronRight, Receipt } from 'lucide-react';
 import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
@@ -542,20 +541,6 @@ export default function TransactionsPage() {
           </div>
         )}
       </AsyncBoundary>
-
-      {/*
-        OUTSIDE the boundary above, deliberately.
-
-        This section reads a DIFFERENT endpoint, so folding it inside would tie
-        its fate to the transactions request: a failed transactions load would
-        hide adjustments that loaded perfectly well, and the "no transactions
-        yet" card would replace the one record a client has of money an admin
-        moved on their account. It carries its own `AsyncBoundary` for the same
-        reason.
-
-        Below the table because the wallet history is what a client came for.
-      */}
-      <Mt5Adjustments currency={currencies[0] ?? 'USD'} />
     </div>
   );
 }
