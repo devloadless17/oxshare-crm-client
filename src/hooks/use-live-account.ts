@@ -268,10 +268,23 @@ export function useLiveAccount(accountId: string, enabled = true): LiveAccount {
       );
 
       /*
+       * ⚠️ NOTHING READS THIS CACHE ENTRY RIGHT NOW, and that is deliberate
+       * rather than an oversight.
+       *
+       * `AccountPositions` showed OPEN positions from `mt5Live.positions` and
+       * now shows CLOSED trades from the database, so this write has no reader.
+       * It is kept because the socket still delivers positions and the cost of
+       * keeping it is one `setQueryData` on an event already being handled —
+       * whereas removing it means narrowing the realtime contract, and the next
+       * screen that renders live positions would have to restore both halves.
+       *
+       * The invariant below is the reason this is worth keeping CORRECT rather
+       * than merely present:
+       *
        * ABSENT positions leave the table alone; an EMPTY array clears it.
        *
-       * The two are different answers and conflating them is the failure this
-       * whole screen is built against. The server drops the array when the
+       * The two are different answers and conflating them is the failure the
+       * live screen is built against. The server drops the array when the
        * payload will not fit the notification channel, so absence means "ask
        * separately" — writing `[]` there would tell a client holding three
        * trades that they hold none. An empty array from the server is a real

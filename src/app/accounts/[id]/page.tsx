@@ -180,7 +180,20 @@ function AccountDetail({ account }: { account: TradingAccount }) {
    * the one session. Pushing makes the cost scale with ACCOUNTS BEING WATCHED
    * instead: ten people on one account is one read, not ten.
    */
-  const { live, positionsLive } = useLiveAccount(account.id);
+  /*
+   * `positionsLive` is NOT destructured any more, and the hook still reports it.
+   *
+   * It existed for the open-positions table, whose pushed payload the server
+   * drops when an event will not fit its notification channel — so that table
+   * needed to know whether it was really receiving readings before slowing its
+   * own fallback poll. The table now shows CLOSED trades from our own database,
+   * which is neither pushed nor polled, so there is nothing here to tell.
+   *
+   * The hook keeps returning it rather than being narrowed: it is one socket
+   * feeding the snapshot below, and `positionsLive` is a fact about that feed
+   * that the next screen to render live positions will want.
+   */
+  const { live } = useLiveAccount(account.id);
 
   /*
    * ── THE POLL STAYS, AND SLOWS DOWN ────────────────────────────────────────
@@ -333,28 +346,21 @@ function AccountDetail({ account }: { account: TradingAccount }) {
       <AccountLivePanel snapshot={snapshot} />
 
       {/*
-        Open positions ABOVE the money history, which reverses the order this
-        page used to have.
+        CLOSED positions above the money history.
 
-        The old order put the settled panels first and the moving one last, so
-        the page came to rest from the top down. That reasoning was sound and it
-        lost to a stronger one: what a client opens this screen to see is what
-        their account is doing NOW. Positions are that; deposits and withdrawals
-        are a record of what already happened, which is worth keeping and worth
-        scrolling for.
+        The panel used to show OPEN positions and sat here for a reason that no
+        longer applies — that what a client opens this screen for is what the
+        account is doing NOW. It shows realised trades instead, so both this and
+        the transfers below are records of what already happened.
+
+        It stays above them because a closed trade is the more specific answer:
+        somebody scrolling to this page wants to know how their trading went,
+        and the deposits panel is the same information every account shows.
+
+        No `live` prop. A closed trade is settled, so there is nothing to push
+        and nothing to poll — see the component note.
       */}
-      <AccountPositions
-        accountId={account.id}
-        currency={account.currency}
-        /*
-         * `positionsLive`, NOT `live`. The server drops the positions array when
-         * an event will not fit its notification channel, so a client with many
-         * open trades gets live account figures and no pushed table — and
-         * passing `live` here would slow that table's own fallback poll to sixty
-         * seconds on the strength of a feed it is not receiving.
-         */
-        live={positionsLive}
-      />
+      <AccountPositions accountId={account.id} currency={account.currency} />
 
       {/*
         Deposits and withdrawals LAST, and LIVE accounts only.

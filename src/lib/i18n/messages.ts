@@ -897,25 +897,57 @@ export const messages = {
   // Every figure moves on every tick, so the panel states WHEN it was read. A
   // trading number with no indication of its age gets treated as current
   // however old it is.
-  'accounts.positionsTitle': 'Open positions',
-  'accounts.positionsLive': 'Live from MetaTrader 5.',
-  'accounts.positionsReadAt': 'Live from MetaTrader 5 · read at {time}',
-  'accounts.positionsLoading': 'Loading your open positions',
-  'accounts.positionsLoadFailed': 'We could not read your open positions.',
-  // Said flatly, because it is a real answer from the trading server rather
-  // than a missing feature.
-  'accounts.positionsEmpty': 'Nothing open on this account right now.',
+  /*
+   * ⚠️ CLOSED trades, not open ones. The open-positions table was removed from
+   * this page and its copy went with it — `positionsLive`, `positionsReadAt`
+   * and the live-reading language, which only made sense for a figure that
+   * moves on every tick.
+   *
+   * A closed trade is SETTLED: its result does not change after the fact, so
+   * there is no read time to caveat and no polling to explain. What has to be
+   * said instead is the WINDOW, because the totals are computed over it rather
+   * than over the account's lifetime.
+   */
+  'accounts.positionsTitle': 'Closed positions',
+  'accounts.positionsWindow': 'Realised trades, last 30 days.',
+  'accounts.positionsLoading': 'Loading your closed positions',
+  'accounts.positionsLoadFailed': 'We could not load your closed positions.',
+  /*
+   * Said flatly, and it names the WINDOW rather than the account.
+   *
+   * "Nothing closed on this account" would be wrong for the common case that
+   * produced it: a client who traded three months ago and nothing since. The
+   * period is the reason the table is empty, so the period is what the sentence
+   * has to mention — otherwise a client reads it as their history being lost.
+   */
+  'accounts.positionsEmpty': 'No trades closed on this account in the last 30 days.',
+  'accounts.positionsCapped':
+    'Showing the most recent trades in this period. Older ones are not listed.',
   'accounts.sideBuy': 'Buy',
   'accounts.sideSell': 'Sell',
   'accounts.colSide': 'Side',
-  'accounts.colOpenPrice': 'Open',
-  'accounts.colCurrentPrice': 'Current',
-  'accounts.colStopLoss': 'Stop loss',
-  'accounts.colTakeProfit': 'Take profit',
+  'accounts.colClosePrice': 'Price',
   'accounts.colSwap': 'Swap',
-  'accounts.colFloating': 'Floating P/L',
-  'accounts.colOpened': 'Opened',
+  'accounts.colCommission': 'Commission',
+  'accounts.colRealised': 'Realised P/L',
+  'accounts.colClosed': 'Closed',
   'accounts.openTerminal': 'Open MetaTrader 5',
+
+  // ── Closed-trade totals, over the SAME window as the table ───────────────
+  //
+  // `netProfit` is what a client looks for first, so it leads. The rest is the
+  // arithmetic behind it — a net figure with no gross either side is a number
+  // nobody can check.
+  'accounts.statsNet': 'Net P/L',
+  'accounts.statsTrades': 'Trades',
+  'accounts.statsWinRate': 'Win rate',
+  'accounts.statsVolume': 'Volume',
+  'accounts.statsBest': 'Best trade',
+  'accounts.statsWorst': 'Worst trade',
+  // Wins and losses together, because a win rate without its denominator
+  // invites reading 100% off a single trade as a track record.
+  'accounts.statsWinLoss': '{wins} won · {losses} lost',
+  'accounts.statsNoTrades': '—',
 
   // ── Deposits and withdrawals on ONE account ───────────────────────────────
   //

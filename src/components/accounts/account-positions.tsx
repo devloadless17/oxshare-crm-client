@@ -1,165 +1,220 @@
 'use client';
 
 import * as React from 'react';
-import { LineChart } from 'lucide-react';
+import { History } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { DataTable, EmptyState, type Column } from '@/components/data-table';
 import { useResource } from '@/hooks/use-resource';
-import { tradingApi, type AccountPosition } from '@/lib/api/trading';
+import { tradingApi, type AccountDeal, type AccountHistory } from '@/lib/api/trading';
 import { formatDecimal, formatMoney } from '@/lib/money';
 import { formatDealTime, moneySign } from '@/lib/account-stats';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
 /**
- * The account's OPEN positions, read live from MT5.
+ * The account's CLOSED trades, and the totals over the same window.
  *
- * ## Every number here is live, and the panel says when it was read
+ * ## ⚠️ This panel used to show OPEN positions, and the swap is the point
  *
- * `profit` is floating: it moves on every tick, so what is on screen is a
- * reading rather than a fact. The refresh control and the timestamp exist for
- * that reason — a trading figure with no indication of its age gets treated as
- * current however old it is.
+ * The open-positions table was removed on the owner's call. What replaced it is
+ * the thing a client could not see anywhere in the portal: a closed trade.
  *
- * Nothing is cached beyond React Query's own hold on the last response. The CRM
- * has a `positions` table and it stays empty on purpose: a stored floating P/L
- * is stale the moment it is written, and it would reach a client wearing the
- * same label as this.
+ * That gap was invisible in the worst way. The "Activity" card that once
+ * carried closed-trade figures was deleted, and the API reader went with it —
+ * so the endpoint kept answering and nothing ever asked. A client with no open
+ * trades saw an empty panel that looked identical to a client whose history had
+ * been lost, and neither of them could reach a realised result.
  *
- * ## An empty table is a real answer
+ * ## Everything here is SETTLED, which changes the whole shape of the panel
  *
- * "No open positions" here comes from the trading server, not from the absence
- * of a feature — which is the distinction this screen could not draw before the
- * bridge exposed positions at all.
+ * The open-positions table had to poll, state its read time, and caveat every
+ * figure as a reading rather than a fact, because a floating P/L moves on every
+ * tick. None of that applies to a closed trade: the result is final, so there is
+ * no interval, no read timestamp, and no live badge.
+ *
+ * It is also a DATABASE read — `mt5_deals`, populated by the bridge as it
+ * ingests — so it survives MT5 being unreachable and costs none of the bridge's
+ * single session lock. That is why it needs no refresh control either.
+ *
+ * ## The WINDOW is part of the answer, so the panel says so
+ *
+ * `stats` is computed over the deals in the period, not over the account's
+ * lifetime, and an empty table usually means "nothing in these 30 days" rather
+ * than "nothing ever". Both the subtitle and the empty state name the period for
+ * that reason — a client who traded three months ago and nothing since must not
+ * read this as their history being gone.
+ *
+ * ## `closing` decides what counts, and the server decides `closing`
+ *
+ * `mt5_deals` holds every deal the bridge ingests, which includes the OPENING
+ * leg of each trade and balance operations (deposits, credits, corrections).
+ * Only deals the server marked `closing` realised a result. Filtering on MT5's
+ * raw `entry` code here instead would mean reimplementing that mapping in the
+ * browser, against a vocabulary that can grow.
  */
-export function AccountPositions({
-  accountId,
-  currency,
-  /**
-   * Whether the page is receiving PUSHED readings for this account.
-   *
-   * Owned by the page rather than read here, because one watch feeds both this
-   * table and the live panel above it — `useLiveAccount` writes into both query
-   * keys from one socket event. A second copy of the hook in this component
-   * would register a second heartbeat for the same account and make the two
-   * panels disagree about whether the feed is up.
-   */
-  live = false,
-}: {
-  accountId: string;
-  currency: string;
-  live?: boolean;
-}) {
+export function AccountPositions({ accountId, currency }: { accountId: string; currency: string }) {
   /*
-   * POLLED, and the interval follows the feed for the same reason the snapshot's
-   * does — see the long note on `/accounts/[id]/page.tsx`.
+   * NO `refetchInterval`, deliberately — the contrast with the open-positions
+   * table this replaced is the reasoning.
    *
-   * This panel has the stronger claim to being live of the two: an open
-   * position's profit moves on every tick, and this is the table a client
-   * watches WHILE the market moves. It is also the one whose pushed payload can
-   * legitimately be MISSING — the server drops the positions array when the
-   * event will not fit its notification channel — so the fallback poll is not
-   * only a safety net here, it is the delivery path for a client holding enough
-   * open trades. Sixty seconds while pushed is what bounds how stale that case
-   * can get.
+   * That one polled every ten seconds because its numbers moved on every tick.
+   * A closed trade's result is final, so polling would re-read our own table
+   * for an answer that cannot have changed. A new closed trade arrives when the
+   * client reloads or navigates back, which is when React Query refetches
+   * anyway.
    *
-   * `GET /accounts/:id/positions` has its own 12/min bucket — the throttle is
-   * per route — so ten seconds spends half of its own budget rather than
-   * competing with the snapshot for one. React Query stops polling a background
-   * tab, so neither panel reads MT5 while nobody is looking.
-   *
-   * `retry: 0` for the reason the snapshot keeps it: this crosses the bridge's
-   * single MT5 lock, and a poll already retries by design.
+   * `retry` is left at the default, unlike positions: this does not cross the
+   * bridge, so a failure is an ordinary database or network error and retrying
+   * is worth it rather than piling onto a contended MT5 lock.
    */
-  const positions = useResource(
-    keys.mt5Live.positions(accountId),
-    (signal) => tradingApi.getAccountPositions(accountId, signal),
-    { retry: 0, refetchInterval: live ? 60_000 : 10_000 },
+  const history = useResource(keys.tradingAccounts.history(accountId), (signal) =>
+    tradingApi.getAccountHistory(accountId, {}, signal),
   );
 
   /*
-   * The read time comes from React Query via `useResource.updatedAt`, not from a
-   * `useState` set in an effect — which is a lint error in this repo, and would
-   * be the wrong shape anyway: the fetch already knows when it landed, so
-   * stamping it again in a render pass is a second source for one fact.
-   *
-   * `0` means nothing has arrived yet, which is why the header falls back to the
-   * undated sentence rather than rendering the epoch.
+   * CLOSED trades only. The response carries opening legs and balance
+   * operations too — see the class note on why `closing` is the server's call
+   * and not a raw `entry` check here.
    */
-  const rows = positions.data;
-  const readAt = positions.updatedAt ? new Date(positions.updatedAt) : null;
+  const deals = React.useMemo(
+    () => (history.data?.deals ?? []).filter((deal) => deal.closing),
+    [history.data],
+  );
 
+  const stats = history.data?.stats;
   const columns = React.useMemo(() => buildColumns(currency), [currency]);
+
+  /*
+   * The server caps the window at 500 deals. Saying so only when the cap is
+   * actually reached is the rule the transactions list follows: a truncation
+   * notice on a list that is not truncated is a warning about a problem nobody
+   * has. Compared against the RAW count, not the filtered one — the cap applies
+   * before `closing` is considered.
+   */
+  const capped = (history.data?.deals.length ?? 0) >= 500;
 
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5">
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold">{t('accounts.positionsTitle')}</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {readAt
-              ? t('accounts.positionsReadAt', { time: readAt.toLocaleTimeString() })
-              : t('accounts.positionsLive')}
-          </p>
-        </div>
-        {/*
-          No Refresh button: the panel polls itself every ten seconds while the
-          tab is visible. The read time above already says how current it is,
-          which is the honest version of what the button was standing in for —
-          and keeping both would invite the refresh-mashing the route's 12/min
-          throttle exists to absorb.
-        */}
+      <header>
+        <h2 className="text-sm font-semibold">{t('accounts.positionsTitle')}</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">{t('accounts.positionsWindow')}</p>
       </header>
 
       <AsyncBoundary
-        status={positions.status}
+        status={history.status}
         label={t('accounts.positionsLoading')}
-        endpoints={['GET /trading/accounts/:id/positions']}
-        onRetry={() => void positions.refetch()}
+        endpoints={['GET /trading/accounts/:id/history']}
+        onRetry={() => void history.refetch()}
         errorMessage={t('accounts.positionsLoadFailed')}
-        error={positions.error}
+        error={history.error}
       >
+        {/*
+          The TOTALS above the table, and only when there are trades behind
+          them. A row of zeros and em dashes over an empty table says nothing
+          the empty state does not already say, and reads as a broken panel.
+        */}
+        {stats && stats.trades > 0 && <Totals stats={stats} currency={currency} />}
+
         <DataTable
           columns={columns}
-          rows={rows ?? []}
-          rowKey={(position) => position.ticket}
-          dimmed={positions.isFetching}
-          empty={<EmptyState icon={LineChart} message={t('accounts.positionsEmpty')} />}
+          rows={deals}
+          rowKey={(deal) => deal.ticket}
+          dimmed={history.isFetching}
+          empty={<EmptyState icon={History} message={t('accounts.positionsEmpty')} />}
         />
+
+        {capped && (
+          <p className="text-[11px] text-muted-foreground">{t('accounts.positionsCapped')}</p>
+        )}
       </AsyncBoundary>
     </section>
   );
 }
 
-function buildColumns(currency: string): Column<AccountPosition>[] {
+/**
+ * Closed-trade totals for the window.
+ *
+ * `netProfit` leads because it is what a client looks for first. The gross
+ * figures and the win/loss split are the arithmetic behind it — a net number
+ * with nothing either side of it is one nobody can check.
+ */
+function Totals({ stats, currency }: { stats: AccountHistory['stats']; currency: string }) {
+  /*
+   * The win rate is computed from `trades`, which the server documents as the
+   * number of CLOSED ROUND TRIPS — the correct denominator. Guarded against
+   * zero even though the caller already checks it: a percentage of nothing is
+   * `NaN`, and `NaN%` on a money screen is worse than the panel being absent.
+   */
+  const winRate = stats.trades > 0 ? Math.round((stats.wins / stats.trades) * 100) : null;
+
+  return (
+    <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <Stat label={t('accounts.statsNet')}>
+        <Signed amount={stats.netProfit} currency={currency} />
+      </Stat>
+      <Stat label={t('accounts.statsTrades')}>
+        <span className="text-sm font-semibold tabular-nums">{stats.trades}</span>
+        <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">
+          {t('accounts.statsWinLoss', { wins: stats.wins, losses: stats.losses })}
+        </span>
+      </Stat>
+      <Stat label={t('accounts.statsWinRate')}>
+        <span className="text-sm font-semibold tabular-nums">
+          {winRate === null ? t('accounts.statsNoTrades') : `${winRate}%`}
+        </span>
+      </Stat>
+      <Stat label={t('accounts.statsVolume')}>
+        {/* Lots, not money — no currency symbol belongs on a volume. */}
+        <span className="text-sm font-semibold tabular-nums">{formatDecimal(stats.volume)}</span>
+      </Stat>
+      <Stat label={t('accounts.statsBest')}>
+        <Signed amount={stats.bestTrade} currency={currency} />
+      </Stat>
+      <Stat label={t('accounts.statsWorst')}>
+        <Signed amount={stats.worstTrade} currency={currency} />
+      </Stat>
+    </dl>
+  );
+}
+
+function Stat({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-border bg-muted/30 p-3">
+      <dt className="text-[11px] font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1">{children}</dd>
+    </div>
+  );
+}
+
+function buildColumns(currency: string): Column<AccountDeal>[] {
   return [
     {
       header: t('accounts.colSymbol'),
-      cell: (position) => <span className="font-medium">{position.symbol}</span>,
+      cell: (deal) => <span className="font-medium">{deal.symbol}</span>,
     },
     {
       header: t('accounts.colSide'),
       /*
-       * `side` is named server-side from MT5's numeric action, and an unfamiliar
-       * code arrives as `action <n>` rather than blank. Only the two known sides
-       * get colour: painting an unknown code green or red would be a claim about
-       * a direction nobody has established.
+       * `actionLabel` is named server-side from MT5's numeric action, and an
+       * unfamiliar code arrives as `action <n>` rather than blank. Only the two
+       * known sides get colour: painting an unknown code green or red would be a
+       * claim about a direction nobody has established.
        */
-      cell: (position) => (
+      cell: (deal) => (
         <span
           className={`rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
-            position.side === 'buy'
+            deal.actionLabel === 'buy'
               ? 'border-success/20 bg-success/10 text-success'
-              : position.side === 'sell'
+              : deal.actionLabel === 'sell'
                 ? 'border-destructive/20 bg-destructive/10 text-destructive'
                 : 'border-border bg-muted text-muted-foreground'
           }`}
         >
-          {position.side === 'buy'
+          {deal.actionLabel === 'buy'
             ? t('accounts.sideBuy')
-            : position.side === 'sell'
+            : deal.actionLabel === 'sell'
               ? t('accounts.sideSell')
-              : position.side}
+              : deal.actionLabel}
         </span>
       ),
     },
@@ -167,64 +222,35 @@ function buildColumns(currency: string): Column<AccountPosition>[] {
       header: t('accounts.colVolume'),
       align: 'right',
       // Lots, not money — `formatDecimal` so no currency symbol appears.
-      cell: (position) => <span className="tabular-nums">{formatDecimal(position.volume)}</span>,
+      cell: (deal) => <span className="tabular-nums">{formatDecimal(deal.volume)}</span>,
     },
     {
-      header: t('accounts.colOpenPrice'),
-      align: 'right',
-      cell: (position) => <span className="tabular-nums">{formatDecimal(position.priceOpen)}</span>,
-    },
-    {
-      header: t('accounts.colCurrentPrice'),
+      header: t('accounts.colClosePrice'),
       align: 'right',
       // A price is not money either: a fixed 2dp would round 1.08337 to 1.08 and
       // hide the digits the row is being read for.
-      cell: (position) => (
-        <span className="tabular-nums">{formatDecimal(position.priceCurrent)}</span>
-      ),
+      cell: (deal) => <span className="tabular-nums">{formatDecimal(deal.price)}</span>,
     },
     {
-      header: t('accounts.colStopLoss'),
+      header: t('accounts.colCommission'),
       align: 'right',
-      /*
-       * Null means UNSET and renders as an em dash. MT5 stores an absent stop as
-       * the price 0, and `0.00` in this column reads as an order to close the
-       * position at zero — the opposite of "no protection set".
-       */
-      cell: (position) => (
-        <span className="tabular-nums text-muted-foreground">
-          {position.stopLoss === null
-            ? t('accounts.unknownValue')
-            : formatDecimal(position.stopLoss)}
-        </span>
-      ),
-    },
-    {
-      header: t('accounts.colTakeProfit'),
-      align: 'right',
-      cell: (position) => (
-        <span className="tabular-nums text-muted-foreground">
-          {position.takeProfit === null
-            ? t('accounts.unknownValue')
-            : formatDecimal(position.takeProfit)}
-        </span>
-      ),
+      cell: (deal) => <Signed amount={deal.commission} currency={currency} muted />,
     },
     {
       header: t('accounts.colSwap'),
       align: 'right',
-      cell: (position) => <Signed amount={position.swap} currency={currency} muted />,
+      cell: (deal) => <Signed amount={deal.swap} currency={currency} muted />,
     },
     {
-      header: t('accounts.colFloating'),
+      header: t('accounts.colRealised'),
       align: 'right',
-      cell: (position) => <Signed amount={position.profit} currency={currency} />,
+      cell: (deal) => <Signed amount={deal.profit} currency={currency} />,
     },
     {
-      header: t('accounts.colOpened'),
-      cell: (position) => (
+      header: t('accounts.colClosed'),
+      cell: (deal) => (
         <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
-          {formatDateTime(position.openedAt)}
+          {formatDateTime(deal.dealtAt)}
         </span>
       ),
     },
@@ -256,7 +282,7 @@ function Signed({
 
   return (
     <span
-      className={`font-semibold tabular-nums ${muted ? 'text-xs' : ''} ${
+      className={`font-semibold tabular-nums ${muted ? 'text-xs' : 'text-sm'} ${
         sign === 'positive' ? 'text-success' : sign === 'negative' ? 'text-destructive' : ''
       }`}
     >
