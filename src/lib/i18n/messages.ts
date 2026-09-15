@@ -221,8 +221,19 @@ export const messages = {
 
   // ── Auth: register ────────────────────────────────────────────────────────
   'auth.register.fillRequired': 'Please fill in all required fields.',
+  /*
+   * Names BOTH outcomes, because the server's own response does — see
+   * `AuthService.register`. Registration answers identically whether or not the
+   * address already has an account (revealing it would let anyone test an email
+   * list and learn who banks here), so a message promising only verification
+   * contradicts the "you already have an account" mail the other branch sends.
+   *
+   * This is the FALLBACK; `res.message` from the API wins. Keep the two saying
+   * the same thing — they drifting apart is the bug this text fixes.
+   */
   'auth.register.success':
-    'Registration successful! Please check your email to verify your account.',
+    'Check your email. If this address is new, follow the link to verify it — and if you already ' +
+    'have an account, we have sent you a sign-in link instead.',
   'auth.register.title': 'Create your account',
   'auth.register.subtitle': 'Start trading with OXShare',
   'auth.register.firstName': 'First Name',
