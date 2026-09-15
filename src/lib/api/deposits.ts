@@ -106,6 +106,44 @@ export const depositsApi = {
   },
 
   /**
+   * File an OFFLINE deposit — the receipt travels with the declaration.
+   *
+   * One request, deliberately. Creating the row first and uploading second has a
+   * state in the middle where a deposit exists with no evidence: the client has
+   * filed a claim they cannot support, and the desk gets a queue item it can
+   * only reject. Here the row and its receipt are created together or not at all.
+   *
+   * ⚠️ `Content-Type` is left UNDEFINED so the browser writes the multipart
+   * boundary itself. Setting `'multipart/form-data'` by hand looks right in a
+   * network tab and produces a body the server cannot parse.
+   */
+  async requestOffline(
+    input: {
+      amount: string;
+      currency: string;
+      method: string;
+      destinationTradingAccountId?: string;
+    },
+    file: File,
+    idempotencyKey: string,
+  ): Promise<DepositRequest> {
+    const form = new FormData();
+    form.append('amount', input.amount);
+    form.append('currency', input.currency);
+    form.append('method', input.method);
+    if (input.destinationTradingAccountId) {
+      form.append('destinationTradingAccountId', input.destinationTradingAccountId);
+    }
+    form.append('file', file);
+
+    const { data } = await apiClient.post<DepositRequest>('/payments/deposits/offline', form, {
+      ...idempotent(idempotencyKey),
+      headers: { ...idempotent(idempotencyKey).headers, 'Content-Type': undefined },
+    });
+    return data;
+  },
+
+  /**
    * "I have come back from the payment page — did it work?"
    *
    * For GATEWAY methods only. The server re-asks the provider over an

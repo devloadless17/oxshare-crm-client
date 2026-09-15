@@ -80,12 +80,24 @@ export function DepositCreated({
             <Landmark className="h-5 w-5" aria-hidden="true" />
           </span>
           <div>
-            {/* "Send your transfer NOW" — not "deposit created". Nothing has
-                  moved, and a client who reads this as done waits for a balance
-                  that is never coming. */}
-            <h2 className="text-lg font-bold">{t('deposit.pendingTitle')}</h2>
+            {/*
+              TWO different sentences, because the client is in two different
+              places.
+
+              An OFFLINE deposit has already been paid — the receipt is attached —
+              so telling them to "send your transfer now" would ask for the money
+              twice. What they need is what happens next: somebody checks the
+              receipt.
+
+              The other manual case has NOT paid yet, and "send your transfer now"
+              is exactly right: nothing has moved, and a client who reads it as
+              done waits for a balance that is never coming.
+            */}
+            <h2 className="text-lg font-bold">
+              {method.requiresProof ? t('deposit.offlinePendingTitle') : t('deposit.pendingTitle')}
+            </h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {t('deposit.pendingBody')}
+              {method.requiresProof ? t('deposit.offlinePendingBody') : t('deposit.pendingBody')}
             </p>
           </div>
         </div>
@@ -111,9 +123,14 @@ export function DepositCreated({
           />
         </dl>
 
-        <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-[11px] leading-relaxed text-warning-foreground">
-          {t('deposit.referenceWarning')}
-        </p>
+        {/* Only where a transfer is still to be made. An offline client has
+            already sent theirs, so asking them to quote a reference on it is an
+            instruction they can no longer follow. */}
+        {!method.requiresProof && (
+          <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-[11px] leading-relaxed text-warning-foreground">
+            {t('deposit.referenceWarning')}
+          </p>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={onReset} className="flex-1 basis-0">

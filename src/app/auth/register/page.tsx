@@ -121,10 +121,18 @@ function RegisterForm() {
        * yanked back to /auth/login from the page you had just opened. The three
        * seconds exist to let somebody read the "check your email" message, not
        * to seize the navigation afterwards.
+       *
+       * SIX, not three. The message now names both outcomes — a new address gets
+       * a verification link, an existing one gets a sign-in link — because the
+       * server answers identically either way and a shorter promise contradicted
+       * the mail that follows. That sentence takes longer to read than the one it
+       * replaced, and a message nobody finishes reading is the same as no message:
+       * the reader lands on /auth/login wondering why their inbox disagrees with
+       * the screen they just left.
        */
       redirectTimer.current = setTimeout(() => {
         router.push('/auth/login');
-      }, 3000);
+      }, 6000);
     } catch (err: unknown) {
       setError(apiErrorMessage(err, t('auth.register.failed')));
     } finally {

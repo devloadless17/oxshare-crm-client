@@ -96,6 +96,26 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     vars: moneyVars,
     href: '/deposit',
   },
+  /*
+   * REFUSED, with the reason — not `deposit.failed`.
+   *
+   * `deposit.failed` means the gateway did not complete and carries no reason;
+   * its copy sends the client to start another deposit. An offline deposit that
+   * is refused is a different fact: a person looked at the receipt and said no,
+   * the client may well have sent the money, and the reason is the only thing
+   * they can act on. It links to /transactions, where the reason and their own
+   * receipt are.
+   */
+  'deposit.rejected': {
+    icon: ArrowDownToLine,
+    titleKey: 'notifications.kindDepositRejectedTitle',
+    bodyKey: 'notifications.kindDepositRejectedBody',
+    vars: (params) => ({
+      amount: formatMoney(str(params.amount), str(params.currency)),
+      reason: str(params.reason),
+    }),
+    href: '/transactions',
+  },
   'wallet.credited': {
     icon: Wallet,
     titleKey: 'notifications.kindWalletCreditedTitle',

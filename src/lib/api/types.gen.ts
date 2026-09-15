@@ -1413,6 +1413,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payments/deposits/offline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Declare a deposit paid outside the platform, with the receipt attached
+         * @description Creates a PENDING deposit carrying the uploaded receipt. No balance changes until an operator approves it. Only methods configured as needing a receipt are accepted here.
+         */
+        post: operations["PaymentsController_requestOfflineDeposit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/payments/withdrawal-methods": {
         parameters: {
             query?: never;
@@ -2110,6 +2130,23 @@ export interface paths {
         };
         /** Serve a payment-method logo (public) */
         get: operations["UploadsController_servePaymentLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/uploads/deposit-proofs/{file}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Serve a deposit receipt to its owner or a deposits reviewer */
+        get: operations["UploadsController_serveDepositProof"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3660,6 +3697,46 @@ export interface paths {
         patch: operations["AdminMoneyController_rejectWithdrawal"];
         trace?: never;
     };
+    "/v1/admin/deposits/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Approve an offline deposit and credit the client wallet
+         * @description Moves the deposit from pending to success and posts the ledger credit in one transaction. If the client chose a trading account, the money is chained on to it exactly as a gateway deposit would be. Approving twice credits once.
+         */
+        patch: operations["AdminMoneyController_approveDeposit"];
+        trace?: never;
+    };
+    "/v1/admin/deposits/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Reject an offline deposit, with a reason the client is told
+         * @description Moves the deposit to rejected and emails the client the reason. NOTHING IS REFUNDED, because nothing was ever debited: a deposit posts no ledger entry when it is filed. A client who really did send the money needs support, not a reversal.
+         */
+        patch: operations["AdminMoneyController_rejectDeposit"];
+        trace?: never;
+    };
     "/v1/admin/withdrawals/{id}/settle": {
         parameters: {
             query?: never;
@@ -4926,6 +5003,8 @@ export interface components {
             maxAmount: string;
             enabled: boolean;
             sortOrder: number;
+            /** @description The client must attach a receipt: this method is paid outside the platform and an operator approves it by hand. The portal reads this to decide whether to ask for one, rather than branching on the method key. */
+            requiresProof: boolean;
         };
         RequestDepositDto: {
             /** @example 500.00000000 */
@@ -5031,6 +5110,7 @@ export interface components {
             /** @description The payment platform's OWN id for this movement — what Rival shows as its reference, and the identifier its team can look up directly. Null for anything that never went through a rail (a manual desk credit) and for a row whose create is still in flight. */
             rivalExternalId?: string | null;
             destination?: string | null;
+            proofFilename?: string | null;
             rejectionReason?: string | null;
             reviewedBy?: string | null;
             /** Format: date-time */
@@ -5104,6 +5184,11 @@ export interface components {
             enabled: boolean;
             /** @default 0 */
             sortOrder: number;
+            /**
+             * @description OFFLINE: the client pays outside the platform and must attach a receipt. Such a deposit is filed through POST /payments/deposits/offline and settles when an operator approves it — the JSON deposit route refuses the method. Cannot be combined with a gateway key.
+             * @default false
+             */
+            requiresProof: boolean;
         };
         UpdatePaymentMethodDto: {
             name?: string;
@@ -5112,6 +5197,11 @@ export interface components {
             logoUrl?: string;
             enabled?: boolean;
             sortOrder?: number;
+            /**
+             * @description OFFLINE: the client pays outside the platform and must attach a receipt. Such a deposit is filed through POST /payments/deposits/offline and settles when an operator approves it — the JSON deposit route refuses the method. Cannot be combined with a gateway key.
+             * @default false
+             */
+            requiresProof: boolean;
         };
         PaymentLogoResponseDto: {
             /**
@@ -5129,6 +5219,9 @@ export interface components {
              */
             walletNumber: string;
             userId: string;
+            userFirstName: string | null;
+            userLastName: string | null;
+            userEmail: string | null;
             /** @description Signed monetary value as a string */
             amount: string;
             /** @description Running balance after this entry, as a string */
@@ -5152,6 +5245,7 @@ export interface components {
             total: number;
             page: number;
             limit: number;
+            maskedFields?: string[];
         };
         OpenOwnAccountDto: {
             /**
@@ -6411,14 +6505,14 @@ export interface components {
         RejectionReasonResponseDto: {
             id: string;
             /** @enum {string} */
-            context: "kyc" | "withdrawal" | "partner";
+            context: "kyc" | "withdrawal" | "partner" | "deposit";
             label: string;
             /** Format: date-time */
             createdAt: string;
         };
         RejectionReasonDto: {
             /** @enum {string} */
-            context: "kyc" | "withdrawal";
+            context: "kyc" | "withdrawal" | "deposit";
             /** @example Document expired */
             label: string;
         };
@@ -6771,6 +6865,37 @@ export interface components {
             /** @description Id of a configured rejection reason. */
             reasonId?: string;
         };
+        DepositDecisionDto: {
+            id: string;
+            /** @description The client this deposit belongs to. */
+            userId: string;
+            /**
+             * @description Monetary value — always a string, never a number
+             * @example 250.00000000
+             */
+            amount: string;
+            /** @example USD */
+            currency: string;
+            /** @enum {string} */
+            state: "pending" | "approved" | "success" | "failure" | "rejected";
+            /** @description The deposit method the client chose. */
+            methodKey?: Record<string, never> | null;
+            /** @description The OX- reference quoted on the transfer. */
+            providerRef?: Record<string, never> | null;
+            /** @description The stored receipt, as `uploads/deposit-proofs/<file>`. Null when the deposit carried none. */
+            proofPath?: Record<string, never> | null;
+            rejectionReason?: Record<string, never> | null;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            /** Format: date-time */
+            settledAt?: string | null;
+        };
+        DepositRejectDto: {
+            /** @description Free-text note, used alone or appended to the configured reason. */
+            reason?: string;
+            /** @description A configured rejection reason from the `deposit` context. */
+            reasonId?: string;
+        };
         SettleWithdrawalDto: {
             /** @example wise-tx-9f3a1c */
             providerRef: string;
@@ -6783,6 +6908,9 @@ export interface components {
              */
             walletNumber: string;
             userId: string;
+            userFirstName: string | null;
+            userLastName: string | null;
+            userEmail: string | null;
             currency: string;
             /**
              * @description What the wallet row claims. Monetary value — always a string.
@@ -8633,7 +8761,10 @@ export interface operations {
     IbController_transferCommission: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description A unique value per intended transfer, reused only when retrying that same one. Without it a double-clicked button moves the commission twice, and because the ledger is append-only the second movement is undone by a compensating entry rather than deleted (R-5.2). */
+                "idempotency-key": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -8783,6 +8914,8 @@ export interface operations {
                 ibUserId?: string;
                 /** @description Restrict to one client. */
                 clientUserId?: string;
+                /** @description Free text over the PARTNER's email and name — the identifiers the list displays. It deliberately does not search the client on the row: an out-of-scope client's identity is masked, and a filter that matched it would answer "does this person exist in another territory" from the row count. */
+                q?: string;
                 status?: "pending" | "confirmed" | "reversed";
                 /** @description commission (paid to the partner) or rebate (paid back to the trading client). Absent returns both, which is what makes this one screen rather than two. */
                 kind?: "commission" | "rebate";
@@ -9145,6 +9278,46 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["RequestDepositDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepositRequestDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_requestOfflineDeposit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A unique value per intended deposit, reused only when retrying that same one. Without it a double-clicked button files two declarations for one transfer. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description A photo or PDF of the transfer.
+                     */
+                    file: string;
+                    /** @example 250.00 */
+                    amount: string;
+                    /** @example USD */
+                    currency: string;
+                    /** @example offline */
+                    method: string;
+                    /** Format: uuid */
+                    destinationTradingAccountId?: string;
+                };
             };
         };
         responses: {
@@ -9768,6 +9941,8 @@ export interface operations {
             query?: {
                 /** @description Accounts of one client. */
                 userId?: string;
+                /** @description Search the OWNER by email or name — the identifiers the Owner column displays. The only client filter used to be `userId`, a uuid shown nowhere on the page. */
+                q?: string;
                 environment?: "live" | "demo";
                 status?: "active" | "suspended" | "closed";
                 /** @description Legacy offset paging. Prefer cursor. */
@@ -9998,6 +10173,25 @@ export interface operations {
         };
     };
     UploadsController_servePaymentLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                file: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UploadsController_serveDepositProof: {
         parameters: {
             query?: never;
             header?: never;
@@ -11923,6 +12117,12 @@ export interface operations {
                 format?: "csv";
                 action?: string;
                 subjectType?: string;
+                /** @description WHO did it — one administrator, by id. */
+                actorId?: string;
+                /** @description WHAT it was done to — one client, admin, withdrawal or other subject, by id. This is the "everything that has happened to this person" read a client profile links to. */
+                subjectId?: string;
+                /** @description Free text over the ACTOR's email, which is denormalised onto every row so a deleted administrator's trail still names them. It deliberately does not search `details`: that blob holds client PII, and matching inside it would let a narrow-scoped reader confirm a client exists from a row count. */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -11950,6 +12150,12 @@ export interface operations {
                 cursor?: string;
                 action?: string;
                 subjectType?: string;
+                /** @description WHO did it — one administrator, by id. */
+                actorId?: string;
+                /** @description WHAT it was done to — one client, admin, withdrawal or other subject, by id. This is the "everything that has happened to this person" read a client profile links to. */
+                subjectId?: string;
+                /** @description Free text over the ACTOR's email, which is denormalised onto every row so a deleted administrator's trail still names them. It deliberately does not search `details`: that blob holds client PII, and matching inside it would let a narrow-scoped reader confirm a client exists from a row count. */
+                q?: string;
                 sort?: "createdAt" | "action" | "actorEmail";
                 order?: "asc" | "desc";
             };
@@ -12210,6 +12416,8 @@ export interface operations {
                 userId?: string;
                 /** @description Exact match on the wallet code. */
                 currency?: string;
+                /** @description Search the OWNER by email or name — the identifiers this screen actually displays. Before this existed the only client filter was `userId`, a uuid shown nowhere on the page, so an operator had to fetch it from /clients first. */
+                q?: string;
                 /** @description Legacy offset paging. Prefer cursor. */
                 page?: string;
                 limit?: string;
@@ -12331,6 +12539,58 @@ export interface operations {
             };
         };
     };
+    AdminMoneyController_approveDeposit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A unique value per intended action, reused only when retrying that same one. The conditional transition makes a replayed CAUSE a no-op; this makes a replayed REQUEST one too (R-5.2). */
+                "idempotency-key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepositDecisionDto"];
+                };
+            };
+        };
+    };
+    AdminMoneyController_rejectDeposit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A unique value per intended action, reused only when retrying that same one. */
+                "idempotency-key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DepositRejectDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepositDecisionDto"];
+                };
+            };
+        };
+    };
     AdminMoneyController_settleWithdrawal: {
         parameters: {
             query?: never;
@@ -12434,6 +12694,8 @@ export interface operations {
         parameters: {
             query: {
                 userId: string;
+                /** @description Search the client by email or name — the identifiers the Client column shows. Scope still applies: this cannot reach a client outside the actor’s territory. */
+                q?: string;
                 walletId: string;
                 entryType: string;
                 page: string;

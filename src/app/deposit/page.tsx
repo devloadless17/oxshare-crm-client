@@ -206,6 +206,12 @@ function DepositFlow({
    * success so the NEXT declaration is a new intent rather than colliding with
    * the cached first one.
    */
+  /*
+   * The receipt, for a method paid outside the platform. Held here rather than
+   * in `DepositForm` because it is submitted WITH the form — there is no upload
+   * of its own to own.
+   */
+  const [proof, setProof] = React.useState<File | null>(null);
   const idempotencyKey = React.useRef<string | null>(null);
 
   if (methods.length === 0) {
@@ -241,7 +247,14 @@ function DepositFlow({
     );
   }
 
-  const problem = selected ? amountProblem(selected, amount) : null;
+  const amountIssue = selected ? amountProblem(selected, amount) : null;
+  /*
+   * A method that needs a receipt cannot be filed without one — the server
+   * refuses it too (`requires_proof`), and this is the half that says so before
+   * the client presses anything.
+   */
+  const missingProof = Boolean(selected?.requiresProof) && proof === null;
+  const problem = amountIssue ?? (missingProof ? t('deposit.proofRequired') : null);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -259,17 +272,23 @@ function DepositFlow({
     let leaving = false;
 
     try {
-      const deposit = await depositsApi.request(
-        {
-          amount,
-          currency: selected.currency,
-          method: selected.key,
-          ...(destination.tradingAccountId
-            ? { destinationTradingAccountId: destination.tradingAccountId }
-            : {}),
-        },
-        idempotencyKey.current,
-      );
+      const payload = {
+        amount,
+        currency: selected.currency,
+        method: selected.key,
+        ...(destination.tradingAccountId
+          ? { destinationTradingAccountId: destination.tradingAccountId }
+          : {}),
+      };
+      /*
+       * Two doors, one for each kind of method. The offline one carries the
+       * receipt, and the server refuses each method at the wrong door — so this
+       * branch cannot drift from the API's own rule.
+       */
+      const deposit =
+        selected.requiresProof && proof
+          ? await depositsApi.requestOffline(payload, proof, idempotencyKey.current)
+          : await depositsApi.request(payload, idempotencyKey.current);
       idempotencyKey.current = null;
       /*
        * A pending transaction row now exists. Not awaited: on the gateway path
@@ -390,6 +409,8 @@ function DepositFlow({
                 onDestinationChange={setDestination}
                 amount={amount}
                 onAmountChange={setAmount}
+                proof={proof}
+                onProofChange={setProof}
                 disabled={busy}
                 section={step === 2 ? 'destination' : 'amount'}
               />
@@ -464,9 +485,18 @@ function DepositFlow({
                 */}
                 {busy
                   ? t('deposit.submitting')
-                  : selected && amount && !problem
-                    ? t('deposit.pay', { amount: formatMoney(amount, selected.currency) })
-                    : t('deposit.payNow')}
+                  : /*
+                     * An OFFLINE client has ALREADY PAID — "Pay $75.00" and
+                     * "Continue to payment" both ask them to do a thing they have
+                     * just done, and the second promises a payment page that does
+                     * not exist on this path. What they are doing is SUBMITTING a
+                     * request for somebody to check.
+                     */
+                    selected?.requiresProof
+                    ? t('deposit.submitRequest')
+                    : selected && amount && !problem
+                      ? t('deposit.pay', { amount: formatMoney(amount, selected.currency) })
+                      : t('deposit.payNow')}
               </Button>
             </div>
           )}
