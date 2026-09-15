@@ -10,6 +10,7 @@ import {
 import { formatMoney } from '@/lib/money';
 import { movementLabelKey } from '@/lib/movement-label';
 import { t } from '@/lib/i18n';
+import { assetUrl } from '@/lib/asset-url';
 import type { Transaction } from '@/lib/api/payments';
 
 /**
@@ -73,6 +74,29 @@ export function TransactionDetails({
               )}
 
               <Row label={t('transactions.detailState')} value={tx.state} />
+              {/*
+                THEIR OWN RECEIPT, back to them. A client who filed an offline
+                deposit a week ago has no other way to see which image they sent
+                — and when a deposit is refused for an unreadable receipt, the
+                first thing they need is to look at what we looked at.
+              */}
+              {tx.proofFilename && (
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-xs text-muted-foreground">
+                    {t('transactions.detailReceipt')}
+                  </dt>
+                  <dd>
+                    <a
+                      href={assetUrl(`uploads/deposit-proofs/${tx.proofFilename}`)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-medium text-primary underline underline-offset-2"
+                    >
+                      {t('transactions.detailReceiptOpen')}
+                    </a>
+                  </dd>
+                </div>
+              )}
               {tx.destination && (
                 <Row label={t('transactions.detailDestination')} value={tx.destination} />
               )}

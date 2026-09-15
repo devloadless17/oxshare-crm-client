@@ -556,6 +556,25 @@ export const messages = {
   // is the STEP RAIL's word — one syllable, because a rail has room for a label
   // and not a question.
   'deposit.amountTitle': 'How much are you sending?',
+  // ── Offline deposits: the client pays outside the platform and shows us ────
+  'deposit.proofTitle': 'Attach your transfer receipt',
+  'deposit.proofBody':
+    'A photo or PDF of the transfer you made. We check it before the money is added to your wallet.',
+  'deposit.proofTakePhoto': 'Take photo',
+  'deposit.proofChooseFile': 'Choose file',
+  'deposit.proofRemove': 'Remove receipt',
+  'deposit.proofPreparing': 'Preparing your photo…',
+  'deposit.proofFormats': 'JPG, PNG, WEBP or PDF · Max {limit}MB',
+  'deposit.proofTooLarge': 'That file is {size}MB. The limit is {limit}MB.',
+  'deposit.proofFailed': 'Could not read that file. Please try another.',
+  'deposit.proofRequired': 'Please attach your transfer receipt.',
+  'transactions.detailReceipt': 'Your receipt',
+  'transactions.detailReceiptOpen': 'View',
+  'notifications.kindDepositRejectedTitle': 'Deposit not accepted',
+  'notifications.kindDepositRejectedBody': 'Your deposit of {amount} was not accepted: {reason}',
+  'deposit.offlinePendingTitle': 'We have your deposit request',
+  'deposit.offlinePendingBody':
+    'Our team will check your receipt and add the money to your wallet. You can follow it in your transactions.',
   // The STEP BAR's label for the same question. Short where the section title
   // is a sentence: a bar has room for a word, and the section below it is
   // already asking properly.

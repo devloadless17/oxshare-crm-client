@@ -8,6 +8,8 @@ import type { TradingAccount } from '@/lib/api/trading';
 import type { Wallet } from '@/lib/api/wallet';
 import { DISPLAY_SCALE, formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
+import { DepositProofField } from './deposit-proof-field';
+import { PROOF_MAX_BYTES } from '@/lib/upload-limits';
 
 /**
  * The per-method half of the deposit screen — two sections of the one card.
@@ -155,6 +157,8 @@ export function DepositForm({
   amount,
   onAmountChange,
   disabled,
+  proof = null,
+  onProofChange,
   section,
 }: {
   method: PaymentMethod;
@@ -165,6 +169,13 @@ export function DepositForm({
   amount: string;
   onAmountChange: (amount: string) => void;
   disabled?: boolean;
+  /**
+   * The receipt, for a method that is paid outside the platform. Held by the
+   * PAGE rather than here because it is submitted with the form — see
+   * `DepositProofField` for why it is not the KYC uploader.
+   */
+  proof?: File | null;
+  onProofChange?: (file: File | null) => void;
   /**
    * WHICH STEP is being drawn.
    *
@@ -284,6 +295,20 @@ export function DepositForm({
             currency={method.currency}
             onPick={onAmountChange}
             disabled={disabled}
+          />
+        )}
+        {/*
+          The receipt sits with the AMOUNT because the two are one statement:
+          "I sent this much, and here is the proof". It appears from the method's
+          own `requiresProof` flag rather than from its key, so adding OMT beside
+          a bank transfer needs no change here.
+        */}
+        {method.requiresProof && onProofChange && (
+          <DepositProofField
+            file={proof}
+            onChange={onProofChange}
+            disabled={disabled}
+            maxBytes={PROOF_MAX_BYTES}
           />
         )}
       </div>
