@@ -1917,6 +1917,7 @@ export const messages = {
     '{method} takes {currency} to {places} decimal places. Use {suggestion} instead.',
   'deposit.amountAboveMax': 'The maximum deposit is {max}.',
   'deposit.pay': 'Pay {amount}',
+  'deposit.submitRequest': 'Submit deposit request',
 
   // ── Dashboard (GET /dashboard) ────────────────────────────────────────────
   'dashboard.greeting': 'Welcome back, {name}',

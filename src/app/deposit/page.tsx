@@ -485,9 +485,18 @@ function DepositFlow({
                 */}
                 {busy
                   ? t('deposit.submitting')
-                  : selected && amount && !problem
-                    ? t('deposit.pay', { amount: formatMoney(amount, selected.currency) })
-                    : t('deposit.payNow')}
+                  : /*
+                     * An OFFLINE client has ALREADY PAID — "Pay $75.00" and
+                     * "Continue to payment" both ask them to do a thing they have
+                     * just done, and the second promises a payment page that does
+                     * not exist on this path. What they are doing is SUBMITTING a
+                     * request for somebody to check.
+                     */
+                    selected?.requiresProof
+                    ? t('deposit.submitRequest')
+                    : selected && amount && !problem
+                      ? t('deposit.pay', { amount: formatMoney(amount, selected.currency) })
+                      : t('deposit.payNow')}
               </Button>
             </div>
           )}
