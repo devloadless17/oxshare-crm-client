@@ -436,6 +436,8 @@ export const messages = {
    * could not find out why from anywhere they could return to.
    */
   'transactions.detailReason': 'Why this was refused',
+  'transactions.detailDepositRefusedNote':
+    'Nothing was taken from your wallet — a deposit is only credited once it is approved. If you already sent this transfer, contact support with your receipt.',
   'transactions.detailState': 'Status',
   'transactions.detailDestination': 'Sent to',
   'transactions.detailReference': 'Reference',

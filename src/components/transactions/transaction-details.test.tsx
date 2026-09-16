@@ -49,6 +49,43 @@ describe('TransactionDetails', () => {
     expect(screen.getByText('+961 70 123 456')).toBeTruthy();
   });
 
+  /*
+   * The two directions mean OPPOSITE things by the same red block, and this
+   * dialog renders both. A refused withdrawal was debited at request, so the
+   * money is already back; a refused deposit was never debited, so nothing
+   * comes back — and an offline depositor may be holding a receipt for money
+   * they really did send outside the platform. One shared block of copy for
+   * both is how the client most likely to be out of pocket gets told the least.
+   */
+  it('tells a refused DEPOSIT that nothing was taken from the wallet', () => {
+    renderWithProviders(
+      <TransactionDetails
+        tx={
+          {
+            ...base,
+            kind: 'payment',
+            direction: 'deposit',
+            rejectionReason: 'No payment matching this receipt has reached our account',
+          } as unknown as Transaction
+        }
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/nothing was taken from your wallet/i)).toBeTruthy();
+  });
+
+  it('does NOT tell a refused withdrawal that, because its money DID come back', () => {
+    renderWithProviders(
+      <TransactionDetails
+        tx={{ ...base, rejectionReason: 'Details incomplete.' }}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(/nothing was taken from your wallet/i)).toBeNull();
+  });
+
   it('omits a field it does not have rather than showing a blank labelled row', () => {
     renderWithProviders(<TransactionDetails tx={base} onClose={vi.fn()} />);
 

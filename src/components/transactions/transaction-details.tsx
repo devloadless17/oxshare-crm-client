@@ -70,6 +70,26 @@ export function TransactionDetails({
                   <dd className="mt-1 text-xs leading-snug text-destructive">
                     {tx.rejectionReason}
                   </dd>
+                  {/*
+                    DEPOSITS ONLY, and the asymmetry is the whole point.
+
+                    This dialog serves both directions with one block of copy,
+                    and a refusal means opposite things in each. A refused
+                    WITHDRAWAL was debited when it was requested, so the money is
+                    already back in the wallet. A refused DEPOSIT was never
+                    debited — `requestDeposit` posts no ledger entry — so nothing
+                    comes back, and for an offline deposit the client may be
+                    holding a real transfer receipt for money they genuinely sent
+                    outside this system.
+
+                    Without this line the two read identically, and the client
+                    most likely to be out of pocket is the one told the least.
+                  */}
+                  {tx.direction === 'deposit' && (
+                    <dd className="mt-2 text-xs leading-snug text-muted-foreground">
+                      {t('transactions.detailDepositRefusedNote')}
+                    </dd>
+                  )}
                 </div>
               )}
 
