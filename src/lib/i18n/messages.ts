@@ -562,6 +562,7 @@ export const messages = {
     'A photo or PDF of the transfer you made. We check it before the money is added to your wallet.',
   'deposit.proofTakePhoto': 'Take photo',
   'deposit.proofChooseFile': 'Choose file',
+  'deposit.proofChooseExisting': 'Choose a photo',
   'deposit.proofRemove': 'Remove receipt',
   'deposit.proofPreparing': 'Preparing your photo…',
   'deposit.proofFormats': 'JPG, PNG, WEBP or PDF · Max {limit}MB',

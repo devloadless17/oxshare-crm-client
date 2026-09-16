@@ -6,6 +6,7 @@ import { UploadCloud, CheckCircle2, FileText, RefreshCw, Camera, FolderOpen } fr
 import { apiErrorMessage } from '@/lib/api/errors';
 import { normaliseDocumentImage } from '@/lib/image-capture';
 import { t } from '@/lib/i18n';
+import { useCanCapture } from '@/hooks/use-can-capture';
 import { Button } from '@/components/ui/button';
 
 export interface DocumentUploaderProps {
@@ -105,29 +106,6 @@ function tooLargeMessage(file: File): string {
  * interaction there anyway — a passport photographed on a laptop webcam is a
  * rejected submission, so this removes a button nobody should have used.
  */
-const COARSE_POINTER = '(pointer: coarse)';
-
-function subscribeToPointer(onChange: () => void): () => void {
-  const query = window.matchMedia(COARSE_POINTER);
-  query.addEventListener('change', onChange);
-  return () => query.removeEventListener('change', onChange);
-}
-
-function useCanCapture(): boolean {
-  /*
-   * `useSyncExternalStore` rather than state-in-an-effect: matchMedia IS an
-   * external store, and this is the one API that reads it without a render
-   * where the answer is briefly wrong. The server snapshot is `false`, so SSR
-   * and the first client paint agree on the desktop layout and a phone
-   * upgrades on hydration — no flash of the wrong button set.
-   */
-  return React.useSyncExternalStore(
-    subscribeToPointer,
-    () => window.matchMedia(COARSE_POINTER).matches,
-    () => false,
-  );
-}
-
 export function DocumentUploader({
   label,
   field,

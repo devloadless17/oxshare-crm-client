@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Camera, FileText, ImageIcon, Upload, X } from 'lucide-react';
 import { normaliseDocumentImage } from '@/lib/image-capture';
 import { t } from '@/lib/i18n';
+import { useCanCapture } from '@/hooks/use-can-capture';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -43,6 +44,15 @@ export function DepositProofField({
   const [preview, setPreview] = React.useState<string | null>(null);
   const [problem, setProblem] = React.useState<string | null>(null);
   const [preparing, setPreparing] = React.useState(false);
+  /*
+   * Only a device with a real camera is offered one.
+   *
+   * `capture="environment"` asks the browser for the camera; a laptop IGNORES it
+   * and opens the ordinary picker. So on a desktop "Take photo" and "Choose
+   * file" were two buttons doing exactly the same thing, which reads as one of
+   * them being broken. Reported from the running app.
+   */
+  const canCapture = useCanCapture();
 
   const choose = async (picked: File | undefined) => {
     if (!picked) return;
@@ -136,16 +146,18 @@ export function DepositProofField({
         </div>
       ) : (
         <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10 flex-1"
-            disabled={disabled || preparing}
-            onClick={() => capture.current?.click()}
-          >
-            <Camera className="mr-2 h-4 w-4" aria-hidden />
-            {t('deposit.proofTakePhoto')}
-          </Button>
+          {canCapture && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 flex-1"
+              disabled={disabled || preparing}
+              onClick={() => capture.current?.click()}
+            >
+              <Camera className="mr-2 h-4 w-4" aria-hidden />
+              {t('deposit.proofTakePhoto')}
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -154,7 +166,10 @@ export function DepositProofField({
             onClick={() => pick.current?.click()}
           >
             <Upload className="mr-2 h-4 w-4" aria-hidden />
-            {t('deposit.proofChooseFile')}
+            {/* On a phone the two sit side by side, so this one has to say what
+                it is NOT — the gallery, rather than the camera. On a desktop it
+                stands alone and says the plain thing. */}
+            {canCapture ? t('deposit.proofChooseExisting') : t('deposit.proofChooseFile')}
           </Button>
         </div>
       )}
