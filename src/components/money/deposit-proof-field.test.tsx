@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/render';
@@ -54,5 +54,47 @@ describe('the deposit receipt field', () => {
     // no canvas that can re-encode it. Refusing or mangling one would refuse the
     // best evidence a client can offer.
     await waitFor(() => expect(onChange).toHaveBeenCalledWith(advice));
+  });
+});
+
+/*
+ * `matchMedia` does not exist in jsdom, so each case states what kind of device
+ * it is about. That is the point of these two: the SAME component must offer a
+ * different pair of buttons, and the wrong answer is invisible on a laptop —
+ * `capture="environment"` is silently ignored there, so both buttons open the
+ * same picker and one of them looks broken.
+ */
+function pointerIs(kind: 'coarse' | 'fine') {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query.includes('coarse') && kind === 'coarse',
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+}
+
+describe('which buttons each device is offered', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('offers NO camera button on a desktop', () => {
+    pointerIs('fine');
+    renderWithProviders(
+      <DepositProofField file={null} onChange={() => {}} maxBytes={10 * 1024 * 1024} />,
+    );
+
+    expect(screen.queryByRole('button', { name: /take photo/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /choose file/i })).toBeInTheDocument();
+  });
+
+  it('offers the camera on a touch device, beside the gallery', () => {
+    pointerIs('coarse');
+    renderWithProviders(
+      <DepositProofField file={null} onChange={() => {}} maxBytes={10 * 1024 * 1024} />,
+    );
+
+    expect(screen.getByRole('button', { name: /take photo/i })).toBeInTheDocument();
+    // "Choose a photo" rather than "Choose file": beside a camera button it has
+    // to say what it is NOT.
+    expect(screen.getByRole('button', { name: /choose a photo/i })).toBeInTheDocument();
   });
 });
