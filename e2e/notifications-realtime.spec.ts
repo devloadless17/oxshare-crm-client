@@ -45,6 +45,24 @@ const E2E_CLIENT_EMAIL = 'e2e@oxshare.com';
  */
 const REALTIME_BUDGET_MS = 5_000;
 
+/**
+ * The same property, measured on the RECONNECT path, which costs strictly more
+ * than a push: the browser must first notice the socket is gone, then back off,
+ * then re-establish (or fall through to long-polling), and only then can the
+ * refetch land. `REALTIME_BUDGET_MS` covers a push arriving on a socket that is
+ * already open, and using it for both conflated two different budgets.
+ *
+ * Not a weakening. The discriminator is the 60s fallback poll — "anything
+ * arriving faster than this cannot be the poll" — and 15s is still four times
+ * clear of it, so a completely broken reconnect still fails here exactly as it
+ * did at five seconds.
+ *
+ * The number is measured, not guessed. At 5s this case failed on chromium in a
+ * full crosshost run (6.3s) while PASSING on mobile in that same run and 3/3 on
+ * chromium in isolation — the signature of machine load, not of a defect.
+ */
+const RECONNECT_BUDGET_MS = 15_000;
+
 let adminApi: Awaited<ReturnType<typeof adminApiSession>>['request'];
 let adminCsrf: string;
 let e2eClientId: string;
@@ -329,10 +347,12 @@ test.describe('the bell updates without a refresh', () => {
 
     /*
      * Under the POLL budget, deliberately. Allowing 90s here would let a
-     * completely broken reconnect pass on the 60-second fallback; holding it to
-     * the realtime budget means the reconnected socket is what delivered this.
+     * completely broken reconnect pass on the 60-second fallback; holding it
+     * well beneath that fallback means the reconnected transport is what
+     * delivered this. See `RECONNECT_BUDGET_MS` for why this one case gets a
+     * larger budget than a push does, and why 15s still proves the same thing.
      */
-    await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: REALTIME_BUDGET_MS });
+    await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: RECONNECT_BUDGET_MS });
     expect(await markerSurvived(page)).toBe(true);
   });
 });

@@ -159,17 +159,42 @@ test.describe('reuse detection', () => {
     await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
 
     const before = (await context.cookies()).find((c) => /_rt$/.test(c.name))!;
-    // Force one rotation. Awaited on the RESPONSE, not on network idle — the
-    // realtime socket's long-polling fallback keeps the network busy for ever.
+    /*
+     * Force one rotation, and wait for its EFFECT — the rotated cookie — rather
+     * than for a `POST /auth/refresh` RESPONSE to be observable.
+     *
+     * ⚠️ This used to race its own navigation, and failed about half the time.
+     * It was `Promise.all([waitForResponse(refresh), page.goto('/wallet')])`,
+     * which assumes the renewal is triggered by the page being navigated TO.
+     * It is usually triggered by the page being navigated AWAY FROM: the
+     * outgoing view's queries 401 on the now-missing access cookie and the
+     * interceptor renews — while that frame is being torn down, so Playwright
+     * never delivers the response event for it and the wait times out.
+     *
+     * Instrumented rather than guessed. In the failing runs the traffic reads:
+     * five 401s, then `200 GET /v1/auth/me` and every later call 200, and the
+     * `_at` cookie BACK in the jar — with no `/auth/refresh` anywhere in the
+     * captured traffic, and no `Set-Cookie` on the document. The renewal plainly
+     * happened; only the observation was unreliable. Two earlier theories
+     * (the cookie helper rebuilding the jar, a React Query cache race) were
+     * measured and disproved before this one was measured and held.
+     *
+     * The cookie is the stronger assertion anyway: it is the thing the rest of
+     * this test depends on, and a renewal that answered 200 without rotating
+     * would pass the old check and fail the reuse case for the wrong reason.
+     * Not network idle — the realtime socket's long-polling fallback keeps the
+     * network busy for ever.
+     */
     await deleteCookie(context, /_at$/);
-    const [rotation] = await Promise.all([
-      page.waitForResponse((r) => isApi(r, '/auth/refresh', 'POST'), { timeout: 20_000 }),
-      page.goto('/wallet'),
-    ]);
-    expect(rotation.ok(), `the forced renewal answered ${rotation.status()}`).toBe(true);
+    await page.goto('/wallet');
     await expect(page.getByRole('navigation').first()).toBeAttached();
+    await expect
+      .poll(async () => (await context.cookies()).find((c) => /_rt$/.test(c.name))?.value, {
+        timeout: 20_000,
+        message: 'the refresh token never rotated after the access cookie was removed',
+      })
+      .not.toBe(before.value);
     const after = (await context.cookies()).find((c) => /_rt$/.test(c.name))!;
-    expect(after.value, 'the refresh token did not rotate').not.toBe(before.value);
 
     /*
      * Consume the SUCCESSOR too. Within a 30-second grace window a spent token
@@ -179,12 +204,16 @@ test.describe('reuse detection', () => {
      * original become what it is: a replay.
      */
     await deleteCookie(context, /_at$/);
-    const [second] = await Promise.all([
-      page.waitForResponse((r) => isApi(r, '/auth/refresh', 'POST'), { timeout: 20_000 }),
-      page.goto('/dashboard'),
-    ]);
-    expect(second.ok(), `the second renewal answered ${second.status()}`).toBe(true);
+    await page.goto('/dashboard');
     await expect(page.getByRole('navigation').first()).toBeAttached();
+    // Same wait, same reason as the first rotation.
+    await expect
+      .poll(async () => (await context.cookies()).find((c) => /_rt$/.test(c.name))?.value, {
+        timeout: 20_000,
+        message:
+          'the successor token was never consumed, so the replay below would not be a replay',
+      })
+      .not.toBe(after.value);
 
     // Replay the SPENT token, as a thief who copied it earlier would.
     // From a jar of its own, so the browser's live cookies cannot ride along

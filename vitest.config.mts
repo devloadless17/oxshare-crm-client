@@ -184,11 +184,24 @@ export default defineConfig({
        * refusals and route around it. ~1.5 points under, by the same reasoning
        * the backend's floor uses.
        */
+      /*
+       * RAISED 17 Sep 2026, against a measured run of 47 files / 423 tests:
+       * lines 37.06, statements 36.27, functions 31.06, branches 30.58.
+       *
+       * The previous floor had drifted five to six points under that — nobody lowered it,
+       * the suite grew and nothing lifted it. A floor far enough under the
+       * measurement stops catching the regressions it was written for: at the old
+       * number a change could delete most of that gap and still pass.
+       *
+       * Set about a point and a half under rather than flush, the same margin the
+       * backend uses and for the same reason — a threshold that reddens for
+       * environment reasons is one people route around.
+       */
       thresholds: {
-        lines: 31,
-        functions: 26,
-        branches: 24,
-        statements: 31,
+        lines: 35,
+        statements: 34,
+        functions: 29,
+        branches: 29,
       },
     },
   },
