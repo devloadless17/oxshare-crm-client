@@ -184,3 +184,69 @@ export function chosenDocumentValue(
 export function documentChoiceKey(stepSlug: string): string {
   return `__docChoice__${stepSlug}`;
 }
+
+/**
+ * A field whose answer is an UPLOADED FILE rather than something typed.
+ *
+ * Mirrors `isFileField` in the backend's `step-slugs.ts`, and the two must stay
+ * in step: this decides what the wizard demands before Continue, that decides
+ * what `submit` demands before a submission is accepted. If they disagree the
+ * client is either blocked by a rule the server does not have, or waved past
+ * one it does.
+ *
+ * `doc:*` counts because every catalogue document is collected as a file.
+ */
+export function isUploadField(field: { type?: string }): boolean {
+  const type = field.type ?? '';
+  return type === 'file' || type === 'camera' || type.startsWith('doc:');
+}
+
+/**
+ * The half of `/kyc/status` these two helpers read. `null` is a real value —
+ * react-query hands back `null` before the first response — so it is in the
+ * type rather than asserted away at each call site.
+ */
+type StatusLike =
+  { document?: { docType?: string }; addressProof?: { docType?: string } } | null | undefined;
+
+/**
+ * Which document the SERVER holds a file for, per category.
+ *
+ * Every identity document's first page is stored in one column — `doc_front` —
+ * so "is that column filled?" cannot answer "has the client uploaded THIS
+ * document?". Reading it as though it could meant that after a passport was
+ * uploaded, switching the picker to National ID showed its slot as already
+ * satisfied, and the client submitted a passport as their national ID.
+ */
+export function storedDocValuesOf(status: StatusLike): { identity?: string; address?: string } {
+  return { identity: status?.document?.docType, address: status?.addressProof?.docType };
+}
+
+/**
+ * The picker choice each step should start on, rebuilt from what was saved.
+ *
+ * Matched on the document's CATEGORY and VALUE rather than a hard-coded name: a
+ * stored `passport` selects whichever field collects `doc:passport`, whatever
+ * the operator called it. A returning client seeing an empty picker above their
+ * own uploaded document is how they end up re-picking and re-uploading it.
+ */
+export function savedDocumentChoices(
+  status: StatusLike,
+  steps: { slug: string; fields: KycFieldLike[] }[],
+): Record<string, string> {
+  const choices: Record<string, string> = {};
+  const stored: [string | undefined, 'identity' | 'address'][] = [
+    [status?.document?.docType, 'identity'],
+    [status?.addressProof?.docType, 'address'],
+  ];
+  for (const [value, category] of stored) {
+    if (!value) continue;
+    for (const step of steps) {
+      const field = step.fields.find(
+        (f) => f.document?.value === value && f.document.category === category,
+      );
+      if (field) choices[documentChoiceKey(step.slug)] = field.name;
+    }
+  }
+  return choices;
+}

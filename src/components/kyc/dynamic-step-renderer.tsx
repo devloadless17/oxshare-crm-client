@@ -31,6 +31,18 @@ interface DynamicStepRendererProps {
   uploadsState: Record<string, boolean>;
   selfieUploaded: boolean;
   rejectedFields?: string[];
+  /**
+   * The document the SERVER actually holds a file for, per category.
+   *
+   * Needed because every identity document's first page is stored in the same
+   * column: `apiUploadField` maps passport, national ID and driving licence all
+   * onto `doc_front` (see its note on why storage was not reshaped). So
+   * "is `doc_front` filled?" cannot answer "has the client uploaded THIS
+   * document?" — and reading it as if it could meant that after uploading a
+   * passport, switching the picker to National ID showed its slot as already
+   * satisfied, offering the passport as though it were the ID.
+   */
+  storedDocValues?: { identity?: string; address?: string };
   onChange: (key: string, value: string) => void;
   onUpload: (field: string, file: File) => Promise<void>;
   /** Threaded to the uploader so the step can tell 'nothing chosen' from 'chosen, not confirmed'. */
@@ -43,6 +55,7 @@ export function DynamicStepRenderer({
   uploadsState,
   selfieUploaded,
   rejectedFields = [],
+  storedDocValues,
   onChange,
   onUpload,
   onPendingChange,
@@ -273,13 +286,34 @@ export function DynamicStepRenderer({
             );
             if (!apiField) return null;
 
+            /*
+             * The stored-column fallback applies ONLY to the document the file
+             * actually belongs to.
+             *
+             * `uploadsState[slot]` is this session's upload. The fallback exists
+             * for the client who comes BACK: their file is known to the server
+             * under `doc_front`, and without it a returning client would be
+             * asked to upload a passport the system already holds.
+             *
+             * Unconditional, it was a lie for the other two choices. The column
+             * is shared by every identity document, so a passport on file made
+             * National ID and Driving Licence both look uploaded — the client
+             * pressed Continue and submitted a passport as their national ID.
+             * Gating on the stored docType keeps the returning client's file
+             * and stops it standing in for a document they never sent.
+             */
+            const category = chosenField!.document?.category;
+            const storedValue =
+              category === 'address' ? storedDocValues?.address : storedDocValues?.identity;
+            const isStoredDocument = chosenField!.document?.value === storedValue;
+
             return (
               <DocumentUploader
                 key={part.key}
                 field={apiField}
                 label={part.label}
                 hint={part.hint ?? (part.required ? undefined : t('kyc.optionalUpload'))}
-                uploaded={uploadsState[slot] || uploadsState[apiField]}
+                uploaded={uploadsState[slot] || (isStoredDocument && uploadsState[apiField])}
                 onUpload={onUpload}
                 onPendingChange={onPendingChange}
               />
