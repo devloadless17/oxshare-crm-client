@@ -14,8 +14,13 @@ type KycStepConfig = components['schemas']['KycStepConfigDto'];
  * already finished.
  */
 
-const step = (over: Partial<KycStepConfig> & { slug: string; stepNumber: number }) =>
-  ({ id: `s-${over.slug}`, title: over.slug, enabled: true, fields: [], ...over });
+const step = (over: Partial<KycStepConfig> & { slug: string; stepNumber: number }) => ({
+  id: `s-${over.slug}`,
+  title: over.slug,
+  enabled: true,
+  fields: [],
+  ...over,
+});
 
 const STEPS = [
   step({ slug: 'personal', stepNumber: 1 }),
