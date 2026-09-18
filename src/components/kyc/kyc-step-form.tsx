@@ -15,7 +15,13 @@ import {
 } from '@/lib/kyc-draft';
 import { useResource } from '@/hooks/use-resource';
 import { withReviewStep } from './review-step';
-import { chosenDocumentValue, documentChoiceKey, missingRequiredParts } from './doc-type';
+import {
+  chosenDocumentValue,
+  missingRequiredParts,
+  savedDocumentChoices,
+  storedDocValuesOf,
+} from './doc-type';
+import { planCustomStep, uploadedCustomFields } from './custom-step';
 import type { components } from '@/lib/api/types.gen';
 import { Button } from '@/components/ui/button';
 
@@ -122,6 +128,8 @@ export function KycStepForm() {
   const stepConfigs = useMemo(() => withReviewStep(configQuery.data ?? []), [configQuery.data]);
 
   const docType = chosenDocumentValue(stepConfigs, formData, 'identity');
+  // Which document the SERVER holds a file for — see the renderer's prop note.
+  const storedDocValues = storedDocValuesOf(statusQuery.data);
   const addressDocType = chosenDocumentValue(stepConfigs, formData, 'address');
 
   /*
@@ -160,33 +168,7 @@ export function KycStepForm() {
      * returning client seeing an empty dropdown above their own uploaded
      * document is how they end up re-picking and re-uploading it.
      */
-    const savedTypes: Record<string, string> = {};
-    /*
-     * Keyed by the FIELD the config declares, not by a hard-coded name, and
-     * matched on the document's CATEGORY — a stored `passport` belongs to
-     * whichever field accepts identity documents, whatever the operator called
-     * it. The stored value is written straight in: the picker matches on value
-     * or label, so no conversion is needed on the way back.
-     */
-    const stored: [string | undefined, 'identity' | 'address'][] = [
-      [data?.document?.docType, 'identity'],
-      [data?.addressProof?.docType, 'address'],
-    ];
-    for (const [value, category] of stored) {
-      if (!value) continue;
-      for (const step of configQuery.data ?? []) {
-        /*
-         * The field whose TYPE collects the stored document — a saved
-         * `passport` selects the `doc:passport` field, whatever the operator
-         * named it. Recorded under the step's choice key, which is where the
-         * picker reads from.
-         */
-        const field = step.fields.find(
-          (f) => f.document?.value === value && f.document.category === category,
-        );
-        if (field) savedTypes[documentChoiceKey(step.slug)] = field.name;
-      }
-    }
+    const savedTypes = savedDocumentChoices(data, configQuery.data ?? []);
 
     // Local edits still win: `cachedPersonal` is last, so a type the client
     // changed a moment ago is not overwritten by the one on the server.
@@ -213,6 +195,13 @@ export function KycStepForm() {
       if (data.addressProof.filePath) uploads['address_proof'] = true;
       if (data.addressProof.page2FilePath) uploads['address_proof_2'] = true;
     }
+    /*
+     * A CUSTOM step's uploads live under its own slug in `stepData`, not in the
+     * four columns above. Without this the client returns to the step, sees an
+     * empty uploader, and is asked for a document the server already holds —
+     * the upload twin of the empty-answers bug `savedAnswersFor` fixed.
+     */
+    for (const key of uploadedCustomFields(data?.stepData)) uploads[key] = true;
     if (uploads['selfie']) setSelfieUploaded(true);
     setUploadsState(uploads);
     writeUploadsDraft(uploads);
@@ -370,6 +359,20 @@ export function KycStepForm() {
         await queryClient.invalidateQueries({ queryKey: keys.kyc.status() });
         router.push('/kyc/submitted');
         return;
+      } else if (currentStepConfig) {
+        /*
+         * A step the BROKER added. Every branch above names a canonical slug, so
+         * a custom step used to fall through all of them — unvalidated, and
+         * never saved. `planCustomStep` records what that cost.
+         */
+        const plan = planCustomStep(currentStepConfig, formData, uploadsState);
+        if (plan.missing) {
+          const label = plan.missing.label;
+          setError(plan.missingIsUpload ? t('kyc.needUpload', { label }) : t('kyc.requiredFields'));
+          setLoading(false);
+          return;
+        }
+        await api.post<{ message?: string }>('/kyc/step', { step: slug, data: plan.answers });
       }
 
       if (stepNumber < totalSteps) {
@@ -459,6 +462,7 @@ export function KycStepForm() {
         uploadsState={uploadsState}
         selfieUploaded={selfieUploaded}
         rejectedFields={rejectedFields}
+        storedDocValues={storedDocValues}
         onChange={set}
         onUpload={handleUpload}
         onPendingChange={handlePendingChange}
