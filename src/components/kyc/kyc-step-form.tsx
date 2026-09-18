@@ -19,6 +19,7 @@ import { chosenDocumentValue, documentChoiceKey, missingRequiredParts } from './
 import type { components } from '@/lib/api/types.gen';
 import { Button } from '@/components/ui/button';
 
+import { savedAnswersFor } from '@/components/kyc/saved-answers';
 import { DynamicStepRenderer } from '@/components/kyc/dynamic-step-renderer';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
@@ -142,13 +143,14 @@ export function KycStepForm() {
     const cachedUploads = readUploadsDraft();
     const data = statusQuery.data;
 
-    const fromServer = data?.personalInfo
-      ? Object.fromEntries(
-          Object.entries(data.personalInfo)
-            .filter(([, v]) => v !== null && v !== undefined)
-            .map(([k, v]) => [k, String(v)]),
-        )
-      : {};
+    /*
+     * Seeded from `savedAnswersFor`, which also knows where a CUSTOM step's
+     * answers live — under its own slug in `stepData` rather than in
+     * `personalInfo`. Extracted rather than inlined so `stepConfigs` and
+     * `stepNumber` are arguments the dependency array can see, instead of
+     * closure reads it could not.
+     */
+    const fromServer = savedAnswersFor(data, stepConfigs, stepNumber);
     /*
      * The saved document types join `formData` BEFORE it is set, because that
      * is where the `select` fields read from now.
@@ -221,7 +223,7 @@ export function KycStepForm() {
      * unstable dependency in an effect that calls `setState` re-runs on every
      * render, which is how the KYC redirect loop happened on `/kyc`.
      */
-  }, [statusQuery.data, configQuery.data]);
+  }, [statusQuery.data, configQuery.data, stepConfigs, stepNumber]);
 
   /*
    * Upload handler.
