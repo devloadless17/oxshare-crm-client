@@ -5,6 +5,7 @@ import { AlertCircle, Camera, CheckCircle2, RefreshCw, VideoOff } from 'lucide-r
 import { Spinner } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { findQualityProblem, type QualityProblem } from '@/lib/image-quality';
 import { t } from '@/lib/i18n';
 
 export interface SelfieCameraProps {
@@ -39,6 +40,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
   const [uploadedSuccess, setUploadedSuccess] = React.useState(uploaded);
   const [cameraError, setCameraError] = React.useState(false);
   const [uploadError, setUploadError] = React.useState<string | null>(null);
+  const [qualityProblem, setQualityProblem] = React.useState<QualityProblem | null>(null);
 
   const stopCamera = React.useCallback(() => {
     if (streamRef.current) {
@@ -95,6 +97,24 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
     canvas.getContext('2d')?.drawImage(video, 0, 0);
+
+    /*
+     * ── A QUALITY HINT, CHECKED BEFORE THE UPLOAD AND NOT A GATE ────────────
+     *
+     * `findQualityProblem` says at length why it cannot be a security control:
+     * it runs in the client's browser, and `POST /kyc/upload` takes any JPEG
+     * from anyone, so it is bypassable by design. What it catches is the
+     * ordinary case — a dark room, a moved hand — which today costs the client
+     * a day and an emailed rejection, and the desk a queue entry.
+     *
+     * Shown WITH the captured frame rather than instead of it, and Retake is the
+     * same button it always was: the client sees what the check saw and decides.
+     * A quality measure the reviewer cannot see and the client cannot argue with
+     * must not be the thing that stops them finishing, so nothing blocks — the
+     * upload button stays live and a client who disagrees can send it.
+     */
+    setQualityProblem(findQualityProblem(canvas));
+
     const dataUrl = canvas.toDataURL('image/jpeg');
     setCaptured(dataUrl);
     stopCamera();
@@ -145,6 +165,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
 
   const handleRetake = () => {
     setCaptured(null);
+    setQualityProblem(null);
     setUploadedSuccess(false);
     setUploadError(null);
     void startCamera();
@@ -241,6 +262,24 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
           </div>
 
           <div className="flex flex-col items-center gap-3">
+            {/*
+              A HINT, ABOVE the buttons, and never in place of them.
+
+              Deliberately not `role="alert"` and not `text-destructive`: nothing
+              failed and nothing is refused. The client can still upload this
+              exact frame — the button below is untouched — and the sentence is
+              there so somebody who was going to be rejected tomorrow can decide
+              to retake today.
+
+              Suppressed while an upload error is showing, because that one is a
+              real failure with an action attached and two red-ish messages
+              competing is how the actionable one gets skimmed past.
+            */}
+            {qualityProblem && !uploadError && !uploading && (
+              <p className="px-4 text-center text-[11px] leading-snug text-muted-foreground">
+                {t(qualityProblem === 'too_dark' ? 'kyc.selfieTooDark' : 'kyc.selfieTooBlurry')}
+              </p>
+            )}
             {uploadError ? (
               <div
                 role="alert"

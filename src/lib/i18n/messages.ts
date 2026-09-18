@@ -1123,6 +1123,16 @@ export const messages = {
   'kyc.uploadingSelfie': 'Uploading…',
   'kyc.selfieCaptured': 'Selfie Captured',
   'kyc.retakePhoto': 'Retake Photo',
+  /*
+   * Quality hints, not refusals — `lib/image-quality.ts` says why they cannot be
+   * anything stronger. Worded as a suggestion with a reason, because the client
+   * can still upload the frame and the only thing that makes them retake is
+   * understanding why it would be worth it.
+   */
+  'kyc.selfieTooDark':
+    'This looks quite dark. A brighter spot will help us verify it faster — or upload it as it is.',
+  'kyc.selfieTooBlurry':
+    'This looks a little blurry. Holding still for a moment will help us verify it faster — or upload it as it is.',
   'kyc.encodeFailed': 'Could not encode the captured image.',
   'kyc.uploadingFile': 'Uploading File…',
   'kyc.uploadWait': 'Please wait a moment',
