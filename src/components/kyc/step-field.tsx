@@ -29,6 +29,28 @@ import { MAX_DATE_OF_BIRTH, textInputHints, type KycFieldConfig } from './field-
  * like. Every branch is on the field's configured `type` or `name`, both of
  * which come from the admin KYC builder (D-29).
  */
+/**
+ * Compile-time proof that every field type above has been handled.
+ *
+ * Accepts only `never`, which is what `field.type` narrows to once every member
+ * of the union has been ruled out by the branches above. A new member makes the
+ * argument a real type and the call a compile error, naming the file that has
+ * to change.
+ *
+ * Two things are allowed through: `text`, which is legitimately the fallback,
+ * and `doc:*`, which never reaches this component — `dynamic-step-renderer`
+ * splits document fields out by `field.document` before rendering — but which
+ * TypeScript cannot know is gone, because nothing in the type says so.
+ *
+ * NOT `string & {}`. That was the first attempt and it accepted every string,
+ * so it compiled, read as a guard, and guaranteed nothing — a fake exactly like
+ * the ones this codebase keeps finding. The signature has to be narrow enough
+ * to break.
+ */
+function assertExhaustive(_type: 'text' | `doc:${string}`): void {
+  // Intentionally empty: the guarantee is in the signature, not the body.
+}
+
 export function StepField({
   field,
   slug,
@@ -238,6 +260,31 @@ export function StepField({
       </div>
     );
   }
+
+  /*
+   * ── EVERY OTHER TYPE FALLS HERE, AND THAT HAS TO BE A DECISION ────────────
+   *
+   * The branches above cover `camera`, `file`, `phone`, `date`, `select` and
+   * `checkbox`; `doc:*` fields never reach this component at all
+   * (`dynamic-step-renderer` splits them out by `field.document`). So the only
+   * type that SHOULD land here is `text`.
+   *
+   * The risk is not today's list, it is the next addition to it. The admin
+   * builder is protected — `FIELD_TYPES` is `satisfies`-checked against the
+   * generated union — but nothing protected this file, so a type added to the
+   * API would render as a plain text box: no error, no warning, and a client
+   * typing words where the form meant to ask for something else.
+   *
+   * `assertExhaustive` makes that a COMPILE error instead. It is typed to accept
+   * only `never`, so the day a member is added to the union and not handled
+   * above, `rest` stops being `never` and this line stops compiling.
+   *
+   * It does not throw at runtime, deliberately. A configuration that somehow
+   * reaches production with an unknown type should still render SOMETHING a
+   * client can use rather than a blank step — the compile error is for us, the
+   * text box is for them.
+   */
+  assertExhaustive(field.type);
 
   // Text Input Component
   return (
