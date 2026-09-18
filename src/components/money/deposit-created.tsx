@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Check, Copy, ExternalLink, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { MoneySheet, SummaryRow } from '@/components/money/money-shell';
+import { SummaryRow } from '@/components/money/money-shell';
 import type { DepositRequest, PaymentMethod } from '@/lib/api/deposits';
 import { formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
@@ -20,6 +20,19 @@ import { t } from '@/lib/i18n';
  * Split out of `app/deposit/page.tsx` because that file crossed the 340-line
  * lint ceiling. The seam is the natural one: everything here is post-submission
  * and read-only, while what stays behind is the form and its state.
+ *
+ * ## NO `MoneySheet` of its own — the page already renders one
+ *
+ * Both branches used to open with their own sheet, and the page wraps this
+ * component in one too, so the outcome rendered a bordered card inside a
+ * bordered card: two radii, two shadows, and the inner one sitting inset from
+ * the width the outer had already claimed. That inset is what made the request
+ * details look narrower than the card holding them.
+ *
+ * The sheet belongs to the PAGE, which is what owns the viewport-bounded flex
+ * chain (`flex min-h-0 flex-1`) that lets the body scroll. Returning a fragment
+ * here keeps this content a section of that one card, full width, and leaves
+ * exactly one component deciding what a money card looks like.
  */
 export function DepositCreated({
   deposit,
@@ -32,7 +45,7 @@ export function DepositCreated({
 }) {
   if (deposit.paymentUrl) {
     return (
-      <MoneySheet>
+      <>
         <div className="space-y-4 p-5 text-center sm:p-6">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
             <ExternalLink className="h-6 w-6" aria-hidden="true" />
@@ -68,12 +81,12 @@ export function DepositCreated({
           </Button>
           <p className="text-[11px] text-muted-foreground">{t('deposit.gatewayReturnNote')}</p>
         </div>
-      </MoneySheet>
+      </>
     );
   }
 
   return (
-    <MoneySheet>
+    <>
       <div className="space-y-5 p-5 sm:p-6">
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning/10 text-warning">
@@ -126,8 +139,12 @@ export function DepositCreated({
         {/* Only where a transfer is still to be made. An offline client has
             already sent theirs, so asking them to quote a reference on it is an
             instruction they can no longer follow. */}
+        {/* `text-warning`, not `text-warning-foreground`: the latter is the ink
+            for text on the SOLID warning fill (white in light, near-black in
+            dark), and on this 10% tint it inverted into white-on-white and then
+            black-on-black. Same fix as the admin reject dialog. */}
         {!method.requiresProof && (
-          <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-[11px] leading-relaxed text-warning-foreground">
+          <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-[11px] leading-relaxed text-warning">
             {t('deposit.referenceWarning')}
           </p>
         )}
@@ -141,7 +158,7 @@ export function DepositCreated({
           </Button>
         </div>
       </div>
-    </MoneySheet>
+    </>
   );
 }
 
