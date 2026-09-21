@@ -138,7 +138,7 @@ export function StepField({
   if (field.type === 'phone') {
     return (
       <div key={field.id} className="space-y-1.5">
-        <Label className="flex items-center justify-between">
+        <Label htmlFor={field.id} className="flex items-center justify-between">
           <span>
             {field.label} {field.required && <span className="text-destructive">*</span>}
           </span>
@@ -153,7 +153,12 @@ export function StepField({
             isErrored ? 'rounded-lg ring-2 ring-destructive/80 bg-destructive/5 p-0.5' : ''
           }
         >
-          <PhoneInput value={val} onChange={(phoneVal) => onChange(field.name, phoneVal)} />
+          {/* `aria-label`, because PhoneInput renders its own input and takes no id. */}
+          <PhoneInput
+            aria-label={field.label}
+            value={val}
+            onChange={(phoneVal) => onChange(field.name, phoneVal)}
+          />
         </div>
       </div>
     );
@@ -163,7 +168,7 @@ export function StepField({
   if (field.type === 'date') {
     return (
       <div key={field.id} className="space-y-1.5">
-        <Label className="flex items-center justify-between">
+        <Label htmlFor={field.id} className="flex items-center justify-between">
           <span>
             {field.label} {field.required && <span className="text-destructive">*</span>}
           </span>
@@ -179,6 +184,7 @@ export function StepField({
           }
         >
           <DatePicker
+            id={field.id}
             value={val}
             onChange={(dateVal) => onChange(field.name, dateVal)}
             maxDate={field.name === 'dateOfBirth' ? MAX_DATE_OF_BIRTH : undefined}
@@ -216,7 +222,7 @@ export function StepField({
 
     return (
       <div key={field.id} className="space-y-1.5">
-        <Label className="flex items-center justify-between">
+        <Label htmlFor={field.id} className="flex items-center justify-between">
           <span>
             {field.label} {field.required && <span className="text-destructive">*</span>}
           </span>
@@ -242,7 +248,7 @@ export function StepField({
            * the native control's page-grey chrome.
            */}
           <Select value={val} onValueChange={(selected) => onChange(field.name, selected)}>
-            <SelectTrigger>
+            <SelectTrigger id={field.id}>
               <SelectValue
                 placeholder={t('kyc.selectField', { label: field.label.toLowerCase() })}
               />
@@ -309,7 +315,20 @@ export function StepField({
   // Text Input Component
   return (
     <div key={field.id} className="space-y-1.5">
-      <Label className="flex items-center justify-between">
+      {/*
+        ASSOCIATED with its control — `htmlFor` + `id`.
+
+        These labels floated free: a `<Label>` next to an `<Input>` with nothing
+        tying them together. A sighted user infers the pairing from position; a
+        screen reader announces an unnamed edit box, and clicking the label does
+        not focus the field. The checkbox branch below was the only one that got
+        this right.
+
+        Found while writing a resume test, when `getByLabel('First name')` could
+        not find the field — a query failing the way an assistive technology
+        would.
+      */}
+      <Label htmlFor={field.id} className="flex items-center justify-between">
         <span>
           {field.label} {field.required && <span className="text-destructive">*</span>}
         </span>
@@ -320,6 +339,7 @@ export function StepField({
         )}
       </Label>
       <Input
+        id={field.id}
         placeholder={field.hint || t('kyc.enterField', { label: field.label })}
         value={val}
         onChange={(e) => onChange(field.name, e.target.value)}

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { normaliseReferralCode } from '@/lib/referral-code';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, User, Eye, EyeOff, AlertCircle, CheckCircle2, Handshake } from 'lucide-react';
@@ -50,10 +51,17 @@ function RegisterForm() {
    * inside the `<Suspense>` this page already has for
    * `RedirectIfAuthenticated`.
    *
-   * Uppercased on the way in only for DISPLAY: the API trims and uppercases it
-   * too, so the two agree about what the client is being shown.
+   * NORMALISED on the way in, by the same rule the API uses — this value is
+   * both DISPLAYED to the client and SENT, so the two must agree about what
+   * the code is.
+   *
+   * It said "the API trims and uppercases it too, so the two agree", and that
+   * was true of the trimming and false of everything else. A client who typed
+   * a backslash on the end of the address was shown `ABCD2345\` as their
+   * referral code, it was sent as that, the API resolved nothing, and the
+   * registration completed with no partner attached and nobody told.
    */
-  const referralCode = useSearchParams().get('ref')?.trim().toUpperCase() || undefined;
+  const referralCode = normaliseReferralCode(useSearchParams().get('ref'));
   /*
    * ONE expression for every route out of this page, because the bug was a
    * route that did not use it. Built once and handed to both the mark and the
@@ -68,6 +76,21 @@ function RegisterForm() {
   const [password, setPassword] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
+  /*
+   * REGISTERED ALREADY — and the button must stay dead until the redirect.
+   *
+   * `isLoading` covers only the in-flight request. On success the handler
+   * cleared it and then waited SIX SECONDS to show the confirmation before
+   * navigating, so for those six seconds the form was live again with the same
+   * details in it. Every further click was another `POST /auth/register` and
+   * another verification email to the same address — reported from production
+   * as exactly that.
+   *
+   * Separate from `isLoading` because they mean different things: one is "this
+   * is in flight", the other is "this has already happened". The second never
+   * goes back to false — there is nothing on this page left to do.
+   */
+  const [registered, setRegistered] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
 
@@ -90,6 +113,13 @@ function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    /*
+     * Guarded HERE too, not only by the disabled button. A disabled button
+     * cannot be clicked, but Enter in a text field still submits the form in
+     * some browsers, and this is the check that makes the rule true rather than
+     * merely displayed.
+     */
+    if (isLoading || registered) return;
     setError(null);
     setSuccessMessage(null);
 
@@ -112,6 +142,7 @@ function RegisterForm() {
       });
 
       setSuccessMessage(res.message || t('auth.register.success'));
+      setRegistered(true);
 
       /*
        * Tracked so it can be cancelled — see the cleanup effect below.
@@ -285,7 +316,13 @@ function RegisterForm() {
               </div>
             </div>
 
-            <Button type="submit" loading={isLoading} size="lg" className="w-full">
+            <Button
+              type="submit"
+              loading={isLoading}
+              disabled={registered}
+              size="lg"
+              className="w-full"
+            >
               {isLoading ? t('auth.register.submitting') : t('auth.register.submitCta')}
             </Button>
           </form>
