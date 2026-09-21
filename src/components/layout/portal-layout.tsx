@@ -181,9 +181,6 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
                 >
                   {t('app.name')}
                 </span>
-                <span className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
-                  {t('app.portalName')}
-                </span>
               </div>
             )}
           </Link>
