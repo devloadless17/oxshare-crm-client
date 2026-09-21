@@ -50,6 +50,10 @@ const wallet = (currency: string): WalletRecord =>
     // means a missing field here is a runtime crash, not a compile error.
     walletNumber: `4f7kq2nm${currency.toLowerCase()}0`,
     userId: 'u-1',
+    // Built the way the DATABASE builds it, for the reason the note above
+    // gives: the `as` cast means an omitted field is a runtime crash rather
+    // than a compile error, so a fixture that skips it fails somewhere else.
+    name: `${currency} Wallet`,
     currency,
     balance: '250.00000000',
     onHold: '0.00000000',
