@@ -6,9 +6,9 @@ import { UserMenu } from './user-menu';
 
 /*
  * The rules worth pinning here, in rising order of cost-to-break:
- *  1. The header trigger carries the client's NAME (the top-right pill the
- *     product owner asked for) — a regression to avatar-only would pass every
- *     other test.
+ *  1. The header trigger is the AVATAR ALONE, and still announces itself. It
+ *     was a pill carrying the name; the name moved into the menu, so what is
+ *     at risk now is the accessible name the visible text used to supply.
  *  2. A FAILED sign-out keeps the menu open with the error visible inside it,
  *     and never pretends the session ended. The old inline-under-the-trigger
  *     alert died with the sidebar placement; this is its replacement, so only
@@ -33,10 +33,26 @@ vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 beforeEach(() => logout.mockReset());
 
 describe('the header account menu', () => {
-  it('shows the client name in the trigger pill', () => {
+  /*
+   * THE TRIGGER IS THE AVATAR, and nothing else.
+   *
+   * It used to be a pill carrying the name and a chevron from `md` up. The
+   * name moved out of the header entirely — it is the first thing inside the
+   * menu, which the next case asserts, so the identity is one click away
+   * rather than permanently occupying header width.
+   *
+   * What has to survive the change is the ACCESSIBLE NAME: the visible text
+   * was providing it incidentally, so a trigger stripped to an image would
+   * announce as an unlabelled button without the `aria-label`.
+   */
+  it('is the avatar alone, and still announces itself', () => {
     render(<UserMenu collapsed variant="header" />);
     const trigger = screen.getByRole('button', { name: /account menu/i });
-    expect(trigger).toHaveTextContent('John Doe');
+
+    expect(trigger).not.toHaveTextContent('John Doe');
+    // The fallback initials live inside the avatar, so the trigger is not empty
+    // of text — what it must not carry is the NAME beside it.
+    expect(trigger).toBeInTheDocument();
   });
 
   it('opens downward with Profile, Theme and Log out', async () => {
