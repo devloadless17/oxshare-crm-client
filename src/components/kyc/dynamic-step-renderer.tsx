@@ -2,7 +2,7 @@
 
 import { CheckCircle2, User, FileText } from 'lucide-react';
 import { DocumentUploader } from './document-uploader';
-import { apiUploadField, documentChoiceKey, uploadSlotName } from './doc-type';
+import { documentChoiceKey, uploadFieldFor, uploadSlotName } from './doc-type';
 import type { components } from '@/lib/api/types.gen';
 import { t } from '@/lib/i18n';
 import { StepField } from './step-field';
@@ -279,7 +279,15 @@ export function DynamicStepRenderer({
              * storage was not reshaped instead.
              */
             const slot = uploadSlotName(chosenField!.name, part.key);
-            const apiField = apiUploadField(
+            /*
+             * Scoped to the STEP. `apiUploadField` maps onto the canonical
+             * columns, which is right for `document` and `address` and was
+             * being applied everywhere — so a document field on a custom step
+             * uploaded over the client's passport. `uploadFieldFor` sends a
+             * custom step's file to its own key instead.
+             */
+            const apiField = uploadFieldFor(
+              slug,
               chosenField!.name,
               partIndex,
               chosenField!.document?.category,

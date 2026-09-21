@@ -71,8 +71,14 @@ export function missingRequiredParts(
      * populated under — both by a fresh upload and by the saved paths reloaded
      * from `/kyc/status`.
      */
+    /*
+     * Step-aware, matching what the renderer actually uploaded into. Using the
+     * canonical mapping on a CUSTOM step asked whether `doc_front` was filled —
+     * a different step's file — so a custom document step let the client past
+     * without uploading anything, or blocked them because an unrelated step had.
+     */
     const slot =
-      apiUploadField(field!.name, index, field!.document?.category) ??
+      uploadFieldFor(step.slug, field!.name, index, field!.document?.category) ??
       uploadSlotName(field!.name, part.key);
     if (!uploaded[slot]) return { slot, label: part.label };
   }
@@ -249,4 +255,37 @@ export function savedDocumentChoices(
     }
   }
   return choices;
+}
+
+/** The four steps whose answers have columns of their own in `kyc_submissions`. */
+const CANONICAL_SLUGS = new Set(['personal', 'document', 'selfie', 'address']);
+
+/**
+ * Where a document field's file is STORED, for the step it sits on.
+ *
+ * ## The bug this closes
+ *
+ * `apiUploadField` translates a config slot onto the canonical columns —
+ * `doc_front`, `doc_back`, `address_proof`, `address_proof_2` — which is right
+ * for the `document` and `address` steps, whose files those columns exist to
+ * hold. It was applied on EVERY step, so a document field on a step the broker
+ * added uploaded straight over the client's passport or proof of address.
+ * Reported from production as a custom step overriding files from earlier steps,
+ * and it is worse than a display bug: the reviewer then checks a document the
+ * client never submitted as their ID, and the original is gone.
+ *
+ * A custom step stores under the FIELD'S OWN key instead, which the API routes
+ * into that step's `step_data` — the same place its typed answers go.
+ *
+ * Returning `null` keeps its old meaning: a canonical step has nowhere to put a
+ * third part, and the caller refuses the slot rather than overwriting the second.
+ */
+export function uploadFieldFor(
+  stepSlug: string,
+  fieldName: string,
+  partIndex: number,
+  category?: string,
+): string | null {
+  if (!CANONICAL_SLUGS.has(stepSlug)) return fieldName;
+  return apiUploadField(fieldName, partIndex, category);
 }
