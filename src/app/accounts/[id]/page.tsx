@@ -11,6 +11,7 @@ import { useUser } from '@/context/UserContext';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { t, type MessageKey } from '@/lib/i18n';
 import { AccountLivePanel } from '@/components/accounts/account-live-panel';
+import { AccountOpenPositions } from '@/components/accounts/account-open-positions';
 import { AccountPositions } from '@/components/accounts/account-positions';
 import { AccountTransactions } from '@/components/accounts/account-transactions';
 import { AccountActions } from '@/components/accounts/account-actions';
@@ -181,19 +182,15 @@ function AccountDetail({ account }: { account: TradingAccount }) {
    * instead: ten people on one account is one read, not ten.
    */
   /*
-   * `positionsLive` is NOT destructured any more, and the hook still reports it.
+   * `positionsLive` is read again, because the open-positions table is back.
    *
-   * It existed for the open-positions table, whose pushed payload the server
-   * drops when an event will not fit its notification channel — so that table
-   * needed to know whether it was really receiving readings before slowing its
-   * own fallback poll. The table now shows CLOSED trades from our own database,
-   * which is neither pushed nor polled, so there is nothing here to tell.
-   *
-   * The hook keeps returning it rather than being narrowed: it is one socket
-   * feeding the snapshot below, and `positionsLive` is a fact about that feed
-   * that the next screen to render live positions will want.
+   * It is a fact about the FEED rather than about the account: the server drops
+   * the positions array from a pushed event that will not fit its notification
+   * channel, so a client with many open trades gets live account figures and no
+   * pushed table. That table has to know, or it would slow its own fallback
+   * poll to sixty seconds on the strength of readings it is not receiving.
    */
-  const { live } = useLiveAccount(account.id);
+  const { live, positionsLive } = useLiveAccount(account.id);
 
   /*
    * ── THE POLL STAYS, AND SLOWS DOWN ────────────────────────────────────────
@@ -346,19 +343,36 @@ function AccountDetail({ account }: { account: TradingAccount }) {
       <AccountLivePanel snapshot={snapshot} />
 
       {/*
-        CLOSED positions above the money history.
+        OPEN positions first, then CLOSED trades, then the money history.
 
-        The panel used to show OPEN positions and sat here for a reason that no
-        longer applies — that what a client opens this screen for is what the
-        account is doing NOW. It shows realised trades instead, so both this and
-        the transfers below are records of what already happened.
+        The order follows how recent the answer is, and the open table leads for
+        the reason this page has always given: what a client opens this screen
+        for is what their account is doing NOW. Closed trades come next because
+        they are specific to this account's trading, and deposits and
+        withdrawals last because they are the same information every account
+        shows.
 
-        It stays above them because a closed trade is the more specific answer:
-        somebody scrolling to this page wants to know how their trading went,
-        and the deposits panel is the same information every account shows.
+        Restoring the open table is the point of this arrangement — it had been
+        REPLACED by the closed one, which left a client holding three positions
+        with no way to see them.
+      */}
+      <AccountOpenPositions
+        accountId={account.id}
+        currency={account.currency}
+        /*
+         * `positionsLive`, NOT `live`. The server drops the positions array when
+         * an event will not fit its notification channel, so a client with many
+         * open trades gets live account figures and no pushed table — and
+         * passing `live` here would slow that table's own fallback poll to sixty
+         * seconds on the strength of a feed it is not receiving.
+         */
+        live={positionsLive}
+      />
 
-        No `live` prop. A closed trade is settled, so there is nothing to push
-        and nothing to poll — see the component note.
+      {/*
+        No `live` prop on this one. A closed trade is settled, so there is
+        nothing to push and nothing to poll — and it pages against the server
+        rather than holding a window in memory. See the component note.
       */}
       <AccountPositions accountId={account.id} currency={account.currency} />
 

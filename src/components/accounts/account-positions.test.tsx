@@ -50,15 +50,27 @@ function deal(over: Partial<AccountDeal> = {}): AccountDeal {
   };
 }
 
+/**
+ * A paged history response.
+ *
+ * `deals` is ONE PAGE of closed trades — the server filters and slices, so a
+ * fixture no longer hands over a window for the component to sift. `total`
+ * defaults to the page length, which is the single-page case; a test paging
+ * through passes a larger one explicitly.
+ */
 function history(
   deals: AccountDeal[],
   stats: Partial<AccountHistory['stats']> = {},
+  paging: { total?: number; page?: number; limit?: number } = {},
 ): AccountHistory {
   const closing = deals.filter((d) => d.closing);
   return {
     from: '2026-08-15T00:00:00.000Z',
     to: '2026-09-14T23:59:59.999Z',
     deals,
+    total: paging.total ?? deals.length,
+    page: paging.page ?? 1,
+    limit: paging.limit ?? 10,
     stats: {
       trades: closing.length,
       wins: closing.filter((d) => Number(d.profit) > 0).length,
@@ -94,41 +106,69 @@ describe('the closed-positions table', () => {
     renderWithProviders(<AccountPositions accountId="ta-1" currency="USD" />);
 
     expect(await screen.findByText('EURUSD')).toBeInTheDocument();
-    expect(getAccountHistory).toHaveBeenCalledWith('ta-1', {}, expect.anything());
+    /* The page is part of the request now — the server slices, not the browser. */
+    expect(getAccountHistory).toHaveBeenCalledWith(
+      'ta-1',
+      { page: 1, limit: 10 },
+      expect.anything(),
+    );
   });
 
   /*
-   * OPENING legs and BALANCE deals must not appear. Both arrive in the same
-   * response, and both would be wrong in this table: an opening leg has not
-   * realised anything, and a deposit is not a trade.
+   * ── THE FILTER MOVED TO THE SERVER, AND THAT IS THE ASSERTION ────────────
+   *
+   * Opening legs and balance deals must not appear in this table: an opening
+   * leg has realised nothing and a deposit is not a trade. This component used
+   * to drop them itself, which is only correct while it holds the whole window.
+   *
+   * Once the list is PAGED, a browser-side filter is a bug: a page of ten rows
+   * holding three closed trades renders three, under a pager that counted ten,
+   * and the last page can come back empty. So the endpoint filters before it
+   * slices, and what this pins is that the component renders its page AS GIVEN
+   * rather than sifting it again.
    */
-  it('excludes opening legs and balance deals', async () => {
+  it('renders the page the server returned, without filtering it again', async () => {
     getAccountHistory.mockResolvedValue(
       history([
         deal({ ticket: '900001', symbol: 'EURUSD', closing: true }),
-        deal({
-          ticket: '900002',
-          symbol: 'GBPUSD',
-          closing: false,
-          entry: 0,
-          profit: '0.00000000',
-        }),
-        deal({
-          ticket: '900003',
-          symbol: 'BALANCE',
-          closing: false,
-          action: 2,
-          actionLabel: 'balance',
-          profit: '500.00000000',
-        }),
+        deal({ ticket: '900002', symbol: 'GBPUSD', closing: true, profit: '-40.00000000' }),
       ]),
     );
 
     renderWithProviders(<AccountPositions accountId="ta-1" currency="USD" />);
 
     expect(await screen.findByText('EURUSD')).toBeInTheDocument();
-    expect(screen.queryByText('GBPUSD')).toBeNull();
-    expect(screen.queryByText('BALANCE')).toBeNull();
+    expect(screen.getByText('GBPUSD')).toBeInTheDocument();
+  });
+
+  /*
+   * The TOTALS describe the WINDOW, never the page on screen.
+   *
+   * This is what makes paging safe on a money panel: a client paging through
+   * their month must not watch net profit and best trade change under them,
+   * which is exactly what summing the visible rows would do.
+   */
+  it('shows totals for the whole window while the table shows one page', async () => {
+    getAccountHistory.mockResolvedValue(
+      history(
+        [deal({ ticket: '900001', symbol: 'EURUSD', profit: '7.00000000' })],
+        {
+          trades: 40,
+          wins: 25,
+          losses: 15,
+          netProfit: '820.00000000',
+          bestTrade: '300.00000000',
+        },
+        { total: 40 },
+      ),
+    );
+
+    renderWithProviders(<AccountPositions accountId="ta-1" currency="USD" />);
+
+    // One row on screen…
+    expect(await screen.findByText('EURUSD')).toBeInTheDocument();
+    // …and the totals speak for all forty trades, not for that row.
+    expect(screen.getByText('40')).toBeInTheDocument();
   });
 
   /*

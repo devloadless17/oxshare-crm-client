@@ -931,16 +931,32 @@ export const messages = {
   // trading number with no indication of its age gets treated as current
   // however old it is.
   /*
-   * ⚠️ CLOSED trades, not open ones. The open-positions table was removed from
-   * this page and its copy went with it — `positionsLive`, `positionsReadAt`
-   * and the live-reading language, which only made sense for a figure that
-   * moves on every tick.
+   * TWO tables on this page, and the copy has to keep them apart.
    *
-   * A closed trade is SETTLED: its result does not change after the fact, so
-   * there is no read time to caveat and no polling to explain. What has to be
-   * said instead is the WINDOW, because the totals are computed over it rather
-   * than over the account's lifetime.
+   * `openPositions*` is the LIVE panel: every figure moves on every tick, so it
+   * states WHEN it was read — a trading number with no indication of its age
+   * gets treated as current however old it is.
+   *
+   * `positions*` is the CLOSED one. A closed trade is SETTLED: its result does
+   * not change after the fact, so there is no read time to caveat and no
+   * polling to explain. What has to be said instead is the WINDOW, because the
+   * totals are computed over it rather than over the account's lifetime.
+   *
+   * The open keys were deleted when that table was removed from this page and
+   * are restored with it.
    */
+  'accounts.openPositionsTitle': 'Open positions',
+  'accounts.positionsLive': 'Live from the trading server.',
+  'accounts.positionsReadAt': 'Read at {time}.',
+  /* Names the ACCOUNT, not a window — unlike the closed-trades empty state
+     below. "Nothing open right now" is a complete answer about the present. */
+  'accounts.openPositionsEmpty': 'No open positions on this account right now.',
+  'accounts.colOpenPrice': 'Open price',
+  'accounts.colCurrentPrice': 'Current price',
+  'accounts.colStopLoss': 'Stop loss',
+  'accounts.colTakeProfit': 'Take profit',
+  'accounts.colFloating': 'Floating P/L',
+  'accounts.colOpened': 'Opened',
   'accounts.positionsTitle': 'Closed positions',
   'accounts.positionsWindow': 'Realised trades, last 30 days.',
   'accounts.positionsLoading': 'Loading your closed positions',

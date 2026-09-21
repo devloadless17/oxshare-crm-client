@@ -11,55 +11,62 @@ import { formatDealTime, moneySign } from '@/lib/account-stats';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
+/** Closed trades per page. The SERVER's page size — see the table's own note. */
+const PAGE_SIZE = 10;
+
 /**
  * The account's CLOSED trades, and the totals over the same window.
  *
- * ## ⚠️ This panel used to show OPEN positions, and the swap is the point
+ * ## It sits BELOW the open-positions table, and neither replaces the other
  *
- * The open-positions table was removed on the owner's call. What replaced it is
- * the thing a client could not see anywhere in the portal: a closed trade.
- *
- * That gap was invisible in the worst way. The "Activity" card that once
- * carried closed-trade figures was deleted, and the API reader went with it —
- * so the endpoint kept answering and nothing ever asked. A client with no open
- * trades saw an empty panel that looked identical to a client whose history had
- * been lost, and neither of them could reach a realised result.
+ * This panel once replaced that one outright, which left a client with no way
+ * to see what their account was doing NOW — the thing the screen is opened for.
+ * Both are here: `AccountOpenPositions` answers "what am I holding", this
+ * answers "how did I do". A client with nothing open still has a history, and a
+ * client mid-trade still wants to see it.
  *
  * ## Everything here is SETTLED, which changes the whole shape of the panel
  *
- * The open-positions table had to poll, state its read time, and caveat every
+ * The open-positions table polls, states its read time, and caveats every
  * figure as a reading rather than a fact, because a floating P/L moves on every
  * tick. None of that applies to a closed trade: the result is final, so there is
  * no interval, no read timestamp, and no live badge.
  *
  * It is also a DATABASE read — `mt5_deals`, populated by the bridge as it
  * ingests — so it survives MT5 being unreachable and costs none of the bridge's
- * single session lock. That is why it needs no refresh control either.
+ * single session lock. That is why it needs no refresh control either, and why
+ * it can be paged by the server where the live table pages in the browser.
  *
  * ## The WINDOW is part of the answer, so the panel says so
  *
- * `stats` is computed over the deals in the period, not over the account's
- * lifetime, and an empty table usually means "nothing in these 30 days" rather
- * than "nothing ever". Both the subtitle and the empty state name the period for
- * that reason — a client who traded three months ago and nothing since must not
- * read this as their history being gone.
+ * `stats` is computed over every closed trade in the period — NOT over the page
+ * on screen, and not over the account's lifetime. That separation is what makes
+ * paging safe: the totals hold still while a client pages through, where totals
+ * summed from the visible rows would change on every page turn.
+ *
+ * An empty table usually means "nothing in these 30 days" rather than "nothing
+ * ever", so both the subtitle and the empty state name the period — a client who
+ * traded three months ago and nothing since must not read this as their history
+ * being gone.
  *
  * ## `closing` decides what counts, and the server decides `closing`
  *
  * `mt5_deals` holds every deal the bridge ingests, which includes the OPENING
  * leg of each trade and balance operations (deposits, credits, corrections).
- * Only deals the server marked `closing` realised a result. Filtering on MT5's
- * raw `entry` code here instead would mean reimplementing that mapping in the
- * browser, against a vocabulary that can grow.
+ * Only deals the server marked `closing` realised a result — and it now FILTERS
+ * on that rather than labelling it, because a browser-side filter applied after
+ * a slice returns short pages under a pager that counted the unfiltered rows.
  */
 export function AccountPositions({ accountId, currency }: { accountId: string; currency: string }) {
+  const [page, setPage] = React.useState(1);
+
   /*
    * NO `refetchInterval`, deliberately — the contrast with the open-positions
-   * table this replaced is the reasoning.
+   * table above is the reasoning.
    *
-   * That one polled every ten seconds because its numbers moved on every tick.
-   * A closed trade's result is final, so polling would re-read our own table
-   * for an answer that cannot have changed. A new closed trade arrives when the
+   * That one polls every ten seconds because its numbers move on every tick. A
+   * closed trade's result is final, so polling would re-read our own table for
+   * an answer that cannot have changed. A new closed trade arrives when the
    * client reloads or navigates back, which is when React Query refetches
    * anyway.
    *
@@ -67,31 +74,25 @@ export function AccountPositions({ accountId, currency }: { accountId: string; c
    * bridge, so a failure is an ordinary database or network error and retrying
    * is worth it rather than piling onto a contended MT5 lock.
    */
-  const history = useResource(keys.tradingAccounts.history(accountId), (signal) =>
-    tradingApi.getAccountHistory(accountId, {}, signal),
+  const params = { page, limit: PAGE_SIZE };
+  const history = useResource(keys.tradingAccounts.history(accountId, params), (signal) =>
+    tradingApi.getAccountHistory(accountId, params, signal),
   );
 
   /*
-   * CLOSED trades only. The response carries opening legs and balance
-   * operations too — see the class note on why `closing` is the server's call
-   * and not a raw `entry` check here.
+   * NOT filtered here any more, and that is the point of the server change.
+   *
+   * This used to receive the whole window — opening legs and balance operations
+   * included — and drop the non-closing rows in the browser. Filtering AFTER a
+   * slice is what makes a paged list wrong: a page of ten ingested deals
+   * holding three closed trades renders three rows under a pager that counted
+   * ten, and the last page can be empty. The server pages the closed trades
+   * themselves, so a page is a page.
    */
-  const deals = React.useMemo(
-    () => (history.data?.deals ?? []).filter((deal) => deal.closing),
-    [history.data],
-  );
-
+  const deals = history.data?.deals ?? [];
   const stats = history.data?.stats;
+  const total = history.data?.total ?? 0;
   const columns = React.useMemo(() => buildColumns(currency), [currency]);
-
-  /*
-   * The server caps the window at 500 deals. Saying so only when the cap is
-   * actually reached is the rule the transactions list follows: a truncation
-   * notice on a list that is not truncated is a warning about a problem nobody
-   * has. Compared against the RAW count, not the filtered one — the cap applies
-   * before `closing` is considered.
-   */
-  const capped = (history.data?.deals.length ?? 0) >= 500;
 
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5">
@@ -121,11 +122,22 @@ export function AccountPositions({ accountId, currency }: { accountId: string; c
           rowKey={(deal) => deal.ticket}
           dimmed={history.isFetching}
           empty={<EmptyState icon={History} message={t('accounts.positionsEmpty')} />}
+          /*
+           * SERVER pagination, unlike the open-positions table above.
+           *
+           * Closed trades accumulate without bound — a year of them is tens of
+           * thousands of rows — so the old shape fetched a 500-row cap and told
+           * the client it had been truncated. `total` is the count of closed
+           * trades in the window, so the pager knows how far it goes without
+           * anything having to fetch it all to find out.
+           */
+          pagination={{
+            page,
+            pageSize: PAGE_SIZE,
+            total,
+            onPageChange: setPage,
+          }}
         />
-
-        {capped && (
-          <p className="text-[11px] text-muted-foreground">{t('accounts.positionsCapped')}</p>
-        )}
       </AsyncBoundary>
     </section>
   );

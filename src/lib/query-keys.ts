@@ -86,9 +86,26 @@ export const keys = {
      * The WINDOW is part of the key because it is part of the answer: the stats
      * are computed over the deals in it, so two periods are two different
      * results and must not share a cache entry.
+     *
+     * So is the PAGE, for a blunter reason: two pages are two different arrays
+     * under one key, so leaving it out means page 2 is served page 1 from cache
+     * and the table never moves. The statistics are identical across pages by
+     * design, which makes the duplication in the cache cheap and the alternative
+     * — keying the list and the totals separately — a way for them to disagree.
      */
-    history: (id: string, window: { from?: string; to?: string } = {}) =>
-      ['trading-accounts', 'history', id, window.from ?? '', window.to ?? ''] as const,
+    history: (
+      id: string,
+      window: { from?: string; to?: string; page?: number; limit?: number } = {},
+    ) =>
+      [
+        'trading-accounts',
+        'history',
+        id,
+        window.from ?? '',
+        window.to ?? '',
+        window.page ?? 1,
+        window.limit ?? 0,
+      ] as const,
   },
 
   /**
