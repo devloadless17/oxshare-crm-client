@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { normaliseReferralCode } from '@/lib/referral-code';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, Eye, EyeOff, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
@@ -78,7 +79,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   /* Read ONCE and normalised, so the mark and the "Create account" line cannot
      disagree about what the code is — the register page does the same. */
-  const referralCode = searchParams.get('ref')?.trim().toUpperCase() || undefined;
+  const referralCode = normaliseReferralCode(searchParams.get('ref'));
   const { refetchUser } = useUser();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
