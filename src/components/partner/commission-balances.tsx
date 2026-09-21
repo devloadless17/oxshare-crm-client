@@ -133,8 +133,17 @@ function BalanceCell({ wallet, sole }: { wallet: Wallet; sole: boolean }) {
     >
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-            {t('partner.balanceAvailable')}
+          {/*
+            THE WALLET'S OWN NAME, as the server generates it.
+
+            It read "Available" — true of every balance on the screen, and of
+            the main wallet balance elsewhere in the portal, so it said nothing
+            about WHICH wallet this cell is. The name says it is the commission
+            wallet, which is the fact a partner is looking for when they came
+            here to move earnings out.
+          */}
+          <p className="truncate text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+            {wallet.name}
           </p>
           {/* The CODE, so two balances are never told apart by their symbol
               alone — several currencies share '$'. */}
