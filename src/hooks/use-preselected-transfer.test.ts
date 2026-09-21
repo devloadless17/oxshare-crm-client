@@ -50,6 +50,9 @@ function wallet(over: Partial<Wallet> = {}): Wallet {
     id: 'w-usd',
     walletNumber: '4f7kq2nm8xcb',
     userId: 'u-1',
+    // Server-generated from currency and kind; the fixture mirrors that rule
+    // rather than inventing a string the server would never produce.
+    name: 'USD Wallet',
     currency: 'USD',
     kind: 'main',
     balance: '700.00000000',
