@@ -10,6 +10,18 @@ import { t } from '@/lib/i18n';
 
 export interface SelfieCameraProps {
   onUpload: (field: string, file: File) => Promise<void>;
+  /**
+   * The upload field this camera writes to.
+   *
+   * ⚠️ It was HARD-CODED to `selfie`, and this component renders for ANY field
+   * of type `camera` — including one on a step the broker added. So a Live
+   * Camera field in a custom step uploaded over the client's actual selfie:
+   * the new photo replaced the identity selfie the reviewer was going to check,
+   * silently, and the custom field itself stayed empty.
+   *
+   * Defaulted rather than required so the canonical selfie step is unchanged.
+   */
+  field?: string;
   uploaded?: boolean;
 }
 
@@ -30,7 +42,7 @@ function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) {
+export function SelfieCamera({ onUpload, field = 'selfie', uploaded = false }: SelfieCameraProps) {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
@@ -154,7 +166,7 @@ export function SelfieCamera({ onUpload, uploaded = false }: SelfieCameraProps) 
        */
       const blob = await canvasToJpegBlob(canvas);
       const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
-      await onUpload('selfie', file);
+      await onUpload(field, file);
       setUploadedSuccess(true);
     } catch (err: unknown) {
       setUploadError(apiErrorMessage(err, t('kyc.selfieFailed')));
