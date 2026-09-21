@@ -48,7 +48,6 @@
 export const messages = {
   // ── Brand and chrome ──────────────────────────────────────────────────────
   'app.name': 'OXShare',
-  'app.portalName': 'Client Portal',
 
   // ── Navigation ────────────────────────────────────────────────────────────
   'nav.dashboard': 'Dashboard',
