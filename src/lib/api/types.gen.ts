@@ -5561,8 +5561,23 @@ export interface components {
              */
             to: string;
             stats: components["schemas"]["AccountStatsDto"];
-            /** @description Newest first. */
+            /** @description One PAGE of closed trades, newest first. */
             deals: components["schemas"]["AccountDealDto"][];
+            /**
+             * @description CLOSED trades in the whole window — the count `deals` is a page of, and the same set the statistics describe. Not the number of ingested deals: opening legs and balance operations are excluded here exactly as they are from `stats`.
+             * @example 128
+             */
+            total: number;
+            /**
+             * @description The 1-based page this response is.
+             * @example 1
+             */
+            page: number;
+            /**
+             * @description Rows per page this response was built with.
+             * @example 25
+             */
+            limit: number;
         };
         BalanceMovementDto: {
             /** @description MT5's own deal ticket, quotable to support. */
@@ -9890,6 +9905,10 @@ export interface operations {
                 from?: string;
                 /** @description Inclusive, YYYY-MM-DD. Defaults to today. */
                 to?: string;
+                /** @description 1-based page of CLOSED trades. Defaults to 1. */
+                page?: number;
+                /** @description Rows per page, 1–100. Defaults to 25. */
+                limit?: number;
             };
             header?: never;
             path: {
@@ -9916,6 +9935,10 @@ export interface operations {
                 from?: string;
                 /** @description Inclusive, YYYY-MM-DD. Defaults to today. */
                 to?: string;
+                /** @description 1-based page of CLOSED trades. Defaults to 1. */
+                page?: number;
+                /** @description Rows per page, 1–100. Defaults to 25. */
+                limit?: number;
             };
             header?: never;
             path?: never;

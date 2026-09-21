@@ -419,19 +419,34 @@ export const tradingApi = {
    * That is also why it can be paged over a window rather than read whole: a
    * closed trade never changes after the fact.
    *
-   * ## The window, and the cap
+   * ## The window, and the PAGE
    *
    * `from` and `to` are `YYYY-MM-DD` and INCLUSIVE at both ends. Omitted, the
-   * server answers the last 30 days. `deals` is capped server-side, so a very
-   * busy window returns the newest and a screen must not present the count as a
-   * total.
+   * server answers the last 30 days.
    *
-   * `stats` is computed over the deals IN THE WINDOW, not over the account's
-   * lifetime. A screen showing a win rate has to say which period it describes.
+   * `deals` is ONE PAGE of that window and `total` is how many closed trades it
+   * has — which replaces the old 500-row cap a screen had to detect by
+   * measuring the array. Ask for the page you are rendering; do not fetch every
+   * page to count them, because `total` is the count.
+   *
+   * Only CLOSED trades are listed. Opening legs and balance operations are
+   * filtered server-side now, so a screen no longer filters what it receives —
+   * doing so would hide rows from a page and leave the pager pointing at
+   * positions that render empty.
+   *
+   * ## `stats` describes the WINDOW, never the page
+   *
+   * That separation is the reason paging is safe here. The totals are
+   * aggregated across every closed trade in the period, so they hold still
+   * while a client pages through — summing the returned array instead would
+   * make net profit and best trade change on every page turn.
+   *
+   * It is still a PERIOD, not a lifetime: a screen showing a win rate has to
+   * say which window it describes.
    */
   async getAccountHistory(
     id: string,
-    params: { from?: string; to?: string } = {},
+    params: { from?: string; to?: string; page?: number; limit?: number } = {},
     signal?: AbortSignal,
   ): Promise<AccountHistory> {
     const { data } = await apiClient.get<AccountHistory>(`/trading/accounts/${id}/history`, {
