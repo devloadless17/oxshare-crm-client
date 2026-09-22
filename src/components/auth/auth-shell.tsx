@@ -74,12 +74,22 @@ export function AuthShell({
         <div className="w-full max-w-[26rem]">
           {/* The mark, on the form side, for the viewports where the brand
               panel is hidden. `lg:hidden` rather than duplicated markup. */}
-          <Link href={homeHref} className="mb-8 inline-flex items-center gap-2.5 lg:hidden">
+          <Link href={homeHref} className="mb-8 inline-flex items-center lg:hidden">
+            {/*
+              The WORDMARK, not the mark beside the name set in the UI font —
+              the letterforms in the brand artwork are drawn, not typeset.
+              Swapped in CSS so the right one is in the first paint; see the
+              note in `portal-layout.tsx`.
+            */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/oxshare-mark.svg" alt="" className="h-7 w-auto" />
-            <span className="text-lg font-semibold tracking-tight text-foreground">
-              {t('app.name')}
-            </span>
+            <img src="/oxshare-logo.svg" alt={t('app.name')} className="h-7 w-auto dark:hidden" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/oxshare-logo-dark.svg"
+              alt=""
+              aria-hidden="true"
+              className="hidden h-7 w-auto dark:block"
+            />
           </Link>
 
           <header className="mb-7">
@@ -123,12 +133,16 @@ function BrandPanel({ homeHref }: { homeHref: string }) {
         style={{ background: 'radial-gradient(circle, var(--primary) 0%, transparent 70%)' }}
       />
 
-      <Link href={homeHref} className="relative flex items-center gap-3">
+      <Link href={homeHref} className="relative flex items-center">
+        {/*
+          The DARK-GROUND wordmark, with no theme swap — unlike everywhere else.
+          This panel is `--auth-panel`, which is near-black in BOTH themes
+          (#16161a light, #08080a dark) with light text on it, so the white
+          wordmark is correct on both and a `dark:` variant here would put the
+          near-black one on a near-black panel in one of them.
+        */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/oxshare-mark.svg" alt="" className="h-8 w-auto" />
-        <span className="text-xl font-semibold tracking-tight text-auth-panel-foreground">
-          {t('app.name')}
-        </span>
+        <img src="/oxshare-logo-dark.svg" alt={t('app.name')} className="h-8 w-auto" />
       </Link>
 
       <div className="relative">

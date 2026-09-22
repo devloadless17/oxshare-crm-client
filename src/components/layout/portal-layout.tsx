@@ -171,17 +171,51 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
               it would add a request through `/_next/image` and return the same
               bytes. Same reasoning as the method logos in `money-shell.tsx`.
             */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/oxshare-mark.svg" alt={t('app.name')} className="h-7 w-auto shrink-0" />
-            {!collapsed && (
-              <div className="flex flex-col">
-                <span
-                  suppressHydrationWarning
-                  className="text-sm font-semibold tracking-wider text-foreground"
-                >
-                  {t('app.name')}
-                </span>
-              </div>
+            {/*
+              THE REAL WORDMARK when there is room, the mark alone when there is
+              not — rather than the mark beside the brand name set in the UI
+              font. The letterforms in the supplied artwork are drawn, not
+              typeset, so rendering "OXShare" in Geist was always an
+              approximation of the logo sitting next to the logo.
+
+              Both files are the brand's own vector artwork, extracted from the
+              supplied PDF rather than redrawn, so they scale to any height
+              without the hand-traced circles the previous mark used.
+            */}
+            {collapsed ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src="/oxshare-mark.svg" alt={t('app.name')} className="h-7 w-auto shrink-0" />
+            ) : (
+              <>
+                {/*
+                  TWO FILES, SWAPPED IN CSS — not one file recoloured, and not a
+                  JS check on the theme.
+
+                  The brand ships a dark wordmark for light grounds and a white
+                  one for dark, so this renders whichever the artwork intends
+                  rather than filtering one into the other. Doing it with
+                  `dark:hidden` means the correct logo is in the FIRST paint:
+                  `next-themes` sets the class before React hydrates, so a
+                  JS-chosen src would flash the light logo on a dark screen.
+
+                  Both are `<img>` rather than `next/image`: Next refuses to
+                  optimize SVG without `dangerouslyAllowSVG`, and a vector has
+                  nothing to optimize.
+                */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/oxshare-logo.svg"
+                  alt={t('app.name')}
+                  className="h-7 w-auto shrink-0 dark:hidden"
+                />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/oxshare-logo-dark.svg"
+                  alt=""
+                  aria-hidden="true"
+                  className="hidden h-7 w-auto shrink-0 dark:block"
+                />
+              </>
             )}
           </Link>
 
