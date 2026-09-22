@@ -117,6 +117,31 @@ export function TransactionDetails({
                   </dd>
                 </div>
               )}
+              {/*
+                ── WHERE A TRANSFER WENT, WHICH NOTHING ELSE SAYS ────────────
+                
+                A transfer has no method, no provider and no destination — the
+                union's own note says so — so this panel showed one with no
+                route at all: an amount, a date and a state, and no answer to
+                "between what and what". The list column beside it had the same
+                gap and is fixed with the same field.
+                
+                `direction` is wallet-side for every kind, so `deposit` here
+                means the money ARRIVED in the wallet (account → wallet) and
+                `withdrawal` that it LEFT (wallet → account).
+              */}
+              {(tx.kind === 'transfer' || tx.kind === 'commission_transfer') && (
+                <Row
+                  label={t('transactions.detailRoute')}
+                  value={
+                    tx.kind === 'commission_transfer'
+                      ? t('transactions.transferFromCommission')
+                      : tx.direction === 'deposit'
+                        ? t('transactions.transferFromAccount')
+                        : t('transactions.transferToAccount')
+                  }
+                />
+              )}
               {tx.destination && (
                 <Row label={t('transactions.detailDestination')} value={tx.destination} />
               )}

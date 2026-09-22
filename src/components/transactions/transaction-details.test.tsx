@@ -33,6 +33,54 @@ describe('TransactionDetails', () => {
     expect(screen.getByText(/destination details incomplete/i)).toBeTruthy();
   });
 
+  /*
+   * ── A TRANSFER SAYS WHICH WAY THE MONEY WENT ───────────────────────────
+   *
+   * A transfer has no method, no provider and no destination, so this panel
+   * showed one with no route at all: an amount, a date, a state, and no answer
+   * to "between what and what". Funding an account and pulling the money back
+   * were indistinguishable.
+   *
+   * `direction` is WALLET-SIDE for every kind in the union, which is the only
+   * thing that makes this readable without a new field: `deposit` means the
+   * money arrived in the wallet, so it came FROM the trading account.
+   */
+  it('says a transfer went from the trading account INTO the wallet', () => {
+    renderWithProviders(
+      <TransactionDetails
+        tx={{ ...base, kind: 'transfer', direction: 'deposit', state: 'success' }}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/trading account → wallet/i)).toBeTruthy();
+  });
+
+  it('and the OTHER way for the opposite direction', () => {
+    renderWithProviders(
+      <TransactionDetails
+        tx={{ ...base, kind: 'transfer', direction: 'withdrawal', state: 'success' }}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // The distinction is the whole point: the two directions must not render
+    // the same words, which is what they did before.
+    expect(screen.getByText(/wallet → trading account/i)).toBeTruthy();
+  });
+
+  it('names the commission wallet on a commission transfer', () => {
+    renderWithProviders(
+      <TransactionDetails
+        tx={{ ...base, kind: 'commission_transfer', direction: 'deposit', state: 'success' }}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // One direction only — commission moves into the main wallet, never back.
+    expect(screen.getByText(/commission → wallet/i)).toBeTruthy();
+  });
+
   it('shows where a settled withdrawal actually went', () => {
     renderWithProviders(
       <TransactionDetails

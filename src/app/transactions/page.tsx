@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { TransactionDetails } from '@/components/transactions/transaction-details';
-import { ChevronRight, Receipt } from 'lucide-react';
+import { ArrowRight, ChevronRight, Receipt } from 'lucide-react';
 import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
 import { AsyncBoundary } from '@/components/async-boundary';
@@ -579,14 +579,36 @@ function MethodCell({ tx }: { tx: Transaction }) {
    * today, and an em dash here would be indistinguishable from the manual-credit
    * case below.
    */
+  /*
+   * ── WHICH WAY THE MONEY WENT, NOT JUST WHAT IT TOUCHED ──────────────────
+   *
+   * This said "Trading account" for both directions, which names the other end
+   * and leaves out the half a client actually reads the row for: did money
+   * LEAVE my wallet or ARRIVE in it. Two rows an hour apart, one funding an
+   * account and one pulling the money back, were word-for-word identical here.
+   *
+   * `direction` is already on the row and is wallet-side for every kind — the
+   * union maps `account_to_wallet` to `deposit` and `wallet_to_account` to
+   * `withdrawal` precisely so the whole list can be read from the wallet's
+   * point of view. Nothing new is fetched; the field was simply not used.
+   */
   if (tx.kind === 'transfer') {
-    return <span className="text-muted-foreground">{t('transactions.tradingAccountMethod')}</span>;
+    return (
+      <TransferRoute
+        label={
+          tx.direction === 'deposit'
+            ? t('transactions.transferFromAccount')
+            : t('transactions.transferToAccount')
+        }
+      />
+    );
   }
 
   /* The other end of a commission transfer is the partner's own commission
-     wallet — the same question this column answers for a trading transfer. */
+     wallet — and it only ever moves one way, into the main wallet, so it needs
+     no direction the way a trading transfer does. */
   if (tx.kind === 'commission_transfer') {
-    return <span className="text-muted-foreground">{t('transactions.commissionMethod')}</span>;
+    return <TransferRoute label={t('transactions.transferFromCommission')} />;
   }
 
   if (tx.methodName) return <span>{tx.methodName}</span>;
@@ -598,6 +620,29 @@ function MethodCell({ tx }: { tx: Transaction }) {
   return (
     <span className="text-muted-foreground" aria-hidden="true">
       —
+    </span>
+  );
+}
+
+/**
+ * The two ends of a movement that touched no payment provider.
+ *
+ * An arrow rather than the words "from"/"to": the row is already dense, and a
+ * direction is read faster as a shape than as a preposition — which matters
+ * most on the rows this renders, where the two directions are otherwise the
+ * same words in the same order.
+ *
+ * `rtl:-scale-x-100` mirrors it, because "money moved this way" points at the
+ * end of the reading direction and Arabic reads the other way (FSD §10). The
+ * arrow is `aria-hidden`; the label either side carries the meaning, so a
+ * screen reader hears "Wallet to account" rather than an arrow it must
+ * interpret.
+ */
+function TransferRoute({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-muted-foreground">
+      <ArrowRight className="h-3.5 w-3.5 shrink-0 rtl:-scale-x-100" aria-hidden="true" />
+      <span className="truncate">{label}</span>
     </span>
   );
 }
