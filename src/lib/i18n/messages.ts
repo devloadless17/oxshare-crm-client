@@ -462,6 +462,23 @@ export const messages = {
   // What a transfer moved through, where a deposit would name its payment
   // method. More useful than an em dash — it names the other end of the
   // movement, which is the question the column asks.
+  /*
+   * ── A TRANSFER NAMES BOTH ENDS AND THE DIRECTION ─────────────────────────
+   *
+   * This column read "Trading account" whichever way the money went, so
+   * funding an account and pulling the money back were word-for-word identical
+   * on a client's statement. The wording is from the WALLET's point of view,
+   * matching every other row in the list — a deposit arrives, a withdrawal
+   * leaves — so "to" and "from" mean the same thing here as they do there.
+   */
+  /* The details panel's own row label — "Route" rather than "Destination",
+     because a transfer has two ends and both are ours. */
+  'transactions.detailRoute': 'Route',
+  'transactions.transferToAccount': 'Wallet → Trading account',
+  'transactions.transferFromAccount': 'Trading account → Wallet',
+  /* One direction only: commission is moved INTO the main wallet and never
+     back out, so this needs no pair. */
+  'transactions.transferFromCommission': 'Commission → Wallet',
   'transactions.tradingAccountMethod': 'Trading account',
   'transactions.commissionMethod': 'Commission wallet',
   'transactions.statePending': 'Pending review',
