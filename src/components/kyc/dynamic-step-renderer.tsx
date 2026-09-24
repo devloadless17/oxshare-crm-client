@@ -1,11 +1,11 @@
 'use client';
 
-import { CheckCircle2, User, FileText } from 'lucide-react';
 import { DocumentUploader } from './document-uploader';
-import { documentChoiceKey, uploadFieldFor, uploadSlotName } from './doc-type';
+import { documentChoiceKey, uploadFieldFor } from './doc-type';
 import type { components } from '@/lib/api/types.gen';
 import { t } from '@/lib/i18n';
 import { StepField } from './step-field';
+import { ReviewSummary } from './review-summary';
 
 /**
  * Aliased from the schema generated out of the backend's Swagger, so this
@@ -25,37 +25,45 @@ export type KycStepConfig = components['schemas']['KycStepConfigDto'];
  * it arrives in `formData` and is written by `onChange` exactly like every
  * other answer — four props and two pieces of page state removed.
  */
+/** An upload, optionally naming the catalogue document the page belongs to. */
+export type UploadHandler = (
+  field: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+  docType?: string,
+) => Promise<void>;
+
 interface DynamicStepRendererProps {
   currentStepConfig?: KycStepConfig;
+  /** Every step, review included — the review screen summarises them all. */
+  allSteps?: KycStepConfig[];
   formData: Record<string, string>;
+  /**
+   * Which slots count as uploaded FOR THE DOCUMENT CHOSEN, with anything the
+   * reviewer returned counted as not uploaded — `upload-state.ts`. Reading a
+   * shared column as "this document is uploaded" is how a passport stood in
+   * for a national ID.
+   */
   uploadsState: Record<string, boolean>;
   selfieUploaded: boolean;
+  /** The reviewer's flags the client has NOT answered yet. */
   rejectedFields?: string[];
-  /**
-   * The document the SERVER actually holds a file for, per category.
-   *
-   * Needed because every identity document's first page is stored in the same
-   * column: `apiUploadField` maps passport, national ID and driving licence all
-   * onto `doc_front` (see its note on why storage was not reshaped). So
-   * "is `doc_front` filled?" cannot answer "has the client uploaded THIS
-   * document?" — and reading it as if it could meant that after uploading a
-   * passport, switching the picker to National ID showed its slot as already
-   * satisfied, offering the passport as though it were the ID.
-   */
-  storedDocValues?: { identity?: string; address?: string };
+  /** Slot → stored path, so a returning client sees the picture they sent. */
+  storedFiles?: Record<string, string>;
   onChange: (key: string, value: string) => void;
-  onUpload: (field: string, file: File) => Promise<void>;
+  onUpload: UploadHandler;
   /** Threaded to the uploader so the step can tell 'nothing chosen' from 'chosen, not confirmed'. */
   onPendingChange?: (field: string, hasPending: boolean) => void;
 }
 
 export function DynamicStepRenderer({
   currentStepConfig,
+  allSteps = [],
   formData,
   uploadsState,
   selfieUploaded,
   rejectedFields = [],
-  storedDocValues,
+  storedFiles = {},
   onChange,
   onUpload,
   onPendingChange,
@@ -91,6 +99,20 @@ export function DynamicStepRenderer({
   const chosenField = documentFields.find((f) => f.name === chosenFieldName);
 
   /*
+   * The reviewer returned this document: by its own name, or — for the one on
+   * file, which is the one chosen when the client comes back — by one of its
+   * pages (`doc_back`). Every identity document's pages share the same ids, so
+   * a page flag is read against the chosen document only.
+   */
+  const documentReturned = (field: KycFieldConfig) =>
+    rejectedFields.includes(field.name) ||
+    (field.name === chosenFieldName &&
+      (field.document?.parts ?? []).some((_, index) => {
+        const id = uploadFieldFor(slug, field.name, index, field.document?.category);
+        return id !== null && rejectedFields.includes(id);
+      }));
+
+  /*
    * Uploads and long text get the full row; short inputs pair up. Derived from
    * the field TYPE rather than from a per-step layout, so a step an operator
    * builds looks like the seeded ones without them configuring anything.
@@ -98,97 +120,23 @@ export function DynamicStepRenderer({
   const fieldSpan = (field: KycFieldConfig) =>
     field.type === 'file' || field.type === 'camera' ? 'md:col-span-2' : '';
 
-  // Review Summary Step
+  /*
+   * The review screen summarises the steps the broker CONFIGURED — it used to
+   * be three hard-coded rows (ID, selfie, proof of address) that read "Missing"
+   * in red for a step the broker had disabled, and showed nothing of a custom
+   * step's answers.
+   */
   if (slug === 'review') {
     return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-xl font-extrabold text-foreground">{title}</h2>
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        </div>
-
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-border bg-card/60 p-5 space-y-3">
-            <div className="flex items-center gap-2 border-b border-border pb-3 text-link">
-              <User className="h-4 w-4" />
-              <h3 className="text-xs font-bold uppercase tracking-wider">
-                {t('kyc.personalInfo')}
-              </h3>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-              <div>
-                <span className="text-muted-foreground block text-[11px]">{t('kyc.fullName')}</span>
-                <span className="font-semibold text-foreground">
-                  {formData.firstName || '-'} {formData.lastName || '-'}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-[11px]">
-                  {t('kyc.dateOfBirth')}
-                </span>
-                <span className="font-semibold text-foreground">{formData.dateOfBirth || '-'}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-[11px]">{t('kyc.phone')}</span>
-                <span className="font-semibold text-foreground font-mono">
-                  {formData.phone || '-'}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-[11px]">
-                  {t('kyc.nationality')}
-                </span>
-                <span className="font-semibold text-foreground">{formData.nationality || '-'}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-[11px]">{t('kyc.country')}</span>
-                <span className="font-semibold text-foreground">{formData.country || '-'}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card/60 p-5 space-y-3">
-            <div className="flex items-center gap-2 border-b border-border pb-3 text-link">
-              <FileText className="h-4 w-4" />
-              <h3 className="text-xs font-bold uppercase tracking-wider">
-                {t('kyc.verificationFiles')}
-              </h3>
-            </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-background/50">
-                <span className="text-muted-foreground">{t('kyc.idDocument')}</span>
-                {uploadsState['doc_front'] ? (
-                  <span className="flex items-center gap-1 text-success font-semibold">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> {t('kyc.uploaded')}
-                  </span>
-                ) : (
-                  <span className="text-destructive font-semibold">{t('kyc.missing')}</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-background/50">
-                <span className="text-muted-foreground">{t('kyc.selfiePhoto')}</span>
-                {selfieUploaded ? (
-                  <span className="flex items-center gap-1 text-success font-semibold">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> {t('kyc.captured')}
-                  </span>
-                ) : (
-                  <span className="text-destructive font-semibold">{t('kyc.missing')}</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-background/50">
-                <span className="text-muted-foreground">{t('kyc.proofOfAddress')}</span>
-                {uploadsState['address_proof'] ? (
-                  <span className="flex items-center gap-1 text-success font-semibold">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> {t('kyc.uploaded')}
-                  </span>
-                ) : (
-                  <span className="text-destructive font-semibold">{t('kyc.missing')}</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ReviewSummary
+        title={title}
+        description={description}
+        steps={allSteps}
+        formData={formData}
+        uploadsState={uploadsState}
+        selfieUploaded={selfieUploaded}
+        rejectedFields={rejectedFields}
+      />
     );
   }
 
@@ -223,9 +171,14 @@ export function DynamicStepRenderer({
               field={field}
               slug={slug}
               val={formData[field.name] || ''}
-              isErrored={rejectedFields.includes(field.name)}
+              isErrored={
+                rejectedFields.includes(field.name) ||
+                // The canonical selfie is flagged by its storage id.
+                (slug === 'selfie' && rejectedFields.includes('selfie'))
+              }
               selfieUploaded={selfieUploaded}
               uploadsState={uploadsState}
+              storedFilePath={storedFiles[field.name]}
               onChange={onChange}
               onUpload={onUpload}
               onPendingChange={onPendingChange}
@@ -245,20 +198,28 @@ export function DynamicStepRenderer({
             {documentFields.map((field) => {
               const isSelected = field.name === chosenFieldName;
               const parts = field.document?.parts ?? [];
+              // The document the reviewer returned is marked on its own card,
+              // not only on its tiles — so the client sees which one it was
+              // before choosing anything.
+              const isReturned = documentReturned(field);
               return (
                 <button
                   key={field.id}
                   type="button"
                   onClick={() => onChange(choiceKey, field.name)}
                   className={`focus-outline flex cursor-pointer flex-col items-center justify-center rounded-xl border p-4 text-center ${
-                    isSelected
-                      ? 'border-ring bg-primary/10 font-bold text-link'
-                      : 'border-border bg-card/40 text-muted-foreground hover:bg-accent hover:text-foreground'
+                    isReturned
+                      ? 'border-destructive/70 bg-destructive/5 font-bold text-destructive'
+                      : isSelected
+                        ? 'border-ring bg-primary/10 font-bold text-link'
+                        : 'border-border bg-card/40 text-muted-foreground hover:bg-accent hover:text-foreground'
                   }`}
                 >
                   <span className="text-xs">{field.label}</span>
                   <span className="mt-0.5 text-[10px] opacity-70">
-                    {t('kyc.pageCount', { count: parts.length })}
+                    {isReturned
+                      ? t('kyc.documentReturned')
+                      : t('kyc.pageCount', { count: parts.length })}
                   </span>
                 </button>
               );
@@ -272,13 +233,6 @@ export function DynamicStepRenderer({
            * into a slot labelled "Back Side".
            */}
           {(chosenField?.document?.parts ?? []).map((part, partIndex) => {
-            /*
-             * The UI keys on the SLOT (unique per field); the API is posted the
-             * storage field it has always used (`doc_front`). `apiUploadField`
-             * is the single place that translation lives — see its note on why
-             * storage was not reshaped instead.
-             */
-            const slot = uploadSlotName(chosenField!.name, part.key);
             /*
              * Scoped to the STEP. `apiUploadField` maps onto the canonical
              * columns, which is right for `document` and `address` and was
@@ -295,34 +249,34 @@ export function DynamicStepRenderer({
             if (!apiField) return null;
 
             /*
-             * The stored-column fallback applies ONLY to the document the file
-             * actually belongs to.
-             *
-             * `uploadsState[slot]` is this session's upload. The fallback exists
-             * for the client who comes BACK: their file is known to the server
-             * under `doc_front`, and without it a returning client would be
-             * asked to upload a passport the system already holds.
-             *
-             * Unconditional, it was a lie for the other two choices. The column
-             * is shared by every identity document, so a passport on file made
-             * National ID and Driving Licence both look uploaded — the client
-             * pressed Continue and submitted a passport as their national ID.
-             * Gating on the stored docType keeps the returning client's file
-             * and stops it standing in for a document they never sent.
+             * `uploadsState` already answers "is THIS document's page on
+             * file": a stored page counts only under the chosen document's
+             * type, and a page the reviewer returned counts as missing until it
+             * is replaced (`upload-state.ts`). This used to be computed here,
+             * from a shared column, which is how a passport stood in for a
+             * national ID.
              */
-            const category = chosenField!.document?.category;
-            const storedValue =
-              category === 'address' ? storedDocValues?.address : storedDocValues?.identity;
-            const isStoredDocument = chosenField!.document?.value === storedValue;
+            const returned =
+              rejectedFields.includes(apiField) || rejectedFields.includes(chosenField!.name);
+            // A canonical page says which document it belongs to, so the
+            // server files it under the right one.
+            const isCanonical = apiField !== chosenField!.name;
+            const docValue = isCanonical ? chosenField!.document?.value : undefined;
 
             return (
               <DocumentUploader
-                key={part.key}
+                key={`${chosenField!.name}:${part.key}`}
                 field={apiField}
                 label={part.label}
-                hint={part.hint ?? (part.required ? undefined : t('kyc.optionalUpload'))}
-                uploaded={uploadsState[slot] || (isStoredDocument && uploadsState[apiField])}
-                onUpload={onUpload}
+                hint={
+                  returned
+                    ? t('kyc.documentReturnedHint')
+                    : (part.hint ?? (part.required ? undefined : t('kyc.optionalUpload')))
+                }
+                uploaded={Boolean(uploadsState[apiField])}
+                isErrored={returned}
+                storedFilePath={uploadsState[apiField] ? storedFiles[apiField] : undefined}
+                onUpload={(f, file, onProgress) => onUpload(f, file, onProgress, docValue)}
                 onPendingChange={onPendingChange}
               />
             );

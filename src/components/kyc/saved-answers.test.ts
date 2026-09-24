@@ -81,3 +81,39 @@ describe('seeding a step from what was already saved', () => {
     expect(savedAnswersFor(data, unnumbered, 2)).toMatchObject({ sourceOfFunds: 'Salary' });
   });
 });
+
+describe('only typed answers come back into the form', () => {
+  /*
+   * Reported from production: a custom step's upload is stored as
+   * `{ filePath, fileName }`; `String()` of it seeded the form with
+   * "[object Object]", which the review screen then posted back as the client's
+   * personal details.
+   */
+  const steps = [
+    { id: 's1', stepNumber: 1, slug: 'personal', title: 'P', enabled: true, fields: [] },
+    { id: 's5', stepNumber: 5, slug: 'source-of-funds', title: 'S', enabled: true, fields: [] },
+  ] as never;
+
+  it('drops a stored file, stringified debris and the wizard’s own keys', () => {
+    const answers = savedAnswersFor(
+      {
+        status: 'in_progress',
+        personalInfo: {
+          firstName: 'Jane',
+          __docChoice__document: 'passport',
+          customField_1790263652846: '[object Object]',
+        },
+        stepData: {
+          'source-of-funds': {
+            employer: 'Acme',
+            payslip: { filePath: 'uploads/kyc/p.jpg', fileName: 'p.jpg' },
+          },
+        },
+      } as never,
+      steps,
+      5,
+    );
+
+    expect(answers).toEqual({ firstName: 'Jane', employer: 'Acme' });
+  });
+});

@@ -1172,6 +1172,28 @@ export const messages = {
   // the system and useless to the person, who is looking at their own photo
   // with the button that sends it a few pixels away.
   'kyc.confirmChosenPhoto': 'Almost there — tap "Use this" under your photo to send it.',
+  // Named, because "please fill in all required fields" on a form of eight is a
+  // search the client should not have to do.
+  'kyc.fieldRequired': 'Please fill in: {label}',
+  // The picker writes the country code before anything is typed, so a code
+  // alone is the usual way this happens.
+  'kyc.phoneIncomplete': '{label}: enter your full number after the country code.',
+  'kyc.chooseDocument': 'Choose which document you will upload.',
+  /*
+   * A request that got no answer at all. "Network Error" is what the browser
+   * reports and told a client submitting their verification nothing — not even
+   * whether it had been sent. Their answers ARE saved step by step, which is
+   * the thing they most need to hear.
+   */
+  'kyc.networkError':
+    'We could not reach our servers. Your answers are saved — check your connection and try again.',
+  // A document the reviewer returned, on its own tile: what to do, not just what happened.
+  'kyc.documentReturnedHint': 'The reviewer asked for a new one — upload a replacement.',
+  'kyc.replaceReturned': 'Replace the documents marked in red before you submit.',
+  // A stored answer to a question the broker has since removed from the form.
+  'kyc.docs.retiredQuestion': 'Earlier question',
+  'kyc.answerYes': 'Yes',
+  'kyc.answerNo': 'No',
 
   // ── KYC: capture and upload ───────────────────────────────────────────────
   'kyc.cameraDeniedTitle': 'Camera Access Required',

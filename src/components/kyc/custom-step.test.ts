@@ -89,6 +89,7 @@ describe('planCustomStep', () => {
     expect(planCustomStep(undefined, {}, {})).toEqual({
       missing: null,
       missingIsUpload: false,
+      invalid: null,
       answers: {},
     });
   });
@@ -111,5 +112,35 @@ describe('uploadedCustomFields', () => {
   it('is safe on an absent or empty stepData', () => {
     expect(uploadedCustomFields(undefined)).toEqual([]);
     expect(uploadedCustomFields({})).toEqual([]);
+  });
+});
+
+describe('the personal step’s own rules, which every step now shares', () => {
+  const phone = { name: 'phone', label: 'Phone Number', type: 'phone', required: true };
+  const dob = { name: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: true };
+
+  it('reads a country code alone as MISSING — the reported "+961"', () => {
+    const plan = planCustomStep({ fields: [phone] }, { phone: '+961' }, {});
+    expect(plan.missing?.name).toBe('phone');
+    expect(plan.answers.phone).toBe('');
+  });
+
+  it('refuses a number cut short', () => {
+    const plan = planCustomStep({ fields: [phone] }, { phone: '+961 70 12' }, {});
+    expect(plan.missing).toBeNull();
+    expect(plan.invalid).toMatchObject({ field: { name: 'phone' }, reason: 'phone' });
+  });
+
+  it('accepts a complete number, trimmed', () => {
+    const plan = planCustomStep({ fields: [phone] }, { phone: ' +961 70 123 456 ' }, {});
+    expect(plan.invalid).toBeNull();
+    expect(plan.answers.phone).toBe('+961 70 123 456');
+  });
+
+  it('refuses a date of birth under 18', () => {
+    const young = new Date();
+    young.setUTCFullYear(young.getUTCFullYear() - 14);
+    const plan = planCustomStep({ fields: [dob] }, { dateOfBirth: young.toISOString() }, {});
+    expect(plan.invalid?.reason).toBe('too_young');
   });
 });

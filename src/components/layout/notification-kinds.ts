@@ -324,6 +324,40 @@ export function queryKeysFor(kind: string): readonly PortalQueryKey[] {
   return [];
 }
 
+/**
+ * Everything a MISSED event could have changed — what to refresh when the
+ * socket comes back.
+ *
+ * A Socket.IO event reaches only a socket connected at that moment; there is
+ * no replay. The reconnect used to refresh the bell alone, so a KYC rejection
+ * that landed while the connection was down (the fifteen-minute token ceiling
+ * forces one every quarter hour; a sleeping tab drops it too) put a row in the
+ * bell and left the outcome screen reading "under review". Reported from
+ * production as a rejection that did not arrive in real time.
+ *
+ * One representative kind per family, so this is exactly the union of what
+ * `queryKeysFor` refreshes — never wider. In particular it never reaches
+ * `mt5Live`: those reads are rate-limited per client and take the MT5 session
+ * lock, and `notification-kinds.test.ts` pins that nothing bulk-invalidates
+ * them. Only queries somebody is looking at refetch; the rest are just marked
+ * stale.
+ */
+export function resyncKeysOnReconnect(): readonly PortalQueryKey[] {
+  const families = ['kyc.', 'deposit.', 'commission.', 'partner.', 'trading_account.'];
+  const seen = new Set<string>();
+  const out: PortalQueryKey[] = [];
+  for (const family of families) {
+    for (const key of queryKeysFor(family)) {
+      const id = JSON.stringify(key);
+      if (!seen.has(id)) {
+        seen.add(id);
+        out.push(key);
+      }
+    }
+  }
+  return out;
+}
+
 export function resolveKind(kind: string): KindConfig | undefined {
   // `Object.hasOwn`, not a bare lookup: a hostile or accidental kind slug of
   // 'constructor' or 'toString' would otherwise return an inherited function —

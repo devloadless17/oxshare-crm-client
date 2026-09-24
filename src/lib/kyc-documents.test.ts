@@ -137,3 +137,34 @@ describe('rejectedFieldLabels', () => {
     ).toEqual(['National ID · Back', 'National ID', 'Selfie Photo', 'Date of birth']);
   });
 });
+
+describe('personalDetailsOf shows the client only what they answered here', () => {
+  /*
+   * An older review screen copied every custom step's answers into the profile
+   * under their builder keys, so the client read "Custom field 1790263652846"
+   * — and "[object Object]" — beside their own name.
+   */
+  it('leaves out debris and copies of another step’s answers', () => {
+    const steps = [
+      { slug: 'personal', fields: [{ name: 'firstName', label: 'First name' }] },
+      {
+        slug: 'source-of-funds',
+        fields: [{ name: 'customField_1790263641710', label: 'Employer' }],
+      },
+    ];
+    const rows = personalDetailsOf(
+      {
+        firstName: 'Jane',
+        __docChoice__document: 'passport',
+        customField_1790263641710: 'Acme',
+        customField_1790263652846: '[object Object]',
+        customField_1790263668262: 'kept',
+      },
+      steps,
+    );
+    expect(rows).toEqual([
+      { key: 'firstName', label: 'First name', value: 'Jane' },
+      { key: 'customField_1790263668262', label: 'Earlier question', value: 'kept' },
+    ]);
+  });
+});
