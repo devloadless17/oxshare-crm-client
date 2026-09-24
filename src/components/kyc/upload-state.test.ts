@@ -4,6 +4,7 @@ import {
   flagsSettledByUpload,
   outstandingFlags,
   storedFilesOf,
+  isPageReturned,
 } from './upload-state';
 
 /**
@@ -138,5 +139,40 @@ describe('storedFilesOf', () => {
       selfie: 'uploads/kyc/s.jpg',
       payslip: 'uploads/kyc/pay.jpg',
     });
+  });
+});
+
+describe('isPageReturned — only the document that was returned turns red', () => {
+  /*
+   * Reported from local testing: after a passport was returned, clicking
+   * National ID or Driving Licence turned THEM red too — a canonical page flag
+   * names a slot all three share.
+   */
+  const base = {
+    slot: 'doc_front',
+    category: 'identity',
+    storedTypes: { identity: 'passport' },
+    outstanding: ['doc_front'],
+  };
+
+  it('marks the stored passport’s page', () => {
+    expect(isPageReturned({ ...base, fieldName: 'passport', docValue: 'passport' })).toBe(true);
+  });
+
+  it('does not mark a national ID the client merely clicked', () => {
+    expect(isPageReturned({ ...base, fieldName: 'nationalId', docValue: 'national_id' })).toBe(
+      false,
+    );
+  });
+
+  it('marks a document the reviewer named itself, whichever page', () => {
+    expect(
+      isPageReturned({
+        ...base,
+        outstanding: ['nationalId'],
+        fieldName: 'nationalId',
+        docValue: 'national_id',
+      }),
+    ).toBe(true);
   });
 });

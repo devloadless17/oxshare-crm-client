@@ -76,3 +76,27 @@ describe('withReviewStep', () => {
     expect(withReviewStep([])).toEqual([]);
   });
 });
+
+describe('a step disabled in the middle of the flow', () => {
+  /*
+   * Found in local testing with the selfie step disabled: the served steps kept
+   * their builder numbers (1, 2, 3, 4, 6) while review was numbered by count
+   * (6) — two steps numbered alike, and the wizard treated a real step as the
+   * last one ("Submit Verification" where "Continue" belonged).
+   */
+  it('numbers every step by its place in THIS flow, review last and unique', () => {
+    const result = withReviewStep([
+      step(1, 'address'),
+      step(2, 'document'),
+      step(4, 'custom'),
+      step(6, 'extra'),
+    ]);
+    expect(result.map((s) => [s.slug, s.stepNumber])).toEqual([
+      ['address', 1],
+      ['document', 2],
+      ['custom', 3],
+      ['extra', 4],
+      ['review', 5],
+    ]);
+  });
+});

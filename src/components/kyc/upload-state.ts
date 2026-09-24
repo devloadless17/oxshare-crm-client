@@ -152,3 +152,33 @@ export function effectiveUploads(input: {
   }
   return done;
 }
+
+/**
+ * Did the reviewer return THIS page of THIS document?
+ *
+ * ## Reported from local testing: every identity card turned red
+ *
+ * A canonical page flag (`doc_front`) names a SLOT, and every identity document
+ * stores its first page in that one slot — so reading the flag against the
+ * CHOSEN card made National ID and Driving Licence red the moment the client
+ * clicked them, after only a passport had been returned. A canonical page flag
+ * belongs to the document the server HOLDS (`storedTypes`), whichever card is
+ * selected. A flag naming a document itself (`passport`), or a file field on a
+ * step the broker added, is specific already.
+ */
+export function isPageReturned(input: {
+  slot: string;
+  fieldName: string;
+  docValue?: string;
+  category?: string;
+  storedTypes: { identity?: string; address?: string };
+  outstanding: readonly string[];
+}): boolean {
+  const { slot, fieldName, docValue, category, storedTypes, outstanding } = input;
+  if (outstanding.includes(fieldName)) return true;
+  if (!outstanding.includes(slot)) return false;
+  const canonical = IDENTITY_SLOTS.includes(slot) || ADDRESS_SLOTS.includes(slot);
+  if (!canonical) return true;
+  const held = category === 'address' ? storedTypes.address : storedTypes.identity;
+  return docValue !== undefined && docValue === held;
+}

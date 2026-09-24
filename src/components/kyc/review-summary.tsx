@@ -1,13 +1,15 @@
 'use client';
 
+import Link from 'next/link';
 import { CheckCircle2, FileText, User } from 'lucide-react';
 import type { components } from '@/lib/api/types.gen';
 import { t } from '@/lib/i18n';
-import { documentChoiceKey, isUploadField, uploadFieldFor } from './doc-type';
 import { isBarePhonePrefix } from './custom-step';
 
 type KycStepConfig = components['schemas']['KycStepConfigDto'];
 type KycFieldConfig = components['schemas']['KycFieldConfigDto'];
+type KycStatus = components['schemas']['KycStatusDto'];
+type StepState = components['schemas']['KycStepStateDto'];
 
 interface Item {
   key: string;
@@ -16,49 +18,55 @@ interface Item {
   value?: string;
   /** An upload's state. */
   uploaded?: boolean;
+  /** The server says this is still owed. */
+  missing: boolean;
+  /** The reviewer returned it, and it has not been answered. */
   returned: boolean;
 }
 
+/** Where each document step files the pages of the document chosen on it. */
+const PAGE_SLOTS: Readonly<Record<string, readonly [string, string]>> = {
+  document: ['doc_front', 'doc_back'],
+  address: ['address_proof', 'address_proof_2'],
+};
+
 /**
- * The review screen: every configured step, as the client answered it.
+ * The review screen: every configured step as the SERVER holds it, marked with
+ * the server's own verdict.
  *
- * ## Built from the CONFIGURATION, like the steps themselves
+ * ## Why it reads the server, and only the server
  *
- * It was three hard-coded rows — ID document, selfie, proof of address — so a
- * broker who disabled the address step left every client looking at "Proof of
- * address: Missing" in red on the last screen, with no step to go back to; and
- * a custom step's answers were not on it at all, so the client was asked to
- * confirm details the screen did not show them.
+ * It was built from the form in this tab — the draft, the card last clicked,
+ * the uploads this session saw — and judged completeness itself. So it could
+ * list "Passport — Missing" beside a complete national ID on file (the draft
+ * remembered a click), show a blank for an answer saved in an earlier session,
+ * and call a step complete that `submit` then refused (reported from local
+ * testing). The answers now come from `/kyc/status` and every mark from its
+ * `steps` verdict (`kyc-step-state.ts`), the same judgement `submit` applies —
+ * so what this screen says is what the button will find.
  *
- * Nothing here is sent anywhere. Every step saved its own answers when the
- * client pressed Continue; this screen shows them and the button submits.
+ * Nothing here is sent anywhere. Every step saved its own answers; this screen
+ * shows them and the button submits.
  */
 export function ReviewSummary({
   title,
   description,
   steps,
-  formData,
-  uploadsState,
-  selfieUploaded,
-  rejectedFields,
+  status,
 }: {
   title: string;
   description?: string;
   steps: KycStepConfig[];
-  formData: Record<string, string>;
-  uploadsState: Record<string, boolean>;
-  selfieUploaded: boolean;
-  rejectedFields: string[];
+  status: KycStatus | null;
 }) {
   const sections = steps
     .filter((step) => step.slug !== 'review' && step.enabled !== false)
-    .map((step) => ({
-      step,
-      items: itemsOf(step, formData, uploadsState, selfieUploaded, rejectedFields),
-    }))
+    .map((step) => {
+      const state = status?.steps?.find((candidate) => candidate.slug === step.slug);
+      return { step, state, items: itemsOf(step, status, state) };
+    })
     .filter((section) => section.items.length > 0);
-
-  const owesDocuments = sections.some((s) => s.items.some((i) => i.returned && !i.uploaded));
+  const owing = sections.filter((section) => section.state && !section.state.complete);
 
   return (
     <div className="space-y-6">
@@ -67,10 +75,27 @@ export function ReviewSummary({
         <p className="text-xs text-muted-foreground mt-1">{description}</p>
       </div>
 
-      {owesDocuments && (
-        <p role="status" className="text-xs font-semibold text-destructive">
-          {t('kyc.replaceReturned')}
-        </p>
+      {owing.length > 0 && (
+        <div
+          role="status"
+          className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-2"
+        >
+          <p className="text-xs font-bold text-destructive">{t('kyc.reviewOwes')}</p>
+          <ul className="space-y-1 text-xs text-foreground">
+            {owing.map(({ step, state }) => (
+              <li key={step.id}>
+                <Link
+                  href={`/kyc/step/${step.stepNumber}`}
+                  className="font-semibold text-link underline-offset-2 hover:underline"
+                >
+                  {step.title}
+                </Link>
+                {' — '}
+                {owedLabels(state!).join(', ')}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="space-y-4">
@@ -96,18 +121,7 @@ export function ReviewSummary({
                       item.returned && !item.uploaded ? 'text-destructive' : 'text-foreground'
                     }`}
                   >
-                    {item.uploaded === undefined ? (
-                      item.value || '—'
-                    ) : item.uploaded ? (
-                      <span className="inline-flex items-center gap-1 text-success">
-                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                        {t('kyc.uploaded')}
-                      </span>
-                    ) : (
-                      <span className="text-destructive">
-                        {item.returned ? t('kyc.documentReturned') : t('kyc.missing')}
-                      </span>
-                    )}
+                    <ItemValue item={item} />
                   </dd>
                 </div>
               ))}
@@ -119,77 +133,150 @@ export function ReviewSummary({
   );
 }
 
-/** The rows one step contributes, in the order the step asked for them. */
+function ItemValue({ item }: { item: Item }) {
+  const flagged = item.returned
+    ? t('kyc.documentReturned')
+    : item.missing
+      ? t('kyc.missing')
+      : undefined;
+  if (item.uploaded === undefined) {
+    return item.missing ? (
+      <span className="text-destructive">{t('kyc.missing')}</span>
+    ) : (
+      <>{item.value || '—'}</>
+    );
+  }
+  if (item.uploaded && !item.returned) {
+    return (
+      <span className="inline-flex items-center gap-1 text-success">
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+        {t('kyc.uploaded')}
+      </span>
+    );
+  }
+  return flagged ? <span className="text-destructive">{flagged}</span> : <>—</>;
+}
+
+/** What a step still owes, as the list above the sections names it. */
+function owedLabels(state: StepState): string[] {
+  return [
+    ...state.missing.map((item) =>
+      item.kind === 'choice'
+        ? t('kyc.reviewChoose')
+        : item.kind === 'invalid'
+          ? (item.message ?? item.label)
+          : item.label,
+    ),
+    ...state.returned
+      .filter((item) => item.blocking)
+      .map((item) => t('kyc.reviewReturned', { label: item.label })),
+  ];
+}
+
+/** The rows one step contributes, in the order the step shows them. */
 function itemsOf(
   step: KycStepConfig,
-  formData: Record<string, string>,
-  uploadsState: Record<string, boolean>,
-  selfieUploaded: boolean,
-  rejectedFields: string[],
+  status: KycStatus | null,
+  state: StepState | undefined,
 ): Item[] {
+  const missing = new Set(state?.missing.map((item) => item.id));
+  const returned = new Set(state?.returned.map((item) => item.id));
+  const items: Item[] = [];
+
+  const slots = Object.prototype.hasOwnProperty.call(PAGE_SLOTS, step.slug)
+    ? PAGE_SLOTS[step.slug]
+    : undefined;
+  if (slots) items.push(...documentItems(step, status, slots, missing, returned));
+
   if (step.slug === 'selfie') {
-    const label = step.fields[0]?.label ?? t('kyc.selfiePhoto');
+    items.push({
+      key: 'selfie',
+      label: step.fields.find((field) => field.name === 'selfie')?.label ?? t('kyc.selfiePhoto'),
+      uploaded: Boolean(status?.selfie?.filePath),
+      missing: missing.has('selfie'),
+      returned: returned.has('selfie'),
+    });
+  }
+
+  const typed =
+    (step.slug === 'personal' ? status?.personalInfo : status?.stepData?.[step.slug]) ?? {};
+  const files = (status?.stepData?.[step.slug] ?? {}) as Record<string, unknown>;
+  for (const field of step.fields) {
+    if (field.document || (step.slug === 'selfie' && field.name === 'selfie')) continue;
+    items.push(itemOf(field, typed, files, missing, returned));
+  }
+  return items;
+}
+
+/** The document on file and each of its pages — or the choice still to make. */
+function documentItems(
+  step: KycStepConfig,
+  status: KycStatus | null,
+  slots: readonly [string, string],
+  missing: ReadonlySet<string>,
+  returned: ReadonlySet<string>,
+): Item[] {
+  const identity = step.slug === 'document';
+  const docType = identity ? status?.document?.docType : status?.addressProof?.docType;
+  const files = identity
+    ? [status?.document?.frontFilePath, status?.document?.backFilePath]
+    : [status?.addressProof?.filePath, status?.addressProof?.page2FilePath];
+  const field = step.fields.find((candidate) => candidate.document?.value === docType);
+
+  if (!field?.document) {
+    // Nothing chosen yet — or a document from before types were recorded.
     return [
       {
-        key: 'selfie',
-        label,
-        uploaded: selfieUploaded,
-        returned: rejectedFields.includes('selfie'),
+        key: `${step.slug}:choice`,
+        label: step.title,
+        uploaded: Boolean(files[0]),
+        missing: missing.has('docType') || missing.has(slots[0]),
+        returned: slots.some((slot) => returned.has(slot)),
       },
     ];
   }
-
-  const items: Item[] = [];
-  const documents = step.fields.filter((f) => f.document);
-  if (documents.length > 0) {
-    const chosen = documents.find((f) => f.name === formData[documentChoiceKey(step.slug)]);
-    if (!chosen) {
-      items.push({
-        key: `${step.slug}:choice`,
-        label: step.title,
-        uploaded: false,
-        returned: false,
-      });
-    } else {
-      (chosen.document?.parts ?? []).forEach((part, index) => {
-        const slot = uploadFieldFor(step.slug, chosen.name, index, chosen.document?.category);
-        if (!slot || (!part.required && !uploadsState[slot])) return;
-        items.push({
-          key: slot,
-          label:
-            (chosen.document?.parts.length ?? 0) > 1
-              ? `${chosen.label} · ${part.label}`
-              : chosen.label,
-          uploaded: Boolean(uploadsState[slot]),
-          returned: rejectedFields.includes(slot) || rejectedFields.includes(chosen.name),
-        });
-      });
-    }
-  }
-
-  for (const field of step.fields.filter((f) => !f.document))
-    items.push(itemOf(field, formData, uploadsState, rejectedFields));
-  return items;
+  const parts = field.document.parts;
+  return parts.flatMap((part, index) => {
+    const slot = slots[index];
+    if (!slot || (!part.required && !files[index])) return [];
+    return [
+      {
+        key: slot,
+        label: parts.length > 1 ? `${field.label} · ${part.label}` : field.label,
+        uploaded: Boolean(files[index]),
+        missing: missing.has(slot),
+        returned: returned.has(slot) || returned.has(field.name),
+      },
+    ];
+  });
 }
 
 function itemOf(
   field: KycFieldConfig,
-  formData: Record<string, string>,
-  uploadsState: Record<string, boolean>,
-  rejectedFields: string[],
+  typed: Record<string, unknown>,
+  files: Record<string, unknown>,
+  missing: ReadonlySet<string>,
+  returned: ReadonlySet<string>,
 ): Item {
-  const returned = rejectedFields.includes(field.name);
-  if (isUploadField(field)) {
-    return {
-      key: field.name,
-      label: field.label,
-      uploaded: Boolean(uploadsState[field.name]),
-      returned,
-    };
+  const base = {
+    key: field.name,
+    label: field.label,
+    missing: missing.has(field.name),
+    returned: returned.has(field.name),
+  };
+  if (field.type === 'file' || field.type === 'camera') {
+    const file = files[field.name];
+    return { ...base, uploaded: typeof file === 'object' && file !== null && 'filePath' in file };
   }
-  const raw = (formData[field.name] ?? '').trim();
+  const answer = typed[field.name];
+  const raw =
+    typeof answer === 'string'
+      ? answer.trim()
+      : typeof answer === 'number' || typeof answer === 'boolean'
+        ? String(answer)
+        : '';
   const value =
-    field.type === 'checkbox'
+    field.type === 'checkbox' && !field.options?.length
       ? raw === 'true'
         ? t('kyc.answerYes')
         : raw === 'false'
@@ -198,5 +285,5 @@ function itemOf(
       : field.type === 'phone' && isBarePhonePrefix(raw)
         ? ''
         : raw;
-  return { key: field.name, label: field.label, value, returned };
+  return { ...base, value };
 }

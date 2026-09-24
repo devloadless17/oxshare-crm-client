@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { parsePhoneNumberFromString } from 'libphonenumber-js/min';
 import { Search, ChevronDown, Check } from 'lucide-react';
 import * as Flags from 'country-flag-icons/react/3x2';
 import { cn } from '@/lib/utils';
@@ -40,6 +41,31 @@ export interface PhoneInputProps {
   'aria-label'?: string;
 }
 
+/**
+ * The country a stored number belongs to.
+ *
+ * Read from the NUMBER where it can be (`+1 202…` is the United States, `+1
+ * 416…` Canada), which the dial code alone cannot say: several countries share
+ * one, and picking the first alphabetically showed a US client's number under
+ * Canada's flag. Otherwise the LONGEST code that fits (`+1684` is American
+ * Samoa, not `+1`), keeping the country already chosen when it is one of them.
+ */
+function countryFor(value: string, current?: CountryItem): CountryItem | undefined {
+  const region = parsePhoneNumberFromString(value)?.country;
+  const byRegion = region ? ALL_COUNTRIES.find((c) => c.code === region) : undefined;
+  if (byRegion && value.startsWith(byRegion.dialCode)) return byRegion;
+
+  const fitting = ALL_COUNTRIES.filter((c) => value.startsWith(c.dialCode));
+  const longest = Math.max(0, ...fitting.map((c) => c.dialCode.length));
+  const best = fitting.filter((c) => c.dialCode.length === longest);
+  return best.find((c) => c.code === current?.code) ?? best[0];
+}
+
+/** The national part of `value`, once its country's code is taken off. */
+function nationalPartOf(value: string, country: CountryItem | undefined): string {
+  return country ? value.slice(country.dialCode.length).trim() : value;
+}
+
 export function PhoneInput({
   value = '',
   onChange,
@@ -52,7 +78,7 @@ export function PhoneInput({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
 
-  const matchedCountry = ALL_COUNTRIES.find((c) => value.startsWith(c.dialCode));
+  const matchedCountry = countryFor(value);
   // ALL_COUNTRIES is a non-empty literal, but the compiler cannot know that and
   // a `!` here would break silently if the list were ever filtered upstream.
   const FALLBACK_COUNTRY: CountryItem = {
@@ -68,12 +94,35 @@ export function PhoneInput({
       FALLBACK_COUNTRY,
   );
 
-  const [nationalNumber, setNationalNumber] = React.useState(() => {
-    if (matchedCountry) {
-      return value.slice(matchedCountry.dialCode.length).trim();
+  const [nationalNumber, setNationalNumber] = React.useState(() =>
+    nationalPartOf(value, matchedCountry),
+  );
+
+  /*
+   * ── FOLLOW A VALUE SET FROM OUTSIDE ──────────────────────────────────────
+   *
+   * Reported from local testing: leave KYC and come back, and every field is
+   * filled in again EXCEPT the phone number. The number was saved — the
+   * server had it — but this component read `value` once, when it mounted, and
+   * a saved answer reaches the form a moment AFTER that. Every other field
+   * renders its value directly; this one kept its empty first reading.
+   *
+   * So a change of `value` is followed — unless it is this component's own
+   * echo (what it just emitted while the client typed), which must not
+   * re-derive anything under the cursor. Adjusted during render rather than in
+   * an effect, which is React's pattern for state that follows a prop: no
+   * frame with the stale number is ever painted.
+   */
+  const [seenValue, setSeenValue] = React.useState(value);
+  if (value !== seenValue) {
+    setSeenValue(value);
+    const echo = selectedCountry.dialCode + (nationalNumber ? ` ${nationalNumber}` : '');
+    if (value !== echo) {
+      const country = countryFor(value, selectedCountry);
+      if (country) setSelectedCountry(country);
+      setNationalNumber(nationalPartOf(value, country));
     }
-    return value;
-  });
+  }
 
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 

@@ -1,13 +1,12 @@
 import { expect, test } from './fixtures';
 import {
-  API_BASE,
   TINY_PNG,
   adminApiSession,
   apiFromPage,
-  csrfOf,
+  kycStepPath,
   resetKycFixture,
+  uploadKycFile,
 } from './helpers';
-import type { Page } from '@playwright/test';
 
 /**
  * A step the BROKER added, driven through the CLIENT's wizard.
@@ -25,6 +24,11 @@ import type { Page } from '@playwright/test';
  * Each one is a decision the BROWSER makes about where to send a file, so only a
  * browser can catch it. The admin suite drives this feature over the API, which
  * is exactly why it stayed green while all three were broken.
+ *
+ * An added step holds typed answers and FILE fields — never a catalogue
+ * document, which the server now refuses outside the two document steps
+ * (`assertFieldsFitTheirStep`). So the step below is what a broker can build:
+ * a required answer and a required upload, each of which must stop Continue.
  */
 
 test.use({ storageState: 'e2e/.auth/kyc-client.json' });
@@ -32,52 +36,10 @@ test.use({ storageState: 'e2e/.auth/kyc-client.json' });
 const SLUG = 'e2e-portal-extra';
 const TEXT_FIELD = 'customField_portal_text';
 const FILE_FIELD = 'customField_portal_file';
+/** "Tick all that apply" — a checkbox with choices (asked for in local testing). */
+const GROUP_FIELD = 'customField_portal_group';
+
 const ANSWER = 'Salary from employment';
-
-/**
- * Upload a file as the signed-in client, from inside the page.
- *
- * The selfie step is a live CAMERA, not a file picker, so `setInputFiles` has
- * nothing to attach to — and the first version of this spec quietly skipped its
- * own assertion because of it, which is the failure mode this suite is most
- * careful about: a skipped Playwright test reports as passing.
- *
- * Posting the multipart form from the browser uses the client's real session and
- * real CSRF token, so it exercises the same route the UI does without needing a
- * fake camera device.
- */
-async function uploadAs(page: Page, field: string, fileName: string): Promise<number> {
-  const status = await postUpload(page, field, fileName);
-  if (status !== 429) return status;
-  /*
-   * WAITED OUT, never weakened — the same choice every other helper here makes.
-   * Uploads are capped at ten a minute PER IP and the whole suite shares that
-   * budget, so a spec that adds uploads can starve the one running after it.
-   * Raising a real rate limit so a test suite fits inside it would remove the
-   * protection from production to make CI green.
-   */
-  await new Promise((resolve) => setTimeout(resolve, 61_000));
-  return postUpload(page, field, fileName);
-}
-
-async function postUpload(page: Page, field: string, fileName: string): Promise<number> {
-  const csrf = await csrfOf(page.context());
-  return page.evaluate(
-    async ({ base, field, fileName, csrf, bytes }) => {
-      const body = new FormData();
-      body.append('file', new Blob([new Uint8Array(bytes)], { type: 'image/png' }), fileName);
-      body.append('field', field);
-      const res = await fetch(`${base}/kyc/upload`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'x-oxshare-csrf': csrf },
-        body,
-      });
-      return res.status;
-    },
-    { base: API_BASE, field, fileName, csrf, bytes: Array.from(TINY_PNG) },
-  );
-}
 
 let createdStepId: string | undefined;
 
@@ -123,19 +85,19 @@ test.beforeAll(async () => {
     fields: [
       { id: 'f-txt', name: TEXT_FIELD, label: 'Source of Funds', type: 'text', required: true },
       /*
-       * A DOCUMENT field (`doc:*`), not a plain `file`. That distinction is the
-       * whole point of the second case: a plain file field already uploaded
-       * under its own name and was never broken, while a document field was
-       * translated onto `doc_front` — the canonical column — and so landed on
-       * top of the client's passport. Testing the `file` type here would have
-       * passed before the fix and proved nothing.
+       * REQUIRED — reported from local testing: a required upload that let the
+       * client continue without it. On a built-in step that could not work (the
+       * step had nowhere to keep it, and the builder no longer offers it); on a
+       * step the broker adds it must, and this is where that is proved.
        */
+      { id: 'f-file', name: FILE_FIELD, label: 'Proof of Income', type: 'file', required: true },
       {
-        id: 'f-doc',
-        name: FILE_FIELD,
-        label: 'Proof of Income',
-        type: 'doc:passport',
-        required: false,
+        id: 'f-group',
+        name: GROUP_FIELD,
+        label: 'Income sources',
+        type: 'checkbox',
+        required: true,
+        options: ['Salary', 'Savings', 'Gift'],
       },
     ],
   });
@@ -163,7 +125,7 @@ test.afterAll(async () => {
 });
 
 test.describe('a broker-added step, in the client wizard', () => {
-  test('saves what the client types, and refuses Continue while it is empty', async ({
+  test('refuses Continue until every required answer, upload and choice is there, then keeps them all', async ({
     page,
     isMobile,
   }) => {
@@ -174,56 +136,82 @@ test.describe('a broker-added step, in the client wizard', () => {
     await page.goto('/kyc');
     await resetKycFixture(page);
 
-    // The custom step is appended, so it sits after the four seeded ones.
-    await page.goto('/kyc/step/5');
+    await page.goto(await kycStepPath(page, SLUG));
     await page.waitForLoadState('networkidle');
     await expect(page.getByText('Extra Checks').first()).toBeVisible({ timeout: 15_000 });
+    const next = page.getByRole('button', { name: /^continue$/i });
 
-    // ── REQUIRED is enforced before the step will advance ──────────────────
-    await page
-      .getByRole('button', { name: /continue|next/i })
-      .first()
-      .click();
+    // ── Nothing yet: the typed answer is asked for first ──────────────────
+    await next.click();
     await expect(
-      page.getByText(/required|fill/i).first(),
-      'Continue accepted an empty required field',
+      page.getByRole('alert').filter({ hasText: /please fill in: source of funds/i }),
+      'Continue accepted an empty required answer',
     ).toBeVisible({ timeout: 10_000 });
 
-    // ── What is typed is SAVED ─────────────────────────────────────────────
+    // ── Answered, no file: the UPLOAD is asked for ─────────────────────────
     await page
       .getByLabel(/source of funds/i)
       .first()
       .fill(ANSWER);
+    await next.click();
+    await expect(
+      page.getByRole('alert').filter({ hasText: /please upload: proof of income/i }),
+      'Continue accepted a step without its required upload',
+    ).toBeVisible({ timeout: 10_000 });
+
+    // ── Uploaded: the step advances, and both answers are on the server ────
+    await page.locator('input[type="file"]').first().setInputFiles({
+      name: 'income.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG,
+    });
+    const confirm = page.getByRole('button', { name: /use this|confirm/i }).first();
+    await expect(confirm, 'the preview never appeared').toBeVisible({ timeout: 15_000 });
+    await confirm.click();
+    await expect(page.getByRole('button', { name: /^replace$/i }).first()).toBeVisible({
+      timeout: 20_000,
+    });
+
+    // ── Uploaded, nothing ticked: the required GROUP is asked for ─────────────
+    await next.click();
+    await expect(
+      page.getByRole('alert').filter({ hasText: /please fill in: income sources/i }),
+      'Continue accepted a required "tick all that apply" with nothing ticked',
+    ).toBeVisible({ timeout: 10_000 });
+    const sources = page.getByRole('group', { name: /income sources/i });
+    await sources.getByRole('checkbox', { name: 'Savings' }).check();
+    await sources.getByRole('checkbox', { name: 'Salary' }).check();
+
     /*
-     * WAIT FOR THE SAVE ITSELF, not for the network to go quiet.
-     *
-     * `networkidle` after Continue is a guess about timing: it can settle before
-     * the step POST has been answered, and the status read below then races the
-     * write. That is exactly how this case failed on the mobile project while
-     * passing on desktop — a difference in speed, not in behaviour, and a flake
-     * that would have read as a mobile bug. Waiting on the request makes the
-     * assertion mean what it says on both.
+     * WAIT FOR THE SAVE ITSELF, not for the network to go quiet: `networkidle`
+     * can settle before the step POST is answered, and the status read below
+     * then races the write — how this case once flaked on mobile only.
      */
     const saved = page.waitForResponse(
       (res) => res.url().includes('/kyc/step') && res.request().method() === 'POST',
       { timeout: 20_000 },
     );
-    await page
-      .getByRole('button', { name: /continue|next/i })
-      .first()
-      .click();
+    const here = page.url();
+    await next.click();
     expect((await saved).status(), 'the step save was refused').toBeLessThan(400);
+    await expect(page, 'the step did not advance').not.toHaveURL(here, { timeout: 15_000 });
 
     const { body } = await apiFromPage(page, 'GET', '/kyc/status');
-    const stepData =
-      (body as { stepData?: Record<string, Record<string, unknown>> }).stepData ?? {};
+    const answers =
+      (body as { stepData?: Record<string, Record<string, unknown>> }).stepData?.[SLUG] ?? {};
     expect(
-      stepData[SLUG]?.[TEXT_FIELD],
+      answers[TEXT_FIELD],
       'the answer was discarded on Continue — the step took input and threw it away',
     ).toBe(ANSWER);
+    expect(
+      (answers[FILE_FIELD] as { filePath?: string } | undefined)?.filePath,
+      'the upload is not on the server',
+    ).toBeTruthy();
+    // Ticked Savings then Salary; kept in the order the broker listed them.
+    expect(answers[GROUP_FIELD]).toBe('Salary, Savings');
   });
 
-  test("a DOCUMENT on a custom step does not overwrite the client's passport", async ({
+  test("a file on a custom step does not overwrite the client's passport", async ({
     page,
     isMobile,
   }) => {
@@ -236,7 +224,7 @@ test.describe('a broker-added step, in the client wizard', () => {
 
     // A real passport on the canonical document step — the file the bug destroyed.
     expect(
-      await uploadAs(page, 'doc_front', 'passport.png'),
+      await uploadKycFile(page, 'doc_front', 'passport'),
       'the passport upload failed',
     ).toBeLessThan(400);
 
@@ -253,11 +241,9 @@ test.describe('a broker-added step, in the client wizard', () => {
       'no passport on file, so an overwrite could not be detected',
     ).toBeTruthy();
 
-    // Now upload into the CUSTOM step's document field.
-    await page.goto('/kyc/step/5');
+    // Now upload into the CUSTOM step's file field.
+    await page.goto(await kycStepPath(page, SLUG));
     await page.waitForLoadState('networkidle');
-    const card = page.getByRole('button', { name: /proof of income|passport/i }).first();
-    if (await card.isVisible().catch(() => false)) await card.click();
     const picker = page.locator('input[type="file"]').first();
     await expect(picker, 'the custom step offered no uploader').toBeAttached({ timeout: 15_000 });
     await picker.setInputFiles({ name: 'income.png', mimeType: 'image/png', buffer: TINY_PNG });

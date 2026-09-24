@@ -6,6 +6,7 @@ import type { components } from '@/lib/api/types.gen';
 import { t } from '@/lib/i18n';
 import { StepField } from './step-field';
 import { ReviewSummary } from './review-summary';
+import { isPageReturned } from './upload-state';
 
 /**
  * Aliased from the schema generated out of the backend's Swagger, so this
@@ -17,6 +18,7 @@ import { ReviewSummary } from './review-summary';
  */
 export type KycFieldConfig = components['schemas']['KycFieldConfigDto'];
 export type KycStepConfig = components['schemas']['KycStepConfigDto'];
+type KycStatusDto = components['schemas']['KycStatusDto'];
 
 /*
  * `docType`, `addressDocType` and their two setters are GONE from this
@@ -50,6 +52,13 @@ interface DynamicStepRendererProps {
   rejectedFields?: string[];
   /** Slot → stored path, so a returning client sees the picture they sent. */
   storedFiles?: Record<string, string>;
+  /**
+   * The document the SERVER holds for each canonical category. A returned page
+   * belongs to that document, whichever card is selected — `isPageReturned`.
+   */
+  storedDocValues?: { identity?: string; address?: string };
+  /** What the server holds, with its verdict on every step — the review screen renders it. */
+  status?: KycStatusDto | null;
   onChange: (key: string, value: string) => void;
   onUpload: UploadHandler;
   /** Threaded to the uploader so the step can tell 'nothing chosen' from 'chosen, not confirmed'. */
@@ -64,6 +73,8 @@ export function DynamicStepRenderer({
   selfieUploaded,
   rejectedFields = [],
   storedFiles = {},
+  storedDocValues = {},
+  status = null,
   onChange,
   onUpload,
   onPendingChange,
@@ -99,18 +110,25 @@ export function DynamicStepRenderer({
   const chosenField = documentFields.find((f) => f.name === chosenFieldName);
 
   /*
-   * The reviewer returned this document: by its own name, or — for the one on
-   * file, which is the one chosen when the client comes back — by one of its
-   * pages (`doc_back`). Every identity document's pages share the same ids, so
-   * a page flag is read against the chosen document only.
+   * Was this page of this document returned? One rule, in `isPageReturned`:
+   * a canonical page flag belongs to the document the SERVER holds, not to the
+   * card the client clicked — reading it against the chosen card turned every
+   * identity document red after only a passport was returned.
    */
+  const pageReturned = (field: KycFieldConfig, slot: string | null) =>
+    slot !== null &&
+    isPageReturned({
+      slot,
+      fieldName: field.name,
+      docValue: field.document?.value,
+      category: field.document?.category,
+      storedTypes: storedDocValues,
+      outstanding: rejectedFields,
+    });
   const documentReturned = (field: KycFieldConfig) =>
-    rejectedFields.includes(field.name) ||
-    (field.name === chosenFieldName &&
-      (field.document?.parts ?? []).some((_, index) => {
-        const id = uploadFieldFor(slug, field.name, index, field.document?.category);
-        return id !== null && rejectedFields.includes(id);
-      }));
+    (field.document?.parts ?? []).some((_, index) =>
+      pageReturned(field, uploadFieldFor(slug, field.name, index, field.document?.category)),
+    ) || rejectedFields.includes(field.name);
 
   /*
    * Uploads and long text get the full row; short inputs pair up. Derived from
@@ -128,15 +146,7 @@ export function DynamicStepRenderer({
    */
   if (slug === 'review') {
     return (
-      <ReviewSummary
-        title={title}
-        description={description}
-        steps={allSteps}
-        formData={formData}
-        uploadsState={uploadsState}
-        selfieUploaded={selfieUploaded}
-        rejectedFields={rejectedFields}
-      />
+      <ReviewSummary title={title} description={description} steps={allSteps} status={status} />
     );
   }
 
@@ -164,29 +174,6 @@ export function DynamicStepRenderer({
        * adding a fourth document type is an edit in the KYC builder rather
        * than a code change here.
        */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {plainFields.map((field) => (
-          <div key={field.id} className={fieldSpan(field)}>
-            <StepField
-              field={field}
-              slug={slug}
-              val={formData[field.name] || ''}
-              isErrored={
-                rejectedFields.includes(field.name) ||
-                // The canonical selfie is flagged by its storage id.
-                (slug === 'selfie' && rejectedFields.includes('selfie'))
-              }
-              selfieUploaded={selfieUploaded}
-              uploadsState={uploadsState}
-              storedFilePath={storedFiles[field.name]}
-              onChange={onChange}
-              onUpload={onUpload}
-              onPendingChange={onPendingChange}
-            />
-          </div>
-        ))}
-      </div>
-
       {documentFields.length > 0 && (
         <div className="space-y-4">
           {/*
@@ -256,8 +243,7 @@ export function DynamicStepRenderer({
              * from a shared column, which is how a passport stood in for a
              * national ID.
              */
-            const returned =
-              rejectedFields.includes(apiField) || rejectedFields.includes(chosenField!.name);
+            const returned = pageReturned(chosenField!, apiField);
             // A canonical page says which document it belongs to, so the
             // server files it under the right one.
             const isCanonical = apiField !== chosenField!.name;
@@ -281,6 +267,31 @@ export function DynamicStepRenderer({
               />
             );
           })}
+        </div>
+      )}
+      {/*
+       * AFTER the document choice: on a document step the choice is what the
+       * step is for, and a broker's extra questions follow it.
+       */}
+      {plainFields.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {plainFields.map((field) => (
+            <div key={field.id} className={fieldSpan(field)}>
+              <StepField
+                field={field}
+                slug={slug}
+                val={formData[field.name] || ''}
+                // The canonical selfie's storage id IS its name, `selfie`.
+                isErrored={rejectedFields.includes(field.name)}
+                selfieUploaded={selfieUploaded}
+                uploadsState={uploadsState}
+                storedFilePath={storedFiles[field.name]}
+                onChange={onChange}
+                onUpload={onUpload}
+                onPendingChange={onPendingChange}
+              />
+            </div>
+          ))}
         </div>
       )}
     </div>

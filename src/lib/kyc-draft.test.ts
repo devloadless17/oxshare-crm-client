@@ -2,8 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   KYC_DRAFT_TTL_MS,
   clearKycDraft,
+  forgetEdits,
+  forgetSaved,
   readPersonalDraft,
   readUploadsDraft,
+  rememberEdit,
   writePersonalDraft,
   writeUploadsDraft,
 } from './kyc-draft';
@@ -179,5 +182,32 @@ describe('the window itself', () => {
      * constant somebody edits.
      */
     expect(KYC_DRAFT_TTL_MS).toBe(12 * 60 * 60 * 1000);
+  });
+});
+
+describe('the draft holds UNSAVED EDITS, never a copy of the form', () => {
+  /*
+   * Found by kyc-builtin-extras.spec.ts: the whole form was written here, server
+   * values included, so an answer saved elsewhere was beaten on the next visit
+   * by the stale copy — and autosave then wrote the stale one back.
+   */
+  it('remembers one edit without touching the others', () => {
+    rememberEdit('phone', '+961 70 1');
+    rememberEdit('city', 'Beirut');
+    expect(readPersonalDraft()).toEqual({ phone: '+961 70 1', city: 'Beirut' });
+  });
+
+  it('forgets an edit once the server holds it as typed — and keeps one typed since', () => {
+    rememberEdit('phone', '+961 70 123 456');
+    rememberEdit('city', 'Tyre');
+    forgetSaved({ phone: '+961 70 123 456', city: 'Beirut' });
+    expect(readPersonalDraft()).toEqual({ city: 'Tyre' });
+  });
+
+  it('forgets named edits whatever they hold — a card the document on file overrides', () => {
+    rememberEdit('__docChoice__document', 'passport');
+    rememberEdit('city', 'Tyre');
+    forgetEdits(['__docChoice__document']);
+    expect(readPersonalDraft()).toEqual({ city: 'Tyre' });
   });
 });

@@ -3,20 +3,14 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertCircle } from 'lucide-react';
-import { Spinner } from '@/components/ui/loader';
 import api from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
-import { readPersonalDraft, writePersonalDraft } from '@/lib/kyc-draft';
+import { forgetEdits, forgetSaved, readPersonalDraft, rememberEdit } from '@/lib/kyc-draft';
 import { useResource } from '@/hooks/use-resource';
 import { withReviewStep } from './review-step';
-import {
-  chosenDocumentValue,
-  missingRequiredParts,
-  savedDocumentChoices,
-  storedDocValuesOf,
-} from './doc-type';
-import { planCustomStep } from './custom-step';
+import { chosenDocumentValue, savedDocumentChoices, storedDocValuesOf } from './doc-type';
+import { answersToSave } from './custom-step';
+import { firstOwed, owedMessage } from './owed-message';
 import {
   effectiveUploads,
   flagsSettledByUpload,
@@ -25,6 +19,8 @@ import {
   type SessionUploads,
 } from './upload-state';
 import { isNetworkError, kycErrorMessage } from './kyc-errors';
+import { useStepAutosave } from './use-step-autosave';
+import { ReturnedBanner, StepLoadError, StepLoading } from './step-screens';
 import type { components } from '@/lib/api/types.gen';
 import { Button } from '@/components/ui/button';
 
@@ -77,13 +73,13 @@ export function KycStepForm() {
   const [settled, setSettled] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  /** The form holds what the server has — autosave may start (`useStepAutosave`). */
+  const [seeded, setSeeded] = useState(false);
 
+  // What the client types is remembered until the server holds it (`kyc-draft.ts`).
   const set = (k: string, v: string) => {
-    setFormData((p) => {
-      const updated = { ...p, [k]: v };
-      writePersonalDraft(updated);
-      return updated;
-    });
+    setFormData((p) => ({ ...p, [k]: v }));
+    rememberEdit(k, v);
   };
 
   /*
@@ -157,17 +153,30 @@ export function KycStepForm() {
    */
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    const ready = statusQuery.status === 'ready' && configQuery.status === 'ready';
     // The saved document types join the form as the CHOICE each document step
     // opens on — a returning client seeing no card selected above their own
     // uploaded document is how they end up re-picking and re-uploading it.
-    const savedTypes = savedDocumentChoices(status, configQuery.data ?? []);
-    const merged = { ...storedAnswers, ...savedTypes, ...readPersonalDraft() };
+    const onFile = savedDocumentChoices(status, configQuery.data ?? []);
+    /*
+     * And when the step OPENS, the document on file beats a card that was
+     * clicked and never uploaded. The draft kept "Passport" after a national ID
+     * had been sent, so the review listed a passport as missing (reported from
+     * local testing). A click made after that wins, as it should.
+     */
+    if (ready && !seeded) {
+      const draft = readPersonalDraft();
+      forgetEdits(Object.keys(onFile).filter((key) => key in draft && draft[key] !== onFile[key]));
+    }
+    // Only UNSAVED edits come from the draft, so the server's answers show
+    // wherever the client has not typed since.
+    const merged = { ...storedAnswers, ...onFile, ...readPersonalDraft() };
     if (Object.keys(merged).length > 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- see note above
       setFormData(merged);
-      writePersonalDraft(merged);
     }
-  }, [status, configQuery.data, storedAnswers]);
+    if (ready) setSeeded(true);
+  }, [status, configQuery.data, storedAnswers, statusQuery.status, configQuery.status, seeded]);
 
   /*
    * Upload handler.
@@ -220,6 +229,27 @@ export function KycStepForm() {
   const totalSteps = stepConfigs.length || 5;
 
   /*
+   * Typed answers save as the client types — `use-step-autosave.ts` has the
+   * report that made it necessary — on EVERY step, since a built-in step may
+   * carry a broker's extra questions too. Files are saved by their uploads;
+   * the review screen collects nothing.
+   */
+  const refreshStatus = useCallback(
+    (saved: Record<string, string>) => {
+      forgetSaved(saved);
+      void queryClient.invalidateQueries({ queryKey: keys.kyc.status() });
+    },
+    [queryClient],
+  );
+  const autosave = useStepAutosave({
+    step: currentStepConfig?.slug === 'review' ? undefined : currentStepConfig,
+    formData,
+    saved: storedAnswers,
+    ready: seeded,
+    onSaved: refreshStatus,
+  });
+
+  /*
    * Submit, and survive losing the ANSWER.
    *
    * A request that got no response may still have landed — the connection can
@@ -248,88 +278,51 @@ export function KycStepForm() {
     router.push('/kyc/submitted');
   };
 
-  /** Checks the step, and says what is missing; `true` when it may be saved. */
-  const validate = (slug: string): boolean => {
-    if (slug === 'document' || slug === 'address') {
-      if (!(slug === 'document' ? docType : addressDocType)) {
-        setError(t('kyc.chooseDocument'));
-        return false;
-      }
-      const missing = missingRequiredParts(currentStepConfig, formData, uploadsState);
-      if (missing) {
-        // "Confirm it" when a photo is chosen but not sent, "upload one" when
-        // the slot is genuinely empty.
-        setError(
-          pendingUploads[missing.slot]
-            ? t('kyc.confirmChosenPhoto')
-            : t('kyc.needUpload', { label: missing.label }),
-        );
-        return false;
-      }
-      return true;
-    }
-    if (slug === 'selfie') {
-      if (!selfieUploaded) setError(t('kyc.needSelfie'));
-      return selfieUploaded;
-    }
-    const plan = planCustomStep(currentStepConfig, formData, uploadsState);
-    if (plan.missing) {
-      const label = plan.missing.label;
-      setError(
-        plan.missingIsUpload ? t('kyc.needUpload', { label }) : t('kyc.fieldRequired', { label }),
-      );
-      return false;
-    }
-    if (plan.invalid) {
-      setError(
-        plan.invalid.reason === 'phone'
-          ? t('kyc.phoneIncomplete', { label: plan.invalid.field.label })
-          : t('kyc.tooYoung'),
-      );
-      return false;
-    }
-    return true;
-  };
-
-  /* Save step data and advance */
+  /*
+   * Save, then ask the SERVER whether the step is done — never decide it here.
+   *
+   * This validated with its own copy of the rules and saved only what passed,
+   * while `submit` judged with another copy; every drift between the two
+   * reached a client as Continue letting them through and the last screen
+   * refusing (reported from local testing). Now every step is saved as it
+   * stands and the answer carries the server's verdict on it
+   * (`kyc-step-state.ts`) — the same judgement `submit` applies. The only thing
+   * decided here is the one only this browser knows: a photo chosen and not yet
+   * confirmed (`owedMessage`).
+   */
   const handleNext = async () => {
     setError('');
     setLoading(true);
     try {
       const slug = currentStepConfig?.slug || 'personal';
-      if (slug !== 'review' && !validate(slug)) return;
-
       if (slug === 'review') {
         /*
          * No re-post of the form as the personal step. It used to send the
          * WHOLE form — document choices, every custom step's answers, uploads
          * stringified to "[object Object]" — and the reviewer read all of it
-         * beside the client's name. Every step saved its own answers on
-         * Continue; the review screen only submits them.
+         * beside the client's name. The review screen only submits.
          */
         await submit();
         return;
       }
+      if (!currentStepConfig) return;
 
-      if (slug === 'document' || slug === 'address') {
-        await api.post('/kyc/step', {
-          step: slug,
-          data: { docType: slug === 'document' ? docType : addressDocType },
-        });
-      } else if (slug === 'selfie') {
-        await api.post('/kyc/step', { step: 'selfie', data: {} });
-      } else if (currentStepConfig) {
-        /*
-         * The personal step and every step the broker added share one rule:
-         * the fields the CONFIGURATION names, validated by their type. The
-         * personal step used to check a hard-coded list and accept "+961" as a
-         * phone number; `planCustomStep` knows both.
-         */
-        const plan = planCustomStep(currentStepConfig, formData, uploadsState);
-        await api.post('/kyc/step', { step: slug, data: plan.answers });
-      }
+      // Anything typed in the last moment is saved first, so it is judged too.
+      await autosave.flush();
+      const data = answersToSave(currentStepConfig, formData);
+      // The document the client is presenting — judged, and never allowed to
+      // relabel pages that belong to another one (`saveStep`).
+      if (slug === 'document') data.docType = docType;
+      if (slug === 'address') data.docType = addressDocType;
+      const saved = await api.post<KycStatusDto>('/kyc/step', { step: slug, data });
+      forgetSaved(data);
       void queryClient.invalidateQueries({ queryKey: keys.kyc.status() });
 
+      const owed = firstOwed(saved.data.steps?.find((state) => state.slug === slug));
+      if (owed) {
+        setError(owedMessage(owed, pendingUploads));
+        return;
+      }
       if (stepNumber < totalSteps) router.push(`/kyc/step/${stepNumber + 1}`);
       else await submit();
     } catch (e: unknown) {
@@ -343,71 +336,20 @@ export function KycStepForm() {
   // an onboarding step with no fields and no explanation.
   if (loadError) {
     return (
-      <div
-        role="alert"
-        className="flex flex-col items-center justify-center min-h-[45vh] p-6 text-center space-y-4"
-      >
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20">
-          <AlertCircle className="h-7 w-7" />
-        </div>
-        <div className="space-y-1">
-          <p className="text-sm font-bold text-foreground">{t('kyc.loadFailedShort')}</p>
-          <p className="text-xs text-muted-foreground max-w-sm">{loadError}</p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            void configQuery.refetch();
-            void statusQuery.refetch();
-          }}
-        >
-          {t('common.retry')}
-        </Button>
-      </div>
+      <StepLoadError
+        message={loadError}
+        onRetry={() => {
+          void configQuery.refetch();
+          void statusQuery.refetch();
+        }}
+      />
     );
   }
-
-  if (fetchingInitialData) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[45vh] p-6 text-center space-y-4">
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-link border border-primary/20">
-          <Spinner size="lg" className="text-link" />
-        </div>
-        <div className="space-y-1">
-          <p className="text-sm font-bold text-foreground">{t('kyc.loadingTitle')}</p>
-          <p className="text-xs text-muted-foreground">{t('kyc.loadingBody')}</p>
-        </div>
-      </div>
-    );
-  }
-
-  /*
-   * A correction round, not only the `rejected` state: saving any step moves a
-   * returned submission to `in_progress`, and the banner used to vanish with
-   * it — taking the reviewer's reason out of sight of the person fixing it. The
-   * reason stays on the submission until it is resubmitted.
-   */
-  const returned =
-    status?.status === 'rejected' ||
-    (status?.status === 'in_progress' && Boolean(status.rejectionReason));
+  if (fetchingInitialData) return <StepLoading />;
 
   return (
     <div className="space-y-8">
-      {returned && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs space-y-1.5 animate-in fade-in-0">
-          <div className="flex items-center gap-2 font-bold text-destructive text-sm">
-            <span>{t('kyc.actionRequired')}</span>
-          </div>
-          {status?.rejectionReason && (
-            <p className="text-destructive text-xs">
-              <strong className="font-semibold text-destructive">{t('kyc.rejectionNote')}</strong>{' '}
-              {status.rejectionReason}
-            </p>
-          )}
-          <p className="text-[11px] text-muted-foreground pt-1">{t('kyc.updateHighlighted')}</p>
-        </div>
-      )}
+      <ReturnedBanner status={status} />
 
       <DynamicStepRenderer
         currentStepConfig={currentStepConfig}
@@ -417,6 +359,8 @@ export function KycStepForm() {
         selfieUploaded={selfieUploaded}
         rejectedFields={outstanding}
         storedFiles={stored}
+        storedDocValues={storedDocValues}
+        status={status}
         onChange={set}
         onUpload={handleUpload}
         onPendingChange={handlePendingChange}
@@ -436,13 +380,28 @@ export function KycStepForm() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push(`/kyc/step/${stepNumber - 1}`)}
+            onClick={() =>
+              // Whatever is typed here is saved before the step is left.
+              void autosave.flush().then(() => router.push(`/kyc/step/${stepNumber - 1}`))
+            }
             disabled={loading}
           >
             {t('common.back')}
           </Button>
         ) : (
           <div />
+        )}
+
+        {autosave.state !== 'idle' && (
+          <span aria-live="polite" className="text-[11px] text-muted-foreground">
+            {t(
+              autosave.state === 'saving'
+                ? 'kyc.autosaveSaving'
+                : autosave.state === 'saved'
+                  ? 'kyc.autosaveSaved'
+                  : 'kyc.autosaveFailed',
+            )}
+          </span>
         )}
 
         <Button

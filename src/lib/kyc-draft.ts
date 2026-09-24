@@ -101,6 +101,43 @@ export function writePersonalDraft(values: Record<string, string>): void {
   stamp();
 }
 
+/**
+ * ## The draft holds UNSAVED EDITS — never a copy of the form
+ *
+ * It used to be the whole form, written back on every keystroke and every
+ * time the form was filled from the server. So a value the SERVER supplied sat
+ * here as if the client had typed it, and on the next visit it beat the
+ * server's newer answer: save an answer in one tab, reopen the step in another,
+ * and the old one came back — then autosave wrote it over the new one (found by
+ * `kyc-builtin-extras.spec.ts`). A draft that cannot tell "the client typed
+ * this" from "the server said this" is a second, stale copy of the truth.
+ *
+ * So the form records what the client TYPES (`rememberEdit`), and a key is
+ * forgotten the moment the server holds that same value (`forgetSaved`). What is
+ * left is exactly what has not reached the server — a refresh inside the
+ * autosave pause, or a save that failed — and that is what must win on the way
+ * back in. Everything else shows what the server holds.
+ */
+export function rememberEdit(key: string, value: string): void {
+  writePersonalDraft({ ...readPersonalDraft(), [key]: value });
+}
+
+/** Forget every edit the server now holds exactly as typed. */
+export function forgetSaved(saved: Readonly<Record<string, string>>): void {
+  const draft = readPersonalDraft();
+  const left = Object.fromEntries(
+    Object.entries(draft).filter(([key, value]) => saved[key] !== value),
+  );
+  if (Object.keys(left).length !== Object.keys(draft).length) writePersonalDraft(left);
+}
+
+/** Forget these edits whatever they hold — a choice the document on file overrides. */
+export function forgetEdits(keys: readonly string[]): void {
+  const draft = readPersonalDraft();
+  const left = Object.fromEntries(Object.entries(draft).filter(([key]) => !keys.includes(key)));
+  if (Object.keys(left).length !== Object.keys(draft).length) writePersonalDraft(left);
+}
+
 export function readUploadsDraft(): Record<string, boolean> {
   if (!dropIfExpired()) return {};
   return parseBooleanRecord(storage()?.getItem(UPLOADS_KEY) ?? null);
