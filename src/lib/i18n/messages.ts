@@ -252,11 +252,15 @@ export const messages = {
   'auth.register.signIn': 'Sign in',
   'auth.register.failed': 'Registration failed. Please try again.',
   'auth.register.passwordHint': 'At least 8 characters',
-  'auth.register.heading': 'Create OXShare Account',
+  // The brand is already on the page; the heading says what the screen does.
+  // Pairs with the login screen's "Welcome back" / "Sign in to your account".
+  'auth.register.heading': 'Create your account',
   'auth.register.tagline': 'Start trading with zero commission & deep liquidity',
   'auth.register.firstNamePlaceholder': 'John',
   'auth.register.lastNamePlaceholder': 'Doe',
-  'auth.register.submitCta': 'Complete Registration',
+  // The button repeats the heading's verb, so the one action on the screen is
+  // named the same way twice.
+  'auth.register.submitCta': 'Create account',
 
   // ── Auth: email verification ──────────────────────────────────────────────
   'auth.verify.pendingTitle': 'Verify your email',

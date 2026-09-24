@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderWithProviders } from '@/test/render';
 import VerifyEmailPage from './page';
 
@@ -261,5 +263,41 @@ describe('when the rate limiter steps in', () => {
     await screen.findByText(/too many attempts/i);
     expect(screen.queryByText(/verification failed/i)).not.toBeInTheDocument();
     expect(screen.getByText(/nothing has gone wrong with it/i)).toBeInTheDocument();
+  });
+});
+
+describe('the first frame of a tokenless arrival', () => {
+  /*
+   * Reported from local testing: after verifying, a refresh showed
+   * "Verification Failed · token is missing" for a moment, then "Already
+   * verified". The tab's memory is sessionStorage, which the SERVER cannot read,
+   * and it was consulted in an effect — so the server's HTML carried the
+   * refusal and the browser corrected it a frame later.
+   *
+   * Asserted on the server render because that is where the frame lived: a
+   * client render in a test flushes effects before anyone can look.
+   */
+  it('is never a verdict — the server cannot know, so it says "checking"', () => {
+    sessionStorage.setItem('oxshare.verify-email.outcome', 'verified');
+    searchParams.value = new URLSearchParams();
+
+    const html = renderToString(
+      <QueryClientProvider client={new QueryClient()}>
+        <VerifyEmailPage />
+      </QueryClientProvider>,
+    );
+
+    expect(html).not.toMatch(/failed|missing/i);
+    expect(html).toMatch(/verifying/i);
+  });
+
+  it('shows the remembered outcome as the first verdict in the browser', async () => {
+    sessionStorage.setItem('oxshare.verify-email.outcome', 'already');
+    searchParams.value = new URLSearchParams();
+    renderWithProviders(<VerifyEmailPage />);
+
+    await screen.findByText(/already verified/i);
+    expect(screen.queryByText(/failed|token is missing/i)).not.toBeInTheDocument();
+    expect(verifyEmail).not.toHaveBeenCalled();
   });
 });

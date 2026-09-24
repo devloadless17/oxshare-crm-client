@@ -10,6 +10,7 @@ import { useUser } from '@/context/UserContext';
 import { apiErrorCode, apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
 import { AuthShell } from '@/components/auth/auth-shell';
+import { useHydrated } from '@/hooks/use-hydrated';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -229,12 +230,32 @@ function VerifyEmailForm() {
    * Only ever UPGRADES a `verifying`, so it cannot overwrite a real
    * verification, a real expiry or a throttle that has already been concluded.
    */
+  /*
+   * ⚠️ NO VERDICT BEFORE THE BROWSER HAS BEEN ASKED — reported from local
+   * testing: the screen said "Verification Failed · token is missing" for a
+   * moment, then "Already verified".
+   *
+   * The tab's memory is `sessionStorage`, which the SERVER cannot read, and it
+   * was consulted in an effect — after the first paint. So a tokenless arrival
+   * (a refresh, or Back, once the token had been stripped) painted the refusal
+   * from the server's HTML and corrected itself a frame later. Somebody who is
+   * verifying an email is not signed in yet, so the session could not hold the
+   * screen either.
+   *
+   * Now: until this is running in a browser, the answer is "still checking"
+   * (the neutral spinner, identical on the server and at hydration), and once
+   * it is, the tab's memory is read DURING render — so the first frame with a
+   * verdict is the right one.
+   */
+  const hydrated = useHydrated();
+  const recalled = hydrated && !token ? recallOutcome() : null;
   const outcome: Outcome =
-    redeemed.kind !== 'verifying' || token || sessionPending
+    redeemed.kind !== 'verifying' || token || !hydrated || sessionPending
       ? redeemed
-      : sessionSaysVerified
-        ? { kind: 'already' }
-        : { kind: 'invalid', message: t('auth.verify.missingToken') };
+      : (recalled ??
+        (sessionSaysVerified
+          ? { kind: 'already' }
+          : { kind: 'invalid', message: t('auth.verify.missingToken') }));
 
   /*
    * Settled, and settled WELL — the address is confirmed, however it got there.

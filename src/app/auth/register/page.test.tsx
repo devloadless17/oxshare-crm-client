@@ -54,7 +54,7 @@ describe('pressing Register more than once', () => {
     await fillTheForm(user);
 
     const submit = screen.getByRole('button', {
-      name: /complete registration|creating your account/i,
+      name: /^create account$|creating your account/i,
     });
     await user.click(submit);
     await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
@@ -76,12 +76,12 @@ describe('pressing Register more than once', () => {
     await fillTheForm(user);
 
     await user.click(
-      screen.getByRole('button', { name: /complete registration|creating your account/i }),
+      screen.getByRole('button', { name: /^create account$|creating your account/i }),
     );
     await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
 
     expect(
-      screen.getByRole('button', { name: /complete registration|creating your account/i }),
+      screen.getByRole('button', { name: /^create account$|creating your account/i }),
       'the form invited a click that could only do harm',
     ).toBeDisabled();
   });
@@ -98,12 +98,12 @@ describe('pressing Register more than once', () => {
     await fillTheForm(user);
 
     await user.click(
-      screen.getByRole('button', { name: /complete registration|creating your account/i }),
+      screen.getByRole('button', { name: /^create account$|creating your account/i }),
     );
     await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
 
     expect(
-      screen.getByRole('button', { name: /complete registration|creating your account/i }),
+      screen.getByRole('button', { name: /^create account$|creating your account/i }),
       'a refused registration left the client unable to try again',
     ).toBeEnabled();
   });
