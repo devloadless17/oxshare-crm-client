@@ -211,7 +211,9 @@ export function TransactionFilters({
           where a half-width trigger is narrower still than it is on desktop.
         */}
         <label className="space-y-1.5 sm:col-span-2">
-          <span className="text-[11px] font-semibold text-muted-foreground">
+          {/* `block`, like every other caption in this row: an inline caption sits
+              in the label's taller line box and lands lower than its neighbours. */}
+          <span className="block text-[11px] font-semibold text-muted-foreground">
             {t('transactions.filterDateRange')}
           </span>
           <DateRangePicker

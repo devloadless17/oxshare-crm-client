@@ -709,8 +709,9 @@ export const messages = {
   // ── Dashboard ─────────────────────────────────────────────────────────────
   'dashboard.title': 'Trading Overview',
   'dashboard.liveBadge': 'Live MT5 Sync',
-  'dashboard.welcome':
-    'Welcome back! Monitor your live balances, trading accounts, and recent transactions.',
+  // Not "Welcome back!" — the heading above it already greets the client by
+  // name, and the two read as the same line twice.
+  'dashboard.welcome': 'Your live balances, trading accounts and recent transactions at a glance.',
   'dashboard.recentTitle': 'Recent Activity',
   'dashboard.recentSubtitle': 'Latest deposits, withdrawals, and MT5 transfers',
   'dashboard.viewAll': 'View All',
@@ -1083,7 +1084,7 @@ export const messages = {
   'kyc.optionalUpload': 'Optional',
   // Sets the expectation before they choose: a passport needs one photo, an ID
   // card needs two. Plural handled by the count itself reading naturally.
-  'kyc.pageCount': '{count} photo(s)',
+  'kyc.pageCount': '{count} {count:photo|photos}',
   // Names the slot, because "please complete this step" leaves a client
   // hunting for which of several uploads is missing.
   'kyc.needUpload': 'Please upload: {label}',
@@ -1361,9 +1362,9 @@ export const messages = {
   // is what makes that legible — "$148.08 across 188 trades" is a sentence
   // somebody can act on; the same total with no count reads as one payment.
   'notifications.kindRebateCreditedBody':
-    '{amount} was added to your wallet from {count} trade(s).',
+    '{amount} was added to your wallet from {count} {count:trade|trades}.',
   'notifications.kindCommissionConfirmedBody':
-    'Commission of {amount} was credited to your wallet from {count} trade(s).',
+    'Commission of {amount} was credited to your wallet from {count} {count:trade|trades}.',
   'notifications.kindPartnerApprovedTitle': 'Partner application approved',
   'notifications.kindPartnerApprovedBody':
     'Welcome to the partner programme. Your referral link is ready.',
