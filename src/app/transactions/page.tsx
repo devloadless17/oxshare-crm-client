@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { TransactionDetails } from '@/components/transactions/transaction-details';
-import { ArrowRight, ChevronRight, Receipt } from 'lucide-react';
+import { ChevronRight, Receipt } from 'lucide-react';
 import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
 import { AsyncBoundary } from '@/components/async-boundary';
@@ -627,24 +627,12 @@ function MethodCell({ tx }: { tx: Transaction }) {
 /**
  * The two ends of a movement that touched no payment provider.
  *
- * An arrow rather than the words "from"/"to": the row is already dense, and a
- * direction is read faster as a shape than as a preposition — which matters
- * most on the rows this renders, where the two directions are otherwise the
- * same words in the same order.
- *
- * `rtl:-scale-x-100` mirrors it, because "money moved this way" points at the
- * end of the reading direction and Arabic reads the other way (FSD §10). The
- * arrow is `aria-hidden`; the label either side carries the meaning, so a
- * screen reader hears "Wallet to account" rather than an arrow it must
- * interpret.
+ * The label already carries its own arrow ("Wallet → Trading account"), so no
+ * leading icon: a second arrow in front of it read as a bullet pointing at
+ * nothing.
  */
 function TransferRoute({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-muted-foreground">
-      <ArrowRight className="h-3.5 w-3.5 shrink-0 rtl:-scale-x-100" aria-hidden="true" />
-      <span className="truncate">{label}</span>
-    </span>
-  );
+  return <span className="truncate whitespace-nowrap text-muted-foreground">{label}</span>;
 }
 
 function StateBadge({ state, kind }: { state: string; kind?: string }) {
