@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { KIND_CONFIG, queryKeysFor } from './notification-kinds';
+import { KIND_CONFIG, queryKeysFor, resyncKeysOnReconnect } from './notification-kinds';
 import { keys, REGISTERED_ROOTS } from '@/lib/query-keys';
 
 /**
@@ -98,6 +98,32 @@ describe('queryKeysFor', () => {
         ).toBe(false);
       }
     }
+  });
+
+  describe('what a reconnect re-syncs', () => {
+    /*
+     * Reported from production: a KYC rejection that landed while the socket
+     * was down reached the bell but never the outcome screen, because the
+     * reconnect refreshed the bell alone. Socket.IO does not replay.
+     */
+    const resync = resyncKeysOnReconnect();
+    const covers = (target: readonly unknown[]) => resync.some((key) => invalidates(key, target));
+
+    it('covers the KYC status the outcome screen reads', () => {
+      expect(covers(keys.kyc.status())).toBe(true);
+    });
+
+    it('covers every family a live event refreshes', () => {
+      for (const kind of Object.keys(KIND_CONFIG)) {
+        for (const key of queryKeysFor(kind)) {
+          expect(covers(key), `${kind} is missed while the socket is down`).toBe(true);
+        }
+      }
+    });
+
+    it('never reaches the live MT5 figures', () => {
+      expect(covers(keys.mt5Live.snapshot('acc-1'))).toBe(false);
+    });
   });
 
   it('ignores a kind the backend invented after this build', () => {

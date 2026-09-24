@@ -19,7 +19,7 @@ import { useResource } from '@/hooks/use-resource';
 import { notificationsApi, type AppNotification } from '@/lib/api/notifications';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { useUser } from '@/context/UserContext';
-import { queryKeysFor } from './notification-kinds';
+import { queryKeysFor, resyncKeysOnReconnect } from './notification-kinds';
 import { t } from '@/lib/i18n';
 import { relativeTime } from '@/lib/relative-time';
 import { useRealtime } from '@/hooks/use-realtime';
@@ -178,6 +178,16 @@ export function NotificationsSheet() {
   React.useEffect(() => {
     if (!connected) return;
     void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+    /*
+     * And the DATA those events were about. Refreshing only the bell left a
+     * KYC rejection that landed during the gap out of the outcome screen
+     * (reported from production) — the row was in the bell, the screen still
+     * said "under review". `resyncKeysOnReconnect` is the union of what the
+     * live events refresh, and nothing more.
+     */
+    for (const key of resyncKeysOnReconnect()) {
+      void queryClient.invalidateQueries({ queryKey: key });
+    }
   }, [connected, queryClient]);
 
   const count = useQuery({

@@ -1,3 +1,4 @@
+import { isValidPhoneNumber } from 'libphonenumber-js/min';
 import { isUploadField } from './doc-type';
 
 /**
@@ -39,6 +40,12 @@ export interface CustomStepPlan {
   /** True when `missing` is a file field, so the caller can say "upload" not "fill in". */
   missingIsUpload: boolean;
   /**
+   * The first answer that is PRESENT but cannot be accepted: a phone number cut
+   * short, or a date of birth under the minimum age. Checked only once nothing
+   * is missing, so the client meets one problem at a time.
+   */
+  invalid: { field: FieldLike; reason: 'phone' | 'too_young' } | null;
+  /**
    * The TYPED answers to save.
    *
    * A file field is deliberately absent: its answer was written by
@@ -54,21 +61,79 @@ export function planCustomStep(
   uploads: Record<string, boolean>,
 ): CustomStepPlan {
   const fields = step?.fields ?? [];
+  const valueOf = (field: FieldLike) => answerOf(field, formData[field.name]);
 
   const missing =
     fields
       .filter((f) => f.required)
-      .find((f) =>
-        isUploadField(f) ? !uploads[f.name] : !String(formData[f.name] ?? '').trim(),
-      ) ?? null;
+      .find((f) => (isUploadField(f) ? !uploads[f.name] : !valueOf(f))) ?? null;
 
   const answers: Record<string, string> = {};
+  let invalid: CustomStepPlan['invalid'] = null;
   for (const field of fields) {
     if (isUploadField(field)) continue;
-    answers[field.name] = String(formData[field.name] ?? '');
+    const value = valueOf(field);
+    answers[field.name] = value;
+    const reason = value ? problemOf(field, value) : undefined;
+    if (!missing && !invalid && reason) invalid = { field, reason };
   }
 
-  return { missing, missingIsUpload: missing ? isUploadField(missing) : false, answers };
+  return { missing, missingIsUpload: missing ? isUploadField(missing) : false, invalid, answers };
+}
+
+/**
+ * The answer as the server will store it: trimmed, and a phone number holding
+ * only its country code read as NOTHING.
+ *
+ * The phone picker writes the code the moment a country is chosen, so "+961"
+ * alone passed a required-field check and reached the reviewer as the client's
+ * number (reported from production). The API reads it the same way
+ * (`kyc-answers.ts` in the backend), so the two cannot disagree about whether
+ * the field was answered.
+ */
+function answerOf(field: FieldLike, raw: string | undefined): string {
+  const value = String(raw ?? '').trim();
+  return field.type === 'phone' && isBarePhonePrefix(value) ? '' : value;
+}
+
+function problemOf(field: FieldLike, value: string): 'phone' | 'too_young' | undefined {
+  if (field.type === 'phone') return isCompletePhone(value) ? undefined : 'phone';
+  if (field.name === 'dateOfBirth' && isUnderMinimumAge(value, new Date())) return 'too_young';
+  return undefined;
+}
+
+/**
+ * A calling code with nothing after it — `+961`, or `+1684`, the longest the
+ * picker offers. The picker writes a SPACE before anything typed, so `+961 7`
+ * is a number somebody started, and is reported as incomplete, not missing.
+ */
+export function isBarePhonePrefix(value: string): boolean {
+  return /^\+?\d{0,4}$/.test(value.trim());
+}
+
+/**
+ * A dialable number for its country — libphonenumber's `min` metadata at the
+ * SAME version the API validates with, so the form and the server agree.
+ */
+export function isCompletePhone(value: string): boolean {
+  return isValidPhoneNumber(value);
+}
+
+/** The minimum age, which the API enforces at submission (`kyc-profile.ts`). */
+export const MINIMUM_AGE_YEARS = 18;
+
+/**
+ * Younger than the minimum age on `asOf`, by calendar — someone born on 29
+ * February turns 18 on 1 March in a common year. An unparseable date is not
+ * this check's to judge; the date field cannot produce one.
+ */
+export function isUnderMinimumAge(dateOfBirth: string, asOf: Date): boolean {
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return false;
+  let age = asOf.getUTCFullYear() - dob.getUTCFullYear();
+  const months = asOf.getUTCMonth() - dob.getUTCMonth();
+  if (months < 0 || (months === 0 && asOf.getUTCDate() < dob.getUTCDate())) age -= 1;
+  return age < MINIMUM_AGE_YEARS;
 }
 
 /**

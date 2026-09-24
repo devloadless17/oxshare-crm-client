@@ -58,6 +58,7 @@ export function StepField({
   isErrored,
   selfieUploaded,
   uploadsState,
+  storedFilePath,
   onChange,
   onUpload,
   onPendingChange,
@@ -68,6 +69,8 @@ export function StepField({
   isErrored: boolean;
   selfieUploaded: boolean;
   uploadsState: Record<string, boolean>;
+  /** The file this field already holds on the server, shown to a returning client. */
+  storedFilePath?: string;
   onChange: (key: string, value: string) => void;
   onUpload: (field: string, file: File, onProgress?: (percent: number) => void) => Promise<void>;
   /** Threaded to the uploader so the step can tell 'nothing chosen' from 'chosen, not confirmed'. */
@@ -97,6 +100,7 @@ export function StepField({
           onUpload={onUpload}
           field={uploadField}
           uploaded={isCanonicalSelfie ? selfieUploaded : uploadsState[field.name]}
+          isErrored={isErrored}
         />
       </div>
     );
@@ -124,9 +128,10 @@ export function StepField({
         <DocumentUploader
           label={field.label}
           field={field.name}
-          hint={field.hint}
+          hint={isErrored ? t('kyc.documentReturnedHint') : field.hint}
           uploaded={uploadsState[field.name]}
           isErrored={isErrored}
+          storedFilePath={uploadsState[field.name] ? storedFilePath : undefined}
           onUpload={onUpload}
           onPendingChange={onPendingChange}
         />

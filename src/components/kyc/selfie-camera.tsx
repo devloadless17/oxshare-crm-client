@@ -23,6 +23,8 @@ export interface SelfieCameraProps {
    */
   field?: string;
   uploaded?: boolean;
+  /** The reviewer returned this photo: say so, and ask for a new one. */
+  isErrored?: boolean;
 }
 
 /**
@@ -42,7 +44,12 @@ function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-export function SelfieCamera({ onUpload, field = 'selfie', uploaded = false }: SelfieCameraProps) {
+export function SelfieCamera({
+  onUpload,
+  field = 'selfie',
+  uploaded = false,
+  isErrored = false,
+}: SelfieCameraProps) {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
@@ -53,6 +60,19 @@ export function SelfieCamera({ onUpload, field = 'selfie', uploaded = false }: S
   const [cameraError, setCameraError] = React.useState(false);
   const [uploadError, setUploadError] = React.useState<string | null>(null);
   const [qualityProblem, setQualityProblem] = React.useState<QualityProblem | null>(null);
+
+  /*
+   * Follow the server's answer when it arrives AFTER this mounted.
+   *
+   * `uploaded` seeded the state once, and the status that says a selfie is on
+   * file can land a moment later — so a client coming back to this step met a
+   * live camera asking for a photo the server already held. Only ever towards
+   * "uploaded", and never over a capture in progress.
+   */
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronising with a prop that arrives after mount
+    if (uploaded && !captured) setUploadedSuccess(true);
+  }, [uploaded, captured]);
 
   const stopCamera = React.useCallback(() => {
     if (streamRef.current) {
@@ -185,6 +205,15 @@ export function SelfieCamera({ onUpload, field = 'selfie', uploaded = false }: S
 
   return (
     <div className="flex flex-col items-center justify-center space-y-6 w-full max-w-md mx-auto py-2">
+      {/* The reviewer returned the selfie on file: the camera is open for a new one. */}
+      {isErrored && !uploadedSuccess && (
+        <p
+          role="status"
+          className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-center text-[11px] font-bold text-destructive"
+        >
+          {t('kyc.documentReturned')} — {t('kyc.documentReturnedHint')}
+        </p>
+      )}
       {/* Live Camera View */}
       {!captured && !uploadedSuccess && (
         <div className="flex flex-col items-center space-y-4 w-full">

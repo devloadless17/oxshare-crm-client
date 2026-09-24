@@ -98,6 +98,14 @@ function humanise(value: string): string {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
+/**
+ * A key no configured field names. The builder generates `customField_<timestamp>`
+ * and never shows it, so that shape means a question since removed from the form.
+ */
+function unconfiguredLabel(key: string): string {
+  return /^customField_\d+$/.test(key) ? t('kyc.docs.retiredQuestion') : humanise(key);
+}
+
 function isStoredFile(value: unknown): value is { filePath: string; fileName?: string } {
   return (
     typeof value === 'object' &&
@@ -202,7 +210,7 @@ export function kycDocumentsOf(
         key: `${slug}:${name}`,
         filePath: value.filePath,
         fileName: value.fileName,
-        type: field?.label ?? humanise(name),
+        type: field?.label ?? unconfiguredLabel(name),
         part: step?.title,
         fieldKeys: [name],
       });
@@ -245,8 +253,15 @@ export function kycDocumentState(
  *
  * Configured fields first, in the order the form asked them; anything stored
  * that the config no longer names follows, so an answer is never hidden just
- * because a broker renamed the field after the client gave it. Internal keys
- * (`__docChoice__…`) and empty values are dropped.
+ * because a broker renamed the field after the client gave it.
+ *
+ * NOT shown: internal keys (`__docChoice__…`), empty values, a file record
+ * stringified to "[object Object]", and any key another step's configuration
+ * names. An older review screen re-posted the whole wizard form as the personal
+ * step, so a custom step's answers were COPIED here under their builder keys —
+ * and the client read "Custom field 1790263652846" beside their own name. Those
+ * answers belong to their step; a field no step names any more is labelled in
+ * words rather than by its generated key.
  */
 export function personalDetailsOf(
   personalInfo: Record<string, unknown> | null | undefined,
@@ -254,7 +269,11 @@ export function personalDetailsOf(
 ): { key: string; label: string; value: string }[] {
   if (!personalInfo) return [];
   const configured = steps.find((s) => s.slug === 'personal')?.fields ?? [];
-  const text = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? String(v) : '');
+  const elsewhere = new Set(
+    steps.filter((s) => s.slug !== 'personal').flatMap((s) => s.fields.map((f) => f.name)),
+  );
+  const text = (v: unknown) =>
+    (typeof v === 'string' && v !== '[object Object]') || typeof v === 'number' ? String(v) : '';
 
   const seen = new Set<string>();
   const out: { key: string; label: string; value: string }[] = [];
@@ -264,9 +283,10 @@ export function personalDetailsOf(
     if (value) out.push({ key: field.name, label: field.label, value });
   }
   for (const [key, raw] of Object.entries(personalInfo)) {
-    if (seen.has(key) || key.startsWith('__')) continue;
+    if (seen.has(key) || elsewhere.has(key) || key.startsWith('__')) continue;
     const value = text(raw).trim();
-    if (value) out.push({ key, label: humanise(key), value });
+    if (!value) continue;
+    out.push({ key, label: unconfiguredLabel(key), value });
   }
   return out;
 }
@@ -294,7 +314,7 @@ export function rejectedFieldLabels(
       return row!.part ? `${row!.type} · ${row!.part}` : row!.type;
     }
     if (matched.length > 1) return matched[0]!.type;
-    return fields.find((f) => f.name === id)?.label ?? humanise(id);
+    return fields.find((f) => f.name === id)?.label ?? unconfiguredLabel(id);
   });
   return [...new Set(labels)];
 }

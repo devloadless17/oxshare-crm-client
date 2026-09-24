@@ -12,6 +12,8 @@ import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 import { KycSubmissionDetails } from './kyc-submission-details';
 import { rejectedFieldLabels } from '@/lib/kyc-documents';
+import { withReviewStep } from './review-step';
+import { resumeStepNumber } from './resume-step';
 
 type KycStatusDto = components['schemas']['KycStatusDto'];
 type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
@@ -163,7 +165,10 @@ export function KycOutcome() {
                */}
               {isRejected && (
                 <Link
-                  href="/kyc/step/1"
+                  href={`/kyc/step/${resumeStepNumber(
+                    statusQuery.data,
+                    withReviewStep(configQuery.data ?? []),
+                  )}`}
                   className="inline-flex items-center justify-center bg-primary hover:bg-primary-hover text-primary-foreground font-bold px-8 py-3.5 rounded-full text-xs focus-outline cursor-pointer"
                 >
                   {t('kyc.reapply')}

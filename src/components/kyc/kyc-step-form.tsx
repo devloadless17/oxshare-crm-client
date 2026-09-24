@@ -7,12 +7,7 @@ import { AlertCircle } from 'lucide-react';
 import { Spinner } from '@/components/ui/loader';
 import api from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
-import {
-  readPersonalDraft,
-  readUploadsDraft,
-  writePersonalDraft,
-  writeUploadsDraft,
-} from '@/lib/kyc-draft';
+import { readPersonalDraft, writePersonalDraft } from '@/lib/kyc-draft';
 import { useResource } from '@/hooks/use-resource';
 import { withReviewStep } from './review-step';
 import {
@@ -21,7 +16,15 @@ import {
   savedDocumentChoices,
   storedDocValuesOf,
 } from './doc-type';
-import { planCustomStep, uploadedCustomFields } from './custom-step';
+import { planCustomStep } from './custom-step';
+import {
+  effectiveUploads,
+  flagsSettledByUpload,
+  outstandingFlags,
+  storedFilesOf,
+  type SessionUploads,
+} from './upload-state';
+import { isNetworkError, kycErrorMessage } from './kyc-errors';
 import type { components } from '@/lib/api/types.gen';
 import { Button } from '@/components/ui/button';
 
@@ -46,29 +49,15 @@ export function KycStepForm() {
   const stepNumber = Number(params.step) || 1;
 
   const [formData, setFormData] = useState<Record<string, string>>({});
-  /*
-   * The chosen document, read from whichever `document` field the CONFIG
-   * declares rather than from a hard-coded key.
-   *
-   * These were `formData['docType']` and `formData['addressDocType']` — the
-   * field names the seed happened to use. A step an operator built with a
-   * differently-named field would have saved nothing, which is the same
-   * hard-coding this whole change removes, so the name is looked up.
-   *
-   * `docTypeSlug` still converts, because a value picked before the catalogue
-   * existed may be a label rather than a value.
-   */
-  const [uploadsState, setUploadsState] = useState<Record<string, boolean>>({});
 
   /*
    * Files chosen but not yet confirmed.
    *
-   * Kept apart from `uploadsState`, which only records what actually reached
-   * the server. The two together are what let this step say something true: a
-   * client looking at their own photo was told "please upload your proof of
-   * address", because from here a pending preview and an empty tile are the
-   * same thing — and working out that "Use this" was the missing step cost
-   * real time.
+   * Kept apart from what actually reached the server. The two together are
+   * what let this step say something true: a client looking at their own photo
+   * was told "please upload your proof of address", because from here a pending
+   * preview and an empty tile are the same thing — and working out that
+   * "Use this" was the missing step cost real time.
    */
   const [pendingUploads, setPendingUploads] = useState<Record<string, boolean>>({});
   const handlePendingChange = useCallback((field: string, hasPending: boolean) => {
@@ -76,12 +65,18 @@ export function KycStepForm() {
       prev[field] === hasPending ? prev : { ...prev, [field]: hasPending },
     );
   }, []);
-  const [selfieUploaded, setSelfieUploaded] = useState(false);
+
+  /*
+   * What THIS session uploaded, and for which document. The server's answer is
+   * read from the status on every render (`upload-state.ts` says why the
+   * sessionStorage copy of uploads was removed); this only adds what landed
+   * since that status was fetched.
+   */
+  const [sessionUploads, setSessionUploads] = useState<SessionUploads>({});
+  /** The reviewer's document flags this session has answered with a new upload. */
+  const [settled, setSettled] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [kycStatus, setKycStatus] = useState<string>('not_started');
-  const [rejectionReason, setRejectionReason] = useState<string>('');
-  const [rejectedFields, setRejectedFields] = useState<string[]>([]);
 
   const set = (k: string, v: string) => {
     setFormData((p) => {
@@ -94,16 +89,12 @@ export function KycStepForm() {
   /*
    * Two queries, then one effect that syncs their result into form state.
    *
-   * ['kyc-config'] is the SAME key the kyc layout uses, so react-query serves both
-   * from a single request instead of each fetching /kyc/config independently.
+   * `keys.kyc.config()` is the SAME key the kyc layout uses, so react-query
+   * serves both from a single request.
    *
-   * Neither query may be swallowed. They used to carry
-   * `.catch(() => ({ data: [] }))` and `.catch(() => ({ data: null }))`, which
-   * turned a failed request into an empty config — rendering this page as a
-   * verification form with no fields and no error, so the user saw a broken step
-   * and was told nothing. Both are required for a correct render: without the
-   * config there are no fields, and without the status we lose prefill and, worse,
-   * the rejection notice on a returned KYC.
+   * Neither query may be swallowed: without the config there are no fields,
+   * and without the status we lose prefill and, worse, the rejection notice on
+   * a returned KYC. A failure renders an error with a retry, never an empty form.
    */
   const configQuery = useResource(
     keys.kyc.config(),
@@ -122,147 +113,105 @@ export function KycStepForm() {
         ? apiErrorMessage(statusQuery.error, t('kyc.loadFailed'))
         : '';
 
-  // Always present, always last — see `withReviewStep` for why it is not part
-  // of the configurable flow. Memoised so the effects below do not see a new
-  // array identity on every render.
+  // Always present, always last — see `withReviewStep`. Memoised so the effects
+  // below do not see a new array identity on every render.
   const stepConfigs = useMemo(() => withReviewStep(configQuery.data ?? []), [configQuery.data]);
+  const status = statusQuery.data ?? null;
 
   const docType = chosenDocumentValue(stepConfigs, formData, 'identity');
-  // Which document the SERVER holds a file for — see the renderer's prop note.
-  const storedDocValues = storedDocValuesOf(statusQuery.data);
   const addressDocType = chosenDocumentValue(stepConfigs, formData, 'address');
+  const storedDocValues = storedDocValuesOf(status);
+  const stored = useMemo(() => storedFilesOf(status), [status]);
+  const storedAnswers = useMemo(
+    () => savedAnswersFor(status, stepConfigs, stepNumber),
+    [status, stepConfigs, stepNumber],
+  );
+
+  /*
+   * What the reviewer asked for that the client has not answered yet, and
+   * which uploads count as done FOR THE DOCUMENT CHOSEN — see `upload-state.ts`
+   * for the three production bugs these two lines replace.
+   */
+  const outstanding = outstandingFlags(status?.rejectedFields, settled, formData, storedAnswers);
+  const uploadsState = effectiveUploads({
+    stored,
+    storedTypes: storedDocValues,
+    session: sessionUploads,
+    chosen: { identity: docType, address: addressDocType },
+    outstanding,
+    steps: stepConfigs,
+  });
+  const selfieUploaded = Boolean(uploadsState['selfie']);
 
   /*
    * Restores half-filled input from sessionStorage and folds in whatever the
    * server already has.
    *
-   * The sessionStorage reads are a deliberate exception to
+   * The sessionStorage read is a deliberate exception to
    * react-hooks/set-state-in-effect: this IS the case the rule's own docs allow,
-   * synchronising React state with an external system. A lazy useState initialiser
-   * would read sessionStorage during render, which the server cannot do, producing
-   * a hydration mismatch on a form the user has half-filled.
+   * synchronising React state with an external system. A lazy useState
+   * initialiser would read sessionStorage during render, which the server cannot
+   * do, producing a hydration mismatch on a form the user has half-filled.
    *
    * Local edits win over the server copy — the client typed them more recently.
    */
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    const cachedPersonal = readPersonalDraft();
-    const cachedUploads = readUploadsDraft();
-    const data = statusQuery.data;
-
-    /*
-     * Seeded from `savedAnswersFor`, which also knows where a CUSTOM step's
-     * answers live — under its own slug in `stepData` rather than in
-     * `personalInfo`. Extracted rather than inlined so `stepConfigs` and
-     * `stepNumber` are arguments the dependency array can see, instead of
-     * closure reads it could not.
-     */
-    const fromServer = savedAnswersFor(data, stepConfigs, stepNumber);
-    /*
-     * The saved document types join `formData` BEFORE it is set, because that
-     * is where the `select` fields read from now.
-     *
-     * Converted to the configured LABEL so the option shows as chosen — the
-     * API stores `national_id` and the dropdown offers "National ID". A
-     * returning client seeing an empty dropdown above their own uploaded
-     * document is how they end up re-picking and re-uploading it.
-     */
-    const savedTypes = savedDocumentChoices(data, configQuery.data ?? []);
-
-    // Local edits still win: `cachedPersonal` is last, so a type the client
-    // changed a moment ago is not overwritten by the one on the server.
-    const mergedPersonal = { ...fromServer, ...savedTypes, ...cachedPersonal };
-    if (Object.keys(mergedPersonal).length > 0) {
+    // The saved document types join the form as the CHOICE each document step
+    // opens on — a returning client seeing no card selected above their own
+    // uploaded document is how they end up re-picking and re-uploading it.
+    const savedTypes = savedDocumentChoices(status, configQuery.data ?? []);
+    const merged = { ...storedAnswers, ...savedTypes, ...readPersonalDraft() };
+    if (Object.keys(merged).length > 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- see note above
-      setFormData(mergedPersonal);
-      writePersonalDraft(mergedPersonal);
+      setFormData(merged);
+      writePersonalDraft(merged);
     }
-
-    const uploads: Record<string, boolean> = { ...cachedUploads };
-    if (data?.status) setKycStatus(data.status);
-    if (data?.rejectionReason) setRejectionReason(data.rejectionReason);
-    if (data?.rejectedFields) setRejectedFields(data.rejectedFields);
-    if (data?.document) {
-      if (data.document.frontFilePath) uploads['doc_front'] = true;
-      if (data.document.backFilePath) uploads['doc_back'] = true;
-    }
-    if (data?.selfie?.filePath) {
-      setSelfieUploaded(true);
-      uploads['selfie'] = true;
-    }
-    if (data?.addressProof) {
-      if (data.addressProof.filePath) uploads['address_proof'] = true;
-      if (data.addressProof.page2FilePath) uploads['address_proof_2'] = true;
-    }
-    /*
-     * A CUSTOM step's uploads live under its own slug in `stepData`, not in the
-     * four columns above. Without this the client returns to the step, sees an
-     * empty uploader, and is asked for a document the server already holds —
-     * the upload twin of the empty-answers bug `savedAnswersFor` fixed.
-     */
-    for (const key of uploadedCustomFields(data?.stepData)) uploads[key] = true;
-    if (uploads['selfie']) setSelfieUploaded(true);
-    setUploadsState(uploads);
-    writeUploadsDraft(uploads);
-    /*
-     * `configQuery.data` is read above (to map a stored docType back to its
-     * configured label), so it belongs here — and both are react-query results,
-     * whose object identity is stable between refetches. That matters: an
-     * unstable dependency in an effect that calls `setState` re-runs on every
-     * render, which is how the KYC redirect loop happened on `/kyc`.
-     */
-  }, [statusQuery.data, configQuery.data, stepConfigs, stepNumber]);
+  }, [status, configQuery.data, storedAnswers]);
 
   /*
    * Upload handler.
    *
-   * `onProgress` is threaded down so the uploader can show a determinate bar.
-   * A spinner reading "please wait" is indistinguishable from a hung request,
-   * and on mobile data a 4 MB document is 30+ seconds of exactly that — which
-   * is where people close the tab.
+   * `docType` names the document a canonical page belongs to, so the server
+   * files it under the right one and starts the document afresh when the
+   * client has switched — `attachFile` in the backend. `onProgress` is threaded
+   * down so the uploader can show a determinate bar: a spinner reading "please
+   * wait" is indistinguishable from a hung request on mobile data.
    */
   const handleUpload = useCallback(
-    async (field: string, file: File, onProgress?: (percent: number) => void) => {
+    async (
+      field: string,
+      file: File,
+      onProgress?: (percent: number) => void,
+      uploadDocType?: string,
+    ) => {
       setError('');
       const form = new FormData();
       form.append('file', file);
       form.append('field', field);
+      if (uploadDocType) form.append('docType', uploadDocType);
       await api.post<{ message?: string }>('/kyc/upload', form, {
         /*
-         * `undefined`, never `'multipart/form-data'` — the exact thing
-         * `lib/api/account.ts` records as a mistake, made here anyway.
-         *
-         * A multipart body needs a `boundary` parameter that only the browser
-         * knows. Naming the type by hand emits the header WITHOUT one, and the
-         * server cannot parse the body. Deleting the header lets the browser
-         * write both halves; the axios instance's default JSON content type is
-         * what has to be got out of the way.
-         *
-         * This is the identity-document upload, so the failure it produces is a
-         * client who cannot complete KYC — and the request looks correct in the
-         * network tab, which is why it survived.
+         * `undefined`, never `'multipart/form-data'`: a multipart body needs a
+         * `boundary` parameter only the browser knows, and naming the type by
+         * hand emits the header without one, so the server cannot parse it.
          */
         headers: { 'Content-Type': undefined },
         onUploadProgress: (e) => {
-          // `total` is absent on some proxies and in some browsers; without it a
-          // percentage would be a guess, so leave the bar where it is rather
-          // than inventing movement.
+          // `total` is absent on some proxies; without it a percentage would be
+          // a guess, so leave the bar where it is rather than inventing movement.
           if (onProgress && e.total) {
             onProgress(Math.min(100, Math.round((e.loaded / e.total) * 100)));
           }
         },
       });
 
-      setUploadsState((p) => {
-        const updated = { ...p, [field]: true };
-        writeUploadsDraft(updated);
-        return updated;
-      });
-
-      if (field === 'selfie') setSelfieUploaded(true);
+      setSessionUploads((p) => ({ ...p, [field]: { docType: uploadDocType } }));
+      setSettled((p) => [...p, ...flagsSettledByUpload(field, stepConfigs)]);
+      // The server now holds the page under its document; read that back.
+      void queryClient.invalidateQueries({ queryKey: keys.kyc.status() });
     },
-    [],
+    [queryClient, stepConfigs],
   );
 
   const currentStepConfig =
@@ -270,125 +219,121 @@ export function KycStepForm() {
 
   const totalSteps = stepConfigs.length || 5;
 
+  /*
+   * Submit, and survive losing the ANSWER.
+   *
+   * A request that got no response may still have landed — the connection can
+   * drop after the server committed. Reported from production as "network
+   * error on submission". So a network failure asks the server what happened
+   * before saying anything: if the submission is in, the client is where they
+   * meant to be; only a genuine failure is reported, in words they can act on.
+   */
+  const submit = async () => {
+    try {
+      await api.post<{ message?: string }>('/kyc/submit');
+    } catch (e: unknown) {
+      if (!isNetworkError(e)) throw e;
+      const now = await api
+        .get<KycStatusDto | null>('/kyc/status')
+        .then((r) => r.data?.status)
+        .catch(() => undefined);
+      if (now !== 'submitted' && now !== 'under_review') throw e;
+    }
+    /*
+     * The status cache MUST learn about the submit before the navigation:
+     * `/kyc/submitted` is gated on the shared status query, and a cached
+     * `in_progress` bounced the client who had JUST submitted back to step 1.
+     */
+    await queryClient.invalidateQueries({ queryKey: keys.kyc.status() });
+    router.push('/kyc/submitted');
+  };
+
+  /** Checks the step, and says what is missing; `true` when it may be saved. */
+  const validate = (slug: string): boolean => {
+    if (slug === 'document' || slug === 'address') {
+      if (!(slug === 'document' ? docType : addressDocType)) {
+        setError(t('kyc.chooseDocument'));
+        return false;
+      }
+      const missing = missingRequiredParts(currentStepConfig, formData, uploadsState);
+      if (missing) {
+        // "Confirm it" when a photo is chosen but not sent, "upload one" when
+        // the slot is genuinely empty.
+        setError(
+          pendingUploads[missing.slot]
+            ? t('kyc.confirmChosenPhoto')
+            : t('kyc.needUpload', { label: missing.label }),
+        );
+        return false;
+      }
+      return true;
+    }
+    if (slug === 'selfie') {
+      if (!selfieUploaded) setError(t('kyc.needSelfie'));
+      return selfieUploaded;
+    }
+    const plan = planCustomStep(currentStepConfig, formData, uploadsState);
+    if (plan.missing) {
+      const label = plan.missing.label;
+      setError(
+        plan.missingIsUpload ? t('kyc.needUpload', { label }) : t('kyc.fieldRequired', { label }),
+      );
+      return false;
+    }
+    if (plan.invalid) {
+      setError(
+        plan.invalid.reason === 'phone'
+          ? t('kyc.phoneIncomplete', { label: plan.invalid.field.label })
+          : t('kyc.tooYoung'),
+      );
+      return false;
+    }
+    return true;
+  };
+
   /* Save step data and advance */
   const handleNext = async () => {
     setError('');
     setLoading(true);
     try {
       const slug = currentStepConfig?.slug || 'personal';
+      if (slug !== 'review' && !validate(slug)) return;
 
-      if (slug === 'personal') {
-        if (
-          !formData.firstName ||
-          !formData.lastName ||
-          !formData.dateOfBirth ||
-          !formData.nationality ||
-          !formData.country ||
-          !formData.phone
-        ) {
-          setError(t('kyc.requiredFields'));
-          setLoading(false);
-          return;
-        }
-        const dob = new Date(formData.dateOfBirth);
-        const minAgeDate = new Date();
-        minAgeDate.setFullYear(minAgeDate.getFullYear() - 18);
-        if (dob > minAgeDate) {
-          setError(t('kyc.tooYoung'));
-          setLoading(false);
-          return;
-        }
-        await api.post<{ message?: string }>('/kyc/step', { step: 'personal', data: formData });
-      } else if (slug === 'document') {
-        const missing = missingRequiredParts(currentStepConfig, formData, uploadsState);
-        if (missing) {
-          setError(
-            // "Confirm it" when a photo is sitting there but was never
-            // submitted, "upload one" when the slot is genuinely empty.
-            pendingUploads[missing.slot]
-              ? t('kyc.confirmChosenPhoto')
-              : t('kyc.needUpload', { label: missing.label }),
-          );
-          setLoading(false);
-          return;
-        }
-        await api.post<{ message?: string }>('/kyc/step', { step: 'document', data: { docType } });
-      } else if (slug === 'selfie') {
-        if (!selfieUploaded) {
-          setError(t('kyc.needSelfie'));
-          setLoading(false);
-          return;
-        }
-        await api.post<{ message?: string }>('/kyc/step', { step: 'selfie', data: {} });
-      } else if (slug === 'address') {
+      if (slug === 'review') {
         /*
-         * The SAME check as the document step, because the rule is the same:
-         * every required part of the chosen type must have arrived. It used to
-         * be two hard-coded blocks naming `doc_front` and `address_proof`,
-         * which is why a utility bill demanded a second page it does not have.
+         * No re-post of the form as the personal step. It used to send the
+         * WHOLE form — document choices, every custom step's answers, uploads
+         * stringified to "[object Object]" — and the reviewer read all of it
+         * beside the client's name. Every step saved its own answers on
+         * Continue; the review screen only submits them.
          */
-        const missing = missingRequiredParts(currentStepConfig, formData, uploadsState);
-        if (missing) {
-          setError(
-            pendingUploads[missing.slot]
-              ? t('kyc.confirmChosenPhoto')
-              : t('kyc.needUpload', { label: missing.label }),
-          );
-          setLoading(false);
-          return;
-        }
-        await api.post<{ message?: string }>('/kyc/step', {
-          step: 'address',
-          data: { docType: addressDocType },
-        });
-      } else if (slug === 'review') {
-        if (formData.firstName || formData.lastName) {
-          await api.post<{ message?: string }>('/kyc/step', { step: 'personal', data: formData });
-        }
-        await api.post<{ message?: string }>('/kyc/submit');
-        /*
-         * The status cache MUST learn about the submit before the navigation.
-         *
-         * `/kyc/submitted` is behind a client-side route gate that decides from
-         * the shared `['kyc-status']` query. A router.push keeps this page's
-         * QueryClient, whose cached status still says `in_progress` (staleTime
-         * 30s) — so the gate read yesterday's answer and bounced the client who
-         * had JUST submitted straight back to step 1. Awaited, so the fresh
-         * status is in the cache before the gate ever mounts.
-         */
-        await queryClient.invalidateQueries({ queryKey: keys.kyc.status() });
-        router.push('/kyc/submitted');
+        await submit();
         return;
+      }
+
+      if (slug === 'document' || slug === 'address') {
+        await api.post('/kyc/step', {
+          step: slug,
+          data: { docType: slug === 'document' ? docType : addressDocType },
+        });
+      } else if (slug === 'selfie') {
+        await api.post('/kyc/step', { step: 'selfie', data: {} });
       } else if (currentStepConfig) {
         /*
-         * A step the BROKER added. Every branch above names a canonical slug, so
-         * a custom step used to fall through all of them — unvalidated, and
-         * never saved. `planCustomStep` records what that cost.
+         * The personal step and every step the broker added share one rule:
+         * the fields the CONFIGURATION names, validated by their type. The
+         * personal step used to check a hard-coded list and accept "+961" as a
+         * phone number; `planCustomStep` knows both.
          */
         const plan = planCustomStep(currentStepConfig, formData, uploadsState);
-        if (plan.missing) {
-          const label = plan.missing.label;
-          setError(plan.missingIsUpload ? t('kyc.needUpload', { label }) : t('kyc.requiredFields'));
-          setLoading(false);
-          return;
-        }
-        await api.post<{ message?: string }>('/kyc/step', { step: slug, data: plan.answers });
+        await api.post('/kyc/step', { step: slug, data: plan.answers });
       }
+      void queryClient.invalidateQueries({ queryKey: keys.kyc.status() });
 
-      if (stepNumber < totalSteps) {
-        router.push(`/kyc/step/${stepNumber + 1}`);
-      } else {
-        if (formData.firstName || formData.lastName) {
-          await api.post<{ message?: string }>('/kyc/step', { step: 'personal', data: formData });
-        }
-        await api.post<{ message?: string }>('/kyc/submit');
-        // Same reasoning as the review branch above: the gate must not decide
-        // from a pre-submit cache entry.
-        await queryClient.invalidateQueries({ queryKey: keys.kyc.status() });
-        router.push('/kyc/submitted');
-      }
+      if (stepNumber < totalSteps) router.push(`/kyc/step/${stepNumber + 1}`);
+      else await submit();
     } catch (e: unknown) {
-      setError(apiErrorMessage(e, t('common.genericError')));
+      setError(kycErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -437,45 +382,55 @@ export function KycStepForm() {
     );
   }
 
+  /*
+   * A correction round, not only the `rejected` state: saving any step moves a
+   * returned submission to `in_progress`, and the banner used to vanish with
+   * it — taking the reviewer's reason out of sight of the person fixing it. The
+   * reason stays on the submission until it is resubmitted.
+   */
+  const returned =
+    status?.status === 'rejected' ||
+    (status?.status === 'in_progress' && Boolean(status.rejectionReason));
+
   return (
     <div className="space-y-8">
-      {/* Rejection Notice Banner */}
-      {kycStatus === 'rejected' && (
+      {returned && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs space-y-1.5 animate-in fade-in-0">
           <div className="flex items-center gap-2 font-bold text-destructive text-sm">
             <span>{t('kyc.actionRequired')}</span>
           </div>
-          {rejectionReason && (
+          {status?.rejectionReason && (
             <p className="text-destructive text-xs">
               <strong className="font-semibold text-destructive">{t('kyc.rejectionNote')}</strong>{' '}
-              {rejectionReason}
+              {status.rejectionReason}
             </p>
           )}
           <p className="text-[11px] text-muted-foreground pt-1">{t('kyc.updateHighlighted')}</p>
         </div>
       )}
 
-      {/* Dynamic Step Component Renderer */}
       <DynamicStepRenderer
         currentStepConfig={currentStepConfig}
+        allSteps={stepConfigs}
         formData={formData}
         uploadsState={uploadsState}
         selfieUploaded={selfieUploaded}
-        rejectedFields={rejectedFields}
-        storedDocValues={storedDocValues}
+        rejectedFields={outstanding}
+        storedFiles={stored}
         onChange={set}
         onUpload={handleUpload}
         onPendingChange={handlePendingChange}
       />
 
-      {/* Global Error Banner */}
       {error && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs font-semibold text-destructive animate-in fade-in-0">
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs font-semibold text-destructive animate-in fade-in-0"
+        >
           {error}
         </div>
       )}
 
-      {/* Navigation Footer Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
         {stepNumber > 1 ? (
           <Button

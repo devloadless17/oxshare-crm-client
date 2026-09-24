@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Spinner } from '@/components/ui/loader';
 import { UploadCloud, CheckCircle2, FileText, RefreshCw, Camera, FolderOpen } from 'lucide-react';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { buildKycDocUrl } from '@/lib/kyc-doc-url';
 import { normaliseDocumentImage } from '@/lib/image-capture';
 import { t } from '@/lib/i18n';
 import { useCanCapture } from '@/hooks/use-can-capture';
@@ -30,6 +31,12 @@ export interface DocumentUploaderProps {
   className?: string;
   /** The admin rejected this specific field — show it, don't just track it. */
   isErrored?: boolean;
+  /**
+   * Where the server keeps the file this slot already holds, so a client
+   * coming back sees the picture they sent — not a generic file icon beside
+   * "uploaded", which told them nothing about WHICH photo was on file.
+   */
+  storedFilePath?: string;
   /**
    * Which camera to open when the client chooses "Take photo".
    * `environment` (rear) for documents, `user` (front) for a face.
@@ -117,6 +124,7 @@ export function DocumentUploader({
   className,
   isErrored = false,
   capture = 'environment',
+  storedFilePath,
 }: DocumentUploaderProps) {
   const [dragging, setDragging] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
@@ -396,6 +404,17 @@ export function DocumentUploader({
             <div className="relative h-24 w-full max-w-[200px] overflow-hidden rounded-xl border border-border bg-muted/40">
               {/* eslint-disable-next-line @next/next/no-img-element -- data: URI, see above. */}
               <img src={preview} alt={label} className="h-full w-full object-contain" />
+            </div>
+          ) : !preview && storedFilePath && !/\.pdf$/i.test(storedFilePath) ? (
+            <div className="relative h-24 w-full max-w-[200px] overflow-hidden rounded-xl border border-border bg-muted/40">
+              {/* eslint-disable-next-line @next/next/no-img-element -- served by the API
+                  with the client's own session, the same way the document viewer
+                  shows it; next/image would proxy it through this app. */}
+              <img
+                src={buildKycDocUrl(storedFilePath)}
+                alt={label}
+                className="h-full w-full object-contain"
+              />
             </div>
           ) : (
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-link">

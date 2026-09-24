@@ -41,17 +41,34 @@ export function savedAnswersFor(
 }
 
 /**
- * Every value as a string, dropping the absent ones.
+ * Every TYPED answer as a string, dropping everything else.
  *
  * `null` and `undefined` are filtered rather than stringified: `String(null)` is
  * `"null"`, which would seed a form field with the word null and, on a required
  * field, pass a non-empty check.
+ *
+ * So is anything that is not a scalar — and that was a real bug. A custom
+ * step's UPLOAD is stored as `{ filePath, fileName }`, and `String()` of it is
+ * "[object Object]". That string went into the form, the review screen posted
+ * the whole form back as the personal step, and the reviewer read
+ * "Custom Field 1790263652846: [object Object]" (reported from production). An
+ * upload's state comes from the status, never from here.
+ *
+ * `__`-prefixed keys are the wizard's own bookkeeping that an older build wrote
+ * into the profile; the document choice is rebuilt from the stored document
+ * type instead (`savedDocumentChoices`).
  */
 function stringify(source: Record<string, unknown> | undefined): Record<string, string> {
   if (!source) return {};
   return Object.fromEntries(
     Object.entries(source)
-      .filter(([, v]) => v !== null && v !== undefined)
+      .filter(
+        ([k, v]) =>
+          !k.startsWith('__') &&
+          (typeof v === 'number' ||
+            typeof v === 'boolean' ||
+            (typeof v === 'string' && v !== '[object Object]')),
+      )
       .map(([k, v]) => [k, String(v)]),
   );
 }
