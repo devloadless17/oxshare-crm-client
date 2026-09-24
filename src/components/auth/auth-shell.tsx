@@ -86,8 +86,7 @@ export function AuthShell({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/oxshare-logo-dark.svg"
-              alt=""
-              aria-hidden="true"
+              alt={t('app.name')}
               className="hidden h-7 w-auto dark:block"
             />
           </Link>
@@ -133,7 +132,14 @@ function BrandPanel({ homeHref }: { homeHref: string }) {
         style={{ background: 'radial-gradient(circle, var(--primary) 0%, transparent 70%)' }}
       />
 
-      <Link href={homeHref} className="relative flex items-center">
+      {/*
+        NAMED ON THE LINK, like its twins in both sidebars. The image inside
+        carries the brand as `alt`, which a screen reader does use — but a
+        control named only by a child image loses its name the moment that image
+        is swapped or marked decorative, and nothing about such a change looks
+        like an accessibility one.
+      */}
+      <Link href={homeHref} aria-label={t('app.name')} className="relative flex items-center">
         {/*
           The DARK-GROUND wordmark, with no theme swap — unlike everywhere else.
           This panel is `--auth-panel`, which is near-black in BOTH themes

@@ -159,9 +159,17 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         <div className="flex h-16 items-center justify-between border-b border-border px-4">
+          {/*
+            NAMED ON THE LINK, for the reason its twin in the admin console
+            carries: a control named only by a child image loses its name the
+            moment the artwork is swapped, marked decorative, or hidden per
+            theme — none of which look like an accessibility change. `aria-label`
+            does not depend on which image is showing.
+          */}
           <Link
             href="/dashboard"
             onClick={closeMobile}
+            aria-label={t('app.name')}
             className="flex items-center gap-3 overflow-hidden rounded-md focus-outline"
           >
             {/*
@@ -211,8 +219,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/oxshare-logo-dark.svg"
-                  alt=""
-                  aria-hidden="true"
+                  alt={t('app.name')}
                   className="hidden h-7 w-auto shrink-0 dark:block"
                 />
               </>
