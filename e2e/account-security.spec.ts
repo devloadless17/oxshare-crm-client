@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures';
-import { E2E_CLIENT, signIn } from './helpers';
+import { API_BASE, E2E_CLIENT, signIn } from './helpers';
 
 /**
  * The two controls on /profile that a client reaches for when something has
@@ -205,7 +205,7 @@ test.describe('changing a password', () => {
     await expect(page.getByRole('alert').first()).toBeVisible({ timeout: 15_000 });
     // Still signed in, still here.
     await expect(page).toHaveURL(/\/profile/);
-    await expect(page.getByRole('button', { name: /^sign in$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^log in$/i })).toHaveCount(0);
   });
 
   test('will not accept two new passwords that disagree', async ({ page }) => {
@@ -226,5 +226,31 @@ test.describe('changing a password', () => {
     await expect(page.getByRole('alert').first()).toBeVisible();
     // The password is unchanged, which the next spec depends on.
     await expect(page).toHaveURL(/\/profile/);
+  });
+});
+
+test.describe('the client knows their Portal ID', () => {
+  test('the profile shows the number the broker knows them by, and never their uuid', async ({
+    page,
+  }) => {
+    /*
+     * The Portal ID (0133) is how every screen of the broker's console names a
+     * client and what every search there takes — so it is the number a client
+     * quotes to support, and the profile says so. The uuid still keys their
+     * account and must not appear: nobody on either side reads one.
+     */
+    await page.goto('/profile');
+    await page.waitForLoadState('networkidle');
+
+    const me = await page.evaluate(async (api) => {
+      const res = await fetch(`${api}/auth/me`, { credentials: 'include' });
+      return (await res.json()) as { id: string; portalId: number };
+    }, API_BASE);
+
+    expect(me.portalId, 'the profile API sent no Portal ID').toBeGreaterThan(0);
+    const field = page.locator('div', { has: page.getByText('Portal ID', { exact: true }) }).last();
+    await expect(field).toContainText(String(me.portalId));
+    await expect(page.getByText(/quote it when you contact us/i)).toBeVisible();
+    expect(await page.content()).not.toContain(me.id);
   });
 });

@@ -360,23 +360,43 @@ test.describe('what is open is on the screen, at 393px', () => {
     }, selector);
   }
 
-  test('the account menu, and the theme control inside it', async ({ page }) => {
+  test('the account menu fits the phone screen', async ({ page }) => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: /account menu/i }).click();
-    await page.getByRole('menuitem', { name: /theme/i }).click();
-
-    // All three theme options land in the menu that is already open. As a
-    // submenu they were a second panel that had nowhere to go on a phone.
-    for (const name of [/^light$/i, /^dark$/i, /^system$/i]) {
-      await expect(page.getByRole('menuitemradio', { name })).toBeVisible();
-    }
+    await expect(page.getByRole('menuitem', { name: /log out/i })).toBeVisible();
     await expect(page.getByRole('menu')).toHaveCount(1);
 
     expect(
-      await offScreen(page, '[role="menu"], [role="menuitemradio"]'),
+      await offScreen(page, '[role="menu"], [role="menuitem"]'),
       'part of the account menu is off the phone screen',
     ).toEqual([]);
+  });
+
+  test('the light/dark toggle sits in the header beside the bell, on screen', async ({ page }) => {
+    /*
+     * The theme control USED to live inside the account menu as Light / Dark /
+     * System, and this case checked that submenu fitted a phone. The client moved
+     * it: two states, one icon, beside the notification bell. What matters on a
+     * phone now is that the header still fits with one more icon in it — a 393px
+     * header already carries the menu button, the bell and the avatar.
+     */
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+
+    const toggle = page.getByRole('button', { name: /switch to (dark|light) mode/i });
+    await expect(toggle).toBeVisible();
+    expect(
+      await offScreen(page, 'header button, header a'),
+      'something in the header is pushed off the phone screen',
+    ).toEqual([]);
+
+    // And it works where the client will use it — on the phone.
+    const before = await page.evaluate(() => document.documentElement.className);
+    await toggle.click();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.className))
+      .not.toBe(before);
   });
 
   test('the date-range picker, including the button that commits it', async ({ page }) => {

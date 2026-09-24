@@ -4,10 +4,18 @@ import Link from 'next/link';
 import * as React from 'react';
 import { BadgeCheck, ShieldAlert } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
+import api from '@/lib/api';
+import type { components } from '@/lib/api/types.gen';
+import { useResource } from '@/hooks/use-resource';
+import { AsyncBoundary } from '@/components/async-boundary';
+import { KycSubmissionDetails } from '@/components/kyc/kyc-submission-details';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
 import { AvatarUploader } from './avatar-uploader';
 import { ChangePasswordForm } from './change-password-form';
 import { SessionsList } from './sessions-list';
+
+type KycStatusDto = components['schemas']['KycStatusDto'];
 
 /**
  * The client's own account.
@@ -51,6 +59,12 @@ import { SessionsList } from './sessions-list';
 export default function ProfilePage() {
   const { user, refetchUser } = useUser();
   const [sessionsEpoch, setSessionsEpoch] = React.useState(0);
+  // The same key the KYC screens and the sidebar badge read, so this is
+  // usually a cache hit rather than a request.
+  const kycQuery = useResource(
+    keys.kyc.status(),
+    async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
+  );
 
   // `RequireAuth` in PortalLayout does not render this until the profile has
   // loaded, so `user` is non-null here in practice. The guard is for the type
@@ -99,6 +113,15 @@ export default function ProfilePage() {
         <div className="space-y-6">
           <Panel title={t('profile.detailsTitle')}>
             <dl className="space-y-4">
+              {/* The number the client is known by on every screen of the
+                  broker's console — the one to quote when they contact
+                  support, which is why it leads the panel. */}
+              <Field
+                label={t('profile.portalId')}
+                value={String(user.portalId)}
+                hint={t('profile.portalIdHint')}
+                hintTone="neutral"
+              />
               <Field label={t('profile.firstName')} value={user.firstName} />
               <Field label={t('profile.lastName')} value={user.lastName} />
               <Field
@@ -175,6 +198,30 @@ export default function ProfilePage() {
           </Panel>
         </div>
       </div>
+
+      {/*
+        What the client sent for verification and where each document stands.
+        Below the grid rather than in either column: the documents table wants
+        the full width, and it is the same view as the KYC outcome screen, so a
+        client never has to go back into onboarding to see their own passport.
+        Nothing renders before they have started — an empty table there reads
+        as documents having gone missing.
+      */}
+      <AsyncBoundary
+        status={kycQuery.status}
+        label={t('common.loading')}
+        endpoints={['GET /kyc/status']}
+        onRetry={() => kycQuery.refetch()}
+        errorMessage={t('kyc.statusLoadFailed')}
+        error={kycQuery.error}
+      >
+        {kycQuery.data && kycQuery.data.status !== 'not_started' && (
+          <section className="space-y-3 pb-6">
+            <h2 className="text-base font-semibold text-foreground">{t('profile.kycTitle')}</h2>
+            <KycSubmissionDetails status={kycQuery.data} />
+          </section>
+        )}
+      </AsyncBoundary>
     </div>
   );
 }
@@ -268,7 +315,8 @@ function Field({
   label: string;
   value?: string | null;
   hint?: string;
-  hintTone?: 'success' | 'warning';
+  /** `neutral` for a note that is not a status — the Portal ID's "quote it". */
+  hintTone?: 'success' | 'warning' | 'neutral';
 }) {
   return (
     <div>
@@ -287,7 +335,11 @@ function Field({
         {hint && (
           <span
             className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-              hintTone === 'success' ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'
+              hintTone === 'success'
+                ? 'bg-success/15 text-success'
+                : hintTone === 'neutral'
+                  ? 'bg-muted text-muted-foreground'
+                  : 'bg-warning/15 text-warning'
             }`}
           >
             {hint}

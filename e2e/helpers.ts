@@ -314,7 +314,7 @@ export async function signIn(
    */
   const [response] = await Promise.all([
     page.waitForResponse((res) => isApi(res, '/auth/login', 'POST'), { timeout: 30_000 }),
-    page.getByRole('button', { name: /sign in/i }).click(),
+    page.getByRole('button', { name: /^log in$/i }).click(),
   ]);
 
   if (response.status() === 429) {

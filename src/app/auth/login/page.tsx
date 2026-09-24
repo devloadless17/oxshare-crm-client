@@ -303,15 +303,7 @@ function LoginForm() {
         </div>
 
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">{t('auth.login.password')}</Label>
-            <Link
-              href="/auth/forgot-password"
-              className="text-[11px] font-medium text-link hover:underline rounded-xs focus-outline"
-            >
-              {t('auth.login.forgot')}
-            </Link>
-          </div>
+          <Label htmlFor="password">{t('auth.login.password')}</Label>
           <div className="relative">
             <Lock
               className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
@@ -341,6 +333,18 @@ function LoginForm() {
                 <Eye className="h-4 w-4" aria-hidden="true" />
               )}
             </button>
+          </div>
+          {/*
+            BELOW the field, right-aligned — where the broker's own site puts it,
+            and where the eye lands after typing a password it is unsure of.
+          */}
+          <div className="flex justify-end">
+            <Link
+              href="/auth/forgot-password"
+              className="text-xs font-medium text-link hover:underline rounded-xs focus-outline"
+            >
+              {t('auth.login.forgot')}
+            </Link>
           </div>
         </div>
 

@@ -62,7 +62,7 @@ test('the fresh client signs in, is a Normal (individual) client, and their emai
   await page.locator('input[type="password"]').fill(client.password);
   const [login] = await Promise.all([
     page.waitForResponse((r) => r.url().includes('/auth/login') && r.request().method() === 'POST'),
-    page.getByRole('button', { name: /sign in/i }).click(),
+    page.getByRole('button', { name: /^log in$/i }).click(),
   ]);
   expect(login.ok(), `sign-in after verification answered ${login.status()}`).toBe(true);
   await page.waitForURL(/\/dashboard/, { timeout: 30_000 });

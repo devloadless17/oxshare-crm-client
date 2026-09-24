@@ -42,13 +42,14 @@ import { expect, test } from './fixtures';
 const CODE = 'PARTNER01';
 
 /*
- * The login page's invitation to register reads "Create one", not "Create an
- * account" — `auth.login.register` in `lib/i18n/messages.ts`. Matched from the
- * strings file rather than from what the link ought to say: the first version
- * of this spec guessed, found nothing, and spent sixty seconds looking like a
- * missing link.
+ * The login page's invitation to register reads "Sign up" — the client's own
+ * wording, matched to the broker's existing site (it read "Create one" before).
+ * `auth.login.register` in `lib/i18n/messages.ts`. Matched from the strings
+ * file rather than from what the link ought to say: the first version of this
+ * spec guessed, found nothing, and spent sixty seconds looking like a missing
+ * link.
  */
-const CREATE_LINK = /create one/i;
+const CREATE_LINK = /^sign up$/i;
 
 test.use({ storageState: { cookies: [], origins: [] } });
 

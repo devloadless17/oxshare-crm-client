@@ -27,6 +27,8 @@ import { externalLinksApi, type ExternalLink } from '@/lib/api/external-links';
 import type { components } from '@/lib/api/types.gen';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { UserMenu } from './user-menu';
+import { BrandLogo } from '@/components/brand-logo';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { NotificationsSheet } from './notifications-sheet';
 import { t, type MessageKey } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
@@ -158,19 +160,35 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           collapsed ? 'w-20' : 'w-64'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
-        <div className="flex h-16 items-center justify-between border-b border-border px-4">
+        {/*
+          COLLAPSED, the header holds the mark ALONE, centred — and the expand
+          control moves onto the sidebar's edge as a small round button.
+
+          It used to keep both in one row: the 31px mark and the 28px toggle in
+          an 80px rail with 16px of padding each side is 59px into 48px, so the
+          logo link shrank, its `overflow-hidden` clipped the mark, and the
+          header read as a broken logo jammed against a chevron (owner's report,
+          24 Sep 2026). A control on the edge is the pattern people already know
+          from every collapsible sidebar, and it costs the header nothing.
+        */}
+        <div
+          className={`relative flex h-16 items-center border-b border-border ${
+            collapsed ? 'justify-center px-2' : 'justify-between px-4'
+          }`}
+        >
+          {/*
+            NAMED ON THE LINK, for the reason its twin in the admin console
+            carries: a control named only by a child image loses its name the
+            moment the artwork is swapped, marked decorative, or hidden per
+            theme — none of which look like an accessibility change. `aria-label`
+            does not depend on which image is showing.
+          */}
           <Link
             href="/dashboard"
             onClick={closeMobile}
+            aria-label={t('app.name')}
             className="flex items-center gap-3 overflow-hidden rounded-md focus-outline"
           >
-            {/*
-              A bare `<img>`, deliberately. The rule wants `next/image` for LCP
-              and bandwidth, and neither applies to a static SVG served from
-              `/public`: the optimizer does not rasterise or resize vectors, so
-              it would add a request through `/_next/image` and return the same
-              bytes. Same reasoning as the method logos in `money-shell.tsx`.
-            */}
             {/*
               THE REAL WORDMARK when there is room, the mark alone when there is
               not — rather than the mark beside the brand name set in the UI
@@ -182,40 +200,15 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
               supplied PDF rather than redrawn, so they scale to any height
               without the hand-traced circles the previous mark used.
             */}
+            {/*
+              Drawn INLINE (brand-logo.tsx): no file request, no second copy
+              swapped by CSS, official colours. The link carries the accessible
+              name, so the drawing is decorative.
+            */}
             {collapsed ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src="/oxshare-mark.svg" alt={t('app.name')} className="h-7 w-auto shrink-0" />
+              <BrandLogo variant="mark" className="h-7 w-auto shrink-0" />
             ) : (
-              <>
-                {/*
-                  TWO FILES, SWAPPED IN CSS — not one file recoloured, and not a
-                  JS check on the theme.
-
-                  The brand ships a dark wordmark for light grounds and a white
-                  one for dark, so this renders whichever the artwork intends
-                  rather than filtering one into the other. Doing it with
-                  `dark:hidden` means the correct logo is in the FIRST paint:
-                  `next-themes` sets the class before React hydrates, so a
-                  JS-chosen src would flash the light logo on a dark screen.
-
-                  Both are `<img>` rather than `next/image`: Next refuses to
-                  optimize SVG without `dangerouslyAllowSVG`, and a vector has
-                  nothing to optimize.
-                */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/oxshare-logo.svg"
-                  alt={t('app.name')}
-                  className="h-7 w-auto shrink-0 dark:hidden"
-                />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/oxshare-logo-dark.svg"
-                  alt=""
-                  aria-hidden="true"
-                  className="hidden h-7 w-auto shrink-0 dark:block"
-                />
-              </>
+              <BrandLogo className="h-7 w-auto shrink-0" />
             )}
           </Link>
 
@@ -224,9 +217,17 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
             aria-expanded={!collapsed}
-            className="hidden lg:flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
+            className={
+              collapsed
+                ? 'absolute -right-3 top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-outline lg:flex'
+                : 'hidden lg:flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline'
+            }
           >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {collapsed ? (
+              <ChevronRight className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
           </button>
 
           <button
@@ -320,6 +321,12 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-2 sm:gap-3">
             <KycAlert kycStatus={kycStatus} verificationLevel={user?.verificationLevel} />
+            {/*
+              Light or dark, one click, BESIDE the bell — the client's call. It
+              used to be a Theme ▸ submenu inside the account menu offering
+              System as well; the toggle is the whole control now.
+            */}
+            <ThemeToggle />
             <NotificationsSheet />
 
             {/*

@@ -81,7 +81,7 @@ test.describe('every portal page', () => {
 
       // Never the signed-out screen, on either load.
       await expect(
-        page.getByRole('button', { name: /^sign in$/i }),
+        page.getByRole('button', { name: /^log in$/i }),
         `${route} rendered the signed-out screen`,
       ).toHaveCount(0);
 
@@ -168,7 +168,7 @@ test.describe('moving around the portal', () => {
     await expect(page).toHaveURL(/\/wallet/);
     await expectPortalChrome(page, '/wallet after Forward');
 
-    await expect(page.getByRole('button', { name: /^sign in$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^log in$/i })).toHaveCount(0);
   });
 
   test('opening a page directly is the same as reaching it by link', async ({ page }) => {
