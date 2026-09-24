@@ -160,7 +160,22 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           collapsed ? 'w-20' : 'w-64'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
-        <div className="flex h-16 items-center justify-between border-b border-border px-4">
+        {/*
+          COLLAPSED, the header holds the mark ALONE, centred — and the expand
+          control moves onto the sidebar's edge as a small round button.
+
+          It used to keep both in one row: the 31px mark and the 28px toggle in
+          an 80px rail with 16px of padding each side is 59px into 48px, so the
+          logo link shrank, its `overflow-hidden` clipped the mark, and the
+          header read as a broken logo jammed against a chevron (owner's report,
+          24 Sep 2026). A control on the edge is the pattern people already know
+          from every collapsible sidebar, and it costs the header nothing.
+        */}
+        <div
+          className={`relative flex h-16 items-center border-b border-border ${
+            collapsed ? 'justify-center px-2' : 'justify-between px-4'
+          }`}
+        >
           {/*
             NAMED ON THE LINK, for the reason its twin in the admin console
             carries: a control named only by a child image loses its name the
@@ -174,13 +189,6 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             aria-label={t('app.name')}
             className="flex items-center gap-3 overflow-hidden rounded-md focus-outline"
           >
-            {/*
-              A bare `<img>`, deliberately. The rule wants `next/image` for LCP
-              and bandwidth, and neither applies to a static SVG served from
-              `/public`: the optimizer does not rasterise or resize vectors, so
-              it would add a request through `/_next/image` and return the same
-              bytes. Same reasoning as the method logos in `money-shell.tsx`.
-            */}
             {/*
               THE REAL WORDMARK when there is room, the mark alone when there is
               not — rather than the mark beside the brand name set in the UI
@@ -209,9 +217,17 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
             aria-expanded={!collapsed}
-            className="hidden lg:flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
+            className={
+              collapsed
+                ? 'absolute -right-3 top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-outline lg:flex'
+                : 'hidden lg:flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline'
+            }
           >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {collapsed ? (
+              <ChevronRight className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
           </button>
 
           <button

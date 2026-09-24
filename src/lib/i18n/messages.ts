@@ -117,6 +117,8 @@ export const messages = {
   'profile.photoFailed': 'Could not update your photo. Please try again.',
   'profile.photoTooLarge': 'That image is larger than 2MB. Please choose a smaller one.',
   'profile.detailsTitle': 'Account details',
+  'profile.portalId': 'Portal ID',
+  'profile.portalIdHint': 'Quote it when you contact us',
   'profile.firstName': 'First name',
   'profile.lastName': 'Last name',
   'profile.email': 'Email address',

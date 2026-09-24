@@ -99,6 +99,15 @@ export default function ProfilePage() {
         <div className="space-y-6">
           <Panel title={t('profile.detailsTitle')}>
             <dl className="space-y-4">
+              {/* The number the client is known by on every screen of the
+                  broker's console — the one to quote when they contact
+                  support, which is why it leads the panel. */}
+              <Field
+                label={t('profile.portalId')}
+                value={String(user.portalId)}
+                hint={t('profile.portalIdHint')}
+                hintTone="neutral"
+              />
               <Field label={t('profile.firstName')} value={user.firstName} />
               <Field label={t('profile.lastName')} value={user.lastName} />
               <Field
@@ -268,7 +277,8 @@ function Field({
   label: string;
   value?: string | null;
   hint?: string;
-  hintTone?: 'success' | 'warning';
+  /** `neutral` for a note that is not a status — the Portal ID's "quote it". */
+  hintTone?: 'success' | 'warning' | 'neutral';
 }) {
   return (
     <div>
@@ -287,7 +297,11 @@ function Field({
         {hint && (
           <span
             className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-              hintTone === 'success' ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'
+              hintTone === 'success'
+                ? 'bg-success/15 text-success'
+                : hintTone === 'neutral'
+                  ? 'bg-muted text-muted-foreground'
+                  : 'bg-warning/15 text-warning'
             }`}
           >
             {hint}
