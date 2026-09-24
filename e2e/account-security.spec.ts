@@ -205,7 +205,7 @@ test.describe('changing a password', () => {
     await expect(page.getByRole('alert').first()).toBeVisible({ timeout: 15_000 });
     // Still signed in, still here.
     await expect(page).toHaveURL(/\/profile/);
-    await expect(page.getByRole('button', { name: /^sign in$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^log in$/i })).toHaveCount(0);
   });
 
   test('will not accept two new passwords that disagree', async ({ page }) => {

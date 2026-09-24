@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { BrandLogo } from '@/components/brand-logo';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { ShieldCheck, Globe2, LineChart } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
@@ -70,28 +72,30 @@ export function AuthShell({
 
       {/* The form column. `min-w-0` so a long error message wraps instead of
           widening the flex child and pushing the brand panel off-screen. */}
-      <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-5 py-10 sm:px-8">
-        <div className="w-full max-w-[26rem]">
-          {/* The mark, on the form side, for the viewports where the brand
-              panel is hidden. `lg:hidden` rather than duplicated markup. */}
-          <Link href={homeHref} className="mb-8 inline-flex items-center lg:hidden">
-            {/*
-              The WORDMARK, not the mark beside the name set in the UI font —
-              the letterforms in the brand artwork are drawn, not typeset.
-              Swapped in CSS so the right one is in the first paint; see the
-              note in `portal-layout.tsx`.
-            */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/oxshare-logo.svg" alt={t('app.name')} className="h-7 w-auto dark:hidden" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/oxshare-logo-dark.svg"
-              alt={t('app.name')}
-              className="hidden h-7 w-auto dark:block"
-            />
-          </Link>
+      <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center px-5 pb-10 pt-20 sm:px-8">
+        {/*
+          A HEADER ROW, as on the broker's own site: the logo on the left and the
+          light/dark toggle on the right.
 
-          <header className="mb-7">
+          The logo is `lg:invisible` rather than removed on wide screens, where
+          the brand panel already carries it — invisible keeps its box, so
+          `justify-between` still pins the toggle to the right edge. The top
+          padding is `pt-20` so a form tall enough to fill a short phone never
+          slides under the row.
+        */}
+        <div className="absolute inset-x-5 top-5 flex items-center justify-between sm:inset-x-8">
+          <Link
+            href={homeHref}
+            aria-label={t('app.name')}
+            className="inline-flex items-center rounded-md focus-outline lg:invisible"
+          >
+            <BrandLogo className="h-7 w-auto" />
+          </Link>
+          <ThemeToggle />
+        </div>
+
+        <div className="w-full max-w-[26rem]">
+          <header className="mb-7 text-center">
             <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-foreground">
               {heading}
             </h1>
@@ -147,8 +151,7 @@ function BrandPanel({ homeHref }: { homeHref: string }) {
           wordmark is correct on both and a `dark:` variant here would put the
           near-black one on a near-black panel in one of them.
         */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/oxshare-logo-dark.svg" alt={t('app.name')} className="h-8 w-auto" />
+        <BrandLogo tone="onDark" className="h-8 w-auto" />
       </Link>
 
       <div className="relative">

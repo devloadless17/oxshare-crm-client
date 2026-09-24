@@ -4,6 +4,7 @@ import './kyc-shell.css';
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { BrandLogo } from '@/components/brand-logo';
 import api from '@/lib/api';
 import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
@@ -238,8 +239,8 @@ function KycShell({ children }: { children: React.ReactNode }) {
       {/* Header */}
       <header className="kyc-header">
         <Link href="/dashboard" className="kyc-logo">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/oxshare-mark.svg" alt="" className="kyc-logo-mark" />
+          {/* Drawn inline (brand-logo.tsx). Decorative: the name beside it labels the link. */}
+          <BrandLogo variant="mark" className="kyc-logo-mark" />
           <span className="kyc-logo-text">{t('app.name')}</span>
         </Link>
         <div className="kyc-header-tag">{t('kyc.layoutTitle')}</div>

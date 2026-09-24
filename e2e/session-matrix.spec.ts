@@ -151,7 +151,7 @@ test.describe('reuse detection', () => {
     await page.locator('input[type="password"]').fill('client123');
     const [login] = await Promise.all([
       page.waitForResponse((r) => isApi(r, '/auth/login', 'POST')),
-      page.getByRole('button', { name: /sign in/i }).click(),
+      page.getByRole('button', { name: /^log in$/i }).click(),
     ]);
     requirePrecondition(login.status() === 401, 'e2e-reuse@oxshare.com is not seeded');
     requirePrecondition(login.status() === 429, 'portal login is rate limited right now');

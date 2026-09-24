@@ -47,7 +47,7 @@ test.describe('an authenticated session', () => {
       // Still here, and never bounced to login.
       expect(page.url(), `refreshing ${path} redirected away`).toContain(path);
       await expect(
-        page.getByRole('button', { name: /^sign in$/i }),
+        page.getByRole('button', { name: /^log in$/i }),
         `refreshing ${path} rendered the signed-out screen`,
       ).toHaveCount(0);
     }
@@ -73,7 +73,7 @@ test.describe('an authenticated session', () => {
     await page.waitForTimeout(400);
 
     expect(page.url()).toContain('/dashboard');
-    await expect(page.getByRole('button', { name: /^sign in$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^log in$/i })).toHaveCount(0);
     // The delay really was in force while we sampled.
     expect(me.hits(), 'the delaying route never fired').toBeGreaterThan(0);
   });
@@ -248,6 +248,6 @@ test.describe('signing in', () => {
     await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.getByRole('button', { name: /^sign in$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^log in$/i })).toHaveCount(0);
   });
 });
