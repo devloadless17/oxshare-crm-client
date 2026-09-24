@@ -197,7 +197,7 @@ export function DateRangePicker({
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-label={label ?? t('transactions.filterDateRange')}
-          className="flex h-9 w-full items-center gap-2 rounded-lg border border-border bg-background px-3 text-xs font-medium transition-colors hover:bg-muted focus-outline"
+          className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-card px-3 text-xs font-medium transition-colors hover:bg-muted focus-outline"
         >
           <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <span

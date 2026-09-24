@@ -83,7 +83,13 @@ function Panels({ data }: { data: Dashboard }) {
         "0 trading accounts" with no endpoint behind them, and a client holding
         three read zero.
       */}
-      <div className="grid shrink-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/*
+        AUTO-FIT, not a fixed column count: the row holds four tiles, or five
+        for a partner, and a fixed three-column grid left a tile — or a hole —
+        stranded on a second row at every desktop width. Each tile keeps at
+        least 13rem, and the row splits whatever width there is evenly.
+      */}
+      <div className="grid shrink-0 grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-4">
         <StatTile
           icon={WalletIcon}
           label={t('dashboard.largestBalance')}
