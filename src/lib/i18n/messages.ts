@@ -1093,6 +1093,33 @@ export const messages = {
   'kyc.reapply': 'Update and re-submit',
   'kyc.rejectionReasonLabel': 'Why it was returned',
   'kyc.rejectedFieldsLabel': 'What needs fixing',
+  // What the client submitted, shown back on the outcome screen and /profile —
+  // components/kyc/kyc-submission-details.tsx.
+  'kyc.docs.title': 'Submitted documents',
+  'kyc.docs.personalTitle': 'Your submitted details',
+  'kyc.docs.colDocument': 'Document',
+  'kyc.docs.colSubmitted': 'Submitted',
+  'kyc.docs.colReviewed': 'Reviewed',
+  'kyc.docs.colStatus': 'Status',
+  'kyc.docs.colView': 'View',
+  'kyc.docs.view': 'View',
+  'kyc.docs.empty': 'No documents on file yet.',
+  'kyc.docs.front': 'Front side',
+  'kyc.docs.back': 'Back side',
+  'kyc.docs.page': 'Page {n}',
+  'kyc.docs.stateApproved': 'Approved',
+  // A rejection that named other fields: this file was not what was wrong.
+  'kyc.docs.stateAccepted': 'Accepted',
+  'kyc.docs.stateRejected': 'Rejected',
+  'kyc.docs.stateInReview': 'In review',
+  'kyc.docs.stateNotSubmitted': 'Not submitted',
+  'kyc.viewer.zoomIn': 'Zoom in',
+  'kyc.viewer.zoomOut': 'Zoom out',
+  'kyc.viewer.rotate': 'Rotate',
+  'kyc.viewer.previous': 'Previous document',
+  'kyc.viewer.next': 'Next document',
+  'kyc.viewer.openPdf': 'Open PDF in a new tab',
+  'profile.kycTitle': 'Verification documents',
   // The review screen is appended by the client, not configured in the admin
   // builder — see the note in kyc/step/[step]/page.tsx — so its copy lives here
   // rather than arriving from /kyc/config like every other step's.
