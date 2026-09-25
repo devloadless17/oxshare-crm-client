@@ -124,7 +124,11 @@ test('a returned passport must be replaced, and the wizard resumes where the cli
     const phone = page.getByLabel(/phone number/i);
     await phone.fill('70 12');
     await next.click();
-    await expect(page.getByText(/enter your full number/i).first()).toBeVisible();
+    // The SERVER's sentence since Continue asks the server (9ea8cf8) — it names
+    // the field and says what is missing.
+    await expect(
+      page.getByText(/phone number is incomplete\. enter the full number/i).first(),
+    ).toBeVisible();
 
     await phone.fill('70 123 456');
     await next.click();
