@@ -17,6 +17,11 @@ export interface NavItem {
    * route the whole section used to be.
    */
   children?: NavItem[];
+  /**
+   * A group's main page — where its NAME goes (the arrow beside it only opens
+   * the list). Absent: its first page.
+   */
+  home?: string;
 }
 
 const BADGE_TONES: Record<'warning' | 'info' | 'destructive', string> = {
@@ -206,9 +211,15 @@ export function NavLink({
  * OPEN whenever one of its pages is the current one, so a client who lands on
  * `/withdraw` from a notification sees where they are in the menu without
  * having to find it. Otherwise it is the client's toggle. The toggle is a
- * BUTTON with `aria-expanded`, not a link: the group is not a place, and a
- * parent that navigates on the same click that opens it takes the client
- * somewhere they did not choose.
+ * BUTTON with `aria-expanded` — the arrow — and it only opens or closes.
+ *
+ * ## Name and arrow — twin of the console (owner's call, 25 Sep 2026)
+ *
+ * The NAME is a link to the group's main page (`home`: Transactions opens the
+ * Statement, which is the /transactions page the name already names), and
+ * arriving there opens the list because the list follows the page. The arrow
+ * lets a client look inside without leaving the page on screen. The row is one
+ * selectable surface (`data-selected`), so it reads as one item.
  *
  * ## Collapsed rail
  *
@@ -258,37 +269,52 @@ export function NavGroup({
   }
 
   const Icon = item.icon;
+  const label = t(item.label);
+  const home = item.home ?? children[0]?.href;
   return (
     <div>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        aria-controls={panelId}
+      <div
         data-selected={selected ? 'true' : undefined}
-        className={`group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150 focus-outline ${
+        className={`group flex items-center rounded-lg text-sm transition-colors duration-150 ${
           selected ? SELECTED_ROW : IDLE_ROW
         }`}
       >
-        <Icon
-          className={`h-5 w-5 shrink-0 transition-colors duration-150 ${
-            selected ? SELECTED_ICON : IDLE_ICON
-          }`}
-        />
-        <span className="flex-1 truncate text-start">{t(item.label)}</span>
-        {/*
-          `motion-slide`: this is STRUCTURAL motion — the menu opening — so it
-          keeps its 300ms under "reduce motion", like the sidebar's own collapse
-          (see globals.css). Without it the blanket reduced-motion rule makes
-          the arrow and the list snap, which is what was reported.
-        */}
-        <ChevronDown
-          className={`motion-slide h-4 w-4 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-            open ? 'rotate-180 text-foreground' : 'rotate-0'
-          }`}
-          aria-hidden="true"
-        />
-      </button>
+        {home ? (
+          <Link
+            href={home}
+            onNavigate={() => onNavigate(home)}
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-2.5 ps-3 pe-1 focus-outline"
+          >
+            <Icon
+              className={`h-5 w-5 shrink-0 transition-colors duration-150 ${
+                selected ? SELECTED_ICON : IDLE_ICON
+              }`}
+            />
+            <span className="flex-1 truncate text-start">{label}</span>
+          </Link>
+        ) : null}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls={panelId}
+          aria-label={t('nav.groupPages', { group: label })}
+          className="me-1 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors duration-150 hover:bg-foreground/10 focus-outline"
+        >
+          {/*
+            `motion-slide`: this is STRUCTURAL motion — the menu opening — so it
+            keeps its 300ms under "reduce motion", like the sidebar's own
+            collapse (see globals.css). Without it the blanket reduced-motion
+            rule makes the arrow and the list snap, which is what was reported.
+          */}
+          <ChevronDown
+            className={`motion-slide h-4 w-4 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+              open ? 'rotate-180 text-foreground' : 'rotate-0'
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
       {/*
         ALWAYS MOUNTED, animated by its row height.
 
