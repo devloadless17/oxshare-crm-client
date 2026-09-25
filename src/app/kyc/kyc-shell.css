@@ -56,16 +56,12 @@
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
-.kyc-logo-mark {
-  height: 26px;
+/* The real wordmark — sized like the portal sidebar's, a step down for a page
+   header rather than a navigation column. */
+.kyc-logo-wordmark {
+  height: 40px;
   width: auto;
   display: block;
-}
-.kyc-logo-text {
-  color: var(--foreground);
-  font-weight: 600;
-  font-size: 1rem;
-  letter-spacing: 0.02em;
 }
 .kyc-header-tag {
   font-size: 0.75rem;
@@ -166,6 +162,9 @@
 @media (max-width: 600px) {
   .kyc-header {
     padding: 16px 20px;
+  }
+  .kyc-logo-wordmark {
+    height: 34px;
   }
   .kyc-progress-wrap {
     padding: 24px 16px 0;

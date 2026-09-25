@@ -31,7 +31,7 @@ import { externalLinksApi, type ExternalLink } from '@/lib/api/external-links';
 import type { components } from '@/lib/api/types.gen';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { UserMenu } from './user-menu';
-import { isActivePath, NavGroup, NavLink, type NavItem } from './sidebar-nav';
+import { isActivePath, NavGroup, NavLink, useNavSelection, type NavItem } from './sidebar-nav';
 import { BrandLogo } from '@/components/brand-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { NotificationsSheet } from './notifications-sheet';
@@ -125,6 +125,9 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
    * mistake `RequireAuth` documents twice.
    */
   const { hidden: partnerHidden } = usePartnerAccess();
+
+  const navItems = visibleNavItems(kycStatus, user?.verificationLevel, partnerHidden);
+  const selection = useNavSelection(navItems, pathname, collapsed);
 
   /*
    * The broker's own links, drawn under the app's pages.
@@ -241,20 +244,24 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
-          {visibleNavItems(kycStatus, user?.verificationLevel, partnerHidden).map((item) =>
+          {navItems.map((item) =>
             item.children ? (
               <NavGroup
                 key={item.href}
                 item={item}
                 pathname={pathname}
                 collapsed={collapsed}
+                open={selection.openGroup === item.href}
+                selected={selection.selectedGroup === item.href}
+                onToggle={() => selection.toggle(item.href)}
                 onNavigate={closeMobile}
               />
             ) : (
               <NavLink
                 key={item.href}
                 item={item}
-                active={isActivePath(pathname, item.href)}
+                current={isActivePath(pathname, item.href)}
+                selected={isActivePath(pathname, item.href) && selection.selectedGroup === null}
                 collapsed={collapsed}
                 onNavigate={closeMobile}
                 badge={
@@ -433,12 +440,14 @@ function ExternalLinksSection({
            */
           title={link.description ?? (collapsed ? link.title : undefined)}
           aria-label={t('nav.opensInNewTab', { title: link.title })}
-          className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-outline ${
+          // The menu's NEUTRAL hover (see sidebar-nav.tsx) — a brand-tinted
+          // hover reads as a second selected row.
+          className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-outline ${
             collapsed ? 'justify-center px-0' : ''
           }`}
         >
           <ArrowUpRight
-            className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-link"
+            className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-foreground"
             aria-hidden="true"
           />
           {!collapsed && <span className="flex-1 truncate">{link.title}</span>}
