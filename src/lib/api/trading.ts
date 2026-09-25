@@ -152,6 +152,15 @@ export interface AccountType {
    * `trading_product_groups` is unique on (product, environment, currency).
    */
   product: string;
+  /**
+   * The product's id — sent back on create.
+   *
+   * One MT5 group may back several products since backend 0142, so the group
+   * alone no longer says which product the client picked; the product decides
+   * what the account's trades pay. Optional only so a response from an older
+   * API still parses.
+   */
+  productId?: string;
 }
 
 /** What a client may open themselves, and on what terms. */
@@ -237,6 +246,8 @@ export interface OpenAccountInput {
   environment: TradingEnvironment;
   /** An MT5 group from the offered list. Omit to take the first. */
   group?: string;
+  /** The chosen product's id, from the same offered type as `group` (0142). */
+  productId?: string;
   /** One of the offered leverages. The API refuses anything else. */
   leverage?: number;
   /** A label. Omit for the client's own name, which is what MT5 expects. */

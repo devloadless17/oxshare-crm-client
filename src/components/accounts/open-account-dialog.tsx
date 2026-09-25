@@ -123,15 +123,23 @@ export function OpenAccountDialog({
    * chosen currency. With one product that is the only group; with several it is
    * the broker's preferred one, by the ordering above.
    */
-  const group = isDemo
-    ? (productsForCurrency[0]?.group ?? '')
-    : (productsForCurrency.find((type) => type.product === product)?.group ?? '');
+  const chosenType = isDemo
+    ? productsForCurrency[0]
+    : productsForCurrency.find((type) => type.product === product);
+  const group = chosenType?.group ?? '';
+  /*
+   * Sent WITH the group. One MT5 group may back several products (backend
+   * 0142), so the pair — not the group — is what the client picked, and the
+   * product decides what the account's trades pay.
+   */
+  const productId = chosenType?.productId;
 
   const create = useMutation({
     mutationFn: () =>
       tradingApi.openAccount({
         environment,
         ...(group ? { group } : {}),
+        ...(productId ? { productId } : {}),
         ...(leverage ? { leverage: Number.parseInt(leverage, 10) } : {}),
         /*
          * NO `name`. The holder name is derived server-side from the client's
