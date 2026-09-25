@@ -294,6 +294,8 @@ test.describe('the bell updates without a refresh', () => {
   });
 
   test('recovers on its own after the connection drops', async ({ page, context }) => {
+    // The drop is noticed by the heartbeat (up to 45s, below), then recovery.
+    test.setTimeout(120_000);
     /*
      * The failure that matters most in production: a proxy or a laptop lid
      * kills the socket. Socket.IO reconnects by itself, and underneath it the
@@ -329,9 +331,22 @@ test.describe('the bell updates without a refresh', () => {
 
     await plantMarker(page);
 
+    /*
+     * Only a close AFTER the network goes away counts. This waited 20s for
+     * `closed > 0` and passed for weeks for the wrong reason: the portal closed
+     * and reopened its socket on every mount (StrictMode runs each effect
+     * twice), so a close had always been counted before the drop. Since the
+     * release grace (`use-realtime.ts`, 25 Sep) a remount keeps its socket and
+     * the count moves only when the connection really dies.
+     *
+     * And it dies slowly: offline emulation does not sever an ESTABLISHED
+     * WebSocket — Chromium blocks new requests and leaves the open one silent —
+     * so Socket.IO's heartbeat is what notices, giving up after pingInterval +
+     * pingTimeout (25s + 20s by default). 60s covers it.
+     */
+    const closedBefore = closed;
     await context.setOffline(true);
-    // Long enough for the browser to notice the socket is gone.
-    await expect.poll(() => closed, { timeout: 20_000 }).toBeGreaterThan(0);
+    await expect.poll(() => closed, { timeout: 60_000 }).toBeGreaterThan(closedBefore);
     await context.setOffline(false);
 
     /*
