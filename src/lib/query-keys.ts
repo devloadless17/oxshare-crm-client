@@ -58,6 +58,12 @@ export const keys = {
   transactions: {
     all: () => ['transactions'] as const,
     list: (query: Params) => ['transactions', 'list', query] as const,
+    /** Totals behind the Deposit/Withdraw/Transfer tiles — same root, so any
+     *  money event that refreshes the list refreshes its figures too. */
+    summary: (query: Params) => ['transactions', 'summary', query] as const,
+    /** A wallet's statement. Under `transactions` for the same reason: a
+     *  movement that lands while it is open must move its closing balance. */
+    statement: (params: Params) => ['transactions', 'statement', params] as const,
     /** Wallet-to-trading-account movements — a different endpoint. */
     transfers: () => ['transactions', 'transfers'] as const,
   },

@@ -75,7 +75,7 @@ export function TransferSubmitted({ onAnother }: { onAnother: () => void }) {
         </div>
         <div className="flex w-full max-w-xs flex-col gap-2">
           <Button asChild size="sm">
-            <Link href="/transactions">{t('deposit.trackIt')}</Link>
+            <Link href="/transfer?tab=history">{t('deposit.trackIt')}</Link>
           </Button>
           <Button variant="outline" size="sm" onClick={onAnother}>
             {t('transfer.another')}

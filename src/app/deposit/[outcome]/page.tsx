@@ -197,7 +197,7 @@ export default function DepositOutcomePage() {
               <Link href="/wallet">{t('deposit.backToWallet')}</Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href={state === 'failure' ? '/deposit' : '/transactions'}>
+              <Link href={state === 'failure' ? '/deposit' : '/deposit?tab=history'}>
                 {state === 'failure' ? t('deposit.tryAgain') : t('deposit.trackIt')}
               </Link>
             </Button>

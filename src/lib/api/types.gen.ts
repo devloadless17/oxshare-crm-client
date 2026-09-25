@@ -1528,6 +1528,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payments/transactions/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Totals of the signed-in client's filtered transactions, per currency and state */
+        get: operations["PaymentsController_myTransactionSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/payments/transfers": {
         parameters: {
             query?: never;
@@ -1636,6 +1653,23 @@ export interface paths {
         };
         /** The signed-in client's wallets — balance, on_hold and available, all as strings */
         get: operations["WalletController_myWallets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/wallet/statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** An account statement for one of the signed-in client's wallets */
+        get: operations["WalletController_statement"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5186,7 +5220,7 @@ export interface components {
              * @description Branch on this, never on the absence of a payment field.
              * @enum {string}
              */
-            kind: "payment" | "transfer" | "commission_transfer";
+            kind: "payment" | "transfer" | "commission_transfer" | "rebate";
             tradingAccountId?: string | null;
         };
         TransactionPageDto: {
@@ -5195,6 +5229,23 @@ export interface components {
             total: number;
             page: number;
             limit: number;
+        };
+        TransactionSummaryRowDto: {
+            /** @example USD */
+            currency: string;
+            /**
+             * @description Wallet-side, as on the list's rows.
+             * @enum {string}
+             */
+            direction: "deposit" | "withdrawal";
+            /** @enum {string} */
+            state: "pending" | "approved" | "success" | "failure" | "rejected";
+            count: number;
+            /**
+             * @description Decimal string (§6.1).
+             * @example 1250.00000000
+             */
+            total: string;
         };
         RequestTransferDto: {
             /** @description A live trading account belonging to the caller. */
@@ -5266,6 +5317,50 @@ export interface components {
              * @example /v1/uploads/payment-logos/8f2c….png
              */
             logoUrl: string;
+        };
+        StatementLineDto: {
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            entryType: "deposit" | "withdrawal" | "commission" | "rebate" | "payout" | "adjustment" | "transfer";
+            /** @example transaction */
+            referenceType: string;
+            referenceId: string;
+            /** @description Signed decimal string: positive credits, negative debits. */
+            amount: string;
+            /** @description Wallet balance after this line, as stored by the ledger. */
+            balanceAfter: string;
+            /** @description Payment rail name, if any. */
+            methodName: string | null;
+            /** @description Payment provider; `manual_admin` for money the team placed by hand. */
+            provider: string | null;
+            /** @description MT5 login, for a transfer line. */
+            tradingAccountLogin: string | null;
+            /** @enum {string|null} */
+            transferDirection: "wallet_to_account" | "account_to_wallet" | null;
+        };
+        StatementDto: {
+            walletId: string;
+            walletNumber: string;
+            /** @example USD */
+            currency: string;
+            /** @example 2026-09-01 */
+            from: string;
+            /** @example 2026-09-30 */
+            to: string;
+            /** @description Balance at the start of `from`. */
+            openingBalance: string;
+            /** @description Balance at the end of `to`. */
+            closingBalance: string;
+            totalCredits: string;
+            /** @description Positive: the sum of money that left. */
+            totalDebits: string;
+            lines: components["schemas"]["StatementLineDto"][];
+            /** @description True when the period held more lines than one statement returns. */
+            truncated: boolean;
+            /** Format: date-time */
+            generatedAt: string;
         };
         LedgerEntryDto: {
             id: string;
@@ -9601,6 +9696,8 @@ export interface operations {
     PaymentsController_myTransactions: {
         parameters: {
             query?: {
+                /** @description Comma-separated. Any of: payment, transfer, commission_transfer, rebate. */
+                kind?: string;
                 /** @description Deposits or withdrawals only. */
                 direction?: "deposit" | "withdrawal";
                 state?: "pending" | "approved" | "success" | "failure" | "rejected";
@@ -9626,6 +9723,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TransactionPageDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_myTransactionSummary: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated. Any of: payment, transfer, commission_transfer, rebate. */
+                kind?: string;
+                /** @description Deposits or withdrawals only. */
+                direction?: "deposit" | "withdrawal";
+                state?: "pending" | "approved" | "success" | "failure" | "rejected";
+                currency?: string;
+                /** @description Inclusive, YYYY-MM-DD. */
+                from?: string;
+                /** @description Inclusive, YYYY-MM-DD. */
+                to?: string;
+                sort?: "createdAt" | "amount" | "direction" | "currency" | "state";
+                order?: "asc" | "desc";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionSummaryRowDto"][];
                 };
             };
         };
@@ -9798,6 +9929,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WalletDto"][];
+                };
+            };
+        };
+    };
+    WalletController_statement: {
+        parameters: {
+            query: {
+                walletId: string;
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementDto"];
                 };
             };
         };

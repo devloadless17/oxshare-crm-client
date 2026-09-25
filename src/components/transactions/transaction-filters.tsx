@@ -13,6 +13,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { Transaction, TransactionQuery } from '@/lib/api/payments';
 import { EMPTY_RANGE, type DateRange } from '@/lib/date-range';
 import { t, type MessageKey } from '@/lib/i18n';
+import { NativeDateRange } from '@/components/transactions/mobile-sheets';
 
 /**
  * The transactions toolbar, and the query it produces.
@@ -103,6 +104,16 @@ export function hasActiveFilters(filters: Filters): boolean {
  * API as `''` and fails its `@IsIn`, so "no filter" has to be the absence of the
  * parameter rather than a blank one.
  */
+/** How many filters are narrowing the list — the number on the phone's Filters button. */
+export function activeFilterCount(filters: Filters): number {
+  return [
+    filters.direction !== 'all',
+    filters.state !== 'all',
+    filters.currency !== 'all',
+    filters.range.from !== null || filters.range.to !== null,
+  ].filter(Boolean).length;
+}
+
 export function toQuery(filters: Filters): TransactionQuery {
   return {
     direction: filters.direction === 'all' ? undefined : filters.direction,
@@ -135,12 +146,70 @@ export function TransactionFilters({
   currencies,
   onChange,
   onClear,
+  showType = true,
+  layout = 'toolbar',
 }: {
   filters: Filters;
   currencies: string[];
+  /**
+   * False on a screen that is ALREADY one type — the Deposit, Withdraw and
+   * Transfer histories. A "Type: Withdrawal" filter on the deposit history is
+   * a control that can only empty the table.
+   */
+  showType?: boolean;
   onChange: <K extends keyof Filters>(key: K, value: Filters[K]) => void;
   onClear: () => void;
+  /**
+   * `sheet` is the phone's: one column inside `MobileFilterSheet`, native date
+   * fields, and no card or header of its own — the sheet is the card.
+   */
+  layout?: 'toolbar' | 'sheet';
 }) {
+  if (layout === 'sheet') {
+    return (
+      <div className="grid gap-4">
+        {showType && (
+          <FilterSelect
+            label={t('transactions.filterType')}
+            value={filters.direction}
+            onValueChange={(value) => onChange('direction', value as Filters['direction'])}
+            options={[
+              { value: 'all', label: t('transactions.filterAll') },
+              { value: 'deposit', label: t('transactions.deposit') },
+              { value: 'withdrawal', label: t('transactions.withdrawal') },
+            ]}
+          />
+        )}
+        <FilterSelect
+          label={t('transactions.filterStatus')}
+          value={filters.state}
+          onValueChange={(value) => onChange('state', value as Filters['state'])}
+          options={[
+            { value: 'all', label: t('transactions.filterAll') },
+            ...(Object.keys(STATE) as Transaction['state'][]).map((state) => ({
+              value: state,
+              label: t(STATE[state].key),
+            })),
+          ]}
+        />
+        <FilterSelect
+          label={t('transactions.filterCurrency')}
+          value={filters.currency}
+          onValueChange={(value) => onChange('currency', value)}
+          options={[
+            { value: 'all', label: t('transactions.filterAll') },
+            ...currencies.map((currency) => ({ value: currency, label: currency })),
+          ]}
+        />
+        <NativeDateRange
+          value={filters.range}
+          onChange={(range) => onChange('range', range)}
+          label={t('transactions.filterDateRange')}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-3 pb-3">
@@ -167,17 +236,21 @@ export function TransactionFilters({
         the field is the fix; making it TALLER than its neighbours would have
         been a row of controls that no longer line up.
       */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <FilterSelect
-          label={t('transactions.filterType')}
-          value={filters.direction}
-          onValueChange={(value) => onChange('direction', value as Filters['direction'])}
-          options={[
-            { value: 'all', label: t('transactions.filterAll') },
-            { value: 'deposit', label: t('transactions.deposit') },
-            { value: 'withdrawal', label: t('transactions.withdrawal') },
-          ]}
-        />
+      <div
+        className={`grid gap-3 sm:grid-cols-2 ${showType ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
+      >
+        {showType && (
+          <FilterSelect
+            label={t('transactions.filterType')}
+            value={filters.direction}
+            onValueChange={(value) => onChange('direction', value as Filters['direction'])}
+            options={[
+              { value: 'all', label: t('transactions.filterAll') },
+              { value: 'deposit', label: t('transactions.deposit') },
+              { value: 'withdrawal', label: t('transactions.withdrawal') },
+            ]}
+          />
+        )}
 
         <FilterSelect
           label={t('transactions.filterStatus')}
@@ -242,7 +315,7 @@ export function TransactionFilters({
  * button makes the whole label a second click target for it. `aria-label` names
  * it instead, and the visible caption sits above.
  */
-function FilterSelect({
+export function FilterSelect({
   label,
   value,
   onValueChange,

@@ -58,6 +58,12 @@ export type TransactionPage = components['schemas']['TransactionPageDto'];
  * the envelope is not.
  */
 export interface TransactionQuery {
+  /**
+   * Comma-separated movement kinds (`payment`, `transfer`,
+   * `commission_transfer`, `rebate`). Sent as ONE string rather than an array:
+   * axios would serialise an array as `kind[]=…`, which the API does not read.
+   */
+  kind?: string;
   direction?: Transaction['direction'];
   state?: Transaction['state'];
   currency?: string;
@@ -71,6 +77,8 @@ export interface TransactionQuery {
   /** Capped at 100 by the API. */
   limit?: number;
 }
+/** One (currency, direction, state) cell of the filtered history, summed server-side. */
+export type TransactionSummaryRow = components['schemas']['TransactionSummaryRowDto'];
 export type RequestWithdrawal = components['schemas']['RequestWithdrawalDto'];
 /*
  * `RequestWithdrawalOtp` and `WithdrawalOtpResponse` are gone with the
@@ -125,6 +133,32 @@ export const paymentsApi = {
       params,
       signal,
     });
+    return data;
+  },
+
+  /**
+   * Count and total per currency, direction and state over the SAME filters as
+   * `getTransactions` — every matching row, not a page. What the summary tiles
+   * above each money history read; summing the page on screen would total 25
+   * rows and present them as the history.
+   */
+  async getTransactionSummary(
+    query: TransactionQuery = {},
+    signal?: AbortSignal,
+  ): Promise<TransactionSummaryRow[]> {
+    const params = Object.fromEntries(
+      Object.entries(query).filter(
+        ([key, value]) =>
+          value !== undefined && value !== '' && !['page', 'limit', 'sort', 'order'].includes(key),
+      ),
+    );
+    const { data } = await apiClient.get<TransactionSummaryRow[]>(
+      '/payments/transactions/summary',
+      {
+        params,
+        signal,
+      },
+    );
     return data;
   },
 

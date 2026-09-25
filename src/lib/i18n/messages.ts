@@ -56,6 +56,10 @@ export const messages = {
   'nav.deposit': 'Deposit',
   'nav.withdraw': 'Withdraw',
   'nav.transactions': 'Transactions',
+  // The Transactions group's two new pages — Deposit and Withdraw reuse the
+  // keys above.
+  'nav.transfer': 'Transfer',
+  'nav.statement': 'Statement',
   'nav.kyc': 'KYC Verification',
   'nav.profile': 'Profile',
   'nav.logout': 'Log out',
@@ -517,6 +521,7 @@ export const messages = {
   // tell a partner their commission went to a trading account. Never has an
   // "out" twin — the commission wallet's matching debit is not a row here.
   'transactions.commissionTransfer': 'Commission transfer',
+  'transactions.rebate': 'Trading rebate',
   // What a transfer moved through, where a deposit would name its payment
   // method. More useful than an em dash — it names the other end of the
   // movement, which is the question the column asks.
@@ -2112,6 +2117,95 @@ export const messages = {
   'dashboard.quickActions': 'Quick actions',
   'dashboard.viewAllAccounts': 'All accounts',
   'dashboard.viewAllTransactions': 'All transactions',
+  // ── Deposit / Withdraw / Transfer — the History tab ─────────────────────
+  'history.tab': 'History',
+  'history.newDeposit': 'New deposit',
+  'history.newWithdrawal': 'New withdrawal',
+  'history.newTransfer': 'New transfer',
+  'history.depositsTitle': 'Deposit history',
+  'history.withdrawalsTitle': 'Withdrawal history',
+  'history.transfersTitle': 'Transfer history',
+  'history.depositsEmpty': 'No deposits yet',
+  'history.depositsEmptyBody':
+    'Every deposit you make appears here with its status, from submitted to credited.',
+  'history.withdrawalsEmpty': 'No withdrawals yet',
+  'history.withdrawalsEmptyBody':
+    'Withdrawal requests appear here as soon as you make them, and you can follow each one until it is paid.',
+  'history.transfersEmpty': 'No transfers yet',
+  'history.transfersEmptyBody': 'Moves between your wallet and your trading accounts appear here.',
+  'history.colRoute': 'Transfer',
+  'history.statDeposited': 'Total deposited',
+  'history.statWithdrawn': 'Total withdrawn',
+  'history.statInProgress': 'In progress',
+  'history.statDeclined': 'Declined or failed',
+  'history.statToAccounts': 'Sent to trading accounts',
+  'history.statToWallet': 'Returned to wallet',
+  'history.statProcessing': 'Processing',
+  'history.statCount': '{count} transaction(s)',
+  // A refused withdrawal is refunded to the wallet — the figure is money that
+  // came back, not money lost, and the hint says so.
+  'history.statRefunded': '{count} refunded to your wallet',
+  'history.summaryUnavailable': 'Totals are unavailable right now; the list below is complete.',
+
+  // ── Statement ───────────────────────────────────────────────────────────
+  'statement.pageTitle': 'Statement',
+  'statement.pageSubtitle':
+    'Your account statement, and every deposit, withdrawal and transfer on your account.',
+  'statement.tabStatement': 'Account statement',
+  'statement.tabActivity': 'All activity',
+  'statement.title': 'Account statement',
+  'statement.wallet': 'Wallet',
+  'statement.walletNumber': 'Wallet',
+  'statement.period': 'Period',
+  'statement.periodThisMonth': 'This month',
+  'statement.periodLastMonth': 'Last month',
+  'statement.periodLast3Months': 'Last 3 months',
+  'statement.periodYearToDate': 'Year to date',
+  'statement.periodLast12Months': 'Last 12 months',
+  'statement.periodCustom': 'Custom range',
+  'statement.customRange': 'Dates',
+  'statement.pickRange': 'Choose a start and end date to see the statement.',
+  'statement.downloadCsv': 'Download CSV',
+  'statement.print': 'Print / Save PDF',
+  'statement.loading': 'Preparing your statement',
+  'statement.loadFailed': 'Could not load your statement.',
+  'statement.noWallet': 'No wallet yet',
+  'statement.noWalletBody': 'Your statement appears here once your first wallet is opened.',
+  'statement.openingBalance': 'Opening balance',
+  'statement.closingBalance': 'Closing balance',
+  'statement.moneyIn': 'Money in',
+  'statement.moneyOut': 'Money out',
+  'statement.lineCount': '{count} line(s)',
+  'statement.colDescription': 'Description',
+  'statement.colReference': 'Reference',
+  'statement.colBalance': 'Balance',
+  'statement.noMovements': 'No movements in this period.',
+  'statement.truncated':
+    'This period holds more movements than one statement shows — the first {count} are listed. Choose a shorter period to see the rest.',
+  'statement.generatedAt': 'Generated {date}',
+  'statement.lineDeposit': 'Deposit',
+  'statement.lineDepositReversed': 'Deposit reversed',
+  'statement.lineManualCredit': 'Added by our team',
+  'statement.lineWithdrawal': 'Withdrawal',
+  'statement.lineWithdrawalRefund': 'Withdrawal refunded',
+  'statement.lineToAccount': 'Transfer to trading account{login}',
+  'statement.lineFromAccount': 'Transfer from trading account{login}',
+  'statement.lineCommissionIn': 'Commission moved to wallet',
+  'statement.lineCommissionOut': 'Commission moved to main wallet',
+  'statement.lineCommission': 'Commission earned',
+  'statement.lineRebate': 'Trading rebate',
+  'statement.linePayout': 'Payout',
+  'statement.lineReversal': 'Commission reversal',
+  'statement.lineAdjustment': 'Balance adjustment',
+  // ── Phone bottom sheets (filters, export) ───────────────────────────────
+  'sheets.showResults': 'Show results',
+  'sheets.dateFrom': 'From',
+  'sheets.dateTo': 'To',
+  'sheets.export': 'Export',
+  'sheets.exportTitle': 'Export statement',
+  'sheets.csvBody': 'A spreadsheet of every line, for Excel or your accountant.',
+  'sheets.pdfBody': 'A printable statement — choose "Save as PDF" to keep a copy.',
+  'sheets.statementOptions': 'Wallet and period',
 } as const;
 
 /** Every valid key. A typo is a compile error, never a string rendered as itself. */

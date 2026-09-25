@@ -50,6 +50,14 @@ export function movementLabelKey(movement: { kind?: string; direction: string })
     case 'commission_transfer':
       return 'transactions.commissionTransfer';
 
+    /*
+     * Money handed back on the client's own trading. It arrived as "Deposit"
+     * until the API's schema listed the kind — and a client reading "Deposit"
+     * looks for a payment they never made.
+     */
+    case 'rebate':
+      return 'transactions.rebate';
+
     default:
       /*
        * `payment` AND anything this build has not heard of.

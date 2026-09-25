@@ -22,6 +22,8 @@ import type { components } from './types.gen';
 export type Wallet = components['schemas']['WalletDto'];
 export type LedgerEntry = components['schemas']['LedgerEntryDto'];
 export type LedgerPage = components['schemas']['LedgerListResponseDto'];
+export type Statement = components['schemas']['StatementDto'];
+export type StatementLine = components['schemas']['StatementLineDto'];
 
 /** The currencies the API rows a wallet in — from the schema, not a literal. */
 export type WalletCurrency = Wallet['currency'];
@@ -30,6 +32,19 @@ export const walletApi = {
   /** A bare array — one wallet per currency the client actually holds. */
   async getWallets(signal?: AbortSignal): Promise<Wallet[]> {
     const { data } = await apiClient.get<Wallet[]>('/wallet', { signal });
+    return data;
+  },
+
+  /**
+   * One wallet's account statement: opening balance, every movement with the
+   * running balance the ledger stored for it, closing balance. `from`/`to` are
+   * inclusive `YYYY-MM-DD` days, at most 366 apart.
+   */
+  async getStatement(
+    params: { walletId: string; from: string; to: string },
+    signal?: AbortSignal,
+  ): Promise<Statement> {
+    const { data } = await apiClient.get<Statement>('/wallet/statement', { params, signal });
     return data;
   },
 

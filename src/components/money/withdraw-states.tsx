@@ -87,7 +87,7 @@ export function WithdrawalSubmitted() {
         </div>
         <div className="flex w-full max-w-xs flex-col gap-2">
           <Button asChild size="sm">
-            <Link href="/transactions">{t('withdraw.viewTransactions')}</Link>
+            <Link href="/withdraw?tab=history">{t('withdraw.viewTransactions')}</Link>
           </Button>
           <Button asChild variant="outline" size="sm">
             <Link href="/wallet">{t('deposit.backToWallet')}</Link>

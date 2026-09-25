@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { MoneyScreen } from '@/components/money/money-screen';
 import { ArrowRight } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,6 @@ import {
   AmountPresets,
   FormError,
   MoneyFooter,
-  MoneyHeader,
   MoneySection,
   MoneySheet,
   StepRail,
@@ -107,7 +107,7 @@ function TransferPageContent() {
    * the card. Break any link and the card falls back to its content height.
    */
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col gap-4">
+    <MoneyScreen scope="transfers">
       {/*
         The way back, which this screen was missing entirely.
 
@@ -116,7 +116,7 @@ function TransferPageContent() {
         with no exit but the browser's own button. The heading stays gone; the
         link comes back, and all three flows now carry the identical one.
       */}
-      <MoneyHeader />
+      {/* Back link, New / History tabs and the history live in MoneyScreen. */}
 
       <AsyncBoundary
         status={accounts.status}
@@ -129,7 +129,7 @@ function TransferPageContent() {
       >
         <TransferFlow accounts={accounts.data ?? []} wallets={wallets.data ?? []} />
       </AsyncBoundary>
-    </div>
+    </MoneyScreen>
   );
 }
 

@@ -263,7 +263,9 @@ export default function WalletPage() {
                   <h2 className="text-sm font-bold">{t('wallet.recentHeading')}</h2>
                 </div>
                 <Button asChild variant="ghost" size="sm">
-                  <Link href="/transactions">{t('dashboard.viewAllTransactions')}</Link>
+                  <Link href="/transactions?tab=activity">
+                    {t('dashboard.viewAllTransactions')}
+                  </Link>
                 </Button>
               </div>
 

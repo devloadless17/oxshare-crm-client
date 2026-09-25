@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { MoneyScreen } from '@/components/money/money-screen';
 import { useResource } from '@/hooks/use-resource';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { apiErrorMessage } from '@/lib/api/errors';
@@ -17,7 +18,6 @@ import {
   FormError,
   MethodTile,
   MoneyFooter,
-  MoneyHeader,
   MoneySection,
   MoneySheet,
   StepRail,
@@ -629,14 +629,14 @@ export default function WithdrawPage() {
    * footer off-screen instead of scrolling.
    */
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col gap-4">
+    <MoneyScreen scope="withdrawals">
       {/*
         The `<h1>Withdraw</h1>` and its subtitle are GONE, on request — the step
         rail inside the card already names where the client is, and the nav item
         they clicked said "Withdraw". The back link stays: it is the only way out
         that does not use the browser's own button.
       */}
-      <MoneyHeader />
+      {/* Back link, New / History tabs and the history live in MoneyScreen. */}
 
       {submitted ? (
         <WithdrawalSubmitted />
@@ -660,6 +660,6 @@ export default function WithdrawPage() {
           />
         </AsyncBoundary>
       )}
-    </div>
+    </MoneyScreen>
   );
 }
