@@ -214,7 +214,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             {collapsed ? (
               <BrandLogo variant="mark" className="h-9 w-auto shrink-0" />
             ) : (
-              <BrandLogo className="h-12 w-auto shrink-0" />
+              <BrandLogo className="h-10 w-auto shrink-0" />
             )}
           </Link>
 
