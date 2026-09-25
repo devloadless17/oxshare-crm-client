@@ -11,6 +11,7 @@ import {
   signIn,
   TINY_PNG,
   waitForMail,
+  VERIFICATION_SUBJECT,
 } from './helpers';
 
 /**
@@ -91,7 +92,7 @@ test('a returned passport must be replaced, and the wizard resumes where the cli
 
   await test.step('register, verify, sign in', async () => {
     await register(page, client);
-    const mail = await waitForMail(client.email, { subject: /verify/i });
+    const mail = await waitForMail(client.email, { subject: VERIFICATION_SUBJECT });
     await page.goto(linkIn(mail, APP_ORIGIN));
     await expect(page.getByText(/verified|welcome/i).first()).toBeVisible({ timeout: 15_000 });
     await signIn(page, client);

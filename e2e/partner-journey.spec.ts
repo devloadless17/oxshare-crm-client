@@ -8,6 +8,7 @@ import {
   waitForMail,
   linkIn,
   APP_ORIGIN,
+  VERIFICATION_SUBJECT,
 } from './helpers';
 
 /**
@@ -165,7 +166,10 @@ test('a client under the deepest rung is locked out of the programme everywhere'
   expect(registered.ok(), `registration answered ${registered.status()}`).toBe(true);
 
   // The address is proven the way a person proves it: through the mailbox.
-  const mail = await waitForMail(client.email, { subject: /verify/i, timeoutMs: 20_000 });
+  const mail = await waitForMail(client.email, {
+    subject: VERIFICATION_SUBJECT,
+    timeoutMs: 20_000,
+  });
 
   /*
    * WAIT FOR THE VERIFICATION TO LAND, not just for the page to render.

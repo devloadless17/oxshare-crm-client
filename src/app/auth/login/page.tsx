@@ -4,7 +4,7 @@ import * as React from 'react';
 import { normaliseReferralCode } from '@/lib/referral-code';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Lock, Mail, Eye, EyeOff, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/loader';
@@ -15,6 +15,7 @@ import { t } from '@/lib/i18n';
 import { useUser } from '@/context/UserContext';
 import { RedirectIfAuthenticated } from '@/components/auth/redirect-if-authenticated';
 import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/return-to';
+import { confirmEmailPath, rememberPendingEmail } from '@/lib/pending-email';
 import { AuthShell } from '@/components/auth/auth-shell';
 
 /**
@@ -87,28 +88,17 @@ function LoginForm() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Resend Email State
-  const [isUnverified, setIsUnverified] = React.useState(false);
-  const [isResending, setIsResending] = React.useState(false);
-  const [resendCooldown, setResendCooldown] = React.useState(0);
-  const [resendSuccess, setResendSuccess] = React.useState<string | null>(null);
-
-  // Resend Cooldown Timer
-  React.useEffect(() => {
-    if (resendCooldown <= 0) return;
-
-    const timer = setInterval(() => {
-      setResendCooldown((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [resendCooldown]);
+  /*
+   * On its way to the code screen. Kept apart from `isLoading` for the reason
+   * the register page gives: the request has finished, the navigation has not,
+   * and a live button in that gap is an invitation to sign in again.
+   */
+  const [leaving, setLeaving] = React.useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (leaving) return;
     setError(null);
-    setIsUnverified(false);
-    setResendSuccess(null);
 
     if (!email || !password) {
       setError(t('auth.login.missingFields'));
@@ -162,33 +152,28 @@ function LoginForm() {
        */
       router.push(safeReturnTo(searchParams.get(RETURN_TO_PARAM)));
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, t('auth.login.failed')));
-
-      // Branched on the ENGLISH TEXT of the message until the API published a
-      // code (R-2.2). That worked only while the copy stayed exactly as written
-      // and in English — so it would have silently stopped offering the resend
-      // affordance the day Arabic shipped, which FSD §10 / D-16 require.
+      /*
+       * The right password to an UNCONFIRMED account. The server has just
+       * mailed this address a fresh 6-digit code (it only does so once the
+       * password has matched), so the client is taken to the screen that takes
+       * it — and the code signs them in, which is where they were going.
+       *
+       * This used to paint the refusal and a "resend verification email"
+       * button under it: a link-shaped answer to an email that now leads with a
+       * code, and one more step between the client and their account.
+       *
+       * Branched on the machine-readable CODE, never on the message (R-2.2):
+       * the message is prose, and it will be translated.
+       */
       if (isEmailUnverified(err)) {
-        setIsUnverified(true);
+        setLeaving(true);
+        rememberPendingEmail(email);
+        router.push(confirmEmailPath('login', searchParams.get(RETURN_TO_PARAM)));
+        return;
       }
+      setError(apiErrorMessage(err, t('auth.login.failed')));
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleResendEmail = async () => {
-    if (!email || resendCooldown > 0) return;
-    setIsResending(true);
-    setResendSuccess(null);
-
-    try {
-      const res = await api.auth.resendVerification(email);
-      setResendSuccess(res.message || t('auth.login.resendSuccess'));
-      setResendCooldown(60);
-    } catch (err: unknown) {
-      setError(apiErrorMessage(err, t('auth.login.resendFailed')));
-    } finally {
-      setIsResending(false);
     }
   };
 
@@ -242,43 +227,6 @@ function LoginForm() {
               <AlertCircle className="h-4 w-4 shrink-0 mt-px" aria-hidden="true" />
               <span className="font-medium leading-relaxed">{error}</span>
             </div>
-
-            {isUnverified && (
-              <div className="pt-2 border-t border-destructive/20">
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => void handleResendEmail()}
-                  loading={isResending}
-                  // Still explicitly disabled for the COOLDOWN, which is not a
-                  // loading state — nothing is in flight, the client simply may
-                  // not ask again yet. `loading` covers only the first case.
-                  disabled={isResending || resendCooldown > 0}
-                >
-                  {isResending ? (
-                    <span>{t('auth.login.resendSending')}</span>
-                  ) : resendCooldown > 0 ? (
-                    <span>{t('auth.login.resendCooldown', { seconds: resendCooldown })}</span>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>{t('auth.login.resendCta')}</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {resendSuccess && (
-          <div
-            role="status"
-            className="flex items-center gap-2 rounded-xl border border-success/30 bg-success/10 p-3 text-xs text-success"
-          >
-            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>{resendSuccess}</span>
           </div>
         )}
 
@@ -348,8 +296,8 @@ function LoginForm() {
           </div>
         </div>
 
-        <Button type="submit" loading={isLoading} size="lg" className="w-full">
-          {isLoading ? t('auth.login.submitting') : t('auth.login.submit')}
+        <Button type="submit" loading={isLoading || leaving} size="lg" className="w-full">
+          {isLoading || leaving ? t('auth.login.submitting') : t('auth.login.submit')}
         </Button>
       </form>
     </AuthShell>

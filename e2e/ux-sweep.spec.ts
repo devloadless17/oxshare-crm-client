@@ -68,7 +68,7 @@ const STANDALONE = [
   '/auth/login',
   '/auth/register',
   '/auth/forgot-password',
-  '/verify-email/pending',
+  '/auth/confirm-email',
 ];
 
 /**

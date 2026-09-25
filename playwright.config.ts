@@ -144,7 +144,7 @@ export default defineConfig({
        * registration cap on a question that is not about viewport width.
        */
       testIgnore:
-        /(auth-session|account-security|emailed-links|password-reset-journey|partner-journey|session-lifecycle|session-matrix|session-under-stress)\.spec\.ts/,
+        /(auth-session|account-security|email-code-signup|emailed-links|password-reset-journey|partner-journey|session-lifecycle|session-matrix|session-under-stress)\.spec\.ts/,
     },
   ],
 

@@ -9,6 +9,7 @@ import {
   register,
   waitForMail,
   requirePrecondition,
+  VERIFICATION_SUBJECT,
 } from './helpers';
 
 /**
@@ -34,15 +35,17 @@ let verifyLink = '';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-test('a prospect registers and is parked on "check your email"', async ({ page }) => {
+test('a prospect registers and is parked on the code screen', async ({ page }) => {
   await register(page, client);
-  // The success message renders, and three seconds later the page moves to
-  // sign-in — either state is a correct place to leave this step.
-  await expect(page.getByText(/check your email|registration successful/i).first()).toBeVisible();
+  // The code screen, which also offers the emailed link as a fallback. This
+  // journey takes the LINK — a different device from the one that registered —
+  // and `email-code-signup.spec.ts` takes the code.
+  await page.waitForURL(/\/auth\/confirm-email/, { timeout: 30_000 });
+  await expect(page.getByRole('heading', { name: /confirm your email/i })).toBeVisible();
 });
 
 test('the verification email ARRIVES, and its link verifies the account', async ({ page }) => {
-  const mail = await waitForMail(client.email, { subject: /verify/i });
+  const mail = await waitForMail(client.email, { subject: VERIFICATION_SUBJECT });
   verifyLink = linkIn(mail, APP_ORIGIN);
 
   await page.goto(verifyLink);

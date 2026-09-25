@@ -27,6 +27,12 @@ export const LOGIN_PATH = '/auth/login';
 /** Where a client with a live session belongs when they asked for nothing in particular. */
 export const DEFAULT_SIGNED_IN_PATH = '/dashboard';
 
+/**
+ * Where a client lands the moment their email is confirmed: "verify your
+ * identity now, or later". Step two of two — the code was step one.
+ */
+export const ONBOARDING_PATH = '/onboarding';
+
 /** The query parameter carrying where the visitor was trying to go. */
 export const RETURN_TO_PARAM = 'next';
 

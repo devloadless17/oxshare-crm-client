@@ -11,6 +11,7 @@ import {
   register,
   TINY_PNG,
   waitForMail,
+  VERIFICATION_SUBJECT,
 } from './helpers';
 
 /**
@@ -77,7 +78,7 @@ test('a client is verified end to end: submit → reject with reason → resubmi
 
   await test.step('register, read the inbox, verify, sign in', async () => {
     await register(page, client);
-    const mail = await waitForMail(client.email, { subject: /verify/i });
+    const mail = await waitForMail(client.email, { subject: VERIFICATION_SUBJECT });
     await page.goto(linkIn(mail, APP_ORIGIN));
     await expect(page.getByText(/verified|welcome/i).first()).toBeVisible({ timeout: 15_000 });
 
@@ -171,7 +172,13 @@ test('a client is verified end to end: submit → reject with reason → resubmi
         page.getByRole('link', { name: /update and re-?submit|re-?apply/i }),
       ).toBeVisible();
 
-      const mail = await waitForMail(client.email, { subject: /kyc|verification/i });
+      /*
+       * The two KYC DECISION subjects exactly. This was `/kyc|verification/i`,
+       * and since 25 Sep the sign-up email's subject is "<code> is your OxShare
+       * verification code" — so whenever the decision mail had not landed yet,
+       * the sign-up mail matched instead and the assertion read the wrong one.
+       */
+      const mail = await waitForMail(client.email, { subject: /kyc|identity verified/i });
       expect(`${mail.subject} ${mail.text}`).toMatch(/reject|not approved|returned|unreadable/i);
     });
 

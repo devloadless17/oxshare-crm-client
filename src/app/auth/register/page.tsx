@@ -4,9 +4,10 @@ import * as React from 'react';
 import { normaliseReferralCode } from '@/lib/referral-code';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Lock, Mail, User, Eye, EyeOff, AlertCircle, CheckCircle2, Handshake } from 'lucide-react';
+import { Lock, Mail, User, Eye, EyeOff, AlertCircle, Handshake } from 'lucide-react';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { confirmEmailPath, rememberPendingEmail } from '@/lib/pending-email';
 import { t } from '@/lib/i18n';
 import { RedirectIfAuthenticated } from '@/components/auth/redirect-if-authenticated';
 import { AuthShell } from '@/components/auth/auth-shell';
@@ -77,39 +78,21 @@ function RegisterForm() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   /*
-   * REGISTERED ALREADY — and the button must stay dead until the redirect.
+   * REGISTERED ALREADY — and the button must stay dead until the next screen.
    *
-   * `isLoading` covers only the in-flight request. On success the handler
-   * cleared it and then waited SIX SECONDS to show the confirmation before
-   * navigating, so for those six seconds the form was live again with the same
-   * details in it. Every further click was another `POST /auth/register` and
-   * another verification email to the same address — reported from production
-   * as exactly that.
+   * `isLoading` covers only the in-flight request. The success path used to
+   * clear it and then wait SIX SECONDS on a confirmation before navigating, so
+   * for those six seconds the form was live again with the same details in it.
+   * Every further click was another `POST /auth/register` and another email to
+   * the same address — reported from production as exactly that.
    *
-   * Separate from `isLoading` because they mean different things: one is "this
-   * is in flight", the other is "this has already happened". The second never
-   * goes back to false — there is nothing on this page left to do.
+   * The wait is gone (sign-up now goes straight to the code screen), but the
+   * navigation is still not instant, and this flag is what keeps a second click
+   * in that gap from registering twice. It never goes back to false — there is
+   * nothing on this page left to do.
    */
   const [registered, setRegistered] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
-
-  /*
-   * The post-registration redirect, held so unmounting cancels it.
-   *
-   * A `setTimeout` that calls `router.push` outlives the component that started
-   * it. Registering and then navigating anywhere within three seconds — to sign
-   * in, to the home mark, via the back button — dropped the client back on
-   * /auth/login from wherever they had reached, with nothing on screen
-   * explaining it. React never warns about this; the navigation simply happens.
-   */
-  const redirectTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  React.useEffect(() => {
-    return () => {
-      if (redirectTimer.current) clearTimeout(redirectTimer.current);
-    };
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +104,6 @@ function RegisterForm() {
      */
     if (isLoading || registered) return;
     setError(null);
-    setSuccessMessage(null);
 
     if (!email || !password || !firstName || !lastName) {
       setError(t('auth.register.fillRequired'));
@@ -131,7 +113,7 @@ function RegisterForm() {
     setIsLoading(true);
 
     try {
-      const res = await api.auth.register({
+      await api.auth.register({
         email,
         password,
         firstName,
@@ -141,29 +123,21 @@ function RegisterForm() {
         ...(referralCode ? { referralCode } : {}),
       });
 
-      setSuccessMessage(res.message || t('auth.register.success'));
       setRegistered(true);
-
       /*
-       * Tracked so it can be cancelled — see the cleanup effect below.
+       * Straight to the code (the client's request, 25 Sep 2026). The address
+       * travels in this tab's storage, never the URL — see lib/pending-email.ts.
        *
-       * Unreferenced, this fired three seconds later wherever the client had got
-       * to: click "sign in" or the OxShare mark within that window and you were
-       * yanked back to /auth/login from the page you had just opened. The three
-       * seconds exist to let somebody read the "check your email" message, not
-       * to seize the navigation afterwards.
+       * The same screen is right whatever the server did with the address: a
+       * new one has just been sent a code, and one that already held an account
+       * has been sent a sign-in link instead — the response is identical by
+       * design, and the code screen names both outcomes without choosing.
        *
-       * SIX, not three. The message now names both outcomes — a new address gets
-       * a verification link, an existing one gets a sign-in link — because the
-       * server answers identically either way and a shorter promise contradicted
-       * the mail that follows. That sentence takes longer to read than the one it
-       * replaced, and a message nobody finishes reading is the same as no message:
-       * the reader lands on /auth/login wondering why their inbox disagrees with
-       * the screen they just left.
+       * `push`, not `replace`: "Back" from the code screen returns here, which is
+       * where somebody who mistyped their address needs to be.
        */
-      redirectTimer.current = setTimeout(() => {
-        router.push('/auth/login');
-      }, 6000);
+      rememberPendingEmail(email);
+      router.push(confirmEmailPath('register'));
     } catch (err: unknown) {
       setError(apiErrorMessage(err, t('auth.register.failed')));
     } finally {
@@ -211,13 +185,6 @@ function RegisterForm() {
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-xs text-success">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <span>{successMessage}</span>
             </div>
           )}
 
@@ -316,14 +283,19 @@ function RegisterForm() {
               </div>
             </div>
 
+            {/* Still "working" once registered: the next screen is loading, and
+                a button that springs back to "Create account" in that gap is
+                an invitation to press it again. */}
             <Button
               type="submit"
-              loading={isLoading}
+              loading={isLoading || registered}
               disabled={registered}
               size="lg"
               className="w-full"
             >
-              {isLoading ? t('auth.register.submitting') : t('auth.register.submitCta')}
+              {isLoading || registered
+                ? t('auth.register.submitting')
+                : t('auth.register.submitCta')}
             </Button>
           </form>
         </div>

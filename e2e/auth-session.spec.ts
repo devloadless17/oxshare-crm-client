@@ -136,21 +136,25 @@ test.describe('no session at all', () => {
 test.describe('registration', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
-  test('registers, and lands the new client on verify-email rather than KYC', async ({ page }) => {
+  test('registers, and lands the new client on the code screen rather than KYC', async ({
+    page,
+  }) => {
     /*
      * The whole journey, for an account that has never existed.
      *
      * The landing matters: a brand-new client is NOT email-verified, and every
      * `/kyc/*` endpoint sits behind `EmailVerifiedGuard`. Sending them to
-     * onboarding would mean a wizard that 403s on every request it makes.
+     * onboarding would mean a wizard that 403s on every request it makes. The
+     * code screen is where they confirm the address (and are signed in by it);
+     * `email-code-signup.spec.ts` drives the rest of that journey.
      */
     const client = newClient();
     const rejections = collectRejections(page);
 
     await register(page, client);
 
-    // Somewhere that tells them to check their inbox — never the KYC wizard.
-    await page.waitForURL(/verify|login/, { timeout: 30_000 });
+    // The screen that takes the emailed code — never the KYC wizard.
+    await page.waitForURL(/\/auth\/confirm-email/, { timeout: 30_000 });
     expect(page.url()).not.toContain('/kyc/step');
 
     /*
@@ -194,7 +198,7 @@ test.describe('an unverified client', () => {
     const client = newClient();
 
     await register(page, client);
-    await page.waitForURL(/verify|login/, { timeout: 30_000 });
+    await page.waitForURL(/\/auth\/confirm-email/, { timeout: 30_000 });
 
     // Counted only AFTER registration settles, so this is about browsing.
     const rejections = collectRejections(page);

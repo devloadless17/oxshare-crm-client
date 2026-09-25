@@ -216,27 +216,9 @@ export const messages = {
   'auth.login.emailPlaceholder': 'you@example.com',
   'auth.login.passwordPlaceholder': '••••••••',
   'auth.login.missingFields': 'Please fill in both email and password.',
-  'auth.login.resendSending': 'Sending Link…',
-  'auth.login.resendCooldown': 'Resend in {seconds}s',
-  'auth.login.resendCta': 'Resend Verification Email',
-  'auth.login.resendSuccess': 'Verification link resent! Check your inbox.',
-  'auth.login.resendFailed': 'Failed to resend verification link.',
 
   // ── Auth: register ────────────────────────────────────────────────────────
   'auth.register.fillRequired': 'Please fill in all required fields.',
-  /*
-   * Names BOTH outcomes, because the server's own response does — see
-   * `AuthService.register`. Registration answers identically whether or not the
-   * address already has an account (revealing it would let anyone test an email
-   * list and learn who banks here), so a message promising only verification
-   * contradicts the "you already have an account" mail the other branch sends.
-   *
-   * This is the FALLBACK; `res.message` from the API wins. Keep the two saying
-   * the same thing — they drifting apart is the bug this text fixes.
-   */
-  'auth.register.success':
-    'Check your email. If this address is new, follow the link to verify it — and if you already ' +
-    'have an account, we have sent you a sign-in link instead.',
   'auth.register.title': 'Create your account',
   'auth.register.subtitle': 'Start trading with OXShare',
   'auth.register.firstName': 'First Name',
@@ -261,6 +243,83 @@ export const messages = {
   // The button repeats the heading's verb, so the one action on the screen is
   // named the same way twice.
   'auth.register.submitCta': 'Create account',
+
+  // ── Auth: confirm the email with the 6-digit code ────────────────────────
+  /*
+   * The screen sign-up ends on since 25 Sep 2026: the code from the email, and
+   * the client is signed in by it. Every sentence stays TRUE whichever of two
+   * things happened at registration — a new account, or an address that
+   * already had one — because the server answers both identically and this
+   * screen must not tell them apart. Hence "if this address is waiting" and the
+   * "already have an account?" line, which name both outcomes and commit to
+   * neither.
+   */
+  'auth.confirm.heading': 'Confirm your email',
+  'auth.confirm.registerTagline':
+    'Enter the 6-digit code we emailed you to finish creating your account.',
+  'auth.confirm.loginTagline':
+    'Your email is not confirmed yet. Enter the 6-digit code from the email we sent you to finish signing in.',
+  'auth.confirm.tagline': 'Enter the 6-digit code from your verification email.',
+  'auth.confirm.askTagline':
+    'Enter the email address you signed up with, then the 6-digit code we sent there.',
+  'auth.confirm.emailLabel': 'Email',
+  'auth.confirm.askSubmit': 'Continue',
+  'auth.confirm.sentTo': 'Code sent to',
+  'auth.confirm.codeLabel': 'Verification code',
+  'auth.confirm.paste': 'Paste',
+  'auth.confirm.pasteNothing':
+    'There is no 6-digit code on your clipboard. Copy the code from the email, then try again.',
+  'auth.confirm.pasteDenied':
+    'Your browser did not allow pasting from here. Tap the boxes and paste, or type the code.',
+  'auth.confirm.submit': 'Continue',
+  'auth.confirm.submitting': 'Confirming…',
+  'auth.confirm.confirmed': 'Email confirmed',
+  'auth.confirm.incomplete': 'Enter all 6 digits of the code.',
+  'auth.confirm.wrongCode':
+    'That code is incorrect or has expired. Check the latest email and try again.',
+  // The server burns a code after five wrong guesses; saying so here saves a
+  // client typing a correct code into one that can no longer work.
+  'auth.confirm.burned':
+    'Too many incorrect attempts, so that code no longer works. Send a new code to try again.',
+  'auth.confirm.failed': 'We could not confirm your email. Please try again.',
+  'auth.confirm.noCodeYet': "Didn't receive the code?",
+  'auth.confirm.resendIn': 'Resend in {time}',
+  'auth.confirm.resend': 'Send a new code',
+  'auth.confirm.resending': 'Sending…',
+  'auth.confirm.resent':
+    'If this address is waiting to be confirmed, a new code is on its way. Earlier codes no longer work.',
+  'auth.confirm.resendFailed': 'We could not send a new code. Please try again in a moment.',
+  'auth.confirm.spamHint': "Can't find it? Check your spam folder. Codes expire after 15 minutes.",
+  'auth.confirm.alreadyRegistered':
+    'Already have an account with this email? We sent you a sign-in link instead of a code.',
+  'auth.confirm.signIn': 'Sign in',
+  'auth.confirm.back': 'Back',
+
+  // ── Onboarding: verify your identity now, or later ────────────────────────
+  /*
+   * Every benefit is a door the server actually keeps shut until KYC is
+   * approved — `KycVerifiedGuard` on deposits, withdrawals and transfers, and
+   * the live-account check in `TradingController.openAccount`. A demo account
+   * is NOT gated, which is why "later" can honestly promise one right away.
+   */
+  'onboarding.title': 'Complete your identity verification',
+  'onboarding.welcome': 'Welcome, {name} — your email is confirmed.',
+  'onboarding.welcomeNoName': 'Your email is confirmed.',
+  'onboarding.body': 'Verify your identity to fund your account and trade live.',
+  'onboarding.progress': 'Step {current} of {total} complete',
+  'onboarding.benefitsHeading': 'Once verified, you can',
+  'onboarding.benefitFundTitle': 'Deposit and withdraw',
+  'onboarding.benefitFundBody': 'Fund your wallet and cash out whenever you like.',
+  'onboarding.benefitLiveTitle': 'Trade live',
+  'onboarding.benefitLiveBody': 'Open live trading accounts alongside your demo accounts.',
+  'onboarding.benefitTransferTitle': 'Move money freely',
+  'onboarding.benefitTransferBody': 'Transfer between your wallet and your trading accounts.',
+  'onboarding.duration': 'Takes a few minutes. You can stop and pick up where you left off.',
+  'onboarding.verifyNow': 'Verify now',
+  'onboarding.verifyLater': 'Verify later',
+  'onboarding.laterHint':
+    'You can start any time from your dashboard. Demo accounts are available right away.',
+  'onboarding.checking': 'Loading your account…',
 
   // ── Auth: email verification ──────────────────────────────────────────────
   'auth.verify.pendingTitle': 'Verify your email',
@@ -315,9 +374,6 @@ export const messages = {
   'auth.verify.verifiedBody':
     'Your email address has been confirmed. You now have full access to your OXShare trading account.',
   'auth.verify.redirecting': 'Redirecting to sign-in page in {seconds}s…',
-  'auth.verify.pendingBodyLong':
-    'We sent a verification link to your email address. Click the link to verify your account and get started.',
-  'auth.verify.resendConfirmed': 'Sent! Check your inbox again.',
   'auth.verify.signInNow': 'Sign In Now',
   'auth.verify.failedHeading': 'Verification Failed',
   /*
@@ -390,16 +446,10 @@ export const messages = {
   // Generic on purpose, mirroring what the API answers: it must not confirm
   // whether an account exists for the address the caller typed.
   'auth.verify.resendSent':
-    'If that address has an unverified account, a new link is on its way. Check your inbox and spam folder.',
+    'If that address has an unconfirmed account, a new code and link are on their way. Check your inbox and spam folder.',
   'auth.verify.resendFailed': 'We could not send that email. Please try again in a moment.',
-  'auth.verify.checkInbox': 'Check your inbox',
-  'auth.verify.spamHint': "Didn't receive it? Check your spam folder, or resend below.",
+  'auth.verify.enterCodeInstead': 'Have the code? Enter it here',
   'auth.verify.emailPlaceholder': 'Your email address',
-  'auth.verify.sending': 'Sending…',
-  'auth.verify.resendLink': 'Resend link',
-  'auth.verify.alreadyVerified': 'Already verified? Sign in',
-  'auth.verify.signedInAs': 'Waiting on {email}',
-  'auth.verify.wrongAddress': 'Wrong address? Sign out and start again.',
 
   'common.loadingEllipsis': 'Loading…',
 
@@ -1332,8 +1382,8 @@ export const messages = {
   // The step BEFORE identity, and the only one whose fix is not at /kyc.
   'kycGate.emailTitle': 'Confirm your email address first',
   'kycGate.emailBody':
-    'We sent a link to your inbox. Confirm your address to unlock identity verification and the partner programme.',
-  'kycGate.emailCta': 'Resend the link',
+    'We emailed you a 6-digit code. Confirm your address to unlock identity verification and the partner programme.',
+  'kycGate.emailCta': 'Enter the code',
 
   // ── Notifications ─────────────────────────────────────────────────────────
   //

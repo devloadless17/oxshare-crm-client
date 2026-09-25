@@ -11,6 +11,7 @@ import {
   isApi,
   waitForMail,
   requirePrecondition,
+  VERIFICATION_SUBJECT,
 } from './helpers';
 
 /**
@@ -70,7 +71,7 @@ test('an admin changing the sign-in email ends the live portal session', async (
     });
     requirePrecondition(reg.status() === 429, 'registration is rate limited right now (10/h)');
     expect(reg.ok(), `register answered ${reg.status()}`).toBe(true);
-    const mail = await waitForMail(client.email, { subject: /verify/i });
+    const mail = await waitForMail(client.email, { subject: VERIFICATION_SUBJECT });
     const token = new URL(linkIn(mail, APP_ORIGIN)).searchParams.get('token')!;
     expect(
       (

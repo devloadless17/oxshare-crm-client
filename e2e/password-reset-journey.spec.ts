@@ -9,6 +9,7 @@ import {
   newClient,
   waitForMail,
   requirePrecondition,
+  VERIFICATION_SUBJECT,
 } from './helpers';
 
 /**
@@ -48,7 +49,7 @@ test('the whole recovery journey, end to end', async ({ page }) => {
     });
     requirePrecondition(reg.status() === 429, 'registration is rate limited right now (10/h)');
     expect(reg.ok(), `register answered ${reg.status()}`).toBe(true);
-    const mail = await waitForMail(client.email, { subject: /verify/i });
+    const mail = await waitForMail(client.email, { subject: VERIFICATION_SUBJECT });
     const token = new URL(linkIn(mail, APP_ORIGIN)).searchParams.get('token')!;
     expect(
       (

@@ -50,12 +50,18 @@ test('clicking Register three times sends exactly one registration', async ({ pa
   await submit.click();
   await expect.poll(() => calls, { timeout: 15_000 }).toBe(1);
 
-  // The six-second window the bug lived in: registered, confirmation shown,
-  // redirect not yet fired, form still on screen.
+  /*
+   * The window the bug lived in: registered, the next screen not yet on. It
+   * used to be six seconds of a live form; sign-up now goes straight to the
+   * code screen, so the window is the navigation itself — and the button is
+   * held busy through it.
+   */
   await submit.click({ force: true, timeout: 3_000 }).catch(() => undefined);
   await submit.click({ force: true, timeout: 3_000 }).catch(() => undefined);
   await page.waitForTimeout(1_500);
 
   expect(calls, 'a second registration was sent — another email to the same person').toBe(1);
-  await expect(submit, 'the form still invited a click that could only do harm').toBeDisabled();
+  await expect(page, 'a registration that succeeded went nowhere').toHaveURL(
+    /\/auth\/confirm-email\?from=register$/,
+  );
 });

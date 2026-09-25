@@ -57,10 +57,11 @@ export const AUTH_ONLY_PATHS = ['/auth/login', '/auth/register', '/login', '/reg
  *
  * Each entry is here for a concrete reason, and "it is an auth page" is not one:
  *
- *  - `/verify-email` (and `/verify-email/pending`) — a client who has just
- *    registered IS signed in and is NOT verified. Bouncing them to /dashboard
- *    sends them to a portal they cannot use, away from the one page that tells
- *    them what to do next.
+ *  - `/auth/confirm-email` and `/verify-email` (with `/verify-email/pending`,
+ *    now a redirect to the first) — a client whose address an operator changed
+ *    IS signed in and is NOT verified, and the emailed link is opened in
+ *    whatever browser the mail app picks, session or not. Bouncing either to
+ *    /dashboard sends them away from the one page that unblocks them.
  *
  *  - `/forgot-password` and `/reset-password` — account recovery has to work
  *    from a browser that still holds a stale session cookie, which is the
@@ -74,6 +75,13 @@ export const AUTH_ONLY_PATHS = ['/auth/login', '/auth/register', '/login', '/reg
  * users out of recovery.
  */
 export const ALWAYS_PUBLIC_PATHS = [
+  /*
+   * The 6-digit code screen. Public because the person typing the code has no
+   * session yet — the code is what starts one — and "always" rather than
+   * auth-only because a SIGNED-IN client whose address an operator changed is
+   * sent here by `RequireAuth` to confirm the new one.
+   */
+  '/auth/confirm-email',
   '/auth/forgot-password',
   '/auth/reset-password',
   '/auth/verify-email',
