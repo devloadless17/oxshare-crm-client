@@ -1882,6 +1882,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/trading/accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One of the signed-in client's trading accounts
+         * @description 404 when the account does not exist OR belongs to somebody else — the two are the same answer on purpose, because distinguishing them tells a caller which ids are real.
+         *
+         *     `balance` here is the CRM-held figure, as on the list. For what MT5 holds right now, including equity and floating P/L, call `/trading/accounts/:id/live`.
+         */
+        get: operations["TradingController_myAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename a trading account
+         * @description Changes the account holder's name as MT5 records it, so it updates what the client sees in their terminal and on statements. Nothing is stored CRM-side.
+         */
+        patch: operations["TradingController_renameAccount"];
+        trace?: never;
+    };
     "/v1/trading/accounts/{id}/fund": {
         parameters: {
             query?: never;
@@ -1958,28 +1984,6 @@ export interface paths {
          *     Prices and volumes are decimal STRINGS (§6.1). `profit` is the REALISED result and is null while a position is open — floating P/L is deliberately absent, because it changes on every tick and a stored copy is stale the moment it is written.
          */
         get: operations["TradingController_myPositions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/trading/accounts/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * One of the signed-in client's trading accounts
-         * @description 404 when the account does not exist OR belongs to somebody else — the two are the same answer on purpose, because distinguishing them tells a caller which ids are real.
-         *
-         *     `balance` here is the CRM-held figure, as on the list. For what MT5 holds right now, including equity and floating P/L, call `/trading/accounts/:id/live`.
-         */
-        get: operations["TradingController_myAccount"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5866,6 +5870,13 @@ export interface components {
              * @example 10000.00
              */
             startingBalance?: string;
+        };
+        RenameOwnAccountDto: {
+            /**
+             * @description The account holder's name as MT5 will show it.
+             * @example Swing trading
+             */
+            name: string;
         };
         FundDemoAccountDto: {
             /**
@@ -10817,6 +10828,50 @@ export interface operations {
             };
         };
     };
+    TradingController_myAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradingAccountDto"];
+                };
+            };
+        };
+    };
+    TradingController_renameAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameOwnAccountDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     TradingController_fundDemoAccount: {
         parameters: {
             query?: never;
@@ -10894,27 +10949,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PositionDto"][];
-                };
-            };
-        };
-    };
-    TradingController_myAccount: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TradingAccountDto"];
                 };
             };
         };

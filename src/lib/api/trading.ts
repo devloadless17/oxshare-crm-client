@@ -241,6 +241,12 @@ export interface DemoFundingResult {
   balance: string | null;
 }
 
+/** The name MT5 now holds for the account, echoed back after a rename. */
+export interface RenameResult {
+  login: string;
+  name: string;
+}
+
 /** What the client gets to decide when opening an account. */
 export interface OpenAccountInput {
   environment: TradingEnvironment;
@@ -318,6 +324,17 @@ export const tradingApi = {
    */
   async resetAccountPassword(id: string): Promise<PasswordResetResult> {
     const { data } = await apiClient.post<PasswordResetResult>(`/trading/accounts/${id}/password`);
+    return data;
+  },
+
+  /**
+   * Rename a trading account.
+   *
+   * The name is the account HOLDER's as MT5 records it, so this changes what the
+   * client sees in their own terminal. Nothing is stored portal-side.
+   */
+  async renameAccount(id: string, name: string): Promise<RenameResult> {
+    const { data } = await apiClient.patch<RenameResult>(`/trading/accounts/${id}`, { name });
     return data;
   },
 

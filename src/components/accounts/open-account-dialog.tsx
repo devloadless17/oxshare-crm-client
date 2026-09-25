@@ -47,10 +47,12 @@ const DEFAULT_DEMO_FUNDING = '10000';
 export function OpenAccountDialog({
   environment,
   options,
+  takenNames,
   onClose,
 }: {
   environment: TradingEnvironment;
   options: SelfServiceAvailability;
+  takenNames: string[];
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -106,10 +108,37 @@ export function OpenAccountDialog({
      */
     String(leverages[Math.floor(leverages.length / 2)] ?? leverages[0] ?? 100),
   );
+  const [name, setName] = React.useState('');
   const [startingBalance, setStartingBalance] = React.useState(isDemo ? DEFAULT_DEMO_FUNDING : '');
+  /*
+   * The names already in use, folded for comparison exactly as the server folds
+   * them.
+   *
+   * `lower()` and a trim on both sides, because `trading_accounts_user_name_uq`
+   * is on `lower(name)` and `assertNameFree` compares the same way. If this
+   * check were stricter or looser than the server's, the form would either
+   * refuse a name the API would have accepted or wave through one it will
+   * refuse — and the second is the worse half, because the client finds out
+   * after pressing open.
+   */
+  const taken = React.useMemo(
+    () => new Set(takenNames.map((entry) => entry.trim().toLowerCase())),
+    [takenNames],
+  );
+  const trimmedName = name.trim();
+  const nameTaken = trimmedName.length > 0 && taken.has(trimmedName.toLowerCase());
 
   const [opened, setOpened] = React.useState<OpenedAccount | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  /*
+   * Separate from `error`, and it belongs to the NAME field.
+   *
+   * Only ever set from the server's `ACCOUNT_NAME_TAKEN`: the local check below
+   * is derived from what the client is typing and needs no state of its own,
+   * while this survives a failed submit and must be cleared when they edit the
+   * field.
+   */
+  const [nameError, setNameError] = React.useState<string | null>(null);
   const [needsKyc, setNeedsKyc] = React.useState(false);
 
   /*
@@ -142,10 +171,13 @@ export function OpenAccountDialog({
         ...(productId ? { productId } : {}),
         ...(leverage ? { leverage: Number.parseInt(leverage, 10) } : {}),
         /*
-         * NO `name`. The holder name is derived server-side from the client's
-         * CRM record, on this path and the admin one alike — see the note where
-         * the field used to be.
+         * Always sent, because the form will not submit without it — see the
+         * field. It used to be omitted when blank so the API could fall back to
+         * the client's own name; that fallback still exists server-side and is
+         * now unreachable from here, which is the point of making the field
+         * required rather than merely encouraged.
          */
+        name: trimmedName,
         // Demo only. The API REFUSES this on a live account rather than
         // ignoring it, so sending it would turn a valid request into an error.
         ...(isDemo && startingBalance.trim() ? { startingBalance: startingBalance.trim() } : {}),
@@ -176,10 +208,19 @@ export function OpenAccountDialog({
         return;
       }
       /*
-         `ACCOUNT_NAME_TAKEN` was handled here and can no longer occur: nothing
-         sends a name, so nothing can collide. The server still defines the code
-         for rows named before this changed.
-      */
+       * The name was taken after all — this client opened one in another tab, or
+       * pressed twice fast enough to beat the check above.
+       *
+       * Reported ON THE FIELD rather than as a general error at the foot of the
+       * form, which is why the API gives this its own code instead of a bare
+       * 409. The client has exactly one thing to change and a message at the
+       * bottom of a four-field dialog does not say which one.
+       */
+      if (code === 'ACCOUNT_NAME_TAKEN') {
+        setNameError(t('accounts.nameTaken'));
+        setError(null);
+        return;
+      }
       setError(apiErrorMessage(e, t('accounts.openFailed')));
     },
   });
@@ -278,18 +319,59 @@ export function OpenAccountDialog({
           )}
 
           {/*
-            NO "ACCOUNT NAME" FIELD — removed 25 Sep 2026 at the owner's request.
-            
-            The value went into MT5's account-HOLDER name, which is an identity
-            field: a statement, a support ticket and the manager terminal all
-            identify the holder by it. The admin path had always sent the
-            client's CRM name, so the same broker saw "ibrahim srour" beside
-            "Swing trading" and only one of those names a person.
-            
-            The server now derives it from the client's CRM record on both
-            paths, so there is nothing here to ask for — and nothing to keep in
-            step when a name is corrected in the CRM.
+            THE NAME FIRST.
+
+            It sat fourth, after currency, product and leverage, on the reasoning
+            that the terms come before the label. In front of the form that reads
+            backwards: the first three fields are the account's TERMS, and a
+            client who has just pressed "Open a live account" is answering
+            "which account is this" before they are answering "on what terms".
+            The name is also the only field they compose rather than choose, and
+            a free-text box is a poor thing to meet halfway down a form after
+            three dropdowns.
+
+            REQUIRED, which it was not. The API still accepts an account with no
+            name and falls back to the client's own — so this is a form rule
+            rather than a server one, and it is enforced in the two places a form
+            rule has to be: the submit button will not fire without it, and the
+            input carries `required` so a keyboard submit is refused too.
+
+            The hint under it is gone with the optionality it described. A
+            standing line of prose under a field the client must fill in is
+            reading between them and the next control, and "helps you tell your
+            accounts apart" is a thing the placeholder already demonstrates by
+            example.
           */}
+          <div className="space-y-1.5">
+            <Label htmlFor="account-name" className="text-xs">
+              {t('accounts.fieldName')}
+            </Label>
+            <Input
+              id="account-name"
+              required
+              maxLength={64}
+              placeholder={t('accounts.namePlaceholder')}
+              value={name}
+              // Announced as invalid, not merely coloured — the message below is
+              // tied to the input with `aria-describedby` so a screen reader
+              // reaches it rather than leaving the field silently refusing.
+              aria-invalid={nameTaken || nameError !== null}
+              aria-describedby={nameTaken || nameError ? 'account-name-error' : undefined}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError(null);
+                // The server's refusal was about the PREVIOUS value; keeping it
+                // on screen while they type a new name is a message about
+                // nothing.
+                setNameError(null);
+              }}
+            />
+            {(nameTaken || nameError) && (
+              <p id="account-name-error" role="alert" className="text-[11px] text-destructive">
+                {nameError ?? t('accounts.nameTaken')}
+              </p>
+            )}
+          </div>
 
           <AccountTypeFields
             currencies={currencies}
@@ -399,7 +481,12 @@ export function OpenAccountDialog({
               `disabled` is the two reasons that are NOT loading — Button ORs
               them.
             */}
-            <Button type="submit" size="sm" loading={create.isPending} disabled={false}>
+            <Button
+              type="submit"
+              size="sm"
+              loading={create.isPending}
+              disabled={!trimmedName || nameTaken}
+            >
               {create.isPending ? t('accounts.opening') : t('accounts.openConfirm')}
             </Button>
           </div>
