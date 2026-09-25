@@ -4305,7 +4305,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/admin/clients/{id}/positions": {
+    "/v1/admin/clients/{id}/closed-positions": {
         parameters: {
             query?: never;
             header?: never;
@@ -4313,10 +4313,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * One client’s positions, open or closed
-         * @description Newest first, joined to the account they were traded on. `profit` is the FLOATING result while a position is open and the REALISED one once it has closed — one column, disambiguated by `status`. Prices and money are strings (§6.1).
+         * One client’s closed positions, from the ingested MT5 deals
+         * @description One row per closing deal on any of the client’s accounts, newest first. The opening deal supplies the open price, open time and side when it was ingested; they are null otherwise, except the side. Commission is the opening and closing deal together. Prices and money are strings (§6.1).
          */
-        get: operations["AdminHoldingsController_listClientPositions"];
+        get: operations["AdminHoldingsController_listClientClosedPositions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5104,10 +5104,10 @@ export interface components {
             /** @description The client whose activity earned it. */
             clientName: string;
             /**
-             * @description What produced it. `position` is a closed trade — the only source that pays a revenue share. `transaction` rows are historical: commission is no longer earned on deposits.
+             * @description What produced it. `deal` is a trade closed on MT5, from the live feed — every new commission. `position` is a closed trade from the older CRM path. `transaction` rows are historical: commission is no longer earned on deposits.
              * @enum {string}
              */
-            source: "position" | "transaction";
+            source: "deal" | "position" | "transaction";
             /** @description The base it was calculated from — the broker's revenue on the trade. */
             baseAmount: string;
             /** @description Percentage under revenue share; amount per lot under per-lot. */
@@ -6273,6 +6273,56 @@ export interface components {
             credentialsSentTo?: string;
             maskedFields?: string[];
         };
+        Mt5GroupCommissionTierDto: {
+            /**
+             * @description The unit of `value`: the group deposit currency, the currency in `currency`, a symbol currency, points, or a percentage of turnover.
+             * @enum {string}
+             */
+            mode: "deposit_currency" | "specified_currency" | "base_currency" | "profit_currency" | "margin_currency" | "points" | "percent" | "unknown";
+            /** @enum {string} */
+            type: "per_lot" | "per_deal" | "unknown";
+            /** @example 3.00000000 */
+            value: string;
+            /** @description Only set for "specified_currency". */
+            currency: string | null;
+            /** @description The smallest charge. MT5 uses zero for "no minimum". */
+            minimal: string | null;
+            /** @description The largest charge. MT5 uses zero for "no maximum". */
+            maximal: string | null;
+            /** @description Where the tier band starts. */
+            rangeFrom: string | null;
+            /** @description Where the tier band ends; null when it is open-ended. */
+            rangeTo: string | null;
+        };
+        Mt5GroupCommissionDto: {
+            /** @example Standard commission */
+            name: string;
+            /** @example  */
+            description: string;
+            /**
+             * @description The symbols it applies to, as an MT5 path mask.
+             * @example Forex\*
+             */
+            symbolPath: string;
+            /**
+             * @description "standard" is charged to the client; "agent" is paid to an agent account.
+             * @enum {string}
+             */
+            mode: "standard" | "agent" | "unknown";
+            /** @enum {string} */
+            rangeMode: "volume" | "turnover_money" | "turnover_volume" | "unknown";
+            /**
+             * @description When MT5 takes it: with the deal, or at the end of the day or month.
+             * @enum {string}
+             */
+            chargeMode: "instant" | "daily" | "monthly" | "unknown";
+            /**
+             * @description Which deals pay it: every deal, opening deals or closing deals.
+             * @enum {string}
+             */
+            entryMode: "all" | "in" | "out" | "unknown";
+            tiers: components["schemas"]["Mt5GroupCommissionTierDto"][];
+        };
         Mt5GroupProductDto: {
             /** Format: uuid */
             id: string;
@@ -6300,6 +6350,23 @@ export interface components {
              * @example 100
              */
             leverageDefault: number | null;
+            /** @description MT5's own commission rules on this group — what the trading server takes from a client's deals, set by the broker in MT5 and separate from the partner commission types. Empty when the group charges none; null when the bridge has not reported them. */
+            commissions: components["schemas"]["Mt5GroupCommissionDto"][] | null;
+            /**
+             * @description The margin-call level, in the unit marginStopOutMode names.
+             * @example 100.00000000
+             */
+            marginCall: string | null;
+            /**
+             * @description The stop-out level, in the unit marginStopOutMode names.
+             * @example 50.00000000
+             */
+            marginStopOut: string | null;
+            /**
+             * @description "percent" is a margin level; "money" is an equity in the group currency.
+             * @enum {string|null}
+             */
+            marginStopOutMode: "percent" | "money" | null;
             /** @description Every product that sells this group, by name — several since 0142. Empty when no product does, in which case no client can open an account in it from the portal. */
             products: components["schemas"]["Mt5GroupProductDto"][];
             /**
@@ -8092,36 +8159,47 @@ export interface components {
             limit: number;
             maskedFields?: string[];
         };
-        ClientPositionRowDto: {
+        ClientClosedPositionRowDto: {
+            /** @description The closing deal’s CRM id. */
             id: string;
+            /** @description The closing deal’s MT5 ticket. */
             ticket: string;
-            symbol: string;
+            /** @description The MT5 position id. */
+            positionId: string | null;
+            /** @description The MT5 login it was traded on. */
+            login: string;
             /** @enum {string} */
+            environment: "live" | "demo";
+            symbol: string;
+            /**
+             * @description The POSITION’s side — the opening deal’s, not the closing deal’s.
+             * @enum {string}
+             */
             side: "buy" | "sell";
             /**
-             * @description Lots.
-             * @example 0.2000
+             * @description Lots closed.
+             * @example 0.20000000
              */
             volume: string;
-            openPrice: string;
-            /** @description NULL while open. */
-            closePrice: string | null;
-            /** @description The FLOATING result while `status` is open, and the REALISED one once closed. One column, two meanings, disambiguated by `status` — label it accordingly. */
-            profit: string | null;
-            swap: string | null;
-            commission: string | null;
+            /** @description NULL when the opening deal was never ingested (opened before the CRM was). */
+            openPrice: string | null;
+            closePrice: string;
+            /** @description The realised result of the closing deal. */
+            profit: string;
+            /** @description MT5 commission on the trade: opening and closing deal together. Negative is charged. */
+            commission: string;
+            swap: string;
             currency: string;
-            /** @enum {string} */
-            status: "open" | "closed";
+            /**
+             * Format: date-time
+             * @description NULL when the opening deal is unknown.
+             */
+            openedAt: string | null;
             /** Format: date-time */
-            openedAt: string;
-            /** Format: date-time */
-            closedAt: string | null;
-            /** @description The account it was traded on. NULL until MT5 issues a login. */
-            login: string | null;
+            closedAt: string;
         };
-        ClientPositionsPageDto: {
-            rows: components["schemas"]["ClientPositionRowDto"][];
+        ClientClosedPositionsPageDto: {
+            rows: components["schemas"]["ClientClosedPositionRowDto"][];
             total: number;
             page: number;
             limit: number;
@@ -14245,10 +14323,9 @@ export interface operations {
             };
         };
     };
-    AdminHoldingsController_listClientPositions: {
+    AdminHoldingsController_listClientClosedPositions: {
         parameters: {
             query?: {
-                status?: "open" | "closed";
                 page?: string;
                 limit?: string;
             };
@@ -14265,7 +14342,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientPositionsPageDto"];
+                    "application/json": components["schemas"]["ClientClosedPositionsPageDto"];
                 };
             };
         };
