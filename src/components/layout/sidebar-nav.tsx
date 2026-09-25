@@ -42,11 +42,40 @@ const SELECTED_ICON = 'text-link';
 const IDLE_ICON = 'text-muted-foreground group-hover:text-foreground';
 
 /**
- * Which group is OPEN, and which row is the sidebar's one SELECTED row.
+ * Where the menu stands — twin in design of the console's `MenuPosition`
+ * (oxshare-crm-admin `sidebar-nav.tsx`, which carries the full story).
+ *
+ * - It shows where the client is GOING, from the click. `pathname` changes only
+ *   when the new page lands, and a menu that waited for it fell back to the
+ *   page being left for that whole window: the group you clicked in folded
+ *   shut and opened again (reported on the console). Recorded from
+ *   `next/link`'s `onNavigate`, never `onClick`, so a click that opens a new
+ *   tab leaves this tab's menu alone. A second click before the first page
+ *   lands overtakes it; if the router still shows the overtaken page on the
+ *   way, the menu keeps showing the latest click rather than flicking back.
+ * - A choice lasts until the client goes somewhere: any navigation clears it,
+ *   so one made two pages ago never comes back — except a group opened while
+ *   a click's page was on its way, which is a choice about the page that
+ *   arrives.
+ */
+interface MenuPosition {
+  /** The `pathname` this position was last reconciled with. */
+  path: string | null;
+  /** The page a click in this menu is taking the client to, until it lands. */
+  heading?: string;
+  /** Pages of earlier clicks that `heading` overtook, oldest first — they may still land. */
+  overtaken?: readonly string[];
+  /** The group the client opened; `null` closed it; absent follows the page. */
+  open?: string | null;
+}
+
+/**
+ * Which page the menu shows, which group is OPEN, and which row is the
+ * sidebar's one SELECTED row.
  *
  * The open group is derived, never synced in an effect: the choice the client
- * made on this page, else the group holding the page — so arriving on
- * `/withdraw` from a notification renders Transactions open on the first paint.
+ * made, else the group holding the page — so arriving on `/withdraw` from a
+ * notification renders Transactions open on the first paint.
  *
  * The selected row follows the same choice. It used to follow the PAGE alone,
  * so on the dashboard, opening Transactions left Dashboard filled — "the old
@@ -56,18 +85,38 @@ const IDLE_ICON = 'text-muted-foreground group-hover:text-foreground';
  * The collapsed rail has nothing to open, so it selects by the page alone.
  */
 export function useNavSelection(items: NavItem[], pathname: string | null, collapsed: boolean) {
+  const [position, setPosition] = React.useState<MenuPosition>({ path: pathname });
+  let here = position;
+  if (position.path !== pathname) {
+    // Adjusted while rendering, so a stale position is never painted.
+    const echo = pathname === null ? -1 : (position.overtaken?.indexOf(pathname) ?? -1);
+    here =
+      position.heading !== undefined && position.heading === pathname
+        ? { path: pathname, open: position.open }
+        : echo >= 0
+          ? { ...position, path: pathname, overtaken: position.overtaken?.slice(echo + 1) }
+          : { path: pathname };
+    setPosition(here);
+  }
+  /* The page the menu shows: where a click in it is going, else the page on screen. */
+  const page = here.heading ?? pathname;
   const activeGroup =
-    items.find((item) => item.children?.some((child) => isActivePath(pathname, child.href)))
-      ?.href ?? null;
-  const [choice, setChoice] = React.useState<{ path: string | null; open: string | null } | null>(
-    null,
-  );
-  const choiceHere = choice && choice.path === pathname ? choice : null;
-  const openGroup = choiceHere ? choiceHere.open : activeGroup;
-  const selectedGroup = collapsed ? activeGroup : (choiceHere?.open ?? activeGroup);
-  const toggle = (href: string) =>
-    setChoice({ path: pathname, open: openGroup === href ? null : href });
-  return { openGroup, selectedGroup, toggle };
+    items.find((item) => item.children?.some((child) => isActivePath(page, child.href)))?.href ??
+    null;
+  const openGroup = here.open === undefined ? activeGroup : here.open;
+  const selectedGroup = collapsed ? activeGroup : (here.open ?? activeGroup);
+  const toggle = (href: string) => setPosition({ ...here, open: openGroup === href ? null : href });
+  /** A click in the menu is taking the client to `href` — even the page on screen. */
+  const navigate = (href: string) =>
+    setPosition({
+      path: here.path,
+      heading: href,
+      overtaken:
+        here.heading !== undefined && here.heading !== href
+          ? [...(here.overtaken ?? []), here.heading]
+          : here.overtaken,
+    });
+  return { page, openGroup, selectedGroup, toggle, navigate };
 }
 
 /*
@@ -88,7 +137,10 @@ export function NavLink({
   nested = false,
 }: {
   item: NavItem;
-  /** This link IS the page on screen — `aria-current`, whatever is selected. */
+  /**
+   * This link IS the page — the one on screen, or the one a click in the menu
+   * is taking the client to — so `aria-current`, whatever is selected.
+   */
   current: boolean;
   /** This top-level row is the sidebar's one selected row. */
   selected?: boolean;
@@ -119,7 +171,8 @@ export function NavLink({
   return (
     <Link
       href={item.href}
-      onClick={onNavigate}
+      /* Not `onClick` — see `MenuPosition`: a click that opens a new tab is not a navigation here. */
+      onNavigate={onNavigate}
       title={collapsed ? t(item.label) : undefined}
       aria-current={current ? 'page' : undefined}
       data-selected={!sub && selected ? 'true' : undefined}
@@ -165,7 +218,7 @@ export function NavLink({
  */
 export function NavGroup({
   item,
-  pathname,
+  page,
   collapsed,
   open,
   selected,
@@ -173,14 +226,15 @@ export function NavGroup({
   onNavigate,
 }: {
   item: NavItem;
-  pathname: string | null;
+  /** The page the menu shows — `useNavSelection().page`. */
+  page: string | null;
   collapsed: boolean;
   /** From `useNavSelection` — the open group is decided for the whole menu. */
   open: boolean;
   /** This group is the sidebar's one selected row. */
   selected: boolean;
   onToggle: () => void;
-  onNavigate: () => void;
+  onNavigate: (href: string) => void;
 }) {
   const children = item.children ?? [];
   const panelId = `nav-group-${item.href.replace(/[^a-z0-9]+/gi, '')}`;
@@ -193,10 +247,10 @@ export function NavGroup({
             key={child.href}
             item={child}
             // On the rail each page is its own row, so the page IS the selection.
-            current={isActivePath(pathname, child.href)}
-            selected={isActivePath(pathname, child.href)}
+            current={isActivePath(page, child.href)}
+            selected={isActivePath(page, child.href)}
             collapsed
-            onNavigate={onNavigate}
+            onNavigate={() => onNavigate(child.href)}
           />
         ))}
       </div>
@@ -269,9 +323,9 @@ export function NavGroup({
               >
                 <NavLink
                   item={child}
-                  current={isActivePath(pathname, child.href)}
+                  current={isActivePath(page, child.href)}
                   collapsed={false}
-                  onNavigate={onNavigate}
+                  onNavigate={() => onNavigate(child.href)}
                   nested
                 />
               </div>

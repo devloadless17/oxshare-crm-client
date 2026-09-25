@@ -32,6 +32,7 @@ import type { components } from '@/lib/api/types.gen';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { UserMenu } from './user-menu';
 import { isActivePath, NavGroup, NavLink, useNavSelection, type NavItem } from './sidebar-nav';
+import { useRailPreference } from './use-rail-preference';
 import { BrandLogo } from '@/components/brand-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { NotificationsSheet } from './notifications-sheet';
@@ -102,7 +103,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
 function PortalChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useUser();
-  const [collapsed, setCollapsed] = React.useState(false);
+  const [collapsed, toggleRail] = useRailPreference();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const closeMobile = () => setMobileOpen(false);
@@ -128,6 +129,11 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
 
   const navItems = visibleNavItems(kycStatus, user?.verificationLevel, partnerHidden);
   const selection = useNavSelection(navItems, pathname, collapsed);
+  // A click on any page in the menu — even the one on screen — selects that page.
+  const go = (href: string) => {
+    selection.navigate(href);
+    closeMobile();
+  };
 
   /*
    * The broker's own links, drawn under the app's pages.
@@ -221,7 +227,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           {/* On the sidebar's EDGE in both states, so the row is the logo's. */}
           <button
             type="button"
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={toggleRail}
             aria-label={collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
             aria-expanded={!collapsed}
             className="absolute -right-3 top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-outline lg:flex"
@@ -249,21 +255,23 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
               <NavGroup
                 key={item.href}
                 item={item}
-                pathname={pathname}
+                page={selection.page}
                 collapsed={collapsed}
                 open={selection.openGroup === item.href}
                 selected={selection.selectedGroup === item.href}
                 onToggle={() => selection.toggle(item.href)}
-                onNavigate={closeMobile}
+                onNavigate={go}
               />
             ) : (
               <NavLink
                 key={item.href}
                 item={item}
-                current={isActivePath(pathname, item.href)}
-                selected={isActivePath(pathname, item.href) && selection.selectedGroup === null}
+                current={isActivePath(selection.page, item.href)}
+                selected={
+                  isActivePath(selection.page, item.href) && selection.selectedGroup === null
+                }
                 collapsed={collapsed}
-                onNavigate={closeMobile}
+                onNavigate={() => go(item.href)}
                 badge={
                   item.href === '/kyc'
                     ? kycNavBadge(kycStatus, user?.verificationLevel)
