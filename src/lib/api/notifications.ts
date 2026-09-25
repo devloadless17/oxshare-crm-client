@@ -17,6 +17,7 @@ export type AppNotification = components['schemas']['NotificationDto'];
 export type NotificationPage = components['schemas']['NotificationListResponseDto'];
 export type NotificationUnreadCount = components['schemas']['NotificationUnreadCountDto'];
 export type NotificationsMarkAllRead = components['schemas']['NotificationsMarkAllReadResponseDto'];
+export type NotificationsReadAll = components['schemas']['NotificationsReadAllDto'];
 
 export const notificationsApi = {
   /**
@@ -50,8 +51,18 @@ export const notificationsApi = {
     return data;
   },
 
-  async markAllRead(): Promise<NotificationsMarkAllRead> {
-    const { data } = await apiClient.post<NotificationsMarkAllRead>('/notifications/read-all');
+  /**
+   * Mark what the client SAW as read: every unread row up to `upTo`, the
+   * `createdAt` of the newest one on screen. A notification that arrived after
+   * the panel rendered is newer than `upTo` and stays unread — the bell marks
+   * what it showed, never what it did not.
+   */
+  async markAllRead(upTo?: string): Promise<NotificationsMarkAllRead> {
+    const body: NotificationsReadAll = upTo ? { upTo } : {};
+    const { data } = await apiClient.post<NotificationsMarkAllRead>(
+      '/notifications/read-all',
+      body,
+    );
     return data;
   },
 };

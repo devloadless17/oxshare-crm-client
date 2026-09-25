@@ -1449,10 +1449,17 @@ export const messages = {
   // from emptyBody, which describes an empty list — announcing that to
   // somebody whose panel holds thirty rows is simply wrong.
   'notifications.panelDescription': 'Recent alerts about your account.',
-  'notifications.unreadCountLabel': '{count} unread',
-  'notifications.markAllRead': 'Mark all as read',
-  'notifications.markAllReadFailed': 'Could not mark notifications as read.',
-  'notifications.itemUnread': 'Unread',
+  'notifications.unreadCountLabel': '{count} new',
+  // A row the client has not seen yet — spoken after its title.
+  'notifications.itemNew': 'New',
+  // The two tabs. New holds what the client has not seen; closing the panel
+  // marks it seen, and it moves to Earlier.
+  'notifications.tabNew': 'New',
+  'notifications.tabNewCount': 'New ({count})',
+  'notifications.tabEarlier': 'Earlier',
+  'notifications.caughtUpTitle': "You're all caught up",
+  'notifications.caughtUpBody': 'New updates about your account will appear here.',
+  'notifications.seeEarlier': 'See earlier notifications',
   'notifications.recentNotice': 'Showing your {count} most recent notifications.',
   'notifications.fallbackTitle': 'Notification',
   'notifications.soundOn': 'Notification sound is on',
@@ -1523,6 +1530,8 @@ export const messages = {
   // The toast's action button. Short because it sits inside a toast, and a
   // verb because it does something rather than describing where it goes.
   'notifications.view': 'View',
+  // Several notifications at once are one toast, not a stack of them.
+  'notifications.burstTitle': '{count:1 new notification|{count} new notifications}',
   // ── Partner programme ─────────────────────────────────────────────────────
 
   // The pitch, shown only to somebody who is not yet a partner.

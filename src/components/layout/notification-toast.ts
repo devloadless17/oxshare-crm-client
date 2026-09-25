@@ -89,3 +89,18 @@ export function toastNotification(
         : undefined,
   });
 }
+
+/** The burst toast's id — a burst while one is showing UPDATES it instead of stacking. */
+const BURST_TOAST_ID = 'notifications-burst';
+
+/**
+ * Several notifications at once — the hourly run confirming a day of rebates,
+ * say — are ONE toast: "5 new notifications", with the bell one click away.
+ * A stack of twenty is noise the client learns to ignore.
+ */
+export function toastBurst(count: number, onOpen: () => void): void {
+  toast(t('notifications.burstTitle', { count }), {
+    id: BURST_TOAST_ID,
+    action: { label: t('notifications.view'), onClick: onOpen },
+  });
+}
