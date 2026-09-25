@@ -9,6 +9,7 @@ import {
   linkIn,
   APP_ORIGIN,
   VERIFICATION_SUBJECT,
+  fillRegisterForm,
 } from './helpers';
 
 /**
@@ -151,10 +152,7 @@ test('a client under the deepest rung is locked out of the programme everywhere'
   await page.goto(`/auth/register?ref=${DEEPEST_RUNG_CODE}`);
   // The form acknowledges the introduction before anything is typed.
   await expect(page.getByText(DEEPEST_RUNG_CODE)).toBeVisible();
-  await page.getByPlaceholder('John').fill('Chain');
-  await page.getByPlaceholder('Doe').fill('Full');
-  await page.getByPlaceholder('you@example.com').fill(client.email);
-  await page.locator('input[type="password"]').first().fill(client.password);
+  await fillRegisterForm(page, { ...client, firstName: 'Chain', lastName: 'Full' });
   const [registered] = await Promise.all([
     page.waitForResponse((res) => isApi(res, '/auth/register', 'POST')),
     page.getByRole('button', { name: /complete registration|create account/i }).click(),

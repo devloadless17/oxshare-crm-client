@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/v1/profile/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The countries and nationalities a client profile accepts */
+        get: operations["ProfileOptionsController_options"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/notifications": {
         parameters: {
             query?: never;
@@ -4222,6 +4239,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ProfileOptionsDto: {
+            /**
+             * @description Countries of residence, sorted by name. Exactly the values the profile accepts.
+             * @example [
+             *       "Lebanon",
+             *       "United Arab Emirates"
+             *     ]
+             */
+            countries: string[];
+            /**
+             * @description Nationalities, as demonyms. Exactly the values the profile accepts.
+             * @example [
+             *       "Emirati",
+             *       "Lebanese"
+             *     ]
+             */
+            nationalities: string[];
+        };
         NotificationDto: {
             id: string;
             /**
@@ -4258,18 +4293,49 @@ export interface components {
             updated: number;
         };
         RegisterDto: {
-            /** @example John */
+            /**
+             * @description As on the ID document.
+             * @example John
+             */
             firstName: string;
-            /** @example Doe */
+            /**
+             * @description As on the ID document.
+             * @example Doe
+             */
             lastName: string;
             /** @example john@example.com */
             email: string;
             /** @example StrongPass123! */
             password: string;
-            /** @example US */
-            country?: string;
-            /** @example +1234567890 */
+            /**
+             * @description YYYY-MM-DD. At least 18 years ago.
+             * @example 1990-04-12
+             */
+            dateOfBirth?: string;
+            /**
+             * @description From the KYC nationality list.
+             * @example Lebanese
+             */
+            nationality?: string;
+            /**
+             * @description International format with the country code. Stored as E.164.
+             * @example +96170123456
+             */
             phone?: string;
+            /**
+             * @description Country of residence, from the KYC country list.
+             * @example Lebanon
+             */
+            country?: string;
+            /** @example Hamra Street, Building 12, 3rd floor */
+            address?: string;
+            /** @example Beirut */
+            city?: string;
+            /**
+             * @description Optional — many addresses have none.
+             * @example 1103 2080
+             */
+            postalCode?: string;
             /** @example K7M2PQR9 */
             referralCode?: string;
         };
@@ -4327,6 +4393,19 @@ export interface components {
             country?: string;
             /** @example +971501234567 */
             phone?: string;
+            /**
+             * @description YYYY-MM-DD.
+             * @example 1990-04-12
+             */
+            dateOfBirth?: string;
+            /** @example Emirati */
+            nationality?: string;
+            /** @example Sheikh Zayed Road, Tower 2, Apt 1204 */
+            address?: string;
+            /** @example Dubai */
+            city?: string;
+            /** @example 00000 */
+            postalCode?: string;
             /** Format: date-time */
             createdAt: string;
             /**
@@ -6494,9 +6573,19 @@ export interface components {
             emailVerified: boolean;
             country?: string;
             phone?: string;
+            /** @example 1990-04-12 */
+            dateOfBirth?: string;
+            nationality?: string;
+            address?: string;
+            city?: string;
+            postalCode?: string;
             /** Format: date-time */
             createdAt?: string;
             tags: components["schemas"]["ClientTagDto"][];
+            /** @description The profile fields the desk may not change right now, each with where it can be changed instead — the verification's lock (`deskLocks`). Present only for a reader holding clients.edit; empty when nothing is locked. */
+            lockedFields?: {
+                [key: string]: string;
+            };
             /** @description Absent without kyc.view. */
             kyc?: components["schemas"]["ProfileKycDto"];
             /** @description Document filenames. Absent without kyc.documents.view. */
@@ -6529,12 +6618,31 @@ export interface components {
             /** @example Haddad */
             lastName?: string;
             /**
-             * @description Send an empty string to clear it.
+             * @description International format with the country code; stored as E.164. Empty clears it.
              * @example +9613111222
              */
-            phone?: string | null;
-            /** @example Lebanon */
-            country?: string | null;
+            phone?: string;
+            /**
+             * @description Country of residence, from the KYC country list. Empty clears it.
+             * @example Lebanon
+             */
+            country?: string;
+            /**
+             * @description YYYY-MM-DD, 18 or older.
+             * @example 1990-04-12
+             */
+            dateOfBirth?: string;
+            /**
+             * @description From the KYC nationality list.
+             * @example Lebanese
+             */
+            nationality?: string;
+            /** @example Hamra Street, Building 12 */
+            address?: string;
+            /** @example Beirut */
+            city?: string;
+            /** @example 1103 2080 */
+            postalCode?: string;
         };
         ClientAccountDto: {
             /** Format: uuid */
@@ -6557,6 +6665,12 @@ export interface components {
             emailVerified: boolean;
             country: string | null;
             phone: string | null;
+            /** @example 1990-04-12 */
+            dateOfBirth: string | null;
+            nationality: string | null;
+            address: string | null;
+            city: string | null;
+            postalCode: string | null;
             /** Format: date-time */
             createdAt: string;
             /** @description Fields withheld from THIS response by the reader’s role (RBAC-03). A masked field is absent from the payload entirely, so this list is the only way to tell "hidden from you" apart from "this client has none" — an empty box otherwise reads as the second. */
@@ -6731,8 +6845,15 @@ export interface components {
              * @example 1985-04-12
              */
             dateOfBirth?: string;
-            /** @example 12 Rue Verdun, Beirut */
+            /** @example 12 Rue Verdun */
             address?: string;
+            /** @example Beirut */
+            city?: string;
+            /**
+             * @description Send an empty string to clear it — many addresses have none.
+             * @example 1103 2080
+             */
+            postalCode?: string;
         };
         RejectDto: {
             /** @description Free-text reason, when not using a configured reasonId. */
@@ -7747,6 +7868,25 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    ProfileOptionsController_options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOptionsDto"];
+                };
+            };
+        };
+    };
     NotificationsController_list: {
         parameters: {
             query?: {

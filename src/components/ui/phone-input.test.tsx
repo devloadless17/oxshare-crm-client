@@ -22,6 +22,20 @@ describe('PhoneInput', () => {
     expect(screen.getByRole('button', { name: /\+961/ })).toBeInTheDocument();
   });
 
+  it('shows a stored E.164 number GROUPED the way it is read', () => {
+    // The server keeps one canonical string per number (backend 0139). Shown
+    // raw, a client's own number came back from a save as an unbroken run of
+    // digits under the cursor.
+    render(<PhoneInput aria-label="Phone" value="+96170123456" onChange={vi.fn()} />);
+    expect(screen.getByLabelText('Phone')).toHaveValue('70 123 456');
+    expect(screen.getByRole('button', { name: /\+961/ })).toBeInTheDocument();
+  });
+
+  it('keeps a number typed without grouping exactly as typed', () => {
+    render(<PhoneInput aria-label="Phone" value="+961 70777777" onChange={vi.fn()} />);
+    expect(screen.getByLabelText('Phone')).toHaveValue('70777777');
+  });
+
   it('does not disturb what the client is typing — its own echo is not an outside change', async () => {
     let value = '';
     const onChange = vi.fn((next: string) => {

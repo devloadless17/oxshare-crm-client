@@ -155,6 +155,11 @@ export const keys = {
     all: () => ['currencies'] as const,
   },
 
+  /** The server's country and nationality lists — static per deployment. */
+  profileOptions: {
+    all: () => ['profile-options'] as const,
+  },
+
   platforms: {
     all: () => ['platforms'] as const,
   },

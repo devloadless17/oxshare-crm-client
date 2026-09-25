@@ -16,6 +16,7 @@ import {
   type KycStatusLike,
 } from '@/lib/kyc-documents';
 import { t, type MessageKey } from '@/lib/i18n';
+import { isProfileKey } from '@/lib/profile';
 import { keys } from '@/lib/query-keys';
 
 type KycStatusDto = components['schemas']['KycStatusDto'];
@@ -46,10 +47,18 @@ type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
 export function KycSubmissionDetails({
   status,
   showPersonal = true,
+  hideProfile = false,
 }: {
   status: KycStatusDto;
-  /** `/profile` already shows the name and contact details above this. */
   showPersonal?: boolean;
+  /**
+   * Leave out the PROFILE's fields and show only a broker's own questions —
+   * for `/profile`, which shows the profile itself above this. The personal
+   * answers ARE the profile's values (backend 0139), so listing them twice on
+   * one page is one record printed twice, and it reads as two records that
+   * could disagree — which is exactly what they used to be.
+   */
+  hideProfile?: boolean;
 }) {
   const configQuery = useResource(
     keys.kyc.config(),
@@ -62,8 +71,11 @@ export function KycSubmissionDetails({
   const statusLike = status as KycStatusLike;
   const documents = useMemo(() => kycDocumentsOf(statusLike, steps), [statusLike, steps]);
   const personal = useMemo(
-    () => personalDetailsOf(status.personalInfo, steps),
-    [status.personalInfo, steps],
+    () =>
+      personalDetailsOf(status.personalInfo, steps).filter(
+        (item) => !hideProfile || !isProfileKey(item.key),
+      ),
+    [status.personalInfo, steps, hideProfile],
   );
 
   const [viewing, setViewing] = useState<number | null>(null);

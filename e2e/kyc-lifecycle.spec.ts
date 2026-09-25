@@ -97,7 +97,7 @@ test('a client is verified end to end: submit → reject with reason → resubmi
         lastName: 'Lifecycle',
         dateOfBirth: '1990-01-01',
         phone: '+96170000009',
-        nationality: 'Lebanon',
+        nationality: 'Lebanese',
         country: 'Lebanon',
       },
     });

@@ -146,6 +146,14 @@ the body). Then `/onboarding`: *Verify now* → `/kyc`, *Verify later* → `/das
 - `/onboarding` offers the choice only while there is one — approved, under-review and refused
   clients go to `/dashboard` — and its benefits list only what `KycVerifiedGuard` and the
   live-account check actually keep shut.
+- **The form is two steps** (the client's request, same day): the account, then the personal
+  details — date of birth, nationality, phone, residence, city, address, postal code — that the KYC
+  personal step then opens with. They are the client's ONE profile (backend 0139; see
+  `../CLAUDE.md`), so nothing is typed twice and the two cannot disagree. `lib/register-form.ts`
+  holds the screen's model; the SERVER judges every value and answers per field, and a refusal
+  sends the client back to the step that shows the field. The country and nationality lists come
+  from `GET /profile/options` — never a local copy. E2E fill both steps through
+  `fillRegisterForm` in `e2e/helpers.ts`.
 - Proved by `e2e/email-code-signup.spec.ts` (the real journey against Mailpit, refresh rotation and
   reuse detection included — costs three registrations, desktop only) and
   `e2e/confirm-email-screen.spec.ts` (phone layout and the fold, stubbed, spends none). E2E filters
