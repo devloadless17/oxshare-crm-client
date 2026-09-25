@@ -91,15 +91,16 @@ describe('the screens that exist only for signed-out clients', () => {
  * PUBLIC and AUTH-ONLY are different properties, and collapsing them locks
  * people out — which is why public-paths.ts keeps two lists.
  *
- * A client who has just registered IS signed in and is NOT verified, so bouncing
- * them off /verify-email sends them away from the one page that tells them what
- * to do next. Recovery runs from a browser still holding a stale session cookie,
+ * A client whose address an operator changed IS signed in and is NOT verified,
+ * so bouncing them off the code screen sends them away from the one page that
+ * tells them what to do next. Recovery runs from a browser still holding a stale session cookie,
  * which is the normal state of the device somebody is locked out on; redirecting
  * those to a dashboard leaves no way back except clearing cookies by hand.
  */
 describe('the screens that must work with OR without a session', () => {
   it('are never redirected, marker or not', () => {
     for (const path of [
+      '/auth/confirm-email',
       '/auth/verify-email',
       '/auth/forgot-password',
       '/auth/reset-password',

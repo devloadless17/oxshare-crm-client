@@ -13,6 +13,9 @@ import { AuthShell } from '@/components/auth/auth-shell';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatCountdown, RESEND_COOLDOWN_MS } from '@/components/auth/resend-code';
+import { CONFIRM_EMAIL_PATH, rememberPendingEmail } from '@/lib/pending-email';
+import { loginPathFor, ONBOARDING_PATH } from '@/lib/return-to';
 
 /**
  * What this screen has concluded. Exhaustive, and each case renders differently.
@@ -47,6 +50,19 @@ type Outcome =
  * weeks would be a small lie waiting to be told.
  */
 const OUTCOME_KEY = 'oxshare.verify-email.outcome';
+
+/**
+ * Where a confirmed client goes next: sign in, and land on "verify your
+ * identity now or later" — the same screen the CODE leads to, so the two ways
+ * of confirming an address end in the same place.
+ *
+ * The link does NOT sign anybody in, and must not. It is opened by whatever
+ * browser the mail app picks, and by mail scanners that follow links without a
+ * person deciding to; a sign-in on a click would hand a session to both. The
+ * code is typed by a person at the screen that asked for it, which is why it
+ * may start one and this may not.
+ */
+const AFTER_CONFIRMED = loginPathFor(ONBOARDING_PATH);
 
 /**
  * Remember how this resolved, so a REFRESH does not have to ask again.
@@ -327,7 +343,7 @@ function VerifyEmailForm() {
    */
   React.useEffect(() => {
     if (!settledOk || countdown > 0) return;
-    router.replace('/auth/login');
+    router.replace(AFTER_CONFIRMED);
   }, [settledOk, countdown, router]);
 
   // Resend Cooldown Timer Effect
@@ -368,7 +384,10 @@ function VerifyEmailForm() {
       // The API's own generic wording, kept generic on purpose: it must not
       // confirm whether an account exists for that address.
       setResendMessage(t('auth.verify.resendSent'));
-      setResendCooldown(60);
+      // The server's own cooldown: a resend inside it sends nothing.
+      setResendCooldown(RESEND_COOLDOWN_MS / 1000);
+      // So the code screen, one tap away, already knows the address.
+      rememberPendingEmail(resendEmail);
     } catch (err: unknown) {
       // A failure is shown, not swallowed. Telling someone an email was sent
       // when it was not is the defect this whole function exists to fix.
@@ -427,7 +446,7 @@ function VerifyEmailForm() {
               </div>
 
               <Button asChild className="w-full">
-                <Link href="/auth/login">
+                <Link href={AFTER_CONFIRMED} replace>
                   <span>{t('auth.verify.signInNow')}</span>
                 </Link>
               </Button>
@@ -458,8 +477,17 @@ function VerifyEmailForm() {
               </div>
 
               {resendMessage && (
-                <div className="rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info">
-                  {resendMessage}
+                <div className="space-y-2 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info">
+                  <p>{resendMessage}</p>
+                  {/* The new email carries a code as well as a link. Somebody
+                      reading it on this device can type the code and be signed
+                      straight in, rather than open yet another tab. */}
+                  <Link
+                    href={CONFIRM_EMAIL_PATH}
+                    className="inline-block font-semibold text-link hover:underline rounded-xs focus-outline"
+                  >
+                    {t('auth.verify.enterCodeInstead')}
+                  </Link>
                 </div>
               )}
 
@@ -512,7 +540,7 @@ function VerifyEmailForm() {
                   */}
                   {!isResending && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
                   {resendCooldown > 0
-                    ? `Resend Link in ${resendCooldown}s`
+                    ? t('auth.confirm.resendIn', { time: formatCountdown(resendCooldown) })
                     : t('auth.verify.resendCta')}
                 </Button>
 

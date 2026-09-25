@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { t } from '@/lib/i18n';
+import { CONFIRM_EMAIL_PATH } from '@/lib/pending-email';
 
 /**
  * "Verify your identity first" — shown when a client reaches for a money action
@@ -73,8 +74,9 @@ export function KycGateDialog({
       title: t('kycGate.emailTitle'),
       body: t('kycGate.emailBody'),
       cta: t('kycGate.emailCta'),
-      // NOT /kyc — the only state whose way out is somewhere else.
-      href: '/verify-email/pending',
+      // NOT /kyc — the only state whose way out is somewhere else: the code
+      // screen, which reads the address from the session.
+      href: CONFIRM_EMAIL_PATH,
     },
     pending: {
       Icon: Clock,

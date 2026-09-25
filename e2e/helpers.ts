@@ -597,6 +597,17 @@ export const MAILPIT_API = (process.env.E2E_MAILPIT_API ?? 'http://localhost:802
   '',
 );
 
+/**
+ * The subject of the email that confirms an address — the sign-up CODE mail
+ * ("482913 is your OxShare verification code") and the link-only mail an
+ * operator's address change sends ("Verify Your Email — OxShare Portal") alike.
+ *
+ * `/verify/i` matched only the second: "verification" does not contain
+ * "verify". When the code shipped (25 Sep 2026) every journey that confirms a
+ * new account timed out waiting on an inbox that had its mail all along.
+ */
+export const VERIFICATION_SUBJECT = /verif/i;
+
 /** The newest message to `to`, waited for; throws with a fix when Mailpit is absent. */
 export async function waitForMail(
   to: string,
@@ -638,6 +649,37 @@ export async function waitForMail(
           'pointed at localhost:1025?',
       );
     }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+}
+
+/**
+ * The newest verification-CODE email to `to`, and the six digits in it.
+ *
+ * Read from the SUBJECT, because that is where phones and mail apps offer a
+ * code for one-tap entry — so a template change that drops it from the subject
+ * fails here rather than in a client's inbox. The body is checked to carry the
+ * same code. `except` skips messages already seen, for "a NEW code arrived".
+ */
+export async function waitForCodeMail(
+  to: string,
+  opts: { except?: string[]; timeoutMs?: number } = {},
+): Promise<{ id: string; code: string; subject: string; text: string; html: string }> {
+  const deadline = Date.now() + (opts.timeoutMs ?? 20_000);
+  for (;;) {
+    const mail = await waitForMail(to, {
+      subject: /is your OxShare verification code$/,
+      timeoutMs: Math.max(1_000, deadline - Date.now()),
+    });
+    if (!opts.except?.includes(mail.id)) {
+      const code = /^(\d{6}) is your OxShare verification code$/.exec(mail.subject)?.[1];
+      if (!code) throw new Error(`No six-digit code in the subject "${mail.subject}"`);
+      if (!mail.html.includes(code) || !mail.text.includes(code)) {
+        throw new Error(`The body of "${mail.subject}" does not carry the code its subject names`);
+      }
+      return { ...mail, code };
+    }
+    if (Date.now() > deadline) throw new Error(`No NEW verification code arrived for ${to}`);
     await new Promise((r) => setTimeout(r, 500));
   }
 }

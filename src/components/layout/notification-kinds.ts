@@ -95,7 +95,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     titleKey: 'notifications.kindDepositSucceededTitle',
     bodyKey: 'notifications.kindDepositSucceededBody',
     vars: moneyVars,
-    href: '/transactions',
+    href: '/deposit?tab=history',
   },
   'deposit.failed': {
     icon: ArrowDownToLine,
@@ -122,7 +122,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
       amount: formatMoney(str(params.amount), str(params.currency)),
       reason: str(params.reason),
     }),
-    href: '/transactions',
+    href: '/deposit?tab=history',
   },
   'wallet.credited': {
     icon: Wallet,
@@ -136,21 +136,21 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     titleKey: 'notifications.kindWithdrawalApprovedTitle',
     bodyKey: 'notifications.kindWithdrawalApprovedBody',
     vars: moneyVars,
-    href: '/transactions',
+    href: '/withdraw?tab=history',
   },
   'withdrawal.rejected': {
     icon: ArrowUpFromLine,
     titleKey: 'notifications.kindWithdrawalRejectedTitle',
     bodyKey: 'notifications.kindWithdrawalRejectedBody',
     vars: moneyReasonVars,
-    href: '/transactions',
+    href: '/withdraw?tab=history',
   },
   'withdrawal.paid': {
     icon: ArrowUpFromLine,
     titleKey: 'notifications.kindWithdrawalPaidTitle',
     bodyKey: 'notifications.kindWithdrawalPaidBody',
     vars: moneyVars,
-    href: '/transactions',
+    href: '/withdraw?tab=history',
   },
   'kyc.approved': {
     icon: ShieldCheck,
@@ -256,7 +256,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
             ? t('notifications.transferToWallet')
             : undefined,
     }),
-    href: '/transactions',
+    href: '/transfer?tab=history',
   },
 };
 

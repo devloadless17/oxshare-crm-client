@@ -108,3 +108,52 @@ describe('pressing Register more than once', () => {
     ).toBeEnabled();
   });
 });
+
+describe('after a successful registration', () => {
+  it('goes straight to the code screen, with the address in this tab and not in the URL', async () => {
+    /*
+     * The client's request (25 Sep 2026): register, type the emailed code, be
+     * signed in. So success is a navigation to the code screen — not a banner
+     * and a timed redirect to sign-in, which is what this used to do.
+     *
+     * The address rides in sessionStorage because an email in a query string
+     * reaches history, Referer headers and access logs.
+     */
+    sessionStorage.clear();
+    const user = userEvent.setup();
+    renderWithProviders(<RegisterPage />);
+    await fillTheForm(user);
+
+    await user.click(
+      screen.getByRole('button', { name: /^create account$|creating your account/i }),
+    );
+
+    await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+    const [destination] = push.mock.calls[0] as [string];
+    expect(destination).toBe('/auth/confirm-email?from=register');
+    expect(destination, 'the address leaked into the URL').not.toContain('ada');
+
+    const stored = JSON.parse(sessionStorage.getItem('oxshare.pending-email') ?? 'null') as {
+      email: string;
+      sentAt: number;
+    } | null;
+    expect(stored?.email).toBe('ada@example.test');
+    expect(typeof stored?.sentAt).toBe('number');
+  });
+
+  it('sends nobody anywhere, and remembers nothing, when the registration is refused', async () => {
+    sessionStorage.clear();
+    register.mockRejectedValueOnce({ response: { data: { message: 'Registration failed.' } } });
+    const user = userEvent.setup();
+    renderWithProviders(<RegisterPage />);
+    await fillTheForm(user);
+
+    await user.click(
+      screen.getByRole('button', { name: /^create account$|creating your account/i }),
+    );
+    await screen.findByText(/registration failed/i);
+
+    expect(push).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('oxshare.pending-email')).toBeNull();
+  });
+});

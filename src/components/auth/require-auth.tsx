@@ -8,6 +8,7 @@ import { usePartnerAccess } from '@/hooks/use-partner-access';
 import { requiresApprovedKyc } from '@/lib/kyc-access';
 import { isPartnerRoute } from '@/lib/partner-access';
 import { loginPathFor } from '@/lib/return-to';
+import { CONFIRM_EMAIL_PATH } from '@/lib/pending-email';
 import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/loader';
 import { t } from '@/lib/i18n';
@@ -52,10 +53,23 @@ const EMAIL_VERIFIED_PATHS = [
   '/transfer',
   '/transactions',
   '/partner',
+  /*
+   * "Verify your identity now or later" — step two of two, and its "now"
+   * opens /kyc, which the server refuses without step one. Somebody who has
+   * not confirmed their email is sent to do that first, not shown a choice
+   * whose only button leads to a refusal.
+   */
+  '/onboarding',
 ];
 
-/** Where an unverified client is sent to finish verifying. */
-const VERIFY_EMAIL_PATH = '/verify-email/pending';
+/**
+ * Where an unverified client is sent to finish verifying — the code screen.
+ *
+ * It was `/verify-email/pending`, a "we sent you a link" page with no way to
+ * use the CODE the same email now leads with. That route still exists, as a
+ * redirect here, for anything bookmarked.
+ */
+const VERIFY_EMAIL_PATH = CONFIRM_EMAIL_PATH;
 
 /**
  * Where a client the partner ladder can never hold is sent from `/partner`.

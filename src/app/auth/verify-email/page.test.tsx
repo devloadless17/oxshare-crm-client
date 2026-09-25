@@ -110,6 +110,24 @@ describe('a link that has already been used', () => {
 });
 
 describe('a link redeemed just now', () => {
+  it('leads on to sign-in, and from there to "verify your identity now or later"', async () => {
+    /*
+     * The link confirms the address but does NOT sign anybody in — it is opened
+     * by whatever browser the mail app picks, and by scanners — so the way on
+     * is sign-in, carrying the same destination the CODE leads to. The two ways
+     * of confirming an email end on the same screen.
+     */
+    verifyEmail.mockResolvedValue({ status: 'verified', message: 'ok' });
+
+    renderWithProviders(<VerifyEmailPage />);
+
+    await screen.findByText(/verified successfully/i);
+    expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute(
+      'href',
+      '/auth/login?next=%2Fonboarding',
+    );
+  });
+
   it('celebrates, and strips the spent token from the URL', async () => {
     /*
      * `replace`, not `push`: a refresh must not re-POST a credential that has

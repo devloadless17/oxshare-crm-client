@@ -4,6 +4,10 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  ArrowDownToLine,
+  ArrowLeftRight,
+  ArrowUpFromLine,
+  FileText,
   Handshake,
   LayoutDashboard,
   LineChart,
@@ -27,25 +31,31 @@ import { externalLinksApi, type ExternalLink } from '@/lib/api/external-links';
 import type { components } from '@/lib/api/types.gen';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { UserMenu } from './user-menu';
+import { isActivePath, NavGroup, NavLink, type NavItem } from './sidebar-nav';
 import { BrandLogo } from '@/components/brand-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { NotificationsSheet } from './notifications-sheet';
-import { t, type MessageKey } from '@/lib/i18n';
+import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
 type KycStatusDto = components['schemas']['KycStatusDto'];
 
-export interface NavItem {
-  label: MessageKey;
-  href: string;
-  icon: React.ElementType;
-  badge?: string | number;
-}
+export type { NavItem } from './sidebar-nav';
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'nav.wallet', href: '/wallet', icon: WalletIcon },
-  { label: 'nav.transactions', href: '/transactions', icon: Receipt },
+  {
+    label: 'nav.transactions',
+    href: '#transactions',
+    icon: Receipt,
+    children: [
+      { label: 'nav.deposit', href: '/deposit', icon: ArrowDownToLine },
+      { label: 'nav.withdraw', href: '/withdraw', icon: ArrowUpFromLine },
+      { label: 'nav.transfer', href: '/transfer', icon: ArrowLeftRight },
+      { label: 'nav.statement', href: '/transactions', icon: FileText },
+    ],
+  },
   { label: 'nav.accounts', href: '/accounts', icon: LineChart },
   { label: 'nav.partner', href: '/partner', icon: Handshake },
   { label: 'nav.platforms', href: '/platforms', icon: MonitorDown },
@@ -80,12 +90,6 @@ export function kycNavBadge(
   }
   return { text: t('kyc.required'), tone: 'warning' };
 }
-
-const BADGE_TONES: Record<'warning' | 'info' | 'destructive', string> = {
-  warning: 'bg-warning/15 text-warning',
-  info: 'bg-info/15 text-info',
-  destructive: 'bg-destructive/15 text-destructive',
-};
 
 export function PortalLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -241,57 +245,32 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
-          {visibleNavItems(kycStatus, user?.verificationLevel, partnerHidden).map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
-            const badge =
-              item.href === '/kyc'
-                ? kycNavBadge(kycStatus, user?.verificationLevel)
-                : item.badge
-                  ? ({ text: String(item.badge), tone: 'warning' } as const)
-                  : undefined;
-
-            /*
-             * The `comingSoon` branch is GONE. It rendered a disabled nav
-             * entry with a "Soon" pill and had ZERO call sites — no item ever
-             * set the flag. The admin app deleted its equivalent deliberately
-             * ("an operator reading the navigation should be reading a list of
-             * places they can go, not a roadmap"); the portal kept the
-             * machinery, so the rule lived in one app and the dead code in the
-             * other. Restore it in the same commit that first needs it.
-             */
-
-            return (
-              <Link
+          {visibleNavItems(kycStatus, user?.verificationLevel, partnerHidden).map((item) =>
+            item.children ? (
+              <NavGroup
                 key={item.href}
-                href={item.href}
-                onClick={closeMobile}
-                title={collapsed ? t(item.label) : undefined}
-                aria-current={isActive ? 'page' : undefined}
-                className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium focus-outline ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground font-semibold'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                } ${collapsed ? 'justify-center px-0' : ''}`}
-              >
-                <Icon
-                  className={`h-5 w-5 shrink-0 ${
-                    isActive
-                      ? 'text-primary-foreground'
-                      : 'text-muted-foreground group-hover:text-link'
-                  }`}
-                />
-                {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
-                {!collapsed && badge && (
-                  <span
-                    className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold ${BADGE_TONES[badge.tone]}`}
-                  >
-                    {badge.text}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+                item={item}
+                pathname={pathname}
+                collapsed={collapsed}
+                onNavigate={closeMobile}
+              />
+            ) : (
+              <NavLink
+                key={item.href}
+                item={item}
+                active={isActivePath(pathname, item.href)}
+                collapsed={collapsed}
+                onNavigate={closeMobile}
+                badge={
+                  item.href === '/kyc'
+                    ? kycNavBadge(kycStatus, user?.verificationLevel)
+                    : item.badge
+                      ? ({ text: String(item.badge), tone: 'warning' } as const)
+                      : undefined
+                }
+              />
+            ),
+          )}
 
           <ExternalLinksSection
             links={externalLinks}

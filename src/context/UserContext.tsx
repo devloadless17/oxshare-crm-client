@@ -6,6 +6,7 @@ import { apiClient, startProactiveRefresh } from '@/lib/api/client';
 import { authApi } from '@/lib/api/auth';
 import { clearKycDraft } from '@/lib/kyc-draft';
 import { clearWithdrawIntent } from '@/lib/withdraw-intent';
+import { forgetPendingEmail } from '@/lib/pending-email';
 import { announceSessionEvent, onSessionEvent } from '@/lib/session-channel';
 import { isPublicPath } from '@/lib/public-paths';
 import { clearSessionHint, markSessionHint } from '@/lib/session-hint';
@@ -229,6 +230,10 @@ export function UserProvider({
       // ways a session ends, and only clearing it in one leaves the other
       // carrying the previous person's financial detail into the next session.
       clearWithdrawIntent();
+      // The address a code was last sent to — somebody else's, to the next
+      // person at this device. Not in `clearSession`, which also runs for every
+      // signed-out visitor to a public page, the code screen included.
+      forgetPendingEmail();
       if (typeof window === 'undefined') return;
       /*
        * Already somewhere a signed-out visitor belongs — there is nothing to
@@ -261,6 +266,7 @@ export function UserProvider({
     // reasoning: it holds an amount and a payout destination. Here AND in the
     // `signed-out` handler above; both, not one.
     clearWithdrawIntent();
+    forgetPendingEmail();
     // Every other tab, before this one navigates away and stops being able to.
     announceSessionEvent('signed-out');
     // A HARD navigation, deliberately. `queryClient.clear()` drops the cache but

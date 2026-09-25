@@ -39,10 +39,14 @@ export type MessageResponse = components['schemas']['MessageResponseDto'];
  */
 export type VerifyEmailResponse = components['schemas']['VerifyEmailResponseDto'];
 
+/** `POST /auth/verify-email-code` — the address and the six digits mailed to it. */
+export type VerifyEmailCodeDto = components['schemas']['VerifyEmailCodeDto'];
+
 /**
  * `{ message }` — and the shape is deliberately that thin.
  *
- * Registration does NOT return tokens, because the account is unverified until
+ * Registration does NOT sign anybody in: the account is unverified until the
+ * emailed code is typed (`verifyEmailCode`, which is what starts the session) or
  * the emailed link is followed. Aliasing this is what caught the backend briefly
  * documenting the route as returning tokens.
  *
@@ -112,6 +116,34 @@ export const authApi = {
     return data;
   },
 
+  /**
+   * Confirm the address with the 6-digit code from the verification email —
+   * and be SIGNED IN by it (the client's request, 25 Sep 2026: register, type
+   * the code, and you are in).
+   *
+   * The server answers exactly as `login` does: httpOnly session cookies on the
+   * response, `{ user, emailVerified }` in the body and no token anywhere. So
+   * the proactive refresh starts here for the reason it starts there.
+   *
+   * EVERY refusal is `EMAIL_CODE_INVALID` — a wrong code, a burned one, an
+   * expired one, an unknown address and an already-confirmed one all answer
+   * identically, which is what stops this screen being a way to test which
+   * addresses hold accounts. Branch on the code, never on the message.
+   */
+  async verifyEmailCode(dto: VerifyEmailCodeDto): Promise<AuthResponse> {
+    const { data } = await apiClient.post<AuthResponse>('/auth/verify-email-code', dto);
+    startProactiveRefresh();
+    return data;
+  },
+
+  /**
+   * A new code AND a new link, in one email. The previous code dies with it.
+   *
+   * Answers the same sentence whether or not the address holds an account, and
+   * sends nothing inside the server's 30-second cooldown — so the screen that
+   * calls this owns its countdown and must never read the answer as proof that
+   * an email left.
+   */
   async resendVerification(email: string) {
     const { data } = await apiClient.post<MessageResponse>('/auth/resend-verification', { email });
     return data;

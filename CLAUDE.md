@@ -11,7 +11,8 @@ app: registration, email verification, KYC onboarding, wallet.
 ## Layout
 
 ```
-src/app/auth/{login,register,forgot-password,reset-password,verify-email}/page.tsx
+src/app/auth/{login,register,confirm-email,forgot-password,reset-password,verify-email}/page.tsx
+src/app/onboarding/                       "verify your identity now or later" (after the code)
 src/app/kyc/{page,step/[step],submitted}/ · dashboard/ · wallet/ · accounts/{page,[id]} ·
                                           transactions/ ·
                                           partner/ · platforms/ · {deposit,withdraw,transfer}/
@@ -119,6 +120,36 @@ downgrades "sign in and carry on" to "sign in and land on the dashboard".
 
 File naming is mixed and should converge on **kebab-case** (`components/kyc/*` is still
 PascalCase). `src/context/*Context.tsx` stays PascalCase, matching admin.
+
+## Sign-up ends on a 6-digit code (25 Sep 2026)
+
+The client's request: register → the emailed code → signed straight in → "verify your identity
+now or later". `/auth/register` and an unconfirmed `/auth/login` both land on
+`/auth/confirm-email`; the right code calls `POST /auth/verify-email-code`, which confirms the
+address AND starts the session exactly as sign-in does (httpOnly cookies, CSRF header, no token in
+the body). Then `/onboarding`: *Verify now* → `/kyc`, *Verify later* → `/dashboard`.
+
+- **The address travels in `sessionStorage`, never the URL** (`lib/pending-email.ts`) — an email in
+  a query string reaches history, Referer headers and access logs. `from=register|login` and
+  `next=` do ride in the URL; `next` goes through `safeReturnTo` like everywhere else.
+- **Every server rule is the server's**: keyed-hash storage, 5 attempts, 15 minutes, single use, a
+  30-second resend cooldown (`RESEND_COOLDOWN_MS` mirrors it — a resend inside it is answered
+  normally and sends NOTHING). Every refusal is the one code `EMAIL_CODE_INVALID`, so the screen
+  can never say which addresses hold accounts; the "already have an account?" line names both
+  outcomes of a sign-up without choosing.
+- **A visitor with no remembered address is ASKED for it and sent no code** — they may already hold
+  a good one, and a new code kills it. The resend button is one tap away.
+- **The emailed LINK still works and never signs anyone in** (mail scanners follow links); it ends
+  on sign-in with `next=/onboarding`, so both ways of confirming land on the same screen.
+- `/verify-email/pending` is now a redirect to the code screen, and `RequireAuth` sends an
+  unconfirmed session there.
+- `/onboarding` offers the choice only while there is one — approved, under-review and refused
+  clients go to `/dashboard` — and its benefits list only what `KycVerifiedGuard` and the
+  live-account check actually keep shut.
+- Proved by `e2e/email-code-signup.spec.ts` (the real journey against Mailpit, refresh rotation and
+  reuse detection included — costs three registrations, desktop only) and
+  `e2e/confirm-email-screen.spec.ts` (phone layout and the fold, stubbed, spends none). E2E filters
+  on the sign-up mail use `VERIFICATION_SUBJECT` — `/verify/i` does not match "verification".
 
 ## Never mock data
 

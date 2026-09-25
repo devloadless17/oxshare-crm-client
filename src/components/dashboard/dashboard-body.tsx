@@ -184,7 +184,7 @@ function Panels({ data }: { data: Dashboard }) {
           heading={t('dashboard.recentTitle')}
           icon={Receipt}
           className="xl:col-span-3"
-          action={{ href: '/transactions', label: t('dashboard.viewAllTransactions') }}
+          action={{ href: '/transactions?tab=activity', label: t('dashboard.viewAllTransactions') }}
         >
           {recentTransactions.length === 0 ? (
             <Empty

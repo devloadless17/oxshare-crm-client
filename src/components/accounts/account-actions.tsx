@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftRight, KeyRound, MailCheck, MoreHorizontal, Pencil, Wallet } from 'lucide-react';
+import { ArrowLeftRight, KeyRound, MailCheck, MoreHorizontal, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,41 +56,10 @@ import { keys } from '@/lib/query-keys';
 export function AccountActions({ account }: { account: TradingAccount }) {
   const queryClient = useQueryClient();
 
-  const [renaming, setRenaming] = React.useState(false);
   const [confirming, setConfirming] = React.useState(false);
   const [sentTo, setSentTo] = React.useState<string | null>(null);
 
-  const [name, setName] = React.useState(account.name ?? '');
-  const [nameError, setNameError] = React.useState<string | null>(null);
   const [resetError, setResetError] = React.useState<string | null>(null);
-
-  /*
-   * Seeded when the dialog OPENS rather than once on mount, so re-opening it
-   * after a rename shows the current name instead of whatever was last typed
-   * into an abandoned edit.
-   */
-  const openRename = () => {
-    setName(account.name ?? '');
-    setNameError(null);
-    setRenaming(true);
-  };
-
-  const rename = useMutation({
-    mutationFn: () => tradingApi.renameAccount(account.id, name.trim()),
-    onSuccess: () => {
-      setNameError(null);
-      setRenaming(false);
-      /*
-       * BOTH keys, because both screens render the name: this page reads
-       * `trading-account`, and the list the client returns to reads
-       * `trading-accounts`. Invalidating only the first leaves a stale caption
-       * on the screen they navigate back to.
-       */
-      void queryClient.invalidateQueries({ queryKey: keys.tradingAccounts.detail(account.id) });
-      void queryClient.invalidateQueries({ queryKey: keys.tradingAccounts.all() });
-    },
-    onError: (e: unknown) => setNameError(apiErrorMessage(e, t('accounts.nameFailed'))),
-  });
 
   const reset = useMutation({
     mutationFn: () => tradingApi.resetAccountPassword(account.id),
@@ -170,7 +139,6 @@ export function AccountActions({ account }: { account: TradingAccount }) {
     },
   });
 
-  const trimmed = name.trim();
   const topUpTrimmed = topUpAmount.trim();
 
   /*
@@ -212,10 +180,6 @@ export function AccountActions({ account }: { account: TradingAccount }) {
               {t('accounts.topUpAction')}
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onSelect={openRename}>
-            <Pencil className="h-4 w-4" aria-hidden="true" />
-            {t('accounts.renameAction')}
-          </DropdownMenuItem>
           <DropdownMenuSeparator />
           {/*
             Last, and behind a separator: it is the only irreversible item here,
@@ -227,48 +191,6 @@ export function AccountActions({ account }: { account: TradingAccount }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {/* ── Rename ───────────────────────────────────────────────────────── */}
-      <Dialog open={renaming} onOpenChange={(next) => !next && setRenaming(false)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('accounts.renameTitle')}</DialogTitle>
-          </DialogHeader>
-          <form
-            className="flex flex-col gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!trimmed || rename.isPending) return;
-              void rename.mutateAsync().catch(() => undefined);
-            }}
-          >
-            <Label htmlFor="account-name">{t('accounts.nameLabel')}</Label>
-            <Input
-              id="account-name"
-              value={name}
-              maxLength={128}
-              autoFocus
-              placeholder={t('accounts.namePlaceholder')}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <p className="text-[11px] text-muted-foreground">{t('accounts.nameMt5Hint')}</p>
-            {nameError && <p className="text-xs text-destructive">{nameError}</p>}
-            <DialogFooter className="mt-2">
-              <Button type="button" variant="ghost" size="sm" onClick={() => setRenaming(false)}>
-                {t('accounts.passwordCancel')}
-              </Button>
-              {/*
-                Disabled on an empty field rather than validated on submit: the
-                server refuses a blank name, and there is nothing to learn from
-                making the client discover that.
-              */}
-              <Button type="submit" size="sm" disabled={!trimmed || rename.isPending}>
-                {rename.isPending ? t('accounts.nameSaving') : t('accounts.nameSave')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* ── Top up a demo account ────────────────────────────────────────── */}
       <Dialog open={toppingUp} onOpenChange={(next) => !next && setToppingUp(false)}>

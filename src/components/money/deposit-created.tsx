@@ -154,7 +154,7 @@ export function DepositCreated({
             {t('deposit.newRequest')}
           </Button>
           <Button asChild variant="outline" size="sm" className="flex-1 basis-0">
-            <Link href="/transactions">{t('deposit.trackIt')}</Link>
+            <Link href="/deposit?tab=history">{t('deposit.trackIt')}</Link>
           </Button>
         </div>
       </div>

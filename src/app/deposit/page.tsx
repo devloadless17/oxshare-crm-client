@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { MoneyScreen } from '@/components/money/money-screen';
 import { AlertCircle } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,6 @@ import {
   FormError,
   MethodTile,
   MoneyFooter,
-  MoneyHeader,
   MoneySection,
   MoneySheet,
   StepRail,
@@ -95,7 +95,7 @@ export default function DepositPage() {
    * the footer walks off the bottom of the screen.
    */
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col gap-4">
+    <MoneyScreen scope="deposits">
       {/*
         The back link alone — no `<h1>Deposit</h1>` and no subtitle.
 
@@ -109,7 +109,7 @@ export default function DepositPage() {
         all three money flows keep the same one rather than each rendering its
         own and drifting.
       */}
-      <MoneyHeader />
+      {/* Back link, New / History tabs and the history live in MoneyScreen. */}
 
       <AsyncBoundary
         fill
@@ -126,7 +126,7 @@ export default function DepositPage() {
           accounts={accounts.data ?? []}
         />
       </AsyncBoundary>
-    </div>
+    </MoneyScreen>
   );
 }
 
