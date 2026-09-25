@@ -58,6 +58,20 @@ import { keys } from '@/lib/query-keys';
  */
 const PAGING = { noun: ['entry', 'entries'] as [string, string], pageSize: TABLE_PAGE_SIZE };
 
+/**
+ * What produced a commission, in the partner's words.
+ *
+ * `deal` is a trade closed on MT5 — every commission the live feed writes —
+ * and `position` is a closed trade from the older CRM path. Only `transaction`
+ * is a deposit, and those rows are historical. This read `position` as the one
+ * trade source, so every live trade was labelled "Deposit".
+ */
+function sourceLabel(source: string): string {
+  if (source === 'deal' || source === 'position') return t('partner.sourceTrade');
+  if (source === 'transaction') return t('partner.sourceDeposit');
+  return source;
+}
+
 export function PartnerCommissions() {
   const query = useResource<IbCommissionRow[]>(keys.partner.commissions(), (signal) =>
     partnerApi.commissions(signal),
@@ -84,7 +98,7 @@ export function PartnerCommissions() {
       header: t('partner.colSource'),
       cell: (row) => (
         <span className="text-muted-foreground">
-          {row.source === 'position' ? t('partner.sourceTrade') : t('partner.sourceDeposit')}
+          {sourceLabel(row.source)}
           {/* Depth 2 is a sub-partner's client — a different kind of earning,
               and the one a partner is most likely to query. */}
           {row.depth > 1 && <span className="ms-1 text-[10px]">{t('partner.viaSubPartner')}</span>}
