@@ -113,7 +113,9 @@ export function AccountTypeFields({
             </SelectTrigger>
             <SelectContent>
               {productsForCurrency.map((type) => (
-                <SelectItem key={type.group} value={type.product}>
+                // Keyed by PRODUCT: one MT5 group may back several products
+                // since backend 0142, so the group is no longer unique here.
+                <SelectItem key={type.product} value={type.product}>
                   {type.product}
                 </SelectItem>
               ))}

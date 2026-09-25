@@ -31,7 +31,8 @@ import { externalLinksApi, type ExternalLink } from '@/lib/api/external-links';
 import type { components } from '@/lib/api/types.gen';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { UserMenu } from './user-menu';
-import { isActivePath, NavGroup, NavLink, type NavItem } from './sidebar-nav';
+import { isActivePath, NavGroup, NavLink, useNavSelection, type NavItem } from './sidebar-nav';
+import { useRailPreference } from './use-rail-preference';
 import { BrandLogo } from '@/components/brand-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { NotificationsSheet } from './notifications-sheet';
@@ -102,7 +103,7 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
 function PortalChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useUser();
-  const [collapsed, setCollapsed] = React.useState(false);
+  const [collapsed, toggleRail] = useRailPreference();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const closeMobile = () => setMobileOpen(false);
@@ -125,6 +126,14 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
    * mistake `RequireAuth` documents twice.
    */
   const { hidden: partnerHidden } = usePartnerAccess();
+
+  const navItems = visibleNavItems(kycStatus, user?.verificationLevel, partnerHidden);
+  const selection = useNavSelection(navItems, pathname, collapsed);
+  // A click on any page in the menu — even the one on screen — selects that page.
+  const go = (href: string) => {
+    selection.navigate(href);
+    closeMobile();
+  };
 
   /*
    * The broker's own links, drawn under the app's pages.
@@ -165,19 +174,28 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/*
-          COLLAPSED, the header holds the mark ALONE, centred — and the expand
-          control moves onto the sidebar's edge as a small round button.
+          THE BRAND AREA — the logo fills the sidebar's width (the owner's
+          request, 25 Sep 2026: bigger, "filling the whole width"). Twin in
+          design of the admin console's, so both apps open on the same logo at
+          the same size.
 
-          It used to keep both in one row: the 31px mark and the 28px toggle in
-          an 80px rail with 16px of padding each side is 59px into 48px, so the
-          logo link shrank, its `overflow-hidden` clipped the mark, and the
-          header read as a broken logo jammed against a chevron (owner's report,
-          24 Sep 2026). A control on the edge is the pattern people already know
-          from every collapsible sidebar, and it costs the header nothing.
+          At `h-10` the wordmark was 108px wide in a 256px column: it shared its
+          row with the collapse chevron, and the 64px header capped its height.
+          So the row is the logo's alone now —
+
+          - the COLLAPSE control lives on the sidebar's edge in both states, the
+            round button the collapsed rail already used (it was moved there
+            once already, when the mark and a chevron jammed an 80px rail — the
+            owner's report, 24 Sep 2026);
+          - the wordmark is sized by WIDTH (`w-full`, capped at 200px), so it
+            fills the column, its left edge lined up with the menu's icons;
+          - the area is taller than the page header and carries no rule under
+            it. A border at 96px beside the header's at 64px reads as two lines
+            that missed each other; no border reads as the sidebar's own top.
         */}
         <div
-          className={`relative flex h-16 items-center border-b border-border ${
-            collapsed ? 'justify-center px-2' : 'justify-between px-4'
+          className={`relative flex h-16 shrink-0 items-center border-b border-border ${
+            collapsed ? 'justify-center px-2' : 'justify-between gap-3 px-6'
           }`}
         >
           {/*
@@ -186,29 +204,19 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             moment the artwork is swapped, marked decorative, or hidden per
             theme — none of which look like an accessibility change. `aria-label`
             does not depend on which image is showing.
+
+            The artwork is the brand's own vectors, drawn INLINE
+            (brand-logo.tsx): no file request, official colours, and the link
+            carries the accessible name, so the drawing is decorative.
           */}
           <Link
             href="/dashboard"
             onClick={closeMobile}
             aria-label={t('app.name')}
-            className="flex items-center gap-3 overflow-hidden rounded-md focus-outline"
+            className={`flex items-center rounded-md focus-outline ${
+              collapsed ? '' : 'min-w-0 flex-1'
+            }`}
           >
-            {/*
-              THE REAL WORDMARK when there is room, the mark alone when there is
-              not — rather than the mark beside the brand name set in the UI
-              font. The letterforms in the supplied artwork are drawn, not
-              typeset, so rendering "OXShare" in Geist was always an
-              approximation of the logo sitting next to the logo.
-
-              Both files are the brand's own vector artwork, extracted from the
-              supplied PDF rather than redrawn, so they scale to any height
-              without the hand-traced circles the previous mark used.
-            */}
-            {/*
-              Drawn INLINE (brand-logo.tsx): no file request, no second copy
-              swapped by CSS, official colours. The link carries the accessible
-              name, so the drawing is decorative.
-            */}
             {collapsed ? (
               <BrandLogo variant="mark" className="h-9 w-auto shrink-0" />
             ) : (
@@ -216,21 +224,18 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             )}
           </Link>
 
+          {/* On the sidebar's EDGE in both states, so the row is the logo's. */}
           <button
             type="button"
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={toggleRail}
             aria-label={collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
             aria-expanded={!collapsed}
-            className={
-              collapsed
-                ? 'absolute -right-3 top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-outline lg:flex'
-                : 'hidden lg:flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline'
-            }
+            className="absolute -right-3 top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-outline lg:flex"
           >
             {collapsed ? (
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
             ) : (
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
             )}
           </button>
 
@@ -238,29 +243,35 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={closeMobile}
             aria-label={t('nav.closeMenu')}
-            className="flex lg:hidden h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
+            className="flex lg:hidden h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
-          {visibleNavItems(kycStatus, user?.verificationLevel, partnerHidden).map((item) =>
+          {navItems.map((item) =>
             item.children ? (
               <NavGroup
                 key={item.href}
                 item={item}
-                pathname={pathname}
+                page={selection.page}
                 collapsed={collapsed}
-                onNavigate={closeMobile}
+                open={selection.openGroup === item.href}
+                selected={selection.selectedGroup === item.href}
+                onToggle={() => selection.toggle(item.href)}
+                onNavigate={go}
               />
             ) : (
               <NavLink
                 key={item.href}
                 item={item}
-                active={isActivePath(pathname, item.href)}
+                current={isActivePath(selection.page, item.href)}
+                selected={
+                  isActivePath(selection.page, item.href) && selection.selectedGroup === null
+                }
                 collapsed={collapsed}
-                onNavigate={closeMobile}
+                onNavigate={() => go(item.href)}
                 badge={
                   item.href === '/kyc'
                     ? kycNavBadge(kycStatus, user?.verificationLevel)
@@ -437,12 +448,14 @@ function ExternalLinksSection({
            */
           title={link.description ?? (collapsed ? link.title : undefined)}
           aria-label={t('nav.opensInNewTab', { title: link.title })}
-          className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-outline ${
+          // The menu's NEUTRAL hover (see sidebar-nav.tsx) — a brand-tinted
+          // hover reads as a second selected row.
+          className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-outline ${
             collapsed ? 'justify-center px-0' : ''
           }`}
         >
           <ArrowUpRight
-            className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-link"
+            className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-foreground"
             aria-hidden="true"
           />
           {!collapsed && <span className="flex-1 truncate">{link.title}</span>}

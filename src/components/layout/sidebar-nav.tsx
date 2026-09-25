@@ -30,6 +30,96 @@ export function isActivePath(pathname: string | null, href: string): boolean {
 }
 
 /*
+ * ONE look for "selected", wherever it appears — twin in design of the admin
+ * console's sidebar. The Dashboard used to be a SOLID fill while the group
+ * holding a page was a tint, so the two read as different states (the owner's
+ * report, on the console); hover is NEUTRAL, because a hovered row painted in
+ * the selection's colour read as a second selected item.
+ */
+const SELECTED_ROW = 'bg-primary/10 font-semibold text-foreground';
+const IDLE_ROW = 'font-medium text-muted-foreground hover:bg-muted hover:text-foreground';
+const SELECTED_ICON = 'text-link';
+const IDLE_ICON = 'text-muted-foreground group-hover:text-foreground';
+
+/**
+ * Where the menu stands — twin in design of the console's `MenuPosition`
+ * (oxshare-crm-admin `sidebar-nav.tsx`, which carries the full story).
+ *
+ * - It shows where the client is GOING, from the click. `pathname` changes only
+ *   when the new page lands, and a menu that waited for it fell back to the
+ *   page being left for that whole window: the group you clicked in folded
+ *   shut and opened again (reported on the console). Recorded from
+ *   `next/link`'s `onNavigate`, never `onClick`, so a click that opens a new
+ *   tab leaves this tab's menu alone. A second click before the first page
+ *   lands overtakes it; if the router still shows the overtaken page on the
+ *   way, the menu keeps showing the latest click rather than flicking back.
+ * - A choice lasts until the client goes somewhere: any navigation clears it,
+ *   so one made two pages ago never comes back — except a group opened while
+ *   a click's page was on its way, which is a choice about the page that
+ *   arrives.
+ */
+interface MenuPosition {
+  /** The `pathname` this position was last reconciled with. */
+  path: string | null;
+  /** The page a click in this menu is taking the client to, until it lands. */
+  heading?: string;
+  /** Pages of earlier clicks that `heading` overtook, oldest first — they may still land. */
+  overtaken?: readonly string[];
+  /** The group the client opened; `null` closed it; absent follows the page. */
+  open?: string | null;
+}
+
+/**
+ * Which page the menu shows, which group is OPEN, and which row is the
+ * sidebar's one SELECTED row.
+ *
+ * The open group is derived, never synced in an effect: the choice the client
+ * made, else the group holding the page — so arriving on `/withdraw` from a
+ * notification renders Transactions open on the first paint.
+ *
+ * The selected row follows the same choice. It used to follow the PAGE alone,
+ * so on the dashboard, opening Transactions left Dashboard filled — "the old
+ * item keeps showing as active" (reported on the console, which shares the
+ * rule). The page stays `aria-current` throughout.
+ *
+ * The collapsed rail has nothing to open, so it selects by the page alone.
+ */
+export function useNavSelection(items: NavItem[], pathname: string | null, collapsed: boolean) {
+  const [position, setPosition] = React.useState<MenuPosition>({ path: pathname });
+  let here = position;
+  if (position.path !== pathname) {
+    // Adjusted while rendering, so a stale position is never painted.
+    const echo = pathname === null ? -1 : (position.overtaken?.indexOf(pathname) ?? -1);
+    here =
+      position.heading !== undefined && position.heading === pathname
+        ? { path: pathname, open: position.open }
+        : echo >= 0
+          ? { ...position, path: pathname, overtaken: position.overtaken?.slice(echo + 1) }
+          : { path: pathname };
+    setPosition(here);
+  }
+  /* The page the menu shows: where a click in it is going, else the page on screen. */
+  const page = here.heading ?? pathname;
+  const activeGroup =
+    items.find((item) => item.children?.some((child) => isActivePath(page, child.href)))?.href ??
+    null;
+  const openGroup = here.open === undefined ? activeGroup : here.open;
+  const selectedGroup = collapsed ? activeGroup : (here.open ?? activeGroup);
+  const toggle = (href: string) => setPosition({ ...here, open: openGroup === href ? null : href });
+  /** A click in the menu is taking the client to `href` — even the page on screen. */
+  const navigate = (href: string) =>
+    setPosition({
+      path: here.path,
+      heading: href,
+      overtaken:
+        here.heading !== undefined && here.heading !== href
+          ? [...(here.overtaken ?? []), here.heading]
+          : here.overtaken,
+    });
+  return { page, openGroup, selectedGroup, toggle, navigate };
+}
+
+/*
  * The `comingSoon` branch is GONE. It rendered a disabled nav entry with a
  * "Soon" pill and had ZERO call sites — no item ever set the flag. The admin
  * app deleted its equivalent deliberately ("an operator reading the navigation
@@ -39,14 +129,21 @@ export function isActivePath(pathname: string | null, href: string): boolean {
  */
 export function NavLink({
   item,
-  active,
+  current,
+  selected = false,
   collapsed,
   onNavigate,
   badge,
   nested = false,
 }: {
   item: NavItem;
-  active: boolean;
+  /**
+   * This link IS the page — the one on screen, or the one a click in the menu
+   * is taking the client to — so `aria-current`, whatever is selected.
+   */
+  current: boolean;
+  /** This top-level row is the sidebar's one selected row. */
+  selected?: boolean;
   collapsed: boolean;
   onNavigate: () => void;
   badge?: { text: string; tone: 'warning' | 'info' | 'destructive' };
@@ -55,37 +152,37 @@ export function NavLink({
 }) {
   const Icon = item.icon;
   /*
-   * A SUB-MENU page is selected differently from a top-level one.
+   * A SUB-MENU page is marked, not filled.
    *
-   * The solid fill says "you are on this page" for the main sections. Used on
-   * a child as well, the sidebar showed two heavy bars at once whenever the
-   * group's parent was also marked — so a child is selected with a tint, its
-   * label in full weight and its icon in the accent colour: the same "you are
-   * here", one level down. (No edge bar — removed on request.)
+   * The group above it carries the fill, so the current child is its label in
+   * full weight and the brand colour — "in Transactions, on Withdraw": one
+   * selection and a place within it, not two selections. (No edge bar —
+   * removed on request.)
    */
   const sub = nested && !collapsed;
-  const tone = active
-    ? sub
-      ? 'bg-primary/10 text-foreground font-semibold'
-      : 'bg-primary text-primary-foreground font-semibold'
-    : 'text-muted-foreground hover:bg-accent hover:text-foreground';
+  const marked = sub ? current : selected;
+  const tone = sub
+    ? current
+      ? 'font-semibold text-link hover:bg-muted'
+      : IDLE_ROW
+    : selected
+      ? SELECTED_ROW
+      : IDLE_ROW;
   return (
     <Link
       href={item.href}
-      onClick={onNavigate}
+      /* Not `onClick` — see `MenuPosition`: a click that opens a new tab is not a navigation here. */
+      onNavigate={onNavigate}
       title={collapsed ? t(item.label) : undefined}
-      aria-current={active ? 'page' : undefined}
-      className={`group relative flex items-center gap-3 rounded-lg text-sm font-medium transition-colors duration-150 focus-outline ${
+      aria-current={current ? 'page' : undefined}
+      data-selected={!sub && selected ? 'true' : undefined}
+      className={`group relative flex items-center gap-3 rounded-lg text-sm transition-colors duration-150 focus-outline ${
         sub ? 'py-2 ps-4 pe-3' : 'px-3 py-2.5'
       } ${tone} ${collapsed ? 'justify-center px-0' : ''}`}
     >
       <Icon
         className={`shrink-0 transition-colors duration-150 ${sub ? 'h-4 w-4' : 'h-5 w-5'} ${
-          active
-            ? sub
-              ? 'text-link'
-              : 'text-primary-foreground'
-            : 'text-muted-foreground group-hover:text-link'
+          marked ? SELECTED_ICON : IDLE_ICON
         }`}
       />
       {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
@@ -121,26 +218,26 @@ export function NavLink({
  */
 export function NavGroup({
   item,
-  pathname,
+  page,
   collapsed,
+  open,
+  selected,
+  onToggle,
   onNavigate,
 }: {
   item: NavItem;
-  pathname: string | null;
+  /** The page the menu shows — `useNavSelection().page`. */
+  page: string | null;
   collapsed: boolean;
-  onNavigate: () => void;
+  /** From `useNavSelection` — the open group is decided for the whole menu. */
+  open: boolean;
+  /** This group is the sidebar's one selected row. */
+  selected: boolean;
+  onToggle: () => void;
+  onNavigate: (href: string) => void;
 }) {
   const children = item.children ?? [];
-  const containsActive = children.some((child) => isActivePath(pathname, child.href));
-  const [toggled, setToggled] = React.useState<boolean | null>(null);
-  /*
-   * Open when the client opened it, or — until they have touched it — when one
-   * of its pages is the current one. Derived rather than synced in an effect,
-   * so arriving on `/withdraw` renders the menu open on the first paint.
-   */
-  const open = toggled ?? containsActive;
-
-  const panelId = 'nav-group-transactions';
+  const panelId = `nav-group-${item.href.replace(/[^a-z0-9]+/gi, '')}`;
 
   if (collapsed) {
     return (
@@ -149,9 +246,11 @@ export function NavGroup({
           <NavLink
             key={child.href}
             item={child}
-            active={isActivePath(pathname, child.href)}
+            // On the rail each page is its own row, so the page IS the selection.
+            current={isActivePath(page, child.href)}
+            selected={isActivePath(page, child.href)}
             collapsed
-            onNavigate={onNavigate}
+            onNavigate={() => onNavigate(child.href)}
           />
         ))}
       </div>
@@ -163,24 +262,17 @@ export function NavGroup({
     <div>
       <button
         type="button"
-        onClick={() => setToggled(!open)}
+        onClick={onToggle}
         aria-expanded={open}
         aria-controls={panelId}
-        /*
-         * Hover ALWAYS, and a selection of its own when one of its pages is
-         * current: a tint and the section's name in full weight — lighter than
-         * the page's own mark below it, so the eye reads "in Transactions, on
-         * Withdraw" rather than two competing selections.
-         */
+        data-selected={selected ? 'true' : undefined}
         className={`group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150 focus-outline ${
-          containsActive
-            ? 'bg-accent font-semibold text-foreground hover:bg-accent/80'
-            : 'font-medium text-muted-foreground hover:bg-accent hover:text-foreground'
+          selected ? SELECTED_ROW : IDLE_ROW
         }`}
       >
         <Icon
           className={`h-5 w-5 shrink-0 transition-colors duration-150 ${
-            containsActive ? 'text-link' : 'text-muted-foreground group-hover:text-link'
+            selected ? SELECTED_ICON : IDLE_ICON
           }`}
         />
         <span className="flex-1 truncate text-start">{t(item.label)}</span>
@@ -231,9 +323,9 @@ export function NavGroup({
               >
                 <NavLink
                   item={child}
-                  active={isActivePath(pathname, child.href)}
+                  current={isActivePath(page, child.href)}
                   collapsed={false}
-                  onNavigate={onNavigate}
+                  onNavigate={() => onNavigate(child.href)}
                   nested
                 />
               </div>

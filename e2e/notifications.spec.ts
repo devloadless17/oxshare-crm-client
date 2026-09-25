@@ -111,7 +111,7 @@ test.describe('the notification bell', () => {
     await page.goto('/dashboard');
     // The badge is polled, so it is awaited rather than asserted immediately —
     // the count query resolves after first paint.
-    await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: 20_000 });
+    await expect(bell(page)).toHaveAccessibleName(/\d+ new/i, { timeout: 20_000 });
 
     await bell(page).click();
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -135,55 +135,57 @@ test.describe('the notification bell', () => {
     expect(rejections.list(), 'the bell was refused by the API').toEqual([]);
   });
 
-  test('opening marks NOTHING read; clicking a row does', async ({ page }) => {
-    await creditWalletAsAdmin('5.00000000', `E2E explicit-read ${Date.now()}`);
-
-    await page.goto('/dashboard');
-    await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: 20_000 });
-
-    // Open and close again: the unread signal must survive being looked at.
-    await bell(page).click();
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.getByRole('dialog')).not.toBeVisible();
-    await expect(bell(page)).toHaveAccessibleName(/unread/i);
-
-    // Clicking the row marks it and navigates to where the money is.
-    await bell(page).click();
-    await page
-      .getByRole('link', { name: /wallet credited/i })
-      .first()
-      .click();
-    await expect(page).toHaveURL(/\/wallet/);
-  });
-
-  test('"Mark all as read" clears the badge, and stays cleared across a reload', async ({
+  test('seeing is enough — closing the panel clears the badge and moves the row to Earlier', async ({
     page,
   }) => {
-    await creditWalletAsAdmin('7.00000000', `E2E mark-all ${Date.now()}`);
+    /*
+     * The owner's rule for the CLIENT bell (D-78): a notification the client
+     * has seen is finished, so the bell must not keep counting it. The panel
+     * marks what it SHOWED when it closes — on close, so nothing moves while it
+     * is being read.
+     */
+    const reason = `E2E seen ${Date.now()}`;
+    await creditWalletAsAdmin('5.00000000', reason);
 
     await page.goto('/dashboard');
-    await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: 20_000 });
+    await expect(bell(page)).toHaveAccessibleName(/\d+ new/i, { timeout: 20_000 });
 
     await bell(page).click();
-    await page.getByRole('button', { name: /mark all as read/i }).click();
+    const panel = page.getByRole('dialog');
+    await expect(panel.getByRole('link', { name: new RegExp(reason) })).toBeVisible();
+    // Open: still new — nothing moved under the reader.
+    await expect(panel.getByRole('tab', { name: /^new \(\d+\)$/i })).toBeVisible();
 
+    await page.keyboard.press('Escape');
+    await expect(panel).not.toBeVisible();
+    // Closed: seen. The badge is the server's count, so this is a real round trip.
+    await expect(bell(page)).not.toHaveAccessibleName(/\d+ new/i, { timeout: 20_000 });
+
+    await bell(page).click();
+    await expect(panel.getByText("You're all caught up")).toBeVisible();
+    await panel.getByRole('tab', { name: 'Earlier' }).click();
+    await expect(panel.getByRole('link', { name: new RegExp(reason) })).toBeVisible();
+  });
+
+  test('the cleared bell stays cleared across a reload', async ({ page }) => {
+    await creditWalletAsAdmin('7.00000000', `E2E reload ${Date.now()}`);
+
+    await page.goto('/dashboard');
+    await expect(bell(page)).toHaveAccessibleName(/\d+ new/i, { timeout: 20_000 });
+    await bell(page).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
     /*
      * Closed before the badge is asserted, and not for tidiness: Radix marks
      * everything behind an open dialog `aria-hidden`, so the trigger is not
-     * addressable by role while the panel is up. Asserting through it reports
-     * "waiting for getByRole(button)" — which reads as a missing bell rather
-     * than a hidden one.
+     * addressable by role while the panel is up.
      */
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).not.toBeVisible();
 
-    // The badge is derived from the server, so this is a real round trip —
-    // not a local flag that a reload would contradict.
-    await expect(bell(page)).not.toHaveAccessibleName(/unread/i, { timeout: 20_000 });
+    await expect(bell(page)).not.toHaveAccessibleName(/\d+ new/i, { timeout: 20_000 });
     await page.reload();
-    await expect(bell(page)).not.toHaveAccessibleName(/unread/i, { timeout: 20_000 });
-
+    await expect(bell(page)).not.toHaveAccessibleName(/\d+ new/i, { timeout: 20_000 });
+    // And there is no "Mark all" to press — seeing already did it.
     await bell(page).click();
     await expect(page.getByRole('button', { name: /mark all as read/i })).toHaveCount(0);
   });

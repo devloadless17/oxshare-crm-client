@@ -1,28 +1,22 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Bell, Volume2, VolumeX } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { AsyncBoundary } from '@/components/async-boundary';
-import { useResource } from '@/hooks/use-resource';
-import { notificationsApi, type AppNotification } from '@/lib/api/notifications';
-import { apiErrorMessage } from '@/lib/api/errors';
+import { notificationsApi } from '@/lib/api/notifications';
 import { useUser } from '@/context/UserContext';
 import { queryKeysFor, resyncKeysOnReconnect } from './notification-kinds';
 import { t } from '@/lib/i18n';
-import { relativeTime } from '@/lib/relative-time';
-import { useRealtime } from '@/hooks/use-realtime';
+import { useRealtime, type RealtimePayload } from '@/hooks/use-realtime';
 import {
   playNotificationSound,
   primeNotificationSound,
@@ -31,9 +25,9 @@ import {
   soundEnabledOnServer,
   subscribeToSoundPreference,
 } from '@/lib/notification-sound';
-import { resolveKind } from './notification-kinds';
-import { toastNotification } from './notification-toast';
+import { toastBurst, toastNotification } from './notification-toast';
 import { keys } from '@/lib/query-keys';
+import { NotificationPanel } from '@/components/notifications/notification-panel';
 
 /**
  * The notification bell, and the panel behind it — live since
@@ -49,22 +43,33 @@ import { keys } from '@/lib/query-keys';
  *
  * ## The badge polls; the list fetches on open
  *
- * The unread count lives beside the trigger on a 60-second / `retry: false`
+ * The unseen count lives beside the trigger on a 60-second / `retry: false`
  * cadence and is NOT drawn at zero or unknown — a badge that cannot be counted
  * is a badge that is not drawn, the same rule that removed the old permanent
  * dot. The list lives inside `SheetContent`, which unmounts when closed, so
  * opening naturally fetches fresh.
  *
- * ## Read is EXPLICIT, never a side effect of opening
+ * ## Seen means done — marked when the panel CLOSES
  *
- * Opening marks nothing. Clicking a row marks that row; "Mark all as read" is
- * a button. Auto-mark-on-open would destroy the unread signal before anything
- * was read.
+ * The owner's rule for the client bell (25 Sep 2026): a notification the
+ * client has seen is finished, and the bell must not keep counting it. The
+ * panel reports the newest NEW row it put on screen; closing the sheet marks
+ * everything up to that row read — never a row that arrived after it — and the
+ * badge clears. See `NotificationPanel` for why it is on close and not open.
  */
 
 const COUNT_KEY = keys.notifications.unreadCount();
 const LIST_KEY = keys.notifications.all();
-const PAGE_SIZE = 30;
+
+/** Arrivals this close together are ONE announcement — one chime, one toast. */
+const BURST_MS = 400;
+/** The chime never repeats sooner than this, however fast notifications land. */
+const CHIME_GAP_MS = 3_000;
+/** A burst toast still on screen absorbs the next burst rather than stacking. */
+const BURST_TOAST_MS = 6_000;
+
+const kindOf = (payload: RealtimePayload): string =>
+  payload && typeof payload['kind'] === 'string' ? payload['kind'] : '';
 
 export function NotificationsSheet() {
   const queryClient = useQueryClient();
@@ -119,6 +124,65 @@ export function NotificationsSheet() {
    */
   React.useEffect(() => primeNotificationSound(), []);
 
+  /*
+   * MANY ARRIVALS ARE ONE ANNOUNCEMENT. The hourly commission run confirms a
+   * partner's rebates together, so a client can be told about twenty credits
+   * in the same instant. Arrivals within `BURST_MS` are gathered: one refetch,
+   * one chime (never closer than `CHIME_GAP_MS`), one toast — the notification
+   * itself when it is alone, "N new notifications" when it is not — and no
+   * toast at all while the panel is open, where the client watches them land.
+   */
+  const arrivals = React.useRef<RealtimePayload[]>([]);
+  const flushTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const lastChime = React.useRef(0);
+  const lastBurst = React.useRef({ count: 0, at: 0 });
+  const panelOpen = React.useRef(open);
+  React.useEffect(() => {
+    panelOpen.current = open;
+  }, [open]);
+  React.useEffect(() => () => clearTimeout(flushTimer.current), []);
+
+  const announce = () => {
+    flushTimer.current = undefined;
+    const arrived = arrivals.current;
+    arrivals.current = [];
+    if (arrived.length === 0) return;
+
+    void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+    // The DATA each event is about refreshes with the bell, kind-scoped.
+    for (const kind of new Set(arrived.map(kindOf))) {
+      for (const key of queryKeysFor(kind)) void queryClient.invalidateQueries({ queryKey: key });
+    }
+
+    const now = Date.now();
+    if (now - lastChime.current >= CHIME_GAP_MS) {
+      lastChime.current = now;
+      playNotificationSound();
+    }
+    if (panelOpen.current) return;
+
+    const burstShowing = now - lastBurst.current.at <= BURST_TOAST_MS;
+    const [only] = arrived;
+    if (arrived.length === 1 && !burstShowing && only !== undefined) {
+      const id = typeof only['id'] === 'string' ? only['id'] : undefined;
+      // `router.push`, not a `<Link>`: a toast action is a button in an overlay.
+      toastNotification(only, (href) => {
+        // Following the toast is reading it — as a click on its row is.
+        if (id) {
+          void notificationsApi.markRead(id).then(
+            () => queryClient.invalidateQueries({ queryKey: LIST_KEY }),
+            () => undefined,
+          );
+        }
+        router.push(href);
+      });
+      return;
+    }
+    const count = arrived.length + (burstShowing ? lastBurst.current.count : 0);
+    lastBurst.current = { count, at: now };
+    toastBurst(count, () => setOpen(true));
+  };
+
   const { connected } = useRealtime(
     {
       /*
@@ -126,31 +190,20 @@ export function NotificationsSheet() {
        * holds the handlers in a ref, so a fresh object per render does not
        * rebuild the socket.
        */
+      /*
+       * The toast is the point of the socket for a client who is not looking
+       * at the bell — which is almost always. Gathered into bursts; see above.
+       */
       'notification.created': (payload) => {
+        arrivals.current.push(payload);
+        flushTimer.current ??= setTimeout(announce, BURST_MS);
+      },
+      /*
+       * One of this client's rows was read — in another tab, or by this one's
+       * own close. The payload names nothing; the feed re-reads itself.
+       */
+      'notification.changed': () => {
         void queryClient.invalidateQueries({ queryKey: LIST_KEY });
-        /*
-         * The DATA the event is about refreshes with the bell — a settled
-         * deposit updates the visible balance in the same breath as its toast.
-         * Kind-scoped: an account event does not refetch the wallet.
-         */
-        const kind =
-          payload && typeof payload === 'object' && typeof payload.kind === 'string'
-            ? payload.kind
-            : '';
-        for (const key of queryKeysFor(kind)) {
-          void queryClient.invalidateQueries({ queryKey: key });
-        }
-        playNotificationSound();
-        /*
-         * The toast is the point of the socket for a client who is not looking
-         * at the bell — which is almost always. The badge behind it is the
-         * durable signal and the toast is the announcement; both are driven by
-         * this one event so they cannot disagree.
-         *
-         * `router.push` rather than a `<Link>`: a toast action is a button
-         * inside a portal-rendered overlay, not a row in the sheet.
-         */
-        toastNotification(payload, (href) => router.push(href));
       },
     },
     verified,
@@ -190,6 +243,32 @@ export function NotificationsSheet() {
     }
   }, [connected, queryClient]);
 
+  /*
+   * The newest NEW row the open panel is showing — written by the panel as its
+   * rows arrive, read once when the sheet closes. A ref, not state: nothing
+   * renders from it.
+   */
+  const seenUpTo = React.useRef<string | null>(null);
+  const onShown = React.useCallback((newestNewAt: string | null) => {
+    seenUpTo.current = newestNewAt;
+  }, []);
+
+  /*
+   * Mark what the client saw. Fire-and-forget and swallowed, like the per-row
+   * mark it replaces: a failure leaves the rows new for the next open, which is
+   * the honest outcome and retries itself — an error message about it would
+   * interrupt a client who has already moved on.
+   */
+  function markSeen() {
+    const upTo = seenUpTo.current;
+    seenUpTo.current = null;
+    if (!upTo) return;
+    notificationsApi
+      .markAllRead(upTo)
+      .then(() => queryClient.invalidateQueries({ queryKey: LIST_KEY }))
+      .catch(() => undefined);
+  }
+
   const count = useQuery({
     queryKey: COUNT_KEY,
     queryFn: ({ signal }) => notificationsApi.getUnreadCount(signal),
@@ -211,6 +290,7 @@ export function NotificationsSheet() {
          * reading "Nothing yet". `LIST_KEY` is the prefix of both.
          */
         if (next) void queryClient.invalidateQueries({ queryKey: LIST_KEY });
+        else markSeen();
       }}
     >
       {/*
@@ -231,7 +311,7 @@ export function NotificationsSheet() {
             aria-hidden="true"
             className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground"
           >
-            {unread > 9 ? '9+' : unread}
+            {unread > 99 ? '99+' : unread}
           </span>
         ) : null}
       </SheetTrigger>
@@ -273,208 +353,8 @@ export function NotificationsSheet() {
           </SheetDescription>
         </SheetHeader>
         {/* Mounted only while open — see the component note. */}
-        <NotificationsList unreadCount={unread ?? 0} enabled={verified} />
+        <NotificationPanel enabled={verified} onShown={onShown} />
       </SheetContent>
     </Sheet>
-  );
-}
-
-function NotificationsList({ unreadCount, enabled }: { unreadCount: number; enabled: boolean }) {
-  const queryClient = useQueryClient();
-  const [markAllError, setMarkAllError] = React.useState<string | null>(null);
-  const [markingAll, setMarkingAll] = React.useState(false);
-
-  const query = useResource(
-    keys.notifications.list(),
-    (signal) => notificationsApi.getNotifications({ limit: PAGE_SIZE }, signal),
-    { enabled },
-  );
-
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: LIST_KEY });
-
-  // Portal convention: a plain async handler with inline error state — no
-  // useMutation, no toast (neither exists in this app).
-  async function markAllRead() {
-    try {
-      setMarkAllError(null);
-      setMarkingAll(true);
-      await notificationsApi.markAllRead();
-      await invalidate();
-    } catch (error) {
-      setMarkAllError(apiErrorMessage(error, t('notifications.markAllReadFailed')));
-    } finally {
-      setMarkingAll(false);
-    }
-  }
-
-  /*
-   * Per-row mark-read, fired alongside navigation. The catch is an explicit
-   * swallow: an error here would interrupt a navigation the client asked for
-   * to report the failure of something they didn't — an unread row that stays
-   * unread is silently retriable on the next visit.
-   */
-  function markRead(item: AppNotification) {
-    if (item.readAt) return;
-    notificationsApi
-      .markRead(item.id)
-      .then(invalidate)
-      .catch(() => undefined);
-  }
-
-  const items = query.data?.items ?? [];
-  /*
-   * Derived from the rows the client can SEE, OR-ed with the polled count:
-   * gating on the count alone let a failed count poll (`retry: false`) hide
-   * the button above a list of visibly-unread rows.
-   *
-   * Gated on `ready` as well: rendering it over the error or not-available
-   * card offers a button that would clear notifications the client never got
-   * to see — the same "read is explicit" rule, by another route.
-   */
-  const hasUnread =
-    query.status === 'ready' && (unreadCount > 0 || items.some((item) => !item.readAt));
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {hasUnread && (
-        <div className="border-b border-border px-3 py-2">
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => void markAllRead()}
-              disabled={markingAll}
-              className="cursor-pointer text-xs font-medium text-primary hover:underline disabled:opacity-50 focus-outline"
-            >
-              {t('notifications.markAllRead')}
-            </button>
-          </div>
-          {markAllError && (
-            <p role="alert" className="pt-1 text-right text-[11px] text-destructive">
-              {markAllError}
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="flex-1 overflow-y-auto p-3">
-        {!enabled ? (
-          /*
-           * Not a spinner and not an empty state: a disabled query never
-           * resolves, and "Nothing yet" would be a claim about a feed nobody
-           * asked for. This says what is true and what to do about it — the
-           * feed is gated on a verified address, like the routes behind it.
-           */
-          <div className="flex flex-col items-center gap-1 py-10 text-center">
-            <Bell className="mb-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
-            <p className="text-sm font-medium text-foreground">
-              {t('notifications.verifyEmailTitle')}
-            </p>
-            <p className="text-xs text-muted-foreground">{t('notifications.verifyEmailBody')}</p>
-          </div>
-        ) : (
-          <AsyncBoundary
-            status={query.status}
-            label={t('notifications.loading')}
-            endpoints={['GET /notifications']}
-            onRetry={query.refetch}
-            errorMessage={t('notifications.loadFailed')}
-            error={query.error}
-            fill
-          >
-            {items.length === 0 ? (
-              <div className="flex flex-col items-center gap-1 py-10 text-center">
-                <Bell className="mb-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                <p className="text-sm font-medium text-foreground">
-                  {t('notifications.emptyTitle')}
-                </p>
-                <p className="text-xs text-muted-foreground">{t('notifications.emptyBody')}</p>
-              </div>
-            ) : (
-              <>
-                <ul className="space-y-2">
-                  {items.map((item) => (
-                    <NotificationRow key={item.id} item={item} onRead={() => markRead(item)} />
-                  ))}
-                </ul>
-                {query.data?.nextCursor ? (
-                  <p className="pt-3 text-center text-[11px] text-muted-foreground">
-                    {t('notifications.recentNotice', { count: items.length })}
-                  </p>
-                ) : null}
-              </>
-            )}
-          </AsyncBoundary>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function NotificationRow({ item, onRead }: { item: AppNotification; onRead: () => void }) {
-  const config = resolveKind(item.kind);
-  const Icon = config?.icon ?? Bell;
-  const unread = !item.readAt;
-
-  const body = (
-    <>
-      <span
-        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${unread ? 'bg-primary/15' : 'bg-primary/10'} text-primary`}
-      >
-        <Icon className="h-4 w-4" aria-hidden="true" />
-      </span>
-      <span className="min-w-0 flex-1 space-y-1">
-        <span className="flex items-baseline justify-between gap-2">
-          <span className="text-xs font-semibold text-foreground">
-            {config ? t(config.titleKey) : t('notifications.fallbackTitle')}
-            {unread && <span className="sr-only"> — {t('notifications.itemUnread')}</span>}
-          </span>
-          <span className="shrink-0 text-[10px] text-muted-foreground">
-            {relativeTime(item.createdAt)}
-          </span>
-        </span>
-        {config ? (
-          <span className="block text-xs leading-relaxed text-muted-foreground">
-            {t(config.bodyKey, config.vars?.(item.params))}
-          </span>
-        ) : null}
-      </span>
-      {unread && (
-        <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-      )}
-    </>
-  );
-
-  const rowClass = `flex gap-3 rounded-lg border border-border p-3 ${unread ? 'bg-primary/5' : 'bg-muted/30'}`;
-
-  /*
-   * A known kind navigates to where the client acts on it; the sheet closes
-   * with it. An unknown kind — a backend newer than this deploy — renders as a
-   * plain row: generic title and timestamp, never a raw slug.
-   */
-  if (config?.href) {
-    return (
-      <li>
-        <SheetClose asChild>
-          <Link
-            href={config.href}
-            onClick={onRead}
-            className={`${rowClass} transition-colors hover:bg-muted focus-outline`}
-          >
-            {body}
-          </Link>
-        </SheetClose>
-      </li>
-    );
-  }
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onRead}
-        className={`${rowClass} w-full cursor-pointer text-left transition-colors hover:bg-muted focus-outline`}
-      >
-        {body}
-      </button>
-    </li>
   );
 }

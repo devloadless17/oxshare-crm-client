@@ -121,10 +121,10 @@ const bell = (page: Page) => page.getByRole('button', { name: /open notification
 /**
  * Clear the slate so an existing badge cannot make a stale test pass.
  *
- * Driven over the API rather than through the panel, deliberately. Clicking
- * "Mark all as read" races the list's first render — the button does not exist
- * until rows arrive, so a visibility check taken too early silently skips the
- * clear and leaves the very badge this is supposed to remove.
+ * Driven over the API rather than through the panel, deliberately. The panel
+ * has no "Mark all" button any more — closing it marks what it SHOWED (D-78) —
+ * and that depends on which rows had rendered, which is exactly the race a
+ * setup step must not have.
  *
  * This is SETUP, so it may reload; the assertions afterwards never do, which
  * is the property the marker proves.
@@ -142,7 +142,7 @@ async function markEverythingRead(page: Page): Promise<void> {
   expect(cleared.status, `read-all answered ${cleared.status}`).toBeLessThan(300);
 
   await page.reload();
-  await expect(bell(page)).not.toHaveAccessibleName(/unread/i, { timeout: 20_000 });
+  await expect(bell(page)).not.toHaveAccessibleName(/\d+ new/i, { timeout: 20_000 });
 }
 
 /** Plant a value that only survives if the document is never replaced. */
@@ -168,7 +168,7 @@ test.describe('the bell updates without a refresh', () => {
     await creditWallet('4.56000000', reason);
 
     // Nothing is clicked, reloaded or navigated between the credit and this.
-    await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: REALTIME_BUDGET_MS });
+    await expect(bell(page)).toHaveAccessibleName(/\d+ new/i, { timeout: REALTIME_BUDGET_MS });
 
     expect(
       await markerSurvived(page),
@@ -254,7 +254,7 @@ test.describe('the bell updates without a refresh', () => {
 
     const reason = `Realtime payload check ${Date.now()}`;
     await creditWallet('1.23000000', reason);
-    await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: 20_000 });
+    await expect(bell(page)).toHaveAccessibleName(/\d+ new/i, { timeout: 20_000 });
 
     // The transport spoke, and said which event — otherwise the badge could
     // have come from a poll and this test would rot into silence. Polled,
@@ -294,6 +294,8 @@ test.describe('the bell updates without a refresh', () => {
   });
 
   test('recovers on its own after the connection drops', async ({ page, context }) => {
+    // The drop is noticed by the heartbeat (up to 45s, below), then recovery.
+    test.setTimeout(120_000);
     /*
      * The failure that matters most in production: a proxy or a laptop lid
      * kills the socket. Socket.IO reconnects by itself, and underneath it the
@@ -329,9 +331,22 @@ test.describe('the bell updates without a refresh', () => {
 
     await plantMarker(page);
 
+    /*
+     * Only a close AFTER the network goes away counts. This waited 20s for
+     * `closed > 0` and passed for weeks for the wrong reason: the portal closed
+     * and reopened its socket on every mount (StrictMode runs each effect
+     * twice), so a close had always been counted before the drop. Since the
+     * release grace (`use-realtime.ts`, 25 Sep) a remount keeps its socket and
+     * the count moves only when the connection really dies.
+     *
+     * And it dies slowly: offline emulation does not sever an ESTABLISHED
+     * WebSocket — Chromium blocks new requests and leaves the open one silent —
+     * so Socket.IO's heartbeat is what notices, giving up after pingInterval +
+     * pingTimeout (25s + 20s by default). 60s covers it.
+     */
+    const closedBefore = closed;
     await context.setOffline(true);
-    // Long enough for the browser to notice the socket is gone.
-    await expect.poll(() => closed, { timeout: 20_000 }).toBeGreaterThan(0);
+    await expect.poll(() => closed, { timeout: 60_000 }).toBeGreaterThan(closedBefore);
     await context.setOffline(false);
 
     /*
@@ -352,7 +367,7 @@ test.describe('the bell updates without a refresh', () => {
      * delivered this. See `RECONNECT_BUDGET_MS` for why this one case gets a
      * larger budget than a push does, and why 15s still proves the same thing.
      */
-    await expect(bell(page)).toHaveAccessibleName(/unread/i, { timeout: RECONNECT_BUDGET_MS });
+    await expect(bell(page)).toHaveAccessibleName(/\d+ new/i, { timeout: RECONNECT_BUDGET_MS });
     expect(await markerSurvived(page)).toBe(true);
   });
 });

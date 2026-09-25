@@ -67,26 +67,26 @@ function pages(root = 'src/app'): string[] {
 
 /** Screens with no colocated `page.test.tsx` as of this check landing. FROZEN. */
 const UNTESTED = new Set([
-  'src/app/accounts/[id]/page.tsx',
-  'src/app/accounts/page.tsx',
+  'src/app/(portal)/accounts/[id]/page.tsx',
+  'src/app/(portal)/accounts/page.tsx',
   'src/app/auth/forgot-password/page.tsx',
   'src/app/auth/reset-password/page.tsx',
-  'src/app/dashboard/page.tsx',
-  'src/app/deposit/[outcome]/page.tsx',
-  'src/app/deposit/page.tsx',
+  'src/app/(portal)/dashboard/page.tsx',
+  'src/app/(portal)/deposit/[outcome]/page.tsx',
+  'src/app/(portal)/deposit/page.tsx',
   'src/app/kyc/page.tsx',
   'src/app/kyc/step/[step]/page.tsx',
   'src/app/kyc/submitted/page.tsx',
   'src/app/page.tsx',
-  'src/app/partner/page.tsx',
-  'src/app/platforms/page.tsx',
-  'src/app/profile/page.tsx',
-  'src/app/transactions/page.tsx',
-  'src/app/transfer/page.tsx',
+  'src/app/(portal)/partner/page.tsx',
+  'src/app/(portal)/platforms/page.tsx',
+  'src/app/(portal)/profile/page.tsx',
+  'src/app/(portal)/transactions/page.tsx',
+  'src/app/(portal)/transfer/page.tsx',
   'src/app/verify-email/page.tsx',
   'src/app/verify-email/pending/page.tsx',
-  'src/app/wallet/page.tsx',
-  'src/app/withdraw/page.tsx',
+  'src/app/(portal)/wallet/page.tsx',
+  'src/app/(portal)/withdraw/page.tsx',
 ]);
 
 describe('every portal screen is rendered by a test', () => {

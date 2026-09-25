@@ -258,10 +258,15 @@ function KycShell({ children }: { children: React.ReactNode }) {
     <div className="kyc-shell">
       {/* Header */}
       <header className="kyc-header">
-        <Link href="/dashboard" className="kyc-logo">
-          {/* Drawn inline (brand-logo.tsx). Decorative: the name beside it labels the link. */}
-          <BrandLogo variant="mark" className="kyc-logo-mark" />
-          <span className="kyc-logo-text">{t('app.name')}</span>
+        <Link href="/dashboard" className="kyc-logo" aria-label={t('app.name')}>
+          {/*
+            The brand's own WORDMARK, drawn inline (brand-logo.tsx). This was the
+            mark with the name TYPED beside it in the UI font — an approximation
+            of the logo sitting next to the logo, and the one header in the
+            product that did it (reported, 25 Sep 2026). The link carries the
+            name, so the drawing is decorative.
+          */}
+          <BrandLogo className="kyc-logo-wordmark" />
         </Link>
         <div className="kyc-header-tag">{t('kyc.layoutTitle')}</div>
       </header>

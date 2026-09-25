@@ -5,15 +5,17 @@ import { renderWithProviders } from '@/test/render';
 import { NotificationsSheet } from './notifications-sheet';
 
 /**
- * The portal bell, live.
+ * The portal bell, live — and done once SEEN (the owner's rule, 25 Sep 2026).
  *
  * Pins the honesty rules the placeholder version existed to protect: the badge
  * draws only from a counted answer (zero/unknown → no badge), an unknown kind
- * renders a generic row rather than a raw slug, money copy goes through
- * formatMoney with no `{placeholder}` residue, and nothing is marked read as a
- * side effect of opening. Mark-all failure lands as an INLINE error line: form
- * and mutation errors stay inline in this app, and the toast host added for
- * real-time notifications is deliberately not used for them.
+ * renders a generic row rather than a raw slug, and money copy goes through
+ * formatMoney with no `{placeholder}` residue.
+ *
+ * And the seen rule, each part with the regression it stops: nothing is marked
+ * while the panel is OPEN (rows would jump from New to Earlier under the
+ * reader); closing marks up to the newest row SHOWN, so one that arrived later
+ * is never swept; a panel that showed nothing new marks nothing.
  */
 
 const { getNotifications, getUnreadCount, markRead, markAllRead } = vi.hoisted(() => ({
@@ -91,7 +93,7 @@ describe('the badge', () => {
     getUnreadCount.mockResolvedValue({ count: 2 });
     renderWithProviders(<NotificationsSheet />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /2 unread/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /2 new/i })).toBeInTheDocument();
     });
   });
 
@@ -99,7 +101,7 @@ describe('the badge', () => {
     renderWithProviders(<NotificationsSheet />);
     await waitFor(() => expect(getUnreadCount).toHaveBeenCalled());
     expect(screen.queryByText('0')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /unread/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /\d+ new/i })).not.toBeInTheDocument();
   });
 });
 
@@ -126,35 +128,94 @@ describe('the list', () => {
     expect(screen.queryByText('future.event')).not.toBeInTheDocument();
   });
 
-  it('marks a clicked unread row read — and marks nothing on open', async () => {
-    getNotifications.mockResolvedValue(page([notification()]));
+  it('splits NEW from EARLIER by the read marker', async () => {
+    getNotifications.mockResolvedValue(
+      page([
+        notification({ id: 'n-new' }),
+        notification({
+          id: 'n-old',
+          kind: 'kyc.approved',
+          params: {},
+          readAt: new Date().toISOString(),
+        }),
+      ]),
+    );
     getUnreadCount.mockResolvedValue({ count: 1 });
     renderWithProviders(<NotificationsSheet />);
     await openSheet();
 
-    await screen.findByText('Withdrawal approved');
-    expect(markRead).not.toHaveBeenCalled();
-    expect(markAllRead).not.toHaveBeenCalled();
+    expect(await screen.findByRole('tab', { name: 'New (1)' })).toBeInTheDocument();
+    expect(screen.getByText('Withdrawal approved')).toBeInTheDocument();
+    expect(screen.queryByText(/identity verified|kyc approved/i)).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('link', { name: /withdrawal approved/i }));
-    expect(markRead).toHaveBeenCalledWith('n-1');
+    await userEvent.click(screen.getByRole('tab', { name: 'Earlier' }));
+    expect(await screen.findByText('Identity verified')).toBeInTheDocument();
+    expect(screen.queryByText('Withdrawal approved')).not.toBeInTheDocument();
   });
 
-  it('"Mark all as read" failure renders the INLINE error line', async () => {
-    getNotifications.mockResolvedValue(page([notification()]));
+  it('marks nothing while OPEN, and on close marks up to the newest row SHOWN', async () => {
+    const newest = new Date(Date.now() - 60_000).toISOString();
+    getNotifications.mockResolvedValue(
+      page([
+        notification({ id: 'n-2', createdAt: newest }),
+        notification({ id: 'n-1', createdAt: new Date(Date.now() - 600_000).toISOString() }),
+      ]),
+    );
+    getUnreadCount.mockResolvedValue({ count: 2 });
+    renderWithProviders(<NotificationsSheet />);
+    await openSheet();
+    await screen.findByRole('tab', { name: 'New (2)' });
+
+    // Open: the rows are being read — nothing moves, nothing is marked.
+    expect(markAllRead).not.toHaveBeenCalled();
+    expect(markRead).not.toHaveBeenCalled();
+
+    await userEvent.keyboard('{Escape}');
+    // Closed: seen, up to the newest row on screen — never "now", so a
+    // notification that landed after the list rendered stays new.
+    await waitFor(() => expect(markAllRead).toHaveBeenCalledWith(newest));
+  });
+
+  it('closing a panel that showed nothing new marks nothing', async () => {
+    getNotifications.mockResolvedValue(page([notification({ readAt: new Date().toISOString() })]));
+    renderWithProviders(<NotificationsSheet />);
+    await openSheet();
+    await screen.findByText("You're all caught up");
+
+    await userEvent.keyboard('{Escape}');
+    // Nothing was new, so there is nothing to mark — not an empty POST.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(markAllRead).not.toHaveBeenCalled();
+  });
+
+  it('opening a row closes the sheet, which marks what was shown', async () => {
+    const newest = new Date(Date.now() - 120_000).toISOString();
+    getNotifications.mockResolvedValue(page([notification({ createdAt: newest })]));
     getUnreadCount.mockResolvedValue({ count: 1 });
-    markAllRead.mockRejectedValue(new Error('boom'));
     renderWithProviders(<NotificationsSheet />);
     await openSheet();
 
-    await userEvent.click(await screen.findByRole('button', { name: /mark all as read/i }));
-    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('link', { name: /withdrawal approved/i }));
+    await waitFor(() => expect(markAllRead).toHaveBeenCalledWith(newest));
+  });
+
+  it('says "all caught up" when nothing is new, with the way to what came before', async () => {
+    getNotifications.mockResolvedValue(page([notification({ readAt: new Date().toISOString() })]));
+    renderWithProviders(<NotificationsSheet />);
+    await openSheet();
+
+    expect(await screen.findByText("You're all caught up")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /see earlier notifications/i }));
+    expect(await screen.findByText('Withdrawal approved')).toBeInTheDocument();
   });
 
   it('shows the real empty state — the preview era is over', async () => {
     renderWithProviders(<NotificationsSheet />);
     await openSheet();
 
+    // Nothing new, and nothing before either.
+    expect(await screen.findByText("You're all caught up")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Earlier' }));
     expect(await screen.findByText('Nothing yet')).toBeInTheDocument();
     expect(screen.queryByText(/not live yet/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/sample/i)).not.toBeInTheDocument();
