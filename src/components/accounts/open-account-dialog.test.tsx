@@ -6,13 +6,17 @@ import type { SelfServiceAvailability } from '@/lib/api/trading';
 import { OpenAccountDialog } from './open-account-dialog';
 
 /**
- * Opening a live account — the product the client picked travels WITH the
- * group (backend 0142).
+ * Opening a live account.
  *
- * One MT5 group may back several products, and the product decides what the
- * account's trades pay. If the dialog sent only the group, two products sharing
- * it would be indistinguishable, and the account could be recorded under the
- * one the client did not choose.
+ * Two things travel in the request and both are pinned here:
+ *
+ * - The PRODUCT the client picked, with the group (backend 0142). One MT5 group
+ *   may back several products, and the product decides what the account's
+ *   trades pay. If the dialog sent only the group, two products sharing it
+ *   would be indistinguishable.
+ * - The account NAME the client typed — required, and refused on the field when
+ *   the client already has an account called that. Restored at the owner's
+ *   request (25 Sep 2026) after its removal in f9d1475.
  */
 const { openAccount } = vi.hoisted(() => ({ openAccount: vi.fn() }));
 
@@ -36,6 +40,17 @@ const OPTIONS: SelfServiceAvailability = {
   maxDemoDeposit: '10000',
 };
 
+function renderDialog(takenNames: string[] = []) {
+  return renderWithProviders(
+    <OpenAccountDialog
+      environment="live"
+      options={OPTIONS}
+      takenNames={takenNames}
+      onClose={vi.fn()}
+    />,
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   openAccount.mockResolvedValue({ id: 'acc-1', login: '910001', environment: 'live' });
@@ -44,10 +59,9 @@ beforeEach(() => {
 describe('opening a live account', () => {
   it('sends the chosen product with the group', async () => {
     const user = userEvent.setup();
-    renderWithProviders(
-      <OpenAccountDialog environment="live" options={OPTIONS} onClose={vi.fn()} />,
-    );
+    renderDialog();
 
+    await user.type(await screen.findByLabelText(/account name/i), 'Swing');
     await user.click(await screen.findByRole('combobox', { name: /product/i }));
     await user.click(await screen.findByRole('option', { name: 'Premium' }));
     await user.click(screen.getByRole('button', { name: /open account/i }));
@@ -65,16 +79,46 @@ describe('opening a live account', () => {
 
   it('sends the first product offered when the client does not change it', async () => {
     const user = userEvent.setup();
-    renderWithProviders(
-      <OpenAccountDialog environment="live" options={OPTIONS} onClose={vi.fn()} />,
-    );
+    renderDialog();
 
-    await user.click(await screen.findByRole('button', { name: /open account/i }));
+    await user.type(await screen.findByLabelText(/account name/i), 'Swing');
+    await user.click(screen.getByRole('button', { name: /open account/i }));
 
     await waitFor(() =>
       expect(openAccount).toHaveBeenCalledWith(
         expect.objectContaining({ group: 'real\\Shared', productId: 'p-standard' }),
       ),
     );
+  });
+});
+
+describe('the account name', () => {
+  it('is required before the account can be opened', async () => {
+    renderDialog();
+
+    expect(await screen.findByLabelText(/account name/i)).toBeRequired();
+    expect(screen.getByRole('button', { name: /open account/i })).toBeDisabled();
+  });
+
+  it('is sent trimmed', async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.type(await screen.findByLabelText(/account name/i), '  Swing trading  ');
+    await user.click(screen.getByRole('button', { name: /open account/i }));
+
+    await waitFor(() =>
+      expect(openAccount).toHaveBeenCalledWith(expect.objectContaining({ name: 'Swing trading' })),
+    );
+  });
+
+  it('refuses a name the client already uses, whatever its case', async () => {
+    const user = userEvent.setup();
+    renderDialog(['Swing trading']);
+
+    await user.type(await screen.findByLabelText(/account name/i), 'SWING TRADING');
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/already have an account with this name/i);
+    expect(screen.getByRole('button', { name: /open account/i })).toBeDisabled();
   });
 });

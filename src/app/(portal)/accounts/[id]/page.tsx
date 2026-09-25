@@ -153,14 +153,6 @@ const STATUS: Record<TradingAccount['status'], { key: MessageKey; className: str
 };
 
 function AccountDetail({ account }: { account: TradingAccount }) {
-  /*
-   * The account HOLDER — this client, named as the CRM names them. Derived from
-   * the session on every render rather than read from the account row, so a
-   * correction in the CRM reaches every account at once.
-   */
-  const { user: holderUser } = useUser();
-  const holder =
-    [holderUser?.firstName, holderUser?.lastName].filter(Boolean).join(' ') || undefined;
   const isLive = account.environment === 'live';
 
   /*
@@ -263,49 +255,38 @@ function AccountDetail({ account }: { account: TradingAccount }) {
             )}
           </div>
           {/*
-            THE HOLDER'S NAME, which is the client's own — derived, never stored
-            per account.
-            
-            This read `account.name`, a label the client typed when opening the
-            account. That column fed MT5's account-HOLDER field, so a manager
-            terminal showed "Swing trading" where the admin-created accounts
-            showed "ibrahim srour" — and only one of those names a person.
-            Client naming is gone (owner, 25 Sep 2026) and the server derives
-            the holder from the CRM on both paths.
-            
-            Read from the session rather than copied into the row, so a name
-            corrected in the CRM reaches every account at once instead of
-            leaving stale labels behind. Accounts named before this keep their
-            label in the database; nothing displays it, and nothing writes one.
-            
-            The login is never dropped — it is what every statement, support
-            ticket and MT5 terminal identifies this account by — and it remains
-            the heading for a client whose profile has not loaded.
+            The client's NAME leads when there is one, with the login demoted to
+            the line below — and the login is never dropped, because it is what
+            every statement, support ticket and MT5 terminal identifies this
+            account by. Unnamed accounts keep the login as the heading, which is
+            exactly what this page showed before.
           */}
-          <h1 className={`mt-2 text-2xl font-bold tracking-wide ${holder ? '' : 'font-mono'}`}>
-            {holder ?? account.login ?? t('accounts.loginPending')}
+          <h1
+            className={`mt-2 text-2xl font-bold tracking-wide ${account.name ? '' : 'font-mono'}`}
+          >
+            {account.name ?? account.login ?? t('accounts.loginPending')}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {holder && account.login ? <span className="font-mono">{account.login} · </span> : null}
+            {account.name && account.login ? (
+              <span className="font-mono">{account.login} · </span>
+            ) : null}
             {account.currency}
             {account.leverage
               ? ` · ${t('accounts.leverageValue', { ratio: account.leverage })}`
               : ''}
             {/*
-              The PRODUCT, then the group.
+              The PRODUCT, and never the MT5 group (owner, 25 Sep 2026).
 
-              The group alone was here, and an MT5 group path in a subheading is
-              a server path where a reader expects a label. The product is what
-              the client chose and what they recognise; the group stays after it
-              because this is the one screen where the technical identifier earns
-              its place — it is what somebody quotes in a support ticket.
+              The group is the broker's internal server path. The product is
+              what the client chose and what they recognise, so it is the only
+              one a client is shown, here or anywhere in the portal. A support
+              ticket quotes the login, which is on this line already.
 
-              Each is dropped when absent rather than dashed. A subheading is a
-              run-on sentence of facts, and a missing one should shorten it, not
+              Dropped when absent rather than dashed. A subheading is a run-on
+              sentence of facts, and a missing one should shorten it, not
               punctuate a gap.
             */}
             {account.product ? ` · ${account.product}` : ''}
-            {account.mt5Group ? ` · ${account.mt5Group}` : ''}
           </p>
         </div>
 
