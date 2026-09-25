@@ -39,10 +39,20 @@ async function openNavigation(page: Page): Promise<void> {
   }
 }
 
-/** `main` renders on every page; `navigation` is the signed-in chrome. */
+/**
+ * `main` renders on every page; `navigation` is the signed-in chrome.
+ *
+ * `includeHidden`: on a phone the shut drawer is HIDDEN — out of the
+ * accessibility tree and the tab order, on purpose (sidebar-navigation.spec.ts)
+ * — and a role query skips hidden elements. The chrome is still there; asking
+ * whether it is attached must not depend on the drawer being open.
+ */
 async function expectPortalChrome(page: Page, where: string): Promise<void> {
   await expect(page.getByRole('main'), `${where} rendered no main content`).toBeVisible();
-  await expect(page.getByRole('navigation').first(), `${where} lost its chrome`).toBeAttached();
+  await expect(
+    page.getByRole('navigation', { includeHidden: true }).first(),
+    `${where} lost its chrome`,
+  ).toBeAttached();
 }
 
 /**

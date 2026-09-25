@@ -191,6 +191,8 @@ export const messages = {
   'nav.openMenu': 'Open menu',
   'nav.collapseSidebar': 'Collapse the sidebar',
   'nav.expandSidebar': 'Expand the sidebar',
+  /** The phone drawer's name while it is open as a dialog. */
+  'nav.menu': 'Menu',
   'nav.closeMenu': 'Close menu',
   /** The arrow beside a menu group: it opens that group's list of pages. */
   'nav.groupPages': '{group} pages',

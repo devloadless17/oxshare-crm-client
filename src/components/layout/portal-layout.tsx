@@ -33,6 +33,7 @@ import { RequireAuth } from '@/components/auth/require-auth';
 import { UserMenu } from './user-menu';
 import { isActivePath, NavGroup, NavLink, useNavSelection, type NavItem } from './sidebar-nav';
 import { useRailPreference } from './use-rail-preference';
+import { usePhoneDrawer } from './use-phone-drawer';
 import { BrandLogo } from '@/components/brand-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { NotificationsSheet } from './notifications-sheet';
@@ -102,13 +103,21 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** The sidebar's DOM id — the phone menu button names it in `aria-controls`. */
+const SIDEBAR_ID = 'portal-sidebar';
+
 function PortalChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useUser();
   const [collapsed, toggleRail] = useRailPreference();
-  const [mobileOpen, setMobileOpen] = React.useState(false);
-
-  const closeMobile = () => setMobileOpen(false);
+  const asideRef = React.useRef<HTMLElement>(null);
+  const { open: mobileOpen, show: openMobile, close: closeMobile } = usePhoneDrawer(asideRef);
+  /*
+   * The RAIL is a desktop state; the phone drawer is always the whole menu. A
+   * client who collapsed the sidebar at a desk and later opens the menu on a
+   * narrow window would otherwise get an 80px column of icons in a drawer.
+   */
+  const rail = collapsed && !mobileOpen;
 
   const { data: kycStatus = 'not_started' } = useQuery({
     queryKey: keys.kyc.status(),
@@ -130,7 +139,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
   const { hidden: partnerHidden } = usePartnerAccess();
 
   const navItems = visibleNavItems(kycStatus, user?.verificationLevel, partnerHidden);
-  const selection = useNavSelection(navItems, pathname, collapsed);
+  const selection = useNavSelection(navItems, pathname, rail);
   // A click on any page in the menu — even the one on screen — selects that page.
   const go = (href: string) => {
     selection.navigate(href);
@@ -171,9 +180,29 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
       )}
 
       <aside
-        className={`motion-slide fixed top-0 bottom-0 left-0 z-50 flex flex-col border-r border-border bg-card text-card-foreground transition-[width,transform] duration-300 ease-in-out ${
-          collapsed ? 'w-20' : 'w-64'
-        } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        ref={asideRef}
+        id={SIDEBAR_ID}
+        /* A dialog while it is the phone drawer — a modal over the page, which
+           the overlay and the focus trap make it — and the page's sidebar the
+           rest of the time. */
+        role={mobileOpen ? 'dialog' : undefined}
+        aria-modal={mobileOpen ? true : undefined}
+        aria-label={mobileOpen ? t('nav.menu') : undefined}
+        className={`motion-slide fixed top-0 bottom-0 start-0 z-50 flex flex-col border-e border-border bg-card text-card-foreground duration-300 ease-in-out ${
+          rail ? 'w-20' : 'w-64'
+        } ${
+          /*
+           * As in the console: Tailwind v4 moves elements with the `translate`
+           * PROPERTY, so a transition naming `transform` animated nothing and
+           * the drawer snapped. `visibility` is transitioned on the way OUT
+           * only — shut, the drawer is hidden, so its links leave the tab
+           * order; opening, it is visible at once, so the trap's first focus()
+           * is not refused. Logical sides mirror it for Arabic.
+           */
+          mobileOpen
+            ? 'translate-x-0 transition-[width,translate]'
+            : 'transition-[width,translate,visibility] max-lg:invisible max-lg:-translate-x-full max-lg:rtl:translate-x-full'
+        }`}
       >
         {/*
           THE BRAND AREA — the logo fills the sidebar's width (the owner's
@@ -197,7 +226,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
         */}
         <div
           className={`relative flex h-16 shrink-0 items-center border-b border-border ${
-            collapsed ? 'justify-center px-2' : 'justify-between gap-3 px-6'
+            rail ? 'justify-center px-2' : 'justify-between gap-3 px-6'
           }`}
         >
           {/*
@@ -215,11 +244,9 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             href="/dashboard"
             onClick={closeMobile}
             aria-label={t('app.name')}
-            className={`flex items-center rounded-md focus-outline ${
-              collapsed ? '' : 'min-w-0 flex-1'
-            }`}
+            className={`flex items-center rounded-md focus-outline ${rail ? '' : 'min-w-0 flex-1'}`}
           >
-            {collapsed ? (
+            {rail ? (
               <BrandLogo variant="mark" className="h-9 w-auto shrink-0" />
             ) : (
               <BrandLogo className="h-10 w-auto shrink-0" />
@@ -230,14 +257,14 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={toggleRail}
-            aria-label={collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
-            aria-expanded={!collapsed}
-            className="absolute -right-3 top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-outline lg:flex"
+            aria-label={rail ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
+            aria-expanded={!rail}
+            className="absolute -end-3 top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-outline lg:flex"
           >
-            {collapsed ? (
-              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+            {rail ? (
+              <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
             ) : (
-              <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
             )}
           </button>
 
@@ -258,7 +285,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 item={item}
                 page={selection.page}
-                collapsed={collapsed}
+                collapsed={rail}
                 open={selection.openGroup === item.href}
                 selected={selection.selectedGroup === item.href}
                 onToggle={() => selection.toggle(item.href)}
@@ -272,7 +299,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
                 selected={
                   isActivePath(selection.page, item.href) && selection.selectedGroup === null
                 }
-                collapsed={collapsed}
+                collapsed={rail}
                 onNavigate={() => go(item.href)}
                 badge={
                   item.href === '/kyc'
@@ -285,26 +312,23 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             ),
           )}
 
-          <ExternalLinksSection
-            links={externalLinks}
-            collapsed={collapsed}
-            onNavigate={closeMobile}
-          />
+          <ExternalLinksSection links={externalLinks} collapsed={rail} onNavigate={closeMobile} />
         </nav>
       </aside>
 
       <div
         className={`motion-slide flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-in-out ${
-          collapsed ? 'lg:pl-20' : 'lg:pl-64'
+          collapsed ? 'lg:ps-20' : 'lg:ps-64'
         }`}
       >
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-md sm:h-16 lg:px-8">
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setMobileOpen(true)}
+              onClick={openMobile}
               aria-label={t('nav.openMenu')}
               aria-expanded={mobileOpen}
+              aria-controls={SIDEBAR_ID}
               className="flex lg:hidden h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-muted focus-outline"
             >
               <Menu className="h-5 w-5" />
