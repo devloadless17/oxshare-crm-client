@@ -2,6 +2,7 @@
 
 import { KycStatusCard } from '@/components/dashboard/kyc-status-card';
 import { DashboardBody } from '@/components/dashboard/dashboard-body';
+import { WelcomeBanner } from '@/components/dashboard/welcome-banner';
 import { useUser } from '@/context/UserContext';
 import { t } from '@/lib/i18n';
 
@@ -55,6 +56,8 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6">
+      <WelcomeBanner firstName={firstName} />
+
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
           {firstName ? t('dashboard.greeting', { name: firstName }) : t('dashboard.title')}

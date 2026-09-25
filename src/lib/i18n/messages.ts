@@ -2206,6 +2206,20 @@ export const messages = {
   'sheets.csvBody': 'A spreadsheet of every line, for Excel or your accountant.',
   'sheets.pdfBody': 'A printable statement — choose "Save as PDF" to keep a copy.',
   'sheets.statementOptions': 'Wallet and period',
+  // ── A transfer's two ends, by name ──────────────────────────────────────
+  'transfer.detailFrom': 'From',
+  'transfer.detailTo': 'To',
+  'transfer.walletFallback': '{currency} wallet',
+  'transfer.tradingAccount': 'Trading account',
+  'transfer.commissionWallet': 'Commission wallet',
+  'statement.lineTransfer': 'Transfer: {from} → {to}',
+  'statement.thisWallet': 'Wallet',
+  'statement.mainWallet': 'Main wallet',
+  // The dashboard banner (components/dashboard/welcome-banner.tsx).
+  'dashboard.bannerLabel': 'Welcome',
+  'dashboard.bannerWelcome': 'Welcome back',
+  'dashboard.bannerFallbackName': 'Trader',
+  'dashboard.bannerTagline': 'Trade Smarter. Grow Further.',
 } as const;
 
 /** Every valid key. A typo is a compile error, never a string rendered as itself. */

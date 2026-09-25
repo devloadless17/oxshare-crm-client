@@ -5,6 +5,21 @@ import { TransactionDetails } from './transaction-details';
 import type { Transaction } from '@/lib/api/payments';
 
 /*
+ * A transfer's ends are NAMED from the client's own wallets and accounts, so
+ * the two lists are stubbed with one of each.
+ */
+vi.mock('@/lib/api/wallet', () => ({
+  walletApi: {
+    getWallets: vi.fn(() => Promise.resolve([{ id: 'w1', name: 'USD Wallet', currency: 'USD' }])),
+  },
+}));
+vi.mock('@/lib/api/trading', () => ({
+  tradingApi: {
+    getAccounts: vi.fn(() => Promise.resolve([{ id: 'a1', name: 'Main', login: '7001' }])),
+  },
+}));
+
+/*
  * The regression: a refused withdrawal reached the client as a red pill and
  * nothing else. The reason was on the client's OWN response the whole time —
  * the only place it ever appeared was a transient bell notification, so a
@@ -19,6 +34,8 @@ const base = {
   currency: 'USD',
   state: 'rejected',
   createdAt: '2026-08-01T10:00:00.000Z',
+  walletId: 'w1',
+  tradingAccountId: 'a1',
 } as unknown as Transaction;
 
 describe('TransactionDetails', () => {
@@ -45,7 +62,20 @@ describe('TransactionDetails', () => {
    * thing that makes this readable without a new field: `deposit` means the
    * money arrived in the wallet, so it came FROM the trading account.
    */
-  it('says a transfer went from the trading account INTO the wallet', () => {
+  /*
+   * And by NAME: which wallet, which account. A client with two trading
+   * accounts could not tell from "Wallet → Trading account" which one a
+   * transfer went to.
+   */
+  const fromTo = async (from: RegExp, to: RegExp) => {
+    const fromRow = (await screen.findByText('From')).parentElement!;
+    const toRow = screen.getByText('To').parentElement!;
+    await screen.findByText(to);
+    expect(fromRow.textContent).toMatch(from);
+    expect(toRow.textContent).toMatch(to);
+  };
+
+  it('says a transfer went from the trading account INTO the wallet', async () => {
     renderWithProviders(
       <TransactionDetails
         tx={{ ...base, kind: 'transfer', direction: 'deposit', state: 'success' }}
@@ -53,10 +83,10 @@ describe('TransactionDetails', () => {
       />,
     );
 
-    expect(screen.getByText(/trading account → wallet/i)).toBeTruthy();
+    await fromTo(/Main · #7001/, /USD Wallet/);
   });
 
-  it('and the OTHER way for the opposite direction', () => {
+  it('and the OTHER way for the opposite direction', async () => {
     renderWithProviders(
       <TransactionDetails
         tx={{ ...base, kind: 'transfer', direction: 'withdrawal', state: 'success' }}
@@ -66,10 +96,10 @@ describe('TransactionDetails', () => {
 
     // The distinction is the whole point: the two directions must not render
     // the same words, which is what they did before.
-    expect(screen.getByText(/wallet → trading account/i)).toBeTruthy();
+    await fromTo(/USD Wallet/, /Main · #7001/);
   });
 
-  it('names the commission wallet on a commission transfer', () => {
+  it('names the commission wallet on a commission transfer', async () => {
     renderWithProviders(
       <TransactionDetails
         tx={{ ...base, kind: 'commission_transfer', direction: 'deposit', state: 'success' }}
@@ -78,7 +108,7 @@ describe('TransactionDetails', () => {
     );
 
     // One direction only — commission moves into the main wallet, never back.
-    expect(screen.getByText(/commission → wallet/i)).toBeTruthy();
+    await fromTo(/Commission wallet/, /USD Wallet/);
   });
 
   it('shows where a settled withdrawal actually went', () => {

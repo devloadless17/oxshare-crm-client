@@ -210,9 +210,9 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
               name, so the drawing is decorative.
             */}
             {collapsed ? (
-              <BrandLogo variant="mark" className="h-7 w-auto shrink-0" />
+              <BrandLogo variant="mark" className="h-9 w-auto shrink-0" />
             ) : (
-              <BrandLogo className="h-7 w-auto shrink-0" />
+              <BrandLogo className="h-10 w-auto shrink-0" />
             )}
           </Link>
 

@@ -9,9 +9,11 @@ import {
 } from '@/components/ui/dialog';
 import { formatMoney } from '@/lib/money';
 import { movementLabelKey } from '@/lib/movement-label';
-import { t } from '@/lib/i18n';
+import { t, type MessageKey } from '@/lib/i18n';
 import { assetUrl } from '@/lib/asset-url';
 import type { Transaction } from '@/lib/api/payments';
+import { useTransferEnds } from '@/components/transactions/transfer-ends';
+import { STATE } from '@/components/transactions/transaction-filters';
 
 /**
  * What happened to one movement, in the client's own words.
@@ -44,6 +46,11 @@ export function TransactionDetails({
   tx: Transaction | null;
   onClose: () => void;
 }) {
+  // Named ends of a transfer — which wallet, which account. Loaded only while a
+  // transfer is open; both lists are usually already cached.
+  const isTransfer = tx?.kind === 'transfer' || tx?.kind === 'commission_transfer';
+  const endsOf = useTransferEnds(isTransfer);
+  const ends = tx && isTransfer ? endsOf(tx) : null;
   return (
     <Dialog open={tx !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
@@ -93,7 +100,16 @@ export function TransactionDetails({
                 </div>
               )}
 
-              <Row label={t('transactions.detailState')} value={tx.state} />
+              {/* The same words the tables' badges use — the raw enum ("failure") is
+                  not something a client should read. Unknown states print as-is. */}
+              <Row
+                label={t('transactions.detailState')}
+                value={
+                  (STATE as Record<string, { key: MessageKey } | undefined>)[tx.state]
+                    ? t((STATE as Record<string, { key: MessageKey }>)[tx.state]!.key)
+                    : tx.state
+                }
+              />
               {/*
                 THEIR OWN RECEIPT, back to them. A client who filed an offline
                 deposit a week ago has no other way to see which image they sent
@@ -130,17 +146,11 @@ export function TransactionDetails({
                 means the money ARRIVED in the wallet (account → wallet) and
                 `withdrawal` that it LEFT (wallet → account).
               */}
-              {(tx.kind === 'transfer' || tx.kind === 'commission_transfer') && (
-                <Row
-                  label={t('transactions.detailRoute')}
-                  value={
-                    tx.kind === 'commission_transfer'
-                      ? t('transactions.transferFromCommission')
-                      : tx.direction === 'deposit'
-                        ? t('transactions.transferFromAccount')
-                        : t('transactions.transferToAccount')
-                  }
-                />
+              {ends && (
+                <>
+                  <Row label={t('transfer.detailFrom')} value={ends.from} />
+                  <Row label={t('transfer.detailTo')} value={ends.to} />
+                </>
               )}
               {tx.destination && (
                 <Row label={t('transactions.detailDestination')} value={tx.destination} />

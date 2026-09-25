@@ -19,6 +19,7 @@ const line = (patch: Partial<StatementLine>): StatementLine => ({
   methodName: null,
   provider: null,
   tradingAccountLogin: null,
+  tradingAccountName: null,
   transferDirection: null,
   ...patch,
 });
@@ -71,7 +72,7 @@ describe('describeLine', () => {
     expect(describeLine(line({ provider: 'manual_admin' }))).toBe('Added by our team');
   });
 
-  it('gives a transfer its direction and its account', () => {
+  it('names both ends of a transfer — this wallet and the exact account', () => {
     expect(
       describeLine(
         line({
@@ -79,14 +80,22 @@ describe('describeLine', () => {
           referenceType: 'transfer',
           amount: '-5',
           tradingAccountLogin: '7001',
+          tradingAccountName: 'Main',
         }),
+        'USD Wallet',
       ),
-    ).toBe('Transfer to trading account #7001');
+    ).toBe('Transfer: USD Wallet → Main · #7001');
     expect(
       describeLine(
-        line({ entryType: 'transfer', referenceType: 'transfer', tradingAccountLogin: '7001' }),
+        line({
+          entryType: 'transfer',
+          referenceType: 'transfer',
+          tradingAccountLogin: '7001',
+          tradingAccountName: 'Main',
+        }),
+        'USD Wallet',
       ),
-    ).toBe('Transfer from trading account #7001');
+    ).toBe('Transfer: Main · #7001 → USD Wallet');
   });
 });
 

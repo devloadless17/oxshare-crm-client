@@ -21,6 +21,7 @@ import {
 import { EmptyPanel, TABLE_FRAME, TABLE_PAGE_SIZE } from '@/components/partner/partner-ui';
 import { SummaryTiles } from '@/components/transactions/history-summary';
 import { MobileFilterSheet } from '@/components/transactions/mobile-sheets';
+import { useTransferEnds, type TransferEnds } from '@/components/transactions/transfer-ends';
 import { paymentsApi, type Transaction, type TransactionQuery } from '@/lib/api/payments';
 import { walletApi } from '@/lib/api/wallet';
 import { t, type MessageKey } from '@/lib/i18n';
@@ -108,6 +109,7 @@ export function MovementHistory({
   onNew: () => void;
 }) {
   const config = SCOPES[scope];
+  const endsOf = useTransferEnds(scope === 'transfers');
   const { user } = useUser();
   const emailUnverified = user !== null && user.emailVerified === false;
 
@@ -189,7 +191,11 @@ export function MovementHistory({
         <span className="font-medium">
           {scope === 'transfers' ? t(movementLabelKey(tx)) : <MethodCell tx={tx} />}
           <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">
-            {scope === 'transfers' ? <MethodCell tx={tx} /> : <Reference id={tx.id} />}
+            {scope === 'transfers' ? (
+              <TransferRoute tx={tx} endsOf={endsOf} />
+            ) : (
+              <Reference id={tx.id} />
+            )}
           </span>
         </span>
       ),
@@ -332,6 +338,23 @@ export function MovementHistory({
 
       <TransactionDetails tx={detail} onClose={() => setDetail(null)} />
     </div>
+  );
+}
+
+/** Which wallet and which account, named — falls back to the generic route. */
+function TransferRoute({
+  tx,
+  endsOf,
+}: {
+  tx: Transaction;
+  endsOf: (tx: Transaction) => TransferEnds | null;
+}) {
+  const ends = endsOf(tx);
+  if (!ends) return <MethodCell tx={tx} />;
+  return (
+    <span className="max-md:whitespace-normal">
+      {ends.from} → {ends.to}
+    </span>
   );
 }
 

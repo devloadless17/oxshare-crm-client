@@ -17,6 +17,7 @@ import {
   type Filters,
 } from '@/components/transactions/transaction-filters';
 import { MethodCell, StateBadge } from '@/components/transactions/transaction-cells';
+import { useTransferEnds } from '@/components/transactions/transfer-ends';
 import { paymentsApi, type Transaction, type TransactionQuery } from '@/lib/api/payments';
 import { SignedAmount } from '@/components/money/signed-amount';
 import { t } from '@/lib/i18n';
@@ -166,6 +167,8 @@ export function ActivityList() {
   );
 
   const [detail, setDetail] = React.useState<Transaction | null>(null);
+  // Names the wallet and the exact account on every transfer row.
+  const endsOf = useTransferEnds();
 
   const columns: Column<Transaction>[] = [
     {
@@ -243,7 +246,7 @@ export function ActivityList() {
               inline spans and a literal dot wrap as one sentence, which is what
               this is.
             */}
-            <MethodCell tx={tx} /> · {tx.currency}
+            <MethodCell tx={tx} ends={endsOf(tx)} /> · {tx.currency}
           </span>
         </span>
       ),
@@ -329,7 +332,7 @@ export function ActivityList() {
       // Folded under the Type cell below `md` — see the Currency column.
       headerClassName: 'hidden md:table-cell',
       cellClassName: 'hidden md:table-cell',
-      cell: (tx) => <MethodCell tx={tx} />,
+      cell: (tx) => <MethodCell tx={tx} ends={endsOf(tx)} />,
     },
     {
       header: t('transactions.colStatus'),
