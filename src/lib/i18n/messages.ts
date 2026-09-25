@@ -192,6 +192,8 @@ export const messages = {
   'nav.collapseSidebar': 'Collapse the sidebar',
   'nav.expandSidebar': 'Expand the sidebar',
   'nav.closeMenu': 'Close menu',
+  /** The arrow beside a menu group: it opens that group's list of pages. */
+  'nav.groupPages': '{group} pages',
   'nav.collapse': 'Collapse sidebar',
   'nav.expand': 'Expand sidebar',
 

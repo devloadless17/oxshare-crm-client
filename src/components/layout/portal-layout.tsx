@@ -49,6 +49,8 @@ export const NAV_ITEMS: NavItem[] = [
   {
     label: 'nav.transactions',
     href: '#transactions',
+    // Its NAME opens the Statement — the /transactions page it has always named.
+    home: '/transactions',
     icon: Receipt,
     children: [
       { label: 'nav.deposit', href: '/deposit', icon: ArrowDownToLine },
