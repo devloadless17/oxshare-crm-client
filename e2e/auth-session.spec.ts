@@ -176,11 +176,17 @@ test.describe('registration', () => {
     await page.getByPlaceholder('Doe').fill('Newman');
     await page.getByPlaceholder('you@example.com').fill(client.email);
     await page.locator('input[type="password"]').first().fill('short');
-    await page.getByRole('button', { name: /complete registration|create account/i }).click();
+    // Refused on the ACCOUNT step, before the details are asked for — not
+    // after the client has filled in everything else.
+    await page.getByRole('button', { name: /^continue$/i }).click();
 
     // Still on the form, with something said about it. Which side rejected it
     // does not matter to the client; being told does.
     await expect(page).toHaveURL(/register/);
+    await expect(page.getByText(/step 1 of 2/i)).toBeVisible();
+    await expect(
+      page.getByRole('alert').filter({ hasText: /at least 8 characters/i }),
+    ).toBeVisible();
   });
 });
 

@@ -4,16 +4,37 @@ import * as React from 'react';
 import { normaliseReferralCode } from '@/lib/referral-code';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Lock, Mail, User, Eye, EyeOff, AlertCircle, Handshake } from 'lucide-react';
+import { Lock, Mail, User, Eye, EyeOff, AlertCircle, Handshake, ArrowLeft } from 'lucide-react';
 import { api } from '@/lib/api';
-import { apiErrorMessage } from '@/lib/api/errors';
+import { apiErrorMessage, apiFieldErrors } from '@/lib/api/errors';
 import { confirmEmailPath, rememberPendingEmail } from '@/lib/pending-email';
+import {
+  ACCOUNT_FIELDS,
+  EMPTY_REGISTER_VALUES,
+  REQUIRED_DETAIL_FIELDS,
+  firstErrorField,
+  missingFields,
+  registerPayload,
+  stepOf,
+  type RegisterField,
+  type RegisterValues,
+} from '@/lib/register-form';
 import { t } from '@/lib/i18n';
 import { RedirectIfAuthenticated } from '@/components/auth/redirect-if-authenticated';
 import { AuthShell } from '@/components/auth/auth-shell';
+import {
+  RegisterDetailsStep,
+  usePrefetchProfileOptions,
+} from '@/components/auth/register-details-step';
+import { StepIndicator, TextField } from '@/components/auth/register-fields';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { PageLoader } from '@/components/ui/loader';
+
+type FieldErrors = Partial<Record<RegisterField, string>>;
+
+/** Loose on purpose — the server is the judge; this only catches a missing "@". */
+const LOOKS_LIKE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD = 8;
 
 /**
  * Signed-out only, like the sign-in screen and for the same reason: this
@@ -71,11 +92,21 @@ function RegisterForm() {
   const signInHref = referralCode
     ? `/auth/login?ref=${encodeURIComponent(referralCode)}`
     : '/auth/login';
-  const [firstName, setFirstName] = React.useState('');
-  const [lastName, setLastName] = React.useState('');
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
+  /*
+   * TWO STEPS, ONE FORM (the client's request, 25 Sep 2026): the account, then
+   * the personal details the identity verification opens with — so nobody
+   * types their details twice. Both steps are one set of values, sent once;
+   * going Back loses nothing. See `lib/register-form.ts` for which rules live
+   * here (what the screen needs) and which do not (everything the server
+   * judges).
+   */
+  const [step, setStep] = React.useState<1 | 2>(1);
+  const [values, setValues] = React.useState<RegisterValues>(EMPTY_REGISTER_VALUES);
+  const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [showPassword, setShowPassword] = React.useState(false);
+  // The server's lists, fetched while the client is still on step 1 so step 2
+  // never opens on a spinner. Public and the same for everybody.
+  usePrefetchProfileOptions();
   const [isLoading, setIsLoading] = React.useState(false);
   /*
    * REGISTERED ALREADY — and the button must stay dead until the next screen.
@@ -94,6 +125,68 @@ function RegisterForm() {
   const [registered, setRegistered] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  /*
+   * Where the keyboard goes when the screen changes under it: the first field
+   * in trouble, or else the first field of the step just opened. Without it a
+   * keyboard or screen-reader user presses Continue and is left on a button
+   * that no longer exists.
+   */
+  const [focusTarget, setFocusTarget] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!focusTarget) return;
+    const target =
+      document.getElementById(focusTarget) ??
+      document.querySelector<HTMLElement>(`[aria-label="${t('auth.register.phone')}"]`);
+    target?.focus();
+    target?.scrollIntoView?.({ block: 'center' });
+  }, [focusTarget, step]);
+
+  const update = (field: RegisterField, value: string) => {
+    setValues((current) => ({ ...current, [field]: value }));
+    // An edited field has been answered; its old sentence no longer applies.
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const showErrors = (errors: FieldErrors) => {
+    setFieldErrors(errors);
+    const first = firstErrorField(errors);
+    if (!first) return;
+    setStep(stepOf(first));
+    setFocusTarget(first);
+  };
+
+  /** Step 1 → 2, once the account fields are there to send. */
+  const handleContinue = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const errors: FieldErrors = {};
+    for (const field of missingFields(values, ACCOUNT_FIELDS)) {
+      errors[field] = t('auth.register.required');
+    }
+    if (!errors.email && !LOOKS_LIKE_EMAIL.test(values.email.trim())) {
+      errors.email = t('auth.register.emailInvalid');
+    }
+    if (!errors.password && values.password.length < MIN_PASSWORD) {
+      errors.password = t('auth.register.passwordHint');
+    }
+    if (Object.keys(errors).length > 0) {
+      showErrors(errors);
+      return;
+    }
+    // The account step's sentences are answered; a refusal the server gave
+    // about a DETAIL still stands, and stays under its box on the next step.
+    setFieldErrors((current) =>
+      Object.fromEntries(Object.entries(current).filter(([field]) => stepOf(field) === 2)),
+    );
+    setStep(2);
+    setFocusTarget('dateOfBirth');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     /*
@@ -105,23 +198,19 @@ function RegisterForm() {
     if (isLoading || registered) return;
     setError(null);
 
-    if (!email || !password || !firstName || !lastName) {
-      setError(t('auth.register.fillRequired'));
+    const missing = missingFields(values, REQUIRED_DETAIL_FIELDS);
+    if (missing.length > 0) {
+      showErrors(Object.fromEntries(missing.map((f) => [f, t('auth.register.required')])));
       return;
     }
 
     setIsLoading(true);
 
     try {
-      await api.auth.register({
-        email,
-        password,
-        firstName,
-        lastName,
-        // Omitted rather than sent empty when there is no `?ref=`. An empty
-        // string is a value the API would have to interpret; absence is not.
-        ...(referralCode ? { referralCode } : {}),
-      });
+      // Blank optional fields and an absent `?ref=` are OMITTED, not sent
+      // empty: absence means "not given", and an empty string is a value the
+      // API would have to interpret.
+      await api.auth.register(registerPayload(values, referralCode));
 
       setRegistered(true);
       /*
@@ -136,10 +225,22 @@ function RegisterForm() {
        * `push`, not `replace`: "Back" from the code screen returns here, which is
        * where somebody who mistyped their address needs to be.
        */
-      rememberPendingEmail(email);
+      rememberPendingEmail(values.email.trim());
       router.push(confirmEmailPath('register'));
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, t('auth.register.failed')));
+      /*
+       * The server answers per FIELD for anything it refuses — a name with a
+       * digit, a phone nobody can dial, an under-18 date of birth — and each
+       * sentence goes under its own box, on whichever step holds it. Only a
+       * refusal about no field in particular becomes the banner.
+       */
+      const errors = apiFieldErrors(err) as FieldErrors;
+      if (firstErrorField(errors)) {
+        showErrors(errors);
+        setError(t('auth.register.fixHighlighted'));
+      } else {
+        setError(apiErrorMessage(err, t('auth.register.failed')));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -188,116 +289,114 @@ function RegisterForm() {
             </div>
           )}
 
-          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label htmlFor="firstName" className="text-xs font-semibold text-foreground">
-                  {t('auth.register.firstName')}
-                </label>
-                <div className="relative">
-                  <User
-                    className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <Input
-                    id="firstName"
-                    type="text"
-                    required
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder={t('auth.register.firstNamePlaceholder')}
-                    className="h-11 pl-10"
-                  />
-                </div>
-              </div>
+          <StepIndicator step={step} />
 
-              <div className="space-y-1.5">
-                <label htmlFor="lastName" className="text-xs font-semibold text-foreground">
-                  {t('auth.register.lastName')}
-                </label>
-                <div className="relative">
-                  <User
-                    className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <Input
-                    id="lastName"
-                    type="text"
-                    required
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder={t('auth.register.lastNamePlaceholder')}
-                    className="h-11 pl-10"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="text-xs font-semibold text-foreground">
-                {t('auth.register.email')}
-              </label>
-              <div className="relative">
-                <Mail
-                  className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
-                  aria-hidden="true"
+          {step === 1 ? (
+            <form onSubmit={handleContinue} noValidate className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <TextField
+                  field="firstName"
+                  label={t('auth.register.firstName')}
+                  icon={User}
+                  value={values.firstName}
+                  error={fieldErrors.firstName}
+                  onChange={update}
+                  placeholder={t('auth.register.firstNamePlaceholder')}
+                  autoComplete="given-name"
+                  maxLength={100}
                 />
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t('auth.login.emailPlaceholder')}
-                  className="h-11 pl-10"
+                <TextField
+                  field="lastName"
+                  label={t('auth.register.lastName')}
+                  icon={User}
+                  value={values.lastName}
+                  error={fieldErrors.lastName}
+                  onChange={update}
+                  placeholder={t('auth.register.lastNamePlaceholder')}
+                  autoComplete="family-name"
+                  maxLength={100}
                 />
               </div>
-            </div>
+              <p className="-mt-2 text-[11px] text-muted-foreground">
+                {t('auth.register.nameAsOnId')}
+              </p>
 
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="text-xs font-semibold text-foreground">
-                {t('auth.register.password')}
-              </label>
-              <div className="relative">
-                <Lock
-                  className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t('auth.login.passwordPlaceholder')}
-                  className="h-11 pl-10 pr-11"
-                />
-                <button
+              <TextField
+                field="email"
+                type="email"
+                label={t('auth.register.email')}
+                icon={Mail}
+                value={values.email}
+                error={fieldErrors.email}
+                onChange={update}
+                placeholder={t('auth.login.emailPlaceholder')}
+                autoComplete="email"
+              />
+
+              <TextField
+                field="password"
+                type={showPassword ? 'text' : 'password'}
+                label={t('auth.register.password')}
+                icon={Lock}
+                value={values.password}
+                error={fieldErrors.password}
+                hint={t('auth.register.passwordHint')}
+                onChange={update}
+                placeholder={t('auth.login.passwordPlaceholder')}
+                autoComplete="new-password"
+                trailing={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                    className="absolute right-3 top-3 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                }
+              />
+
+              <Button type="submit" size="lg" className="w-full">
+                {t('auth.register.continue')}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-5">
+              <RegisterDetailsStep values={values} errors={fieldErrors} onChange={update} />
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                <Button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                  className="absolute right-3 top-3 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
+                  variant="outline"
+                  size="lg"
+                  disabled={isLoading || registered}
+                  onClick={() => {
+                    setError(null);
+                    setStep(1);
+                    setFocusTarget('firstName');
+                  }}
+                  className="sm:w-auto"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                  {t('auth.register.back')}
+                </Button>
+                {/* Still "working" once registered: the next screen is loading, and
+                    a button that springs back to "Create account" in that gap is
+                    an invitation to press it again. */}
+                <Button
+                  type="submit"
+                  loading={isLoading || registered}
+                  disabled={registered}
+                  size="lg"
+                  className="w-full sm:flex-1"
+                >
+                  {isLoading || registered
+                    ? t('auth.register.submitting')
+                    : t('auth.register.submitCta')}
+                </Button>
               </div>
-            </div>
-
-            {/* Still "working" once registered: the next screen is loading, and
-                a button that springs back to "Create account" in that gap is
-                an invitation to press it again. */}
-            <Button
-              type="submit"
-              loading={isLoading || registered}
-              disabled={registered}
-              size="lg"
-              className="w-full"
-            >
-              {isLoading || registered
-                ? t('auth.register.submitting')
-                : t('auth.register.submitCta')}
-            </Button>
-          </form>
+            </form>
+          )}
         </div>
 
         <p className="text-center text-xs text-muted-foreground">

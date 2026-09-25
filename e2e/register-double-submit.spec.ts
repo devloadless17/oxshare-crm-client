@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures';
+import { fillRegisterForm } from './helpers';
 
 /**
  * ONE REGISTRATION PER REGISTRATION — proved in a browser.
@@ -41,10 +42,12 @@ test('clicking Register three times sends exactly one registration', async ({ pa
   await page.goto('/auth/register');
   await page.waitForLoadState('networkidle');
 
-  await page.getByLabel(/first name/i).fill('Ada');
-  await page.getByLabel(/last name/i).fill('Lovelace');
-  await page.getByLabel(/email/i).fill(`ada-${Date.now()}@example.test`);
-  await page.getByLabel(/^password/i).fill('A-strong-passphrase-1');
+  await fillRegisterForm(page, {
+    firstName: 'Ada',
+    lastName: 'Lovelace',
+    email: `ada-${Date.now()}@example.test`,
+    password: 'A-strong-passphrase-1',
+  });
 
   const submit = page.getByRole('button', { name: /^create account$/i });
   await submit.click();

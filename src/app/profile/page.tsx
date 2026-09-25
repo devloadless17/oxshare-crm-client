@@ -11,6 +11,7 @@ import { AsyncBoundary } from '@/components/async-boundary';
 import { KycSubmissionDetails } from '@/components/kyc/kyc-submission-details';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
+import { addressLine, formatDateOfBirth, formatPhone } from '@/lib/profile';
 import { AvatarUploader } from './avatar-uploader';
 import { ChangePasswordForm } from './change-password-form';
 import { SessionsList } from './sessions-list';
@@ -135,10 +136,20 @@ export default function ProfilePage() {
                 }
                 hintTone={user.emailVerified ? 'success' : 'warning'}
               />
-              {/* `phone` and `country` are optional on UserProfileDto. An empty
-                  row reads as a failed load; "Not provided" says which it is. */}
-              <Field label={t('profile.phone')} value={user.phone} />
+              {/*
+                THE WHOLE PROFILE, once (backend 0139). The date of birth,
+                nationality and address used to exist only inside the KYC
+                submission, so this panel showed a name and a phone while the
+                section below printed the name again beside the rest — one person
+                described twice, by two records that could and did disagree.
+                Every field is optional on UserProfileDto; an empty row reads as
+                a failed load, so "Not provided" says which it is.
+              */}
+              <Field label={t('profile.dateOfBirth')} value={formatDateOfBirth(user.dateOfBirth)} />
+              <Field label={t('profile.nationality')} value={user.nationality} />
+              <Field label={t('profile.phone')} value={formatPhone(user.phone)} />
               <Field label={t('profile.country')} value={user.country} />
+              <Field label={t('profile.address')} value={addressLine(user)} />
               <Field
                 label={t('profile.accountType')}
                 value={
@@ -154,6 +165,7 @@ export default function ProfilePage() {
                 }
               />
             </dl>
+            <ProfileEditNote kycStatus={kycQuery.data?.status} />
           </Panel>
 
           <Panel title={t('profile.verificationTitle')}>
@@ -218,7 +230,9 @@ export default function ProfilePage() {
         {kycQuery.data && kycQuery.data.status !== 'not_started' && (
           <section className="space-y-3 pb-6">
             <h2 className="text-base font-semibold text-foreground">{t('profile.kycTitle')}</h2>
-            <KycSubmissionDetails status={kycQuery.data} />
+            {/* The documents, and only a broker's own questions: the identity
+                itself is the panel above. */}
+            <KycSubmissionDetails status={kycQuery.data} hideProfile />
           </section>
         )}
       </AsyncBoundary>
@@ -347,5 +361,43 @@ function Field({
         )}
       </dd>
     </div>
+  );
+}
+
+/**
+ * Where the client changes these details — which depends on where their
+ * verification stands, and says so rather than leaving them to find out.
+ *
+ * The profile is EDITED in the identity verification's personal step while the
+ * client still holds it; once submitted, what they wrote is what a reviewer is
+ * checking against their documents, and after approval it is verified
+ * (backend `deskLocks`). A page that showed the details with no word on how to
+ * change them sends a client who moved house to guess.
+ */
+function ProfileEditNote({ kycStatus }: { kycStatus?: string }) {
+  if (kycStatus === 'submitted' || kycStatus === 'under_review') {
+    return (
+      <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
+        {t('profile.editLockedReview')}
+      </p>
+    );
+  }
+  if (kycStatus === 'approved') {
+    return (
+      <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
+        {t('profile.editLockedVerified')}
+      </p>
+    );
+  }
+  return (
+    <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
+      {t('profile.editInKyc')}{' '}
+      <Link
+        href="/kyc"
+        className="rounded-md font-semibold text-link hover:underline focus-outline"
+      >
+        {t('profile.editCta')}
+      </Link>
+    </p>
   );
 }

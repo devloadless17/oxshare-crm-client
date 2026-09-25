@@ -126,8 +126,19 @@ export const messages = {
   'profile.firstName': 'First name',
   'profile.lastName': 'Last name',
   'profile.email': 'Email address',
-  'profile.country': 'Country',
+  'profile.country': 'Country of residence',
   'profile.phone': 'Phone',
+  'profile.dateOfBirth': 'Date of birth',
+  'profile.nationality': 'Nationality',
+  'profile.address': 'Address',
+  // Where the details are changed, by the verification's state (see
+  // ProfileEditNote on the profile page).
+  'profile.editInKyc': 'You can update these details in your identity verification.',
+  'profile.editCta': 'Update details',
+  'profile.editLockedReview':
+    'Your details are being checked against your documents, so they cannot be changed until the review is finished.',
+  'profile.editLockedVerified':
+    'Your details are verified. To change them, contact support — some changes need a new verification.',
   'profile.accountType': 'Account type',
   'profile.memberSince': 'Member since',
   'profile.notProvided': 'Not provided',
@@ -229,7 +240,7 @@ export const messages = {
   'auth.register.lastName': 'Last Name',
   'auth.register.email': 'Email Address',
   'auth.register.password': 'Password',
-  'auth.register.country': 'Country',
+  'auth.register.country': 'Country of residence',
   'auth.register.phone': 'Phone number',
   'auth.register.submit': 'Create account',
   'auth.register.submitting': 'Creating your account…',
@@ -247,6 +258,35 @@ export const messages = {
   // The button repeats the heading's verb, so the one action on the screen is
   // named the same way twice.
   'auth.register.submitCta': 'Create account',
+  // ── Sign-up in two steps (25 Sep 2026) ──
+  // The details step exists so the identity verification opens filled in: the
+  // note says so, because "why do you need my nationality to sign up?" is the
+  // question those fields raise.
+  'auth.register.stepOf': 'Step {step} of {total}',
+  'auth.register.stepAccount': 'Your account',
+  'auth.register.stepDetails': 'Personal details',
+  'auth.register.continue': 'Continue',
+  'auth.register.back': 'Back',
+  'auth.register.nameAsOnId': 'Use your name exactly as it appears on your passport or ID.',
+  'auth.register.detailsNote':
+    'These fill in your identity verification, so you will not need to type them again. Enter them exactly as they appear on your ID.',
+  'auth.register.dateOfBirth': 'Date of birth',
+  'auth.register.nationality': 'Nationality',
+  'auth.register.city': 'City',
+  'auth.register.cityPlaceholder': 'Beirut',
+  'auth.register.address': 'Street address',
+  'auth.register.addressPlaceholder': 'Building, street and area',
+  'auth.register.postalCode': 'Postal / ZIP code',
+  'auth.register.postalCodePlaceholder': 'e.g. 1103',
+  'auth.register.postalCodeHint': 'Leave blank if your address has none.',
+  'auth.register.optional': '(optional)',
+  'auth.register.required': 'This field is required.',
+  'auth.register.emailInvalid': 'Enter a valid email address.',
+  'auth.register.fixHighlighted': 'Please correct the highlighted fields.',
+  'auth.register.listLoading': 'Loading…',
+  // Never an empty list: that would read as "there is nothing to choose".
+  'auth.register.listFailed':
+    'We could not load the list of countries and nationalities. Please try again.',
 
   // ── Auth: confirm the email with the 6-digit code ────────────────────────
   /*
@@ -1195,6 +1235,8 @@ export const messages = {
 
   // ── KYC: review summary and steps ─────────────────────────────────────────
   'kyc.personalInfo': 'Personal Information',
+  'kyc.personalPrefilled':
+    'We have filled in the details you gave when you signed up. Check that each one matches your ID — any change you make here updates your account too.',
   'kyc.fullName': 'Full Name',
   'kyc.dateOfBirth': 'Date of Birth',
   'kyc.phone': 'Phone',

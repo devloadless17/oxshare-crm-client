@@ -343,6 +343,51 @@ export async function signIn(
 }
 
 /**
+ * The personal details a sign-up gives (25 Sep 2026) — and so what the KYC
+ * personal step must open with. Exported so a spec can assert the pre-fill
+ * against the same values it typed.
+ */
+export const SIGN_UP_DETAILS = {
+  dateOfBirth: '1991-03-09',
+  nationality: 'Lebanese',
+  country: 'Lebanon',
+  /** As typed, grouped; stored as `+96170123456`. */
+  nationalNumber: '70 123 456',
+  city: 'Beirut',
+} as const;
+
+/**
+ * Fill BOTH steps of the sign-up form: the account, Continue, then the
+ * personal details the identity verification opens with. The final "Create
+ * account" is left to the caller, which is where each spec waits on the
+ * response it cares about.
+ */
+export async function fillRegisterForm(
+  page: Page,
+  client: { email: string; password: string; firstName?: string; lastName?: string },
+): Promise<void> {
+  await page.getByPlaceholder('John').fill(client.firstName ?? 'Kaya');
+  await page.getByPlaceholder('Doe').fill(client.lastName ?? 'Newman');
+  await page.getByPlaceholder('you@example.com').fill(client.email);
+  await page.locator('input[type="password"]').first().fill(client.password);
+  await page.getByRole('button', { name: /^continue$/i }).click();
+
+  await page.getByLabel(/date of birth/i).fill(SIGN_UP_DETAILS.dateOfBirth);
+  await pickOption(page, /nationality/i, SIGN_UP_DETAILS.nationality);
+  // Choosing the country starts the phone in its dial code, so the number is
+  // typed after it — the order a person fills the form in.
+  await pickOption(page, /country of residence/i, SIGN_UP_DETAILS.country);
+  await page.getByLabel('Phone number').fill(SIGN_UP_DETAILS.nationalNumber);
+  await page.getByLabel(/^city/i).fill(SIGN_UP_DETAILS.city);
+}
+
+/** One of the styled drop-downs: open it, pick the exact entry. */
+async function pickOption(page: Page, label: RegExp, option: string): Promise<void> {
+  await page.getByRole('combobox', { name: label }).click();
+  await page.getByRole('option', { name: option, exact: true }).click();
+}
+
+/**
  * Register a brand-new client through the real form.
  *
  * Shares `signIn`'s reason for existing: registration is capped at TEN PER HOUR
@@ -360,10 +405,7 @@ export async function register(
   client: { email: string; password: string },
 ): Promise<void> {
   await page.goto('/auth/register');
-  await page.getByPlaceholder('John').fill('Kaya');
-  await page.getByPlaceholder('Doe').fill('Newman');
-  await page.getByPlaceholder('you@example.com').fill(client.email);
-  await page.locator('input[type="password"]').first().fill(client.password);
+  await fillRegisterForm(page, client);
 
   const [response] = await Promise.all([
     page.waitForResponse((res) => isApi(res, '/auth/register', 'POST'), { timeout: 30_000 }),

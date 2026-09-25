@@ -61,9 +61,22 @@ function countryFor(value: string, current?: CountryItem): CountryItem | undefin
   return best.find((c) => c.code === current?.code) ?? best[0];
 }
 
-/** The national part of `value`, once its country's code is taken off. */
+/**
+ * The national part of `value`, once its country's code is taken off.
+ *
+ * A number the SERVER holds arrives in E.164 — `+96170123456`, one canonical
+ * string per number (backend 0139) — and is shown grouped the way it is read,
+ * `70 123 456`. Without that, a client's own number came back from a save as
+ * an unbroken run of digits under the cursor. What a client TYPES is kept as
+ * typed: the echo check above never re-derives it.
+ */
 function nationalPartOf(value: string, country: CountryItem | undefined): string {
-  return country ? value.slice(country.dialCode.length).trim() : value;
+  if (!country) return value;
+  const grouped = /^\+\d+$/.test(value)
+    ? parsePhoneNumberFromString(value)?.formatInternational()
+    : undefined;
+  const shown = grouped?.startsWith(country.dialCode) ? grouped : value;
+  return shown.slice(country.dialCode.length).trim();
 }
 
 export function PhoneInput({

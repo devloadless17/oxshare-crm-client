@@ -4,9 +4,11 @@ import {
   API_NODE_BASE,
   APP_ORIGIN,
   E2E_CLIENT,
+  SIGN_UP_DETAILS,
   apiFromPage,
   deleteCookie,
   isApi,
+  kycStepPath,
   linkIn,
   newClient,
   register,
@@ -191,6 +193,42 @@ test('"Verify now" opens the identity wizard; "Verify later" the dashboard', asy
   await page.goto('/onboarding');
   await page.getByRole('link', { name: /verify later/i }).click();
   await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
+});
+
+test('the identity wizard opens on what sign-up gave — nothing is typed twice', async () => {
+  /*
+   * The client's request (25 Sep 2026): the details given at sign-up are the
+   * ones the verification shows, because they are ONE record (backend 0139) —
+   * read off the screen the way the client meets them, the phone included:
+   * stored as +96170123456, shown grouped.
+   */
+  await page.goto(await kycStepPath(page, 'personal'));
+  await expect(page.getByText(/filled in the details you gave when you signed up/i)).toBeVisible({
+    timeout: 20_000,
+  });
+  await expect(page.getByLabel(/^first name/i)).toHaveValue('Kaya');
+  await expect(page.getByLabel(/^last name/i)).toHaveValue('Newman');
+  await expect(page.getByLabel(/^date of birth/i)).toHaveValue(SIGN_UP_DETAILS.dateOfBirth);
+  await expect(page.getByRole('combobox', { name: /^nationality/i })).toHaveText(
+    new RegExp(SIGN_UP_DETAILS.nationality),
+  );
+  await expect(page.getByRole('combobox', { name: /^country of residence/i })).toHaveText(
+    new RegExp(SIGN_UP_DETAILS.country),
+  );
+  await expect(page.getByLabel(/^phone number/i)).toHaveValue(SIGN_UP_DETAILS.nationalNumber);
+  await expect(page.getByLabel(/^city/i)).toHaveValue(SIGN_UP_DETAILS.city);
+
+  // The ACCOUNT holds the same values — one record, not a copy the form keeps.
+  const me = (await apiFromPage(page, 'GET', '/auth/me')).body as Record<string, unknown>;
+  expect(me).toMatchObject({
+    firstName: 'Kaya',
+    lastName: 'Newman',
+    dateOfBirth: SIGN_UP_DETAILS.dateOfBirth,
+    nationality: SIGN_UP_DETAILS.nationality,
+    country: SIGN_UP_DETAILS.country,
+    city: SIGN_UP_DETAILS.city,
+    phone: '+96170123456',
+  });
 });
 
 test('neither the used code nor the emailed link can be spent again', async () => {

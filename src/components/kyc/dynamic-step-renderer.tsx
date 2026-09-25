@@ -4,6 +4,7 @@ import { DocumentUploader } from './document-uploader';
 import { documentChoiceKey, uploadFieldFor } from './doc-type';
 import type { components } from '@/lib/api/types.gen';
 import { t } from '@/lib/i18n';
+import { Info } from 'lucide-react';
 import { StepField } from './step-field';
 import { ReviewSummary } from './review-summary';
 import { isPageReturned } from './upload-state';
@@ -157,6 +158,20 @@ export function DynamicStepRenderer({
         <h2 className="text-xl font-extrabold text-foreground">{title}</h2>
         <p className="text-xs text-muted-foreground mt-1">{description}</p>
       </div>
+
+      {/*
+       * THE PERSONAL STEP IS THE CLIENT'S PROFILE (backend 0139), filled in
+       * from what they gave at sign-up — so it says so, and says the other half
+       * too: a change here changes their account, because there is one record.
+       * Without the sentence a pre-filled form reads either as somebody else's
+       * data or as a copy that can safely disagree with the account.
+       */}
+      {slug === 'personal' && (
+        <p className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+          <Info className="mt-px h-4 w-4 shrink-0 text-link" aria-hidden="true" />
+          <span>{t('kyc.personalPrefilled')}</span>
+        </p>
+      )}
 
       {/*
        * EVERY FIELD COMES FROM THE CONFIG. No slug branching, no hard-coded

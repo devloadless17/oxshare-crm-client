@@ -91,6 +91,18 @@ test.describe('coming back to an unfinished KYC', () => {
     );
     // Wherever the broker has put it — the builder may reorder the steps.
     const personalStep = await kycStepPath(page, 'personal');
+    /*
+     * The form opens on the ACCOUNT's phone now (one profile, backend 0139) —
+     * and the dial code comes with it. This fixture registered with a UAE
+     * number, so a Lebanese national number typed over it would be read as a
+     * UAE one. Start from a Lebanese number, the way the client would have
+     * picked the country before typing.
+     */
+    const seeded = await apiFromPage(page, 'POST', '/kyc/step', {
+      step: 'personal',
+      data: { phone: '+961 71 000 111' },
+    });
+    expect(seeded.status).toBeLessThan(300);
     await page.goto(personalStep);
     await page.waitForLoadState('networkidle');
 
@@ -159,8 +171,15 @@ test.describe('coming back to an unfinished KYC', () => {
     await page.waitForLoadState('networkidle');
     const status = await apiFromPage(page, 'GET', '/kyc/status');
     expect(
-      (status.body as { personalInfo?: { phone?: string } }).personalInfo?.phone,
+      // Cleared is ABSENT: the profile holds no phone at all (0139), and the
+      // view leaves a blank field out rather than sending an empty string.
+      (status.body as { personalInfo?: { phone?: string } }).personalInfo?.phone ?? '',
       'the server kept the number the client cleared',
+    ).toBe('');
+    const me = await apiFromPage(page, 'GET', '/auth/me');
+    expect(
+      (me.body as { phone?: string | null }).phone ?? '',
+      'the ACCOUNT kept the number the client cleared in KYC — two records again',
     ).toBe('');
 
     await page.goto(personalStep);
