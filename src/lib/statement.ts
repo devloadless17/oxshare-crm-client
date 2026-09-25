@@ -70,10 +70,22 @@ export function periodRange(
  * name and the MT5 login are appended when the API resolved them — they are
  * what tells one deposit from the next on a statement.
  */
-export function describeLine(line: StatementLine): string {
+export function describeLine(line: StatementLine, walletName?: string): string {
   const credit = !new Decimal(line.amount).isNegative();
   const withMethod = (label: string) => (line.methodName ? `${label} · ${line.methodName}` : label);
-  const login = line.tradingAccountLogin ? ` #${line.tradingAccountLogin}` : '';
+  /*
+   * A transfer names BOTH ends — this wallet and the exact account — because
+   * "Transfer to trading account" cannot tell a client with two accounts
+   * which one the money went to.
+   */
+  const wallet = walletName?.trim() || t('statement.thisWallet');
+  const account = [
+    line.tradingAccountName?.trim() || t('transfer.tradingAccount'),
+    line.tradingAccountLogin ? `#${line.tradingAccountLogin}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const route = (from: string, to: string) => t('statement.lineTransfer', { from, to });
 
   switch (line.entryType) {
     case 'deposit':
@@ -86,11 +98,11 @@ export function describeLine(line: StatementLine): string {
       );
     case 'transfer':
       if (line.referenceType === 'ib_transfer') {
-        return credit ? t('statement.lineCommissionIn') : t('statement.lineCommissionOut');
+        return credit
+          ? route(t('transfer.commissionWallet'), wallet)
+          : route(wallet, t('statement.mainWallet'));
       }
-      return credit
-        ? t('statement.lineFromAccount', { login })
-        : t('statement.lineToAccount', { login });
+      return credit ? route(account, wallet) : route(wallet, account);
     case 'commission':
       return t('statement.lineCommission');
     case 'rebate':
@@ -137,15 +149,18 @@ export function csvCell(value: string): string {
  * The statement as CSV — money as the API's own decimal strings, never
  * re-formatted (a thousands separator in a CSV number is a second column).
  */
-export function statementCsv(statement: {
-  currency: string;
-  from: string;
-  to: string;
-  walletNumber: string;
-  openingBalance: string;
-  closingBalance: string;
-  lines: StatementLine[];
-}): string {
+export function statementCsv(
+  statement: {
+    currency: string;
+    from: string;
+    to: string;
+    walletNumber: string;
+    openingBalance: string;
+    closingBalance: string;
+    lines: StatementLine[];
+  },
+  walletName?: string,
+): string {
   const header = [
     'Date',
     'Description',
@@ -172,7 +187,7 @@ export function statementCsv(statement: {
     rows.push(
       [
         csvCell(new Date(line.createdAt).toISOString()),
-        csvCell(describeLine(line)),
+        csvCell(describeLine(line, walletName)),
         csvCell(shortReference(line.referenceId)),
         amount.isNegative() ? '' : amount.toFixed(8),
         amount.isNegative() ? amount.abs().toFixed(8) : '',

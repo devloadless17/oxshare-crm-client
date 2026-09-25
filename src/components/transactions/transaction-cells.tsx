@@ -33,7 +33,21 @@ import { t, type MessageKey } from '@/lib/i18n';
  *     deliberately NOT shown raw: `manual_bank_transfer` is an internal
  *     identifier, not something to put on a client's statement.
  */
-export function MethodCell({ tx }: { tx: Transaction }) {
+export function MethodCell({
+  tx,
+  ends,
+}: {
+  tx: Transaction;
+  /**
+   * Both ends of a transfer by NAME (`useTransferEnds`) — "USD Wallet → Main ·
+   * #7001". Optional: without it the generic route below still renders.
+   */
+  ends?: { from: string; to: string } | null;
+}) {
+  if (ends && (tx.kind === 'transfer' || tx.kind === 'commission_transfer')) {
+    return <TransferRoute label={`${ends.from} → ${ends.to}`} />;
+  }
+
   /*
    * A transfer went through no payment method, and saying so is more useful
    * than an em dash: it names the other end of the movement — the client's own

@@ -79,7 +79,13 @@ export function StatementBody({
               {t('statement.title')} {walletName} {period}
             </caption>
             <thead>
-              <tr className="border-b border-border text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+              {/*
+                `h-px` on every fixed row: the table is `h-full` so the spacer
+                row can push Closing balance to the bottom, and a table hands
+                spare height to EVERY row without one — the header grew a few
+                pixels and showed a band between its rule and the opening row.
+              */}
+              <tr className="h-px text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
                 <th className="px-5 py-2.5 text-start font-medium">{t('transactions.colDate')}</th>
                 <th className="px-3 py-2.5 text-start font-medium">
                   {t('statement.colDescription')}
@@ -110,7 +116,9 @@ export function StatementBody({
                   </td>
                 </tr>
               ) : (
-                statement.lines.map((line) => <LineRow key={line.id} line={line} money={money} />)
+                statement.lines.map((line) => (
+                  <LineRow key={line.id} line={line} money={money} walletName={walletName} />
+                ))
               )}
               {statement.lines.length > 0 && (
                 <tr aria-hidden="true">
@@ -145,7 +153,7 @@ export function StatementBody({
                 return (
                   <li key={line.id} className="flex items-start justify-between gap-3 px-4 py-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium">{describeLine(line)}</p>
+                      <p className="text-sm font-medium">{describeLine(line, walletName)}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {new Date(line.createdAt).toLocaleString(undefined, {
                           dateStyle: 'medium',
@@ -179,7 +187,15 @@ export function StatementBody({
   );
 }
 
-function LineRow({ line, money }: { line: StatementLine; money: (value: string) => string }) {
+function LineRow({
+  line,
+  money,
+  walletName,
+}: {
+  line: StatementLine;
+  money: (value: string) => string;
+  walletName: string;
+}) {
   const amount = new Decimal(line.amount);
   const credit = !amount.isNegative();
   const at = new Date(line.createdAt);
@@ -191,7 +207,7 @@ function LineRow({ line, money }: { line: StatementLine; money: (value: string) 
           {at.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
         </span>
       </td>
-      <td className="px-3 py-2.5">{describeLine(line)}</td>
+      <td className="px-3 py-2.5">{describeLine(line, walletName)}</td>
       <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">
         {shortReference(line.referenceId)}
       </td>
@@ -209,8 +225,10 @@ function LineRow({ line, money }: { line: StatementLine; money: (value: string) 
 }
 
 function BalanceRow({ label, date, value }: { label: string; date: string; value: string }) {
+  // ONE rule, on top: the opening row sits under the header's own edge and the
+  // closing row above the spacer, so a bottom rule would double every line.
   return (
-    <tr className="h-px border-y border-border bg-muted/40 font-semibold">
+    <tr className="h-px border-t border-border bg-muted/40 font-semibold">
       <td className="px-5 py-2.5 whitespace-nowrap text-muted-foreground">{date}</td>
       <td className="px-3 py-2.5" colSpan={4}>
         {label}

@@ -22,7 +22,7 @@ export function formatDay(iso: string): string {
 
 /** Save the statement as CSV, named for the wallet and the period it covers. */
 export function downloadCsv(statement: Statement, walletName: string) {
-  const blob = new Blob([statementCsv(statement)], { type: 'text/csv;charset=utf-8' });
+  const blob = new Blob([statementCsv(statement, walletName)], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -68,7 +68,7 @@ export function printStatement(
       const credit = !amount.isNegative();
       return row([
         escapeHtml(new Date(line.createdAt).toLocaleString()),
-        escapeHtml(describeLine(line)),
+        escapeHtml(describeLine(line, walletName)),
         escapeHtml(shortReference(line.referenceId)),
         credit ? money(amount.toFixed(8)) : '',
         credit ? '' : money(amount.abs().toFixed(8)),

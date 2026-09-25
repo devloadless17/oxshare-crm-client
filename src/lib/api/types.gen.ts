@@ -5337,6 +5337,8 @@ export interface components {
             provider: string | null;
             /** @description MT5 login, for a transfer line. */
             tradingAccountLogin: string | null;
+            /** @description Trading account name, for a transfer line. */
+            tradingAccountName: string | null;
             /** @enum {string|null} */
             transferDirection: "wallet_to_account" | "account_to_wallet" | null;
         };
