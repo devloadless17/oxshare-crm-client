@@ -102,7 +102,6 @@ export default function AccountsPage() {
    * the check costs nothing and there is no second request to disagree with the
    * first.
    */
-  const takenNames = rows.map((row) => row.name).filter((name): name is string => Boolean(name));
 
   /*
    * Local state rather than the URL.
@@ -179,7 +178,6 @@ export default function AccountsPage() {
           <EnvironmentPanel
             environment="live"
             accounts={live}
-            takenNames={takenNames}
             emptyTitle={t('accounts.liveEmpty')}
             emptyBody={t('accounts.liveEmptyBody')}
           />
@@ -194,7 +192,6 @@ export default function AccountsPage() {
           <EnvironmentPanel
             environment="demo"
             accounts={demo}
-            takenNames={takenNames}
             emptyTitle={t('accounts.demoEmpty')}
             emptyBody={t('accounts.demoEmptyBody')}
           />
@@ -228,14 +225,12 @@ export default function AccountsPage() {
 function EnvironmentPanel({
   environment,
   accounts,
-  takenNames,
   emptyTitle,
   emptyBody,
 }: {
   environment: 'live' | 'demo';
   accounts: TradingAccount[];
   /** Names this client has used on ANY account — the rule is per client, not per tab. */
-  takenNames: string[];
   emptyTitle: string;
   emptyBody: string;
 }) {
@@ -248,12 +243,7 @@ function EnvironmentPanel({
         <p className="text-sm font-semibold">{emptyTitle}</p>
         <p className="max-w-sm text-xs text-muted-foreground">{emptyBody}</p>
         <div className="pt-1">
-          <OpenAccountButton
-            environment={environment}
-            held={accounts.length}
-            takenNames={takenNames}
-            explainWhenClosed
-          />
+          <OpenAccountButton environment={environment} held={accounts.length} explainWhenClosed />
         </div>
       </div>
     );
@@ -269,12 +259,7 @@ function EnvironmentPanel({
         stops being read at all.
       */}
       <div className="flex justify-end">
-        <OpenAccountButton
-          environment={environment}
-          held={accounts.length}
-          takenNames={takenNames}
-          variant="outline"
-        />
+        <OpenAccountButton environment={environment} held={accounts.length} variant="outline" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -338,23 +323,18 @@ function AccountCard({ account, tone }: { account: TradingAccount; tone: 'live' 
           </div>
 
           {/*
-            The client's own name for the account, when they gave one.
-
-            Above the login rather than instead of it: the login is what every
-            statement, support ticket and MT5 terminal identifies this account
-            by, so it stays the prominent figure. The name is how the CLIENT
-            tells two of them apart, which only matters once they hold several —
-            exactly the case the open-account dialog offers it for.
-
-            Absent when unnamed, rather than falling back to the login here. A
-            caption repeating the number directly beneath it is noise, and it
-            would make "named 5001234" indistinguishable from unnamed.
+            NO PER-ACCOUNT LABEL. Client naming was removed on 25 Sep 2026 — the
+            value fed MT5's account-HOLDER field, which is an identity rather
+            than a label — so there is nothing to print here and nothing that
+            would differ between two of this client's cards anyway. They are
+            told apart by login, product, currency and leverage, which is what
+            actually differs.
+            
+            Accounts named before that keep their label in the database. It is
+            displayed nowhere, so the feature is uniformly gone rather than
+            surviving on one screen; the column is still there if the owner ever
+            wants the labels back.
           */}
-          {account.name && (
-            <p className="mt-2 truncate text-sm font-semibold" title={account.name}>
-              {account.name}
-            </p>
-          )}
 
           <p className="mt-2 text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
             {t('accounts.loginLabel')}
