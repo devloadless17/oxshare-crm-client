@@ -14,7 +14,7 @@ import { t } from '@/lib/i18n';
  * dark panel painted into it — on a laptop that was a ~400px-tall picture
  * pushing the balances below the fold, with text boxed in a rectangle. Now:
  *
- *  - a fixed, modest height (144 → 176px), the image `object-cover`ed and
+ *  - a fixed height (176 → 240px), the image `object-cover`ed and
  *    anchored right, where its subject is — the laptop and the skyline;
  *  - a full-bleed gradient from the reading edge, strong enough that the
  *    painted panel dissolves into it and white text reads at AA on any crop,
@@ -41,7 +41,7 @@ export function WelcomeBanner({ firstName }: { firstName?: string }) {
   return (
     <section
       aria-label={t('dashboard.bannerLabel')}
-      className="relative isolate h-36 shrink-0 overflow-hidden rounded-2xl border border-border bg-black shadow-sm sm:h-40 lg:h-44"
+      className="relative isolate h-44 shrink-0 overflow-hidden rounded-2xl border border-border bg-black shadow-sm sm:h-52 lg:h-60"
     >
       <Image
         src="/dashboard-banner.jpg"
@@ -66,12 +66,15 @@ export function WelcomeBanner({ firstName }: { firstName?: string }) {
         <div className="flex min-w-0 items-stretch gap-4">
           <span aria-hidden="true" className="w-1 shrink-0 rounded-full bg-primary" />
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold tracking-[0.2em] text-primary uppercase sm:text-xs">
-              {t('dashboard.bannerWelcome')}
-            </p>
-            <p className="mt-1 truncate text-2xl leading-tight font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">
-              {firstName || t('dashboard.bannerFallbackName')}
-            </p>
+            {/* The page's h1: "Welcome back" + the name, read as one heading. */}
+            <h1>
+              <span className="block text-[11px] font-semibold tracking-[0.2em] text-primary uppercase sm:text-xs">
+                {t('dashboard.bannerWelcome')}
+              </span>
+              <span className="mt-1 block truncate text-2xl leading-tight font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">
+                {firstName || t('dashboard.bannerFallbackName')}
+              </span>
+            </h1>
             <p className="mt-1.5 text-xs text-white/75 sm:text-sm">
               {t('dashboard.bannerTagline')}
             </p>
