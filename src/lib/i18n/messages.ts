@@ -252,11 +252,15 @@ export const messages = {
   'auth.register.signIn': 'Sign in',
   'auth.register.failed': 'Registration failed. Please try again.',
   'auth.register.passwordHint': 'At least 8 characters',
-  'auth.register.heading': 'Create OXShare Account',
+  // The brand is already on the page; the heading says what the screen does.
+  // Pairs with the login screen's "Welcome back" / "Sign in to your account".
+  'auth.register.heading': 'Create your account',
   'auth.register.tagline': 'Start trading with zero commission & deep liquidity',
   'auth.register.firstNamePlaceholder': 'John',
   'auth.register.lastNamePlaceholder': 'Doe',
-  'auth.register.submitCta': 'Complete Registration',
+  // The button repeats the heading's verb, so the one action on the screen is
+  // named the same way twice.
+  'auth.register.submitCta': 'Create account',
 
   // ── Auth: email verification ──────────────────────────────────────────────
   'auth.verify.pendingTitle': 'Verify your email',
@@ -1190,8 +1194,17 @@ export const messages = {
   // A document the reviewer returned, on its own tile: what to do, not just what happened.
   'kyc.documentReturnedHint': 'The reviewer asked for a new one — upload a replacement.',
   'kyc.replaceReturned': 'Replace the documents marked in red before you submit.',
+  'kyc.replaceReturnedItem': 'Please upload a new {label} — the reviewer returned the one on file.',
+  'kyc.reviewOwes': 'Before you submit, finish:',
+  'kyc.reviewChoose': 'choose a document',
+  'kyc.reviewReturned': '{label} (returned)',
   // A stored answer to a question the broker has since removed from the form.
   'kyc.docs.retiredQuestion': 'Earlier question',
+  // The typed steps save as the client types (`use-step-autosave.ts`); this is
+  // the quiet line that says so.
+  'kyc.autosaveSaving': 'Saving…',
+  'kyc.autosaveSaved': 'All changes saved',
+  'kyc.autosaveFailed': 'Not saved yet — we will try again',
   'kyc.answerYes': 'Yes',
   'kyc.answerNo': 'No',
 

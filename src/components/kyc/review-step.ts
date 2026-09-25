@@ -23,11 +23,24 @@ export function withReviewStep(configured: KycStepConfigDto[]): KycStepConfigDto
   // your details" having entered none.
   if (configured.length === 0) return configured;
 
+  /*
+   * NUMBERED BY POSITION, 1..n, and review is n + 1.
+   *
+   * `/kyc/config` serves the ENABLED steps with the numbers they have in the
+   * builder, so a step disabled in the middle leaves a gap — 1, 3, 4 — while
+   * review was numbered by COUNT, 4, and collided with a real step. The wizard
+   * then took that step for the last one: its button read "Submit
+   * Verification", the progress rail showed two steps numbered alike, and the
+   * review screen could not be reached (found in local testing with the selfie
+   * step disabled). The client's step number is its place in THIS flow; the
+   * builder's number is the builder's.
+   */
+  const ordered = configured.map((step, index) => ({ ...step, stepNumber: index + 1 }));
   return [
-    ...configured,
+    ...ordered,
     {
       id: 'step-review',
-      stepNumber: configured.length + 1,
+      stepNumber: ordered.length + 1,
       slug: 'review',
       title: t('kyc.reviewTitle'),
       description: t('kyc.reviewDescription'),

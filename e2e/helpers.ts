@@ -181,6 +181,7 @@ export async function adminApiSession(
     data?: unknown,
     extra?: Record<string, string>,
   ) => ReturnType<APIRequestContext['patch']>;
+  put: (path: string, data?: unknown) => ReturnType<APIRequestContext['put']>;
   del: (path: string) => ReturnType<APIRequestContext['delete']>;
   dispose: () => Promise<void>;
 }> {
@@ -213,6 +214,7 @@ export async function adminApiSession(
       request.post(`${API_NODE_BASE}${path}`, { headers: { ...headers, ...extra }, data }),
     patch: (path, data, extra) =>
       request.patch(`${API_NODE_BASE}${path}`, { headers: { ...headers, ...extra }, data }),
+    put: (path, data) => request.put(`${API_NODE_BASE}${path}`, { headers, data }),
     del: (path) => request.delete(`${API_NODE_BASE}${path}`, { headers }),
     dispose: () => request.dispose(),
   };
@@ -492,7 +494,62 @@ export function newClient(): { email: string; password: string } {
  * that already has a choice alone.
  */
 export async function openDocumentStep(page: Page): Promise<void> {
-  await openTypedDocumentStep(page, 2, /passport/i);
+  await openTypedDocumentStep(page, 'document', /passport/i);
+}
+
+/**
+ * Where a step sits in THIS deployment's flow.
+ *
+ * The wizard numbers steps by POSITION (`withReviewStep`), and the builder may
+ * reorder, add or disable any of them — so a fixed `/kyc/step/2` held only for
+ * the seeded order, and on a reordered flow opened a different step and failed
+ * for the fixture's reasons rather than the product's. `review` is always last.
+ */
+export async function kycStepPath(page: Page, slug: string): Promise<string> {
+  const config = await apiFromPage(page, 'GET', '/kyc/config');
+  const steps = config.body as { slug: string }[];
+  const index = slug === 'review' ? steps.length : steps.findIndex((step) => step.slug === slug);
+  expect(index, `no "${slug}" step in the served configuration`).toBeGreaterThanOrEqual(0);
+  return `/kyc/step/${index + 1}`;
+}
+
+/**
+ * Upload a file as the signed-in client, from inside the page — the real route,
+ * session and anti-forgery token, without driving a tile. `docType` names the
+ * document a canonical page belongs to, as the wizard sends it.
+ *
+ * A 429 is WAITED OUT, never weakened: uploads are capped per minute and the
+ * suite shares that budget, and raising a real limit so a test fits inside it
+ * would remove the protection from production to make CI green.
+ */
+export async function uploadKycFile(page: Page, field: string, docType?: string): Promise<number> {
+  const send = async () => {
+    const csrf = await csrfOf(page.context());
+    return page.evaluate(
+      async ({ base, field, docType, csrf, bytes }) => {
+        const form = new FormData();
+        form.append(
+          'file',
+          new Blob([new Uint8Array(bytes)], { type: 'image/png' }),
+          `${field}.png`,
+        );
+        form.append('field', field);
+        if (docType) form.append('docType', docType);
+        const res = await fetch(`${base}/kyc/upload`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'x-oxshare-csrf': csrf },
+          body: form,
+        });
+        return res.status;
+      },
+      { base: API_BASE, field, docType, csrf, bytes: Array.from(TINY_PNG) },
+    );
+  };
+  const status = await send();
+  if (status !== 429) return status;
+  await new Promise((resolve) => setTimeout(resolve, 61_000));
+  return send();
 }
 
 /**
@@ -511,10 +568,10 @@ export async function openDocumentStep(page: Page): Promise<void> {
  */
 export async function openTypedDocumentStep(
   page: Page,
-  step: number,
+  slug: 'document' | 'address',
   typeCard: RegExp,
 ): Promise<void> {
-  await page.goto(`/kyc/step/${step}`);
+  await page.goto(await kycStepPath(page, slug));
   await page.waitForLoadState('networkidle');
   const uploader = page.locator('input[type="file"]').first();
   if (await uploader.count()) return;

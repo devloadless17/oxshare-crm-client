@@ -46,7 +46,7 @@ test('clicking Register three times sends exactly one registration', async ({ pa
   await page.getByLabel(/email/i).fill(`ada-${Date.now()}@example.test`);
   await page.getByLabel(/^password/i).fill('A-strong-passphrase-1');
 
-  const submit = page.getByRole('button', { name: /complete registration/i });
+  const submit = page.getByRole('button', { name: /^create account$/i });
   await submit.click();
   await expect.poll(() => calls, { timeout: 15_000 }).toBe(1);
 

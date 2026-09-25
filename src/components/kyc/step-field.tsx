@@ -76,8 +76,16 @@ export function StepField({
   /** Threaded to the uploader so the step can tell 'nothing chosen' from 'chosen, not confirmed'. */
   onPendingChange?: (field: string, hasPending: boolean) => void;
 }) {
-  // Live camera — the canonical selfie step, or a `camera` field anywhere else.
-  if (field.name === 'selfie' || field.type === 'camera' || slug === 'selfie') {
+  /*
+   * The canonical selfie is the selfie step's own `selfie` field. Every field on
+   * that step used to render as this camera, which was harmless while the step
+   * could hold nothing else — a broker may now add questions to it, and a text
+   * box must stay a text box.
+   */
+  const isCanonicalSelfie = slug === 'selfie' && field.name === 'selfie';
+
+  // Live camera — the canonical selfie, or a `camera` field anywhere else.
+  if (isCanonicalSelfie || field.type === 'camera') {
     /*
      * ⚠️ WHICH FIELD THE PHOTO IS STORED UNDER, and it was always `selfie`.
      *
@@ -92,7 +100,6 @@ export function StepField({
      * step changes. Any other camera field stores under its own key, which the
      * API routes into that step's `step_data`.
      */
-    const isCanonicalSelfie = field.name === 'selfie' || slug === 'selfie';
     const uploadField = isCanonicalSelfie ? 'selfie' : field.name;
     return (
       <div key={field.id} className="md:col-span-2">
@@ -271,6 +278,53 @@ export function StepField({
           </Select>
         </div>
       </div>
+    );
+  }
+
+  /*
+   * "Tick all that apply" — a checkbox WITH choices (asked for in local
+   * testing). Its answer is the ticked choices, comma-separated, in the order
+   * the broker listed them: the one spelling the server stores and every screen
+   * reads without parsing. The builder splits choices on commas, so none can
+   * contain one and the list round-trips exactly.
+   */
+  if (field.type === 'checkbox' && field.options?.length) {
+    const options = field.options;
+    const ticked = new Set(
+      val
+        .split(',')
+        .map((choice) => choice.trim())
+        .filter((choice) => choice !== ''),
+    );
+    const toggle = (choice: string, on: boolean) =>
+      onChange(
+        field.name,
+        options.filter((option) => (option === choice ? on : ticked.has(option))).join(', '),
+      );
+    return (
+      <fieldset
+        key={field.id}
+        className={`md:col-span-2 space-y-2 rounded-lg ${
+          isErrored ? 'ring-2 ring-destructive/80 bg-destructive/5 p-2' : ''
+        }`}
+      >
+        <legend className="text-sm font-medium">
+          {field.label} {field.required && <span className="text-destructive">*</span>}
+        </legend>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {options.map((option) => (
+            <label key={option} className="flex items-center gap-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={ticked.has(option)}
+                onChange={(e) => toggle(option, e.target.checked)}
+                className="rounded border-input accent-primary focus:ring-ring h-4 w-4"
+              />
+              <span>{option}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
     );
   }
 

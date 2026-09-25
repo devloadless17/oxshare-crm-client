@@ -130,3 +130,10 @@ describe('queryKeysFor', () => {
     expect(queryKeysFor('something.nobody.shipped')).toEqual([]);
   });
 });
+
+describe('a reason set into a sentence', () => {
+  it('does not double the full stop the reviewer typed', () => {
+    const vars = KIND_CONFIG['kyc.rejected']?.vars?.({ reason: 'The photo is blurred.' });
+    expect(vars).toEqual({ reason: 'The photo is blurred' });
+  });
+});

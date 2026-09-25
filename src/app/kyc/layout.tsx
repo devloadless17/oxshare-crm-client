@@ -16,11 +16,14 @@ import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
 type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
+type KycStatusDto = components['schemas']['KycStatusDto'];
 
 interface StepItem {
   num: number;
   label: string;
   path: string;
+  /** Matches the server's verdict for this step; absent on the placeholder rail. */
+  slug?: string;
 }
 
 const DEFAULT_STEPS: StepItem[] = [
@@ -148,6 +151,22 @@ function KycShell({ children }: { children: React.ReactNode }) {
     async (signal) => (await api.get<KycStepConfigDto[]>('/kyc/config', { signal })).data,
     { enabled: kycReadable },
   );
+  /*
+   * The SERVER's verdict on every step — the same key the form reads, so this
+   * is the request it makes anyway. A tick on the rail used to mean only "comes
+   * before the step you are on": walk forward past four unfinished steps and all
+   * four were ticked, while the review listed them as owed (found in local
+   * testing). A tick now means the server calls the step complete — the
+   * judgement `submit` applies.
+   */
+  const status = useResource(
+    keys.kyc.status(),
+    async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
+    { enabled: kycReadable },
+  );
+  const completed = new Set(
+    (status.data?.steps ?? []).filter((state) => state.complete).map((state) => state.slug),
+  );
 
   /*
    * `withReviewStep`, so the strip shows the SAME steps the form walks.
@@ -165,6 +184,7 @@ function KycShell({ children }: { children: React.ReactNode }) {
       num: s.stepNumber,
       label: s.title,
       path: `/kyc/step/${s.stepNumber}`,
+      slug: s.slug,
     }));
   })();
 
@@ -252,8 +272,8 @@ function KycShell({ children }: { children: React.ReactNode }) {
       <div className="kyc-progress-wrap">
         <div className="kyc-progress-bar">
           {steps.map((step) => {
-            const done = step.num < currentStep;
             const active = step.num === currentStep;
+            const done = !active && step.slug !== undefined && completed.has(step.slug);
             return (
               <div
                 key={step.num}

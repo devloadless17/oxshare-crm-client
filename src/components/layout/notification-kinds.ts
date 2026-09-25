@@ -61,6 +61,14 @@ const str = (value: unknown): string => (typeof value === 'string' ? value : '')
 const text = (value: unknown): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined;
 
+/**
+ * A reviewer's reason, set INTO a sentence that ends with its own full stop.
+ * Reasons are typed as sentences, so "…declined: The photo is blurred.. You can
+ * retry." read as a typo on every rejection that ended properly.
+ */
+const reasonText = (value: unknown): string | undefined =>
+  text(typeof value === 'string' ? value.trim().replace(/[.!?。]+$/u, '') : value);
+
 const moneyVars = (params: AppNotification['params']) => ({
   amount: formatMoney(str(params.amount), str(params.currency)),
 });
@@ -154,7 +162,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     icon: ShieldCheck,
     titleKey: 'notifications.kindKycRejectedTitle',
     bodyKey: 'notifications.kindKycRejectedBody',
-    vars: (params) => ({ reason: text(params.reason) }),
+    vars: (params) => ({ reason: reasonText(params.reason) }),
     href: '/kyc',
   },
   'commission.confirmed': {
@@ -189,7 +197,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     icon: Handshake,
     titleKey: 'notifications.kindPartnerRejectedTitle',
     bodyKey: 'notifications.kindPartnerRejectedBody',
-    vars: (params) => ({ reason: text(params.reason) }),
+    vars: (params) => ({ reason: reasonText(params.reason) }),
     href: '/partner',
   },
   'partner.suspended': {

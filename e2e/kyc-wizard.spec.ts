@@ -2,6 +2,7 @@ import { type Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import {
   TINY_PNG,
+  kycStepPath,
   openDocumentStep,
   openTypedDocumentStep,
   resetKycFixture,
@@ -188,7 +189,7 @@ test.describe('the KYC wizard', () => {
   test('gives the profile fields mobile keyboards and autofill', async ({ page }) => {
     // The form is filled once, on a phone, with a keyboard over half the screen.
     // It carried no autoComplete at all, so a saved address was typed by hand.
-    await page.goto('/kyc/step/1');
+    await page.goto(await kycStepPath(page, 'personal'));
     await page.waitForLoadState('networkidle');
 
     const first = page.locator('input[autocomplete="given-name"]');
@@ -210,7 +211,7 @@ test.describe('the KYC wizard', () => {
      * search box inside the dropdown, not the native control's page-grey
      * chrome — see the note in step-field.tsx.
      */
-    await page.goto('/kyc/step/1');
+    await page.goto(await kycStepPath(page, 'personal'));
     // The fields render from `/kyc/config`, so the form does not exist until
     // that request lands. Asserting before it does was a race in this spec, not
     // a defect in the page.
@@ -229,7 +230,7 @@ test.describe('the KYC wizard', () => {
     // A form that overflows horizontally on a phone is one people abandon.
     test.skip(!isMobile, 'the point of this case is the mobile viewport');
 
-    await page.goto('/kyc/step/1');
+    await page.goto(await kycStepPath(page, 'personal'));
     await page.waitForLoadState('networkidle');
 
     const overflows = await page.evaluate(
@@ -308,7 +309,7 @@ test.describe('choosing a document but not confirming it', () => {
      * the preview. That is the actual regression, it does not care which
      * document types are configured, and it cannot go stale against a rename.
      */
-    await openTypedDocumentStep(page, 4, /utility bill|bank statement|tenancy/i);
+    await openTypedDocumentStep(page, 'address', /utility bill|bank statement|tenancy/i);
 
     const tiles = page.locator('input[type="file"]:not([capture])');
     requirePrecondition(
