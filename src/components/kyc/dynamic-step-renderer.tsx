@@ -6,6 +6,7 @@ import type { components } from '@/lib/api/types.gen';
 import { t } from '@/lib/i18n';
 import { Info } from 'lucide-react';
 import { StepField } from './step-field';
+import { ALL_COUNTRIES, COUNTRY_CODE_BY_NAME } from '@/lib/countries-data';
 import { ReviewSummary } from './review-summary';
 import { isPageReturned } from './upload-state';
 
@@ -64,6 +65,11 @@ interface DynamicStepRendererProps {
   onUpload: UploadHandler;
   /** Threaded to the uploader so the step can tell 'nothing chosen' from 'chosen, not confirmed'. */
   onPendingChange?: (field: string, hasPending: boolean) => void;
+  /**
+   * The server's sentence about a field, from the last Continue — shown under
+   * the field it is about, not as one line above the form (26 Sep 2026).
+   */
+  fieldErrors?: Record<string, string>;
 }
 
 export function DynamicStepRenderer({
@@ -79,6 +85,7 @@ export function DynamicStepRenderer({
   onChange,
   onUpload,
   onPendingChange,
+  fieldErrors = {},
 }: DynamicStepRendererProps) {
   if (!currentStepConfig) return null;
 
@@ -126,6 +133,33 @@ export function DynamicStepRenderer({
       storedTypes: storedDocValues,
       outstanding: rejectedFields,
     });
+  /*
+   * Choosing a DIFFERENT document than the one on file. Nothing is lost by the
+   * click — the server keeps ONE identity document (and one proof of address)
+   * and replaces it when the first page of the new one arrives. So the client
+   * is told at the moment it matters, before they upload, rather than asked to
+   * confirm a click that changes nothing yet.
+   */
+  const category = chosenField?.document?.category === 'address' ? 'address' : 'identity';
+  const storedValue = storedDocValues[category];
+  const storedHasFiles =
+    category === 'address'
+      ? Boolean(storedFiles['address_proof'] || storedFiles['address_proof_2'])
+      : Boolean(storedFiles['doc_front'] || storedFiles['doc_back']);
+  const replacing =
+    (slug === 'document' || slug === 'address') &&
+    chosenField?.document &&
+    storedValue &&
+    storedHasFiles &&
+    storedValue !== chosenField.document.value
+      ? {
+          stored:
+            documentFields.find((f) => f.document?.value === storedValue)?.label ??
+            t('kyc.documentSwitchStoredFallback'),
+          chosen: chosenField.label,
+        }
+      : null;
+
   const documentReturned = (field: KycFieldConfig) =>
     (field.document?.parts ?? []).some((_, index) =>
       pageReturned(field, uploadFieldFor(slug, field.name, index, field.document?.category)),
@@ -228,6 +262,16 @@ export function DynamicStepRenderer({
             })}
           </div>
 
+          {replacing && (
+            <p
+              role="note"
+              className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-foreground"
+            >
+              <Info className="mt-px h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+              <span>{t('kyc.documentSwitchNotice', replacing)}</span>
+            </p>
+          )}
+
           {/*
            * Only the CHOSEN document's slots. Nothing renders until a choice is
            * made — an upload box for an unstated document is a request the
@@ -297,18 +341,31 @@ export function DynamicStepRenderer({
                 slug={slug}
                 val={formData[field.name] || ''}
                 // The canonical selfie's storage id IS its name, `selfie`.
-                isErrored={rejectedFields.includes(field.name)}
+                isErrored={rejectedFields.includes(field.name) || Boolean(fieldErrors[field.name])}
                 selfieUploaded={selfieUploaded}
                 uploadsState={uploadsState}
                 storedFilePath={storedFiles[field.name]}
                 onChange={onChange}
                 onUpload={onUpload}
                 onPendingChange={onPendingChange}
+                // A phone starts in the country the client lives in, not Lebanon.
+                dialCode={dialCodeOf(formData['country'])}
               />
+              {fieldErrors[field.name] && (
+                <p role="alert" className="mt-1.5 text-[11px] font-medium text-destructive">
+                  {fieldErrors[field.name]}
+                </p>
+              )}
             </div>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+/** The dial code of the country the client lives in, to start a phone number in. */
+function dialCodeOf(country: string | undefined): string | undefined {
+  const iso = country ? COUNTRY_CODE_BY_NAME.get(country) : undefined;
+  return iso ? ALL_COUNTRIES.find((entry) => entry.code === iso)?.dialCode : undefined;
 }

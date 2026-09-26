@@ -1,46 +1,27 @@
 import { expect, test } from './fixtures';
-import {
-  adminApiSession,
-  apiFromPage,
-  kycStepPath,
-  resetKycFixture,
-  uploadKycFile,
-} from './helpers';
-import type { Page } from '@playwright/test';
+import { adminApiSession, apiFromPage, kycStepPath, requirePrecondition } from './helpers';
 
 /**
- * EXTRA QUESTIONS AND UPLOADS ON A BUILT-IN STEP — asked for in local testing:
- * "I need to be able to add new fields to steps like Proof of Address".
+ * EXTRA QUESTIONS AND UPLOADS BELONG ON A STEP OF THE BROKER'S OWN — never on a
+ * built-in document step (the owner's ruling, 26 Sep 2026).
  *
- * Before, a File field on Proof of Address rendered an uploader the server
- * refused, and "required" on it blocked nothing: the step had nowhere to keep
- * it, so nothing could check it. Now a built-in step keeps its extras beside its
- * document, the server judges them with everything else (`kyc-step-state.ts`),
- * and Continue asks the server rather than deciding for itself.
+ * This file used to prove the opposite. Local testing asked for "new fields on
+ * steps like Proof of Address", and a built-in step kept its extras beside its
+ * document. The ruling that replaced it: Identity Document, Proof of Address and
+ * the Selfie hold only what they are for, so a document a client sends is never
+ * mixed with a form of the broker's, and a reviewer reads additional information
+ * as what it is — in its own section. Migration 0147 moved every existing extra
+ * onto a step of their own ("Additional documents"), answers included.
  *
- * The fields are added to the LIVE address step for the run and taken off by id
- * afterwards; the step is read back and compared with what it was, so a
- * developer's configuration is left exactly as found.
+ * What the extras DO — a required question and upload holding a step until
+ * answered, a custom file never landing on the passport — is proved on a
+ * broker's step by `kyc-custom-step-portal.spec.ts`. This file proves the door
+ * is shut, and that the client never meets the old shape.
  */
 
 test.use({ storageState: 'e2e/.auth/kyc-client.json' });
 
-const TEXT = {
-  id: 'f-e2e-extra-text',
-  name: 'customField_e2e_landlord',
-  label: 'E2E Landlord',
-  type: 'text',
-  required: true,
-};
-const FILE = {
-  id: 'f-e2e-extra-file',
-  name: 'customField_e2e_lease',
-  label: 'E2E Lease',
-  type: 'file',
-  required: true,
-};
-const OURS = (field: { id: string }) => field.id.startsWith('f-e2e-extra');
-
+type Field = { id: string; name: string; label: string; type: string; required: boolean };
 type StepConfig = {
   id: string;
   slug: string;
@@ -48,18 +29,32 @@ type StepConfig = {
   description?: string;
   icon?: string;
   enabled: boolean;
-  fields: {
-    id: string;
-    name: string;
-    label: string;
-    type: string;
-    required: boolean;
-    options?: string[];
-  }[];
+  fields: Field[];
+};
+
+const TEXT: Field = {
+  id: 'f-e2e-extra-text',
+  name: 'customField_e2e_landlord',
+  label: 'E2E Landlord',
+  type: 'text',
+  required: true,
+};
+const FILE: Field = {
+  id: 'f-e2e-extra-file',
+  name: 'customField_e2e_lease',
+  label: 'E2E Lease',
+  type: 'file',
+  required: true,
 };
 
 let admin: Awaited<ReturnType<typeof adminApiSession>> | undefined;
-let before: StepConfig | undefined;
+
+test.beforeAll(async () => {
+  admin = await adminApiSession();
+});
+test.afterAll(async () => {
+  await admin?.dispose();
+});
 
 async function addressStep(): Promise<StepConfig> {
   const res = await admin!.get('/admin/kyc-config');
@@ -69,116 +64,62 @@ async function addressStep(): Promise<StepConfig> {
     Array.isArray(body) ? body : (body as { steps: StepConfig[] }).steps
   ) as StepConfig[];
   const step = steps.find((candidate) => candidate.slug === 'address');
-  expect(step, 'this deployment has no Proof of Address step').toBeDefined();
+  expect(step, 'every configuration has the Proof of Address step').toBeDefined();
   return step!;
 }
 
-async function putFields(step: StepConfig, fields: StepConfig['fields']): Promise<void> {
-  const res = await admin!.put(`/admin/kyc-config/steps/${step.id}`, {
-    slug: step.slug,
-    title: step.title,
-    description: step.description,
-    icon: step.icon,
-    enabled: step.enabled,
-    fields,
-  });
-  expect(res.ok(), `the address step could not be saved: ${await res.text()}`).toBe(true);
-}
+test('Proof of Address refuses a question and an upload, and says where they go instead', async ({
+  isMobile,
+}) => {
+  test.skip(isMobile, 'a rule of the API — nothing here is layout');
+  const before = await addressStep();
 
-test.beforeAll(async () => {
-  admin = await adminApiSession();
-  const current = await addressStep();
-  // Sweep a run that was interrupted before its cleanup.
-  before = { ...current, fields: current.fields.filter((field) => !OURS(field)) };
-  expect(before.enabled, 'the Proof of Address step is disabled here').toBe(true);
-  await putFields(before, [...before.fields, TEXT, FILE]);
+  for (const extra of [TEXT, FILE]) {
+    const res = await admin!.put(`/admin/kyc-config/steps/${before.id}`, {
+      slug: before.slug,
+      title: before.title,
+      description: before.description,
+      icon: before.icon,
+      enabled: before.enabled,
+      fields: [...before.fields, extra],
+    });
+    expect(res.status(), `"${extra.label}" was accepted onto Proof of Address`).toBe(400);
+    const body = (await res.json()) as { message?: string; fields?: Record<string, string> };
+    // The sentence names the way on, not only the refusal — and is placed on the field.
+    expect(body.message).toMatch(/holds only its documents/i);
+    expect(body.message).toMatch(/a step of your own/i);
+    expect(Object.keys(body.fields ?? {}).some((key) => /\.fields\.\d+$/.test(key))).toBe(true);
+  }
+
+  expect(await addressStep(), 'a refused save changed the step anyway').toEqual(before);
 });
 
-test.afterAll(async () => {
-  try {
-    if (admin && before) {
-      const current = await addressStep();
-      await putFields(
-        current,
-        current.fields.filter((field) => !OURS(field)),
-      );
-      expect(await addressStep(), 'the Proof of Address step was not restored exactly').toEqual(
-        before,
-      );
-    }
-  } finally {
-    await admin?.dispose();
-  }
-});
-
-/** Every required plain field on the served address step, answered through the API. */
-async function answerEveryExtra(page: Page): Promise<void> {
-  const config = await apiFromPage(page, 'GET', '/kyc/config');
-  const step = (config.body as StepConfig[]).find((candidate) => candidate.slug === 'address')!;
-  const data: Record<string, string> = { docType: 'utility_bill' };
-  for (const field of step.fields) {
-    if (!field.required || field.type.startsWith('doc:')) continue;
-    if (field.type === 'file' || field.type === 'camera') {
-      expect(await uploadKycFile(page, field.name), `${field.label} was not stored`).toBeLessThan(
-        400,
-      );
-    } else if (field.type === 'checkbox') {
-      data[field.name] = field.options?.length ? field.options[0]! : 'true';
-    } else if (field.type === 'select') {
-      data[field.name] = field.options?.[0] ?? '';
-    } else if (field.type === 'date') {
-      data[field.name] = '1990-01-01';
-    } else if (field.type === 'phone') {
-      data[field.name] = '+961 70 123 456';
-    } else {
-      data[field.name] = field.name === TEXT.name ? 'Mr Haddad' : 'e2e answer';
-    }
-  }
-  const saved = await apiFromPage(page, 'POST', '/kyc/step', { step: 'address', data });
-  expect(saved.status, JSON.stringify(saved.body).slice(0, 200)).toBeLessThan(300);
-}
-
-test('a required question and upload on Proof of Address hold the step until answered, and reach the review', async ({
+test('the client’s Proof of Address step asks for its documents and nothing else', async ({
   page,
   isMobile,
 }) => {
-  test.skip(isMobile, 'the rule is LOGIC, not layout — and uploads share a per-minute budget');
+  test.skip(isMobile, 'the served form is the same on every screen');
   await page.goto('/kyc');
-  await resetKycFixture(page);
-  expect(
-    await uploadKycFile(page, 'address_proof', 'utility_bill'),
-    'the bill was not stored',
-  ).toBeLessThan(400);
 
-  // The document alone is not the whole step any more.
-  const addressPath = await kycStepPath(page, 'address');
-  await page.goto(addressPath);
-  await page.waitForLoadState('networkidle');
-  await page.getByRole('button', { name: /^continue$/i }).click();
-  await expect(
-    page.getByRole('alert').filter({ hasText: /please (fill in|upload):/i }),
-    'Continue let the step go without its required extras',
-  ).toBeVisible({ timeout: 15_000 });
-  await expect(page).toHaveURL(new RegExp(`${addressPath}$`));
-
-  // Answered: the server says the step is done, and Continue moves on.
-  await answerEveryExtra(page);
-  await page.goto(addressPath);
-  await page.waitForLoadState('networkidle');
-  await expect(page.getByLabel(TEXT.label)).toHaveValue('Mr Haddad');
-  await page.getByRole('button', { name: /^continue$/i }).click();
-  await expect(page, 'the answered step did not advance').not.toHaveURL(
-    new RegExp(`${addressPath}$`),
-    { timeout: 15_000 },
+  // What the portal is served: address documents only.
+  const config = await apiFromPage(page, 'GET', '/kyc/config');
+  const step = (config.body as StepConfig[]).find((candidate) => candidate.slug === 'address');
+  expect(step, 'the portal is served no Proof of Address step').toBeDefined();
+  requirePrecondition(
+    !step!.enabled,
+    'Proof of Address is switched off here — there is no step to look at',
   );
+  expect(
+    step!.fields.filter((field) => !field.type.startsWith('doc:')).map((field) => field.label),
+    'the portal was served something other than documents on Proof of Address',
+  ).toEqual([]);
 
-  // And the reviewer's side of the client's screen shows both, from the server.
-  await page.goto(await kycStepPath(page, 'review'));
+  // What the client sees: the documents to choose from, and no form beside them.
+  await page.goto(await kycStepPath(page, 'address'));
   await page.waitForLoadState('networkidle');
-  const title = (await addressStep()).title;
-  const section = page
-    .locator('section')
-    .filter({ has: page.getByRole('heading', { name: title, exact: true }) });
-  await expect(section).toContainText('Mr Haddad');
-  await expect(section).toContainText(/E2E Lease\s*Uploaded/);
+  const main = page.locator('main');
+  for (const field of step!.fields) {
+    await expect(main.getByRole('button', { name: new RegExp(field.label, 'i') })).toBeVisible();
+  }
+  await expect(main.getByRole('textbox')).toHaveCount(0);
 });

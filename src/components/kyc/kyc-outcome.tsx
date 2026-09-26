@@ -55,6 +55,8 @@ export function KycOutcome() {
   const status = statusQuery.data?.status ?? null;
   const isApproved = status === 'approved';
   const isRejected = status === 'rejected';
+  // A verified client asked to UPDATE — worded as a request, never as a refusal.
+  const isReverify = isRejected && Boolean(statusQuery.data?.reverificationRequestedAt);
   const rejectionReason = statusQuery.data?.rejectionReason ?? '';
   // Labels only — the same cached config the details table reads, and a failure
   // leaves the chips on humanised ids rather than blocking the screen.
@@ -104,16 +106,20 @@ export function KycOutcome() {
               <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
                 {isApproved
                   ? t('kyc.approvedTitle')
-                  : isRejected
-                    ? t('kyc.rejectedTitle')
-                    : t('kyc.submittedTitle')}
+                  : isReverify
+                    ? t('kyc.reverifyTitle')
+                    : isRejected
+                      ? t('kyc.rejectedTitle')
+                      : t('kyc.submittedTitle')}
               </h1>
               <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
                 {isApproved
                   ? t('kyc.approvedBody')
-                  : isRejected
-                    ? t('kyc.rejectedBody')
-                    : t('kyc.submittedBody')}
+                  : isReverify
+                    ? t('kyc.reverifyBody')
+                    : isRejected
+                      ? t('kyc.rejectedBody')
+                      : t('kyc.submittedBody')}
               </p>
             </div>
 

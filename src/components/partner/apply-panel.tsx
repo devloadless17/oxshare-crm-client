@@ -322,6 +322,7 @@ export function ApplyPanel({
         emailUnverified={emailUnverified}
         pending={kyc.pending}
         rejected={kyc.rejected}
+        reverification={kyc.reverification}
       />
     </div>
   );

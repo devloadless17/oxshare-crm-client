@@ -60,20 +60,29 @@ export function StepLoading() {
 export function ReturnedBanner({
   status,
 }: {
-  status: { status?: string; rejectionReason?: string } | null;
+  status: { status?: string; rejectionReason?: string; reverificationRequestedAt?: string } | null;
 }) {
   const returned =
     status?.status === 'rejected' ||
     (status?.status === 'in_progress' && Boolean(status.rejectionReason));
   if (!returned) return null;
+  /*
+   * A VERIFIED client asked to update is not a client whose application was
+   * refused (26 Sep 2026): a detail changed — a new passport, a move — and the
+   * broker needs it verified again. "Returned for correction" reads as a
+   * verdict on somebody who did nothing wrong.
+   */
+  const reverify = Boolean(status?.reverificationRequestedAt);
   return (
     <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs space-y-1.5 animate-in fade-in-0">
       <div className="flex items-center gap-2 font-bold text-destructive text-sm">
-        <span>{t('kyc.actionRequired')}</span>
+        <span>{reverify ? t('kyc.reverifyTitle') : t('kyc.actionRequired')}</span>
       </div>
       {status?.rejectionReason && (
         <p className="text-destructive text-xs">
-          <strong className="font-semibold text-destructive">{t('kyc.rejectionNote')}</strong>{' '}
+          <strong className="font-semibold text-destructive">
+            {reverify ? t('kyc.reverifyWhy') : t('kyc.rejectionNote')}
+          </strong>{' '}
           {status.rejectionReason}
         </p>
       )}

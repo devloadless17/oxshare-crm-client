@@ -76,20 +76,40 @@
 .kyc-progress-wrap {
   padding: 32px 40px 0;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
 }
+/*
+ * THE RAIL HOLDS AS MANY STEPS AS THE BROKER CONFIGURES (reported 26 Sep 2026:
+ * with eight steps the connectors stopped short of the next circle, the labels
+ * ran into each other, and the rail spilled off the left edge).
+ *
+ * Every step takes the SAME width — `flex: 1 1 0` with `min-width: 0`. That is
+ * what the connector depends on: it is drawn from its own step's centre to half
+ * its own width past its edge (`.kyc-step-line`), which lands on the next circle
+ * only when the next step is exactly as wide. With `flex: 1` and the default
+ * `min-width: auto`, a step could not be narrower than its one-line label, so
+ * "Identity Document" was wider than "custom1", every line between unequal
+ * steps fell short, and eight labels overflowed the rail.
+ *
+ * So a label wraps INSIDE its step, two lines at most, and the rail widens with
+ * the count (`--kyc-steps`, set by the layout) at the five-step rail's spacing.
+ */
 .kyc-progress-bar {
   display: flex;
   align-items: flex-start;
-  gap: 0;
   width: 100%;
-  max-width: 680px;
+  max-width: calc(var(--kyc-steps, 5) * 136px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 .kyc-step-node {
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   position: relative;
 }
 .kyc-step-circle {
@@ -131,10 +151,18 @@
 }
 .kyc-step-label {
   margin-top: 8px;
+  padding: 0 4px;
+  max-width: 100%;
   font-size: 0.7rem;
+  line-height: 1.35;
   color: var(--muted-foreground);
   text-align: center;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 .kyc-step-node.active .kyc-step-label {
   color: var(--link);
@@ -142,17 +170,23 @@
 .kyc-step-node.done .kyc-step-label {
   color: var(--foreground);
 }
+/* Circle edge to the next circle's edge — exact because every step is the
+   same width. Logical sides, so it runs the right way in RTL too. */
 .kyc-step-line {
   position: absolute;
   top: 18px;
-  left: calc(50% + 18px);
-  right: calc(-50% + 18px);
+  inset-inline-start: calc(50% + 18px);
+  inset-inline-end: calc(-50% + 18px);
   height: 2px;
   background: var(--border);
   z-index: 1;
 }
 .kyc-step-line.done {
   background: var(--primary);
+}
+/* Shown on phones only — see the media query below. */
+.kyc-progress-caption {
+  display: none;
 }
 .kyc-content {
   max-width: 640px;
@@ -170,25 +204,43 @@
     padding: 24px 16px 0;
   }
   /*
-   * The progress rail pushed the page sideways on a phone.
+   * A phone shows the rail WITHOUT its labels, and names the current step once
+   * underneath (`.kyc-progress-caption`).
    *
-   * white-space: nowrap kept "Address Proof" on one line, and a flex
-   * item defaults to min-width: auto — so the node could not shrink
-   * below its own text and the fifth step ran ~16px past a 393px
-   * viewport. The whole document then scrolled sideways, on the one
-   * screen almost every client reaches from a phone.
-   *
-   * Both halves are needed: letting the label wrap does nothing while
-   * the node refuses to shrink, and min-width: 0 alone leaves the text
-   * refusing to break.
+   * The rail once pushed the page sideways here — "Address Proof" on one line
+   * ran the fifth step ~16px past a 393px viewport — and wrapping the labels
+   * only moved the problem: eight steps leave each about 45px, where no label
+   * is readable in any number of lines. The labels stay in the page for screen
+   * readers (visually hidden, not removed), and the caption is hidden from them
+   * because the list already says it.
    */
-  .kyc-step-node {
-    min-width: 0;
+  .kyc-step-circle {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+  .kyc-step-line {
+    top: 14px;
+    inset-inline-start: calc(50% + 14px);
+    inset-inline-end: calc(-50% + 14px);
   }
   .kyc-step-label {
-    font-size: 0.6rem;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    padding: 0 2px;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .kyc-progress-caption {
+    display: block;
+    margin: 12px 0 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--link);
+    text-align: center;
   }
 }

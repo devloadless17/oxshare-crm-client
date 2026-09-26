@@ -63,13 +63,17 @@ export function useKycAccess() {
    * `select` is what keeps both readers honest: the shared entry stays one
    * shape, and narrowing happens per consumer instead of per writer.
    */
-  const { data: status, isPending } = useQuery({
+  const { data, isPending } = useQuery({
     queryKey: keys.kyc.status(),
     queryFn: async () => (await apiClient.get<KycStatusDto | null>('/kyc/status')).data ?? null,
-    select: (dto) => dto?.status ?? 'not_started',
+    select: (dto) => ({
+      status: dto?.status ?? 'not_started',
+      reverification: Boolean(dto?.reverificationRequestedAt),
+    }),
     enabled: user?.emailVerified === true,
     retry: false,
   });
+  const status = data?.status;
 
   // `enabled: false` leaves a query permanently pending, so an unverified
   // client would otherwise sit in a loading state forever. There is nothing
@@ -83,6 +87,13 @@ export function useKycAccess() {
     approved: isKycApproved(user?.verificationLevel, status),
     pending: isKycPending(status),
     rejected: isKycRejected(status),
+    /*
+     * A VERIFIED client the desk asked to update (26 Sep 2026). The status is
+     * `rejected` — the money doors are shut exactly as for a refusal, so every
+     * gate above still reads `rejected` — but the WORDS differ: this client did
+     * nothing wrong, and "your documents were not approved" tells them they did.
+     */
+    reverification: isKycRejected(status) && data?.reverification === true,
     /*
      * The email gate, which every consumer has to be able to see.
      *

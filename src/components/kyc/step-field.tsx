@@ -62,6 +62,7 @@ export function StepField({
   onChange,
   onUpload,
   onPendingChange,
+  dialCode,
 }: {
   field: KycFieldConfig;
   slug: string;
@@ -75,6 +76,8 @@ export function StepField({
   onUpload: (field: string, file: File, onProgress?: (percent: number) => void) => Promise<void>;
   /** Threaded to the uploader so the step can tell 'nothing chosen' from 'chosen, not confirmed'. */
   onPendingChange?: (field: string, hasPending: boolean) => void;
+  /** Where an empty phone number starts — the client's country of residence. */
+  dialCode?: string;
 }) {
   /*
    * The canonical selfie is the selfie step's own `selfie` field. Every field on
@@ -170,6 +173,7 @@ export function StepField({
             aria-label={field.label}
             value={val}
             onChange={(phoneVal) => onChange(field.name, phoneVal)}
+            {...(dialCode ? { defaultCountryCode: dialCode } : {})}
           />
         </div>
       </div>
@@ -200,6 +204,10 @@ export function StepField({
             value={val}
             onChange={(dateVal) => onChange(field.name, dateVal)}
             maxDate={field.name === 'dateOfBirth' ? MAX_DATE_OF_BIRTH : undefined}
+            // The 18+ cap is the DATE OF BIRTH's rule. The picker defaults it
+            // on, so a broker's own date question ("employment start") could
+            // take no date from the last eighteen years.
+            requireAdult={field.name === 'dateOfBirth'}
           />
         </div>
       </div>

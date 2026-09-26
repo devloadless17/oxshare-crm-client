@@ -43,7 +43,7 @@ type CardState = {
 };
 
 export function KycStatusCard() {
-  const { isLoading, approved, pending, rejected } = useKycAccess();
+  const { isLoading, approved, pending, rejected, reverification } = useKycAccess();
 
   /*
    * AN APPROVED CLIENT SEES NOTHING AT ALL.
@@ -79,12 +79,20 @@ export function KycStatusCard() {
     : pending
       ? { copy: 'dashboard.kycPending', icon: Clock, tone: 'bg-info/10 text-info', cta: false }
       : rejected
-        ? {
-            copy: 'dashboard.kycRejected',
-            icon: ShieldAlert,
-            tone: 'bg-destructive/10 text-destructive',
-            cta: true,
-          }
+        ? reverification
+          ? {
+              // Asked to update, not refused — see `useKycAccess`.
+              copy: 'dashboard.kycReverify',
+              icon: ShieldAlert,
+              tone: 'bg-warning/10 text-warning',
+              cta: true,
+            }
+          : {
+              copy: 'dashboard.kycRejected',
+              icon: ShieldAlert,
+              tone: 'bg-destructive/10 text-destructive',
+              cta: true,
+            }
         : {
             copy: 'dashboard.kycNotStarted',
             icon: ShieldAlert,

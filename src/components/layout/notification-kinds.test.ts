@@ -137,3 +137,19 @@ describe('a reason set into a sentence', () => {
     expect(vars).toEqual({ reason: 'The photo is blurred' });
   });
 });
+
+describe('a verified client asked to update', () => {
+  it('is its own kind — a request with the reason, never the rejection’s words', () => {
+    const config = KIND_CONFIG['kyc.reverification_requested'];
+    expect(config?.titleKey).not.toBe(KIND_CONFIG['kyc.rejected']?.titleKey);
+    expect(config?.href).toBe('/kyc');
+    expect(config?.vars?.({ reason: 'Your passport has expired.' })).toEqual({
+      reason: 'Your passport has expired',
+    });
+  });
+
+  it('refreshes the verification and the dashboard, where the money pause shows', () => {
+    expect(refreshes('kyc.reverification_requested', keys.kyc.status())).toBe(true);
+    expect(refreshes('kyc.reverification_requested', keys.dashboard.all())).toBe(true);
+  });
+});

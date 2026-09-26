@@ -17,6 +17,7 @@ const kycAccess = vi.hoisted(() => ({
   approved: false,
   pending: false,
   rejected: false,
+  reverification: false,
   isLoading: false,
   status: undefined as string | undefined,
 }));
@@ -30,6 +31,7 @@ beforeEach(() => {
     approved: false,
     pending: false,
     rejected: false,
+    reverification: false,
     isLoading: false,
     status: undefined,
   });
@@ -140,5 +142,18 @@ describe('the dialog explains which state the client is in', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(dialog.textContent).not.toMatch(/under review/i);
+  });
+
+  it('asks a verified client the desk returned to UPDATE — the same shut door, not a refusal', async () => {
+    const user = userEvent.setup();
+    Object.assign(kycAccess, { rejected: true, reverification: true });
+
+    renderWithProviders(<MoneyAction href="/deposit" icon="deposit" label="Deposit" />);
+    await user.click(screen.getByRole('button', { name: /deposit/i }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.textContent).toMatch(/update your verification/i);
+    expect(dialog.textContent).toMatch(/paused/i);
+    expect(dialog.textContent).not.toMatch(/could not be accepted/i);
   });
 });
