@@ -129,6 +129,7 @@ TWINS=(
   src/components/ui/select.tsx
   src/components/ui/loader.tsx
   src/components/ui/sheet.tsx
+  src/hooks/use-focus-trap.ts
 )
 
 # Strip line comments, block-comment bodies and blank lines. Crude but adequate:

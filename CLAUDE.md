@@ -13,12 +13,16 @@ app: registration, email verification, KYC onboarding, wallet.
 ```
 src/app/auth/{login,register,confirm-email,forgot-password,reset-password,verify-email}/page.tsx
 src/app/onboarding/                       "verify your identity now or later" (after the code)
-src/app/kyc/{page,step/[step],submitted}/ · dashboard/ · wallet/ · accounts/{page,[id]} ·
-                                          transactions/ ·
-                                          partner/ · platforms/ · {deposit,withdraw,transfer}/
+src/app/kyc/{page,step/[step],submitted}/ (outside the group: it picks its own frame by path)
+src/app/(portal)/                         layout.tsx — ONE frame (sidebar, header, bell) for every
+                                          signed-in page; a section's own layout.tsx only carries
+                                          `metadata`. Sections: dashboard/ · wallet/ ·
+                                          accounts/{page,[id]} · transactions/ · partner/ ·
+                                          platforms/ · profile/ · {deposit,withdraw,transfer}/
 src/components/kyc/                       DocumentUploader · DynamicStepRenderer · SelfieCamera
 src/components/                           async-boundary · backend-pending · query-provider ·
-                                          theme-* · dashboard/* · layout/portal-layout · ui/*
+                                          theme-* · dashboard/* · ui/* · layout/{portal-layout,
+                                          sidebar-nav, use-phone-drawer, use-rail-preference}
 src/components/wallet/wallet-card         the balance card (see "Wallet cards" below)
 src/components/transactions/              transaction-filters — the toolbar AND `applyFilters`
 src/components/accounts/                  open-account-button · account-live-panel ·

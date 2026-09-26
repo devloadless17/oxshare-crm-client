@@ -193,7 +193,7 @@ export function NavLink({
       {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
       {!collapsed && badge && (
         <span
-          className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold ${BADGE_TONES[badge.tone]}`}
+          className={`ms-auto rounded-full px-2 py-0.5 text-[10px] font-semibold ${BADGE_TONES[badge.tone]}`}
         >
           {badge.text}
         </span>
@@ -327,12 +327,16 @@ export function NavGroup({
 
         `inert` while closed: collapsed to zero height the links are still in
         the tab order, and a keyboard user would tab into four invisible links.
+        And `invisible` as well, as in the console: `inert` alone is not honoured
+        by every consumer — Playwright's role engine ignores it — so a folded
+        link still answered a role query. `visibility` flips at the START of
+        opening and the END of closing, so the fold is still seen.
       */}
       <div
         id={panelId}
         inert={!open}
-        className={`motion-slide grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+        className={`motion-slide grid transition-[grid-template-rows,visibility] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          open ? 'visible grid-rows-[1fr]' : 'invisible grid-rows-[0fr]'
         }`}
       >
         <div className="min-h-0 overflow-hidden">
