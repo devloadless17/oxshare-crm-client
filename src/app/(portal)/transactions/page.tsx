@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { FileText, List } from 'lucide-react';
-import { Tabs } from '@/components/ui/tabs';
+import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { AccountStatement } from '@/components/transactions/account-statement';
 import { ActivityList } from '@/components/transactions/activity-list';
 import { useTabParam } from '@/hooks/use-tab-param';
@@ -74,7 +74,19 @@ function StatementPageContent() {
         />
       </div>
 
-      {tab === 'activity' ? <ActivityList /> : <AccountStatement />}
+      {/* The panel the strip names — see money-screen.tsx. */}
+      <TabPanel
+        idPrefix="statement"
+        value={tab}
+        activeValue={tab}
+        className={
+          tab === 'activity'
+            ? 'flex min-h-0 flex-1 flex-col pt-0'
+            : 'flex w-full flex-1 flex-col pt-0'
+        }
+      >
+        {tab === 'activity' ? <ActivityList /> : <AccountStatement />}
+      </TabPanel>
     </div>
   );
 }

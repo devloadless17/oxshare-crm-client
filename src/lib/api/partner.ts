@@ -1,5 +1,6 @@
 import type { components } from './types.gen';
 import { apiClient, idempotent } from './client';
+import type { Wallet } from './wallet';
 
 /**
  * The partner (introducing broker) programme, from the client's side.
@@ -130,6 +131,15 @@ export const partnerApi = {
    */
   async overview(signal?: AbortSignal): Promise<IbOverview> {
     const { data } = await apiClient.get<IbOverview>('/ib/overview', { signal });
+    return data;
+  },
+
+  /**
+   * Open a commission wallet in an offered currency — the partner screen's
+   * "Open commission wallet" card. Idempotent.
+   */
+  async openCommissionWallet(currency: string): Promise<Wallet> {
+    const { data } = await apiClient.post<Wallet>('/ib/wallet/commission', { currency });
     return data;
   },
 

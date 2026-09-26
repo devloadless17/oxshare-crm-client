@@ -10,6 +10,7 @@ import {
   waitForMail,
   requirePrecondition,
   VERIFICATION_SUBJECT,
+  API_SIGN_UP_DETAILS,
 } from './helpers';
 
 /**
@@ -45,6 +46,7 @@ test('the whole recovery journey, end to end', async ({ page }) => {
         password: client.password,
         firstName: 'Reset',
         lastName: 'Journey',
+        ...API_SIGN_UP_DETAILS,
       },
     });
     requirePrecondition(reg.status() === 429, 'registration is rate limited right now (10/h)');

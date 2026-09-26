@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { MoneyHeader } from '@/components/money/money-shell';
 import { MoneyTabs, MONEY_TABS } from '@/components/money/money-tabs';
+import { TabPanel } from '@/components/ui/tabs';
 import { MovementHistory, type HistoryScope } from '@/components/transactions/movement-history';
 import { useTabParam } from '@/hooks/use-tab-param';
 
@@ -59,7 +60,24 @@ function MoneyScreenContent({
     >
       <MoneyHeader />
       <MoneyTabs scope={scope} value={tab} onValueChange={setTab} />
-      {tab === 'history' ? <MovementHistory scope={scope} onNew={() => setTab('new')} /> : children}
+      {/* The panel the strip names — without it the tab pointed at nothing (axe,
+          26 Sep 2026). It takes the layout the content had as a direct child. */}
+      <TabPanel
+        idPrefix={`money-${scope}`}
+        value={tab}
+        activeValue={tab}
+        className={
+          tab === 'history'
+            ? 'flex w-full flex-1 flex-col pt-0'
+            : 'flex min-h-0 w-full flex-1 flex-col pt-0'
+        }
+      >
+        {tab === 'history' ? (
+          <MovementHistory scope={scope} onNew={() => setTab('new')} />
+        ) : (
+          children
+        )}
+      </TabPanel>
     </div>
   );
 }

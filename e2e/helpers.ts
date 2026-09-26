@@ -357,6 +357,19 @@ export const SIGN_UP_DETAILS = {
 } as const;
 
 /**
+ * What `POST /auth/register` requires besides the account and the names since
+ * 26 Sep 2026 — date of birth, nationality, phone and country, refused with a
+ * 400 without them. The same values the form types (`SIGN_UP_DETAILS`), with
+ * the phone as the API takes it. A spec that registers over the API spreads this.
+ */
+export const API_SIGN_UP_DETAILS = {
+  dateOfBirth: SIGN_UP_DETAILS.dateOfBirth,
+  nationality: SIGN_UP_DETAILS.nationality,
+  country: SIGN_UP_DETAILS.country,
+  phone: '+96170123456',
+} as const;
+
+/**
  * Fill BOTH steps of the sign-up form: the account, Continue, then the
  * personal details the identity verification opens with. The final "Create
  * account" is left to the caller, which is where each spec waits on the

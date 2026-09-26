@@ -36,6 +36,16 @@ export const walletApi = {
   },
 
   /**
+   * Open a wallet in an offered currency — the "Open wallet" card. Adding a
+   * currency opens nothing for anybody; the client opens the one they want.
+   * Idempotent: opening one already held returns it unchanged.
+   */
+  async openWallet(currency: string): Promise<Wallet> {
+    const { data } = await apiClient.post<Wallet>('/wallet', { currency });
+    return data;
+  },
+
+  /**
    * One wallet's account statement: opening balance, every movement with the
    * running balance the ledger stored for it, closing balance. `from`/`to` are
    * inclusive `YYYY-MM-DD` days, at most 366 apart.

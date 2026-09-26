@@ -12,6 +12,7 @@ import {
   waitForMail,
   requirePrecondition,
   VERIFICATION_SUBJECT,
+  API_SIGN_UP_DETAILS,
 } from './helpers';
 
 /**
@@ -67,6 +68,7 @@ test('an admin changing the sign-in email ends the live portal session', async (
         password: client.password,
         firstName: 'Email',
         lastName: 'Rotation',
+        ...API_SIGN_UP_DETAILS,
       },
     });
     requirePrecondition(reg.status() === 429, 'registration is rate limited right now (10/h)');
