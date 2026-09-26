@@ -44,11 +44,6 @@ import { keys } from '@/lib/query-keys';
 /** What a demo account starts with unless the client says otherwise. */
 const DEFAULT_DEMO_FUNDING = '10000';
 
-/** The same product: by id when the API sends one, by name from an older API. */
-function sameProduct(a: AccountType, b: AccountType): boolean {
-  return a.productId && b.productId ? a.productId === b.productId : a.product === b.product;
-}
-
 export function OpenAccountDialog({
   environment,
   options,
@@ -100,20 +95,7 @@ export function OpenAccountDialog({
    * iteration.
    */
   const productsForCurrency = React.useMemo(
-    () =>
-      types.filter(
-        (type, index, all) =>
-          type.currency === currency &&
-          /*
-           * ONE entry per product. A product may hold several groups in one
-           * currency (backend 0146), and the client chooses a product, never a
-           * group — the portal shows no group names. The API lists a product's
-           * groups in the order they were attached, so the first one kept here
-           * is the group the account opens in.
-           */
-          all.findIndex((other) => other.currency === currency && sameProduct(other, type)) ===
-            index,
-      ),
+    () => types.filter((type) => type.currency === currency),
     [types, currency],
   );
 

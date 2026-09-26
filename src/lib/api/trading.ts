@@ -148,9 +148,8 @@ export interface AccountType {
    * The product this group belongs to, by name.
    *
    * What the open-account form actually asks about: the client chooses a
-   * product and a currency. A product may hold several groups in one currency
-   * (backend 0146); the API lists them in the order they were attached, and
-   * the form opens the account in the first.
+   * product and a currency, and the pair resolves to exactly one group —
+   * `trading_product_groups` is unique on (product, environment, currency).
    */
   product: string;
   /**
