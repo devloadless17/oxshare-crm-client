@@ -169,7 +169,7 @@ function BrandPanel({ homeHref }: { homeHref: string }) {
         </ul>
       </div>
 
-      <p className="relative text-xs text-auth-panel-foreground/45">{t('auth.brand.footnote')}</p>
+      <p className="relative text-xs text-auth-panel-foreground/60">{t('auth.brand.footnote')}</p>
     </div>
   );
 }

@@ -133,7 +133,7 @@ export function AccountsPanel({ accounts }: { accounts: Dashboard['tradingAccoun
                   <span
                     className={`rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
                       account.environment === 'live'
-                        ? 'border-primary/30 bg-primary/10 text-primary'
+                        ? 'border-primary/30 bg-primary/10 text-link'
                         : 'border-border bg-muted text-muted-foreground'
                     }`}
                   >
