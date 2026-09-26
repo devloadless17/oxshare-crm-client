@@ -238,6 +238,41 @@ test.describe('the KYC wizard', () => {
     );
     expect(overflows).toBe(false);
   });
+
+  /*
+   * BACK / CONTINUE STAY AT THE BOTTOM OF THE PAGE, on every step (owner, 26
+   * Sep 2026). The bar used to follow each step's last field, so it jumped up
+   * and down the screen from step to step — mid-page on the short document
+   * step, off the bottom on the long personal one.
+   *
+   * Asked at a phone's height of both kinds of step: the long personal one and
+   * the short identity-document one. Continue must be on screen, near the
+   * bottom edge, and in the SAME place on both.
+   */
+  test('keeps Back and Continue at the bottom of the screen, whatever the step', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 393, height: 851 });
+    const positions: number[] = [];
+
+    for (const slug of ['personal', 'document']) {
+      await page.goto(await kycStepPath(page, slug));
+      await page.waitForLoadState('networkidle');
+      const cont = page.getByRole('button', { name: /^continue$/i });
+      await expect(cont).toBeVisible();
+
+      const box = await cont.boundingBox();
+      expect(box, `${slug}: Continue has no box`).not.toBeNull();
+      const gap = 851 - (box!.y + box!.height);
+      expect(gap, `${slug}: Continue is not at the bottom (${gap}px above it)`).toBeLessThan(48);
+      expect(gap, `${slug}: Continue is below the screen`).toBeGreaterThanOrEqual(0);
+      positions.push(Math.round(box!.y));
+    }
+
+    expect(new Set(positions).size, `Continue moved between steps: ${positions.join(', ')}`).toBe(
+      1,
+    );
+  });
 });
 
 test.describe('choosing a document but not confirming it', () => {

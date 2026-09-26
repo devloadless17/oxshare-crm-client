@@ -32,8 +32,17 @@
   overflow-y: auto;
   background: var(--background);
   color: var(--foreground);
+  /*
+   * A COLUMN, so the content below the rail can fill what is left of the
+   * screen — which is what puts a step's Back / Continue bar at the bottom of
+   * the page whatever the step's height (owner, 26 Sep 2026). See
+   * `.kyc-content` and the bar in kyc-step-form.tsx.
+   */
+  display: flex;
+  flex-direction: column;
 }
 .kyc-header {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -74,6 +83,7 @@
   border-radius: 20px;
 }
 .kyc-progress-wrap {
+  flex-shrink: 0;
   padding: 32px 40px 0;
   display: flex;
   flex-direction: column;
@@ -188,10 +198,20 @@
 .kyc-progress-caption {
   display: none;
 }
+/*
+ * Fills the rest of the screen, and grows past it with a tall step. `width`
+ * because a centred flex item no longer stretches. No bottom padding: the
+ * step's Back / Continue bar sits on the bottom edge and carries its own.
+ */
 .kyc-content {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
   max-width: 640px;
   margin: 0 auto;
-  padding: 40px 20px 80px;
+  padding: 40px 20px 0;
 }
 @media (max-width: 600px) {
   .kyc-header {
