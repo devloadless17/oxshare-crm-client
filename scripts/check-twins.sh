@@ -94,22 +94,22 @@ fi
 # the client reading it and publishes the API surface to anyone who opens an
 # unfinished page. Admin's readers are the people who own those endpoints, so
 # the chips still earn their place there. Same props, same four call sites.
-# src/components/theme-toggle.tsx is delisted too, and deleted from this repo:
-# the account menu grew its own theme submenu (see layout/user-menu.tsx) and
-# the standalone toggle had no importer left. admin/ still uses and keeps its
-# copy — this is a portal-only removal, not shared drift.
+# src/components/theme-toggle.tsx IS a twin again. It was deleted here once,
+# when theme moved into the account menu, and came back when the client asked
+# for a one-click toggle beside the bell. Its one per-app value — the corner
+# radius, matched to each app's bell — sits in its twin:config block.
 #
-# The three *.test.ts twins are gone from this list, not from the siblings.
-# The portal has no test suite any more, so those files do not exist HERE —
-# the loop below skips a missing file silently, which would have quietly
-# shrunk the comparison from 17 files to 14 with nothing saying so. Removed
-# explicitly instead. admin/ still has its copies and still compares them.
+# The *.test.ts files: `env.test.ts` and `errors.test.ts` exist only in admin
+# (it compares them and reports them as its own), and `money.test.ts` is each
+# app's OWN suite, not a twin — `money.ts` is, and both suites test it. (This
+# note used to say the portal had no test suite; it has one again.)
 TWINS=(
   src/lib/env.ts
   src/lib/api/errors.ts
   src/hooks/use-resource.ts
   src/components/query-provider.tsx
   src/components/theme-provider.tsx
+  src/components/theme-toggle.tsx
   src/lib/utils.ts
   src/lib/money.ts
   src/lib/relative-time.ts

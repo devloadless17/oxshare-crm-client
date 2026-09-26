@@ -13,9 +13,10 @@ import Decimal from 'decimal.js';
  * `Number('12345678901234567.89')` is already wrong before formatting starts.
  * `Intl.NumberFormat` is also out — it takes a number.
  *
- * TWIN FILE — an identical copy belongs at the same path in oxshare-crm-admin
- * if the admin app ever renders client-facing balances. Behaviour changes belong
- * in both.
+ * TWIN FILE — byte-identical in oxshare-crm-admin and oxshare-crm-client, and
+ * `check:twins` compares them. Behaviour changes belong in both. (The console
+ * renders money on the withdrawals queue, the ledger and the commission screens;
+ * `floorToScale` came from the portal's "use max" buttons and is here for both.)
  */
 
 /**
