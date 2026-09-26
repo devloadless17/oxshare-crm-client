@@ -5209,12 +5209,10 @@ export interface components {
              */
             products: string[];
         };
-        OpenWalletDto: {
-            /** Format: uuid */
-            userId: string;
+        OpenOwnWalletDto: {
             /**
-             * @description Must be a currency the platform holds and has enabled.
-             * @example USD
+             * @description An enabled currency code, e.g. EUR or USDT.
+             * @example EUR
              */
             currency: string;
         };
@@ -7912,6 +7910,15 @@ export interface components {
              */
             direction: "deposit" | "withdraw";
         };
+        OpenWalletDto: {
+            /** Format: uuid */
+            userId: string;
+            /**
+             * @description Must be a currency the platform holds and has enabled.
+             * @example USD
+             */
+            currency: string;
+        };
         WithdrawalRejectDto: {
             /** @description Free-text reason, when not using a configured reasonId. */
             reason?: string;
@@ -9964,7 +9971,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["OpenWalletDto"];
+                "application/json": components["schemas"]["OpenOwnWalletDto"];
             };
         };
         responses: {
@@ -11024,7 +11031,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["OpenWalletDto"];
+                "application/json": components["schemas"]["OpenOwnWalletDto"];
             };
         };
         responses: {

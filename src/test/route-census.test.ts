@@ -85,7 +85,6 @@ const UNTESTED = new Set([
   'src/app/(portal)/transfer/page.tsx',
   'src/app/verify-email/page.tsx',
   'src/app/verify-email/pending/page.tsx',
-  'src/app/(portal)/wallet/page.tsx',
   'src/app/(portal)/withdraw/page.tsx',
 ]);
 
