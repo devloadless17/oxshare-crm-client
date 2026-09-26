@@ -152,6 +152,10 @@ test.describe('moving around the portal', () => {
     for (const route of ['/dashboard', '/wallet', '/transactions', '/accounts']) {
       await page.goto(route);
       await page.waitForLoadState('networkidle');
+      // On a phone the menu is a drawer, HIDDEN while shut (out of the
+      // accessibility tree on purpose) — so open it, as a client would, and
+      // ask the menu they actually see.
+      await openNavigation(page);
 
       const current = page.getByRole('navigation').first().locator('[aria-current]');
       await expect(current, `${route} did not mark exactly one nav item as current`).toHaveCount(1);
