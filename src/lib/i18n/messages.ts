@@ -1517,6 +1517,10 @@ export const messages = {
     'Your verification was approved. Deposits and withdrawals are unlocked.',
   'notifications.kindKycRejectedTitle': 'Verification needs attention',
   'notifications.kindKycRejectedBody': 'Your verification was declined: {reason}. You can retry.',
+  // A verified client asked to update — a request, never "declined" (26 Sep 2026).
+  // Its title is `kyc.reverifyTitle`, the one the KYC screens show.
+  'notifications.kindKycReverificationBody':
+    'We need an update: {reason}. Deposits and withdrawals are paused until it is reviewed.',
   'notifications.kindCommissionConfirmedTitle': 'Commission credited',
   // The client's side of the same trade. "Rebate" rather than "commission",
   // because the money is theirs coming back rather than something they earned —

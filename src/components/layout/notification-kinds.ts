@@ -165,6 +165,20 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     vars: (params) => ({ reason: reasonText(params.reason) }),
     href: '/kyc',
   },
+  /*
+   * A VERIFIED client asked to update (26 Sep 2026) — a request, not a refusal.
+   * Its own words, never kyc.rejected's "declined": the email said "please
+   * update", and a bell that said otherwise would contradict it. Deposits and
+   * withdrawals pause until the update is reviewed, and the body says so.
+   */
+  'kyc.reverification_requested': {
+    icon: ShieldCheck,
+    // The same title the KYC screens use, so the bell and the page agree.
+    titleKey: 'kyc.reverifyTitle',
+    bodyKey: 'notifications.kindKycReverificationBody',
+    vars: (params) => ({ reason: reasonText(params.reason) }),
+    href: '/kyc',
+  },
   'commission.confirmed': {
     icon: Percent,
     titleKey: 'notifications.kindCommissionConfirmedTitle',
