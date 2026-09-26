@@ -712,7 +712,9 @@ admin's.
   new version (`oxshare-logo-v2.png`) beside the old one. That is what makes the year-long
   `immutable` cache in `next.config.ts` safe. `src/test/email-assets.test.ts` pins the file (an
   opaque PNG, 400×177, under 40 KB) and both headers. Deploy this app BEFORE a backend that points
-  at a new version.
+  at a new version. `public/brand/oxshare-email-logo.png` is the SAME file at its first address:
+  the backend deployed as release be0341e points mail there until the next backend deploy, so it
+  stays for good, byte-identical, and the test pins that too.
 - **Tests are back, on request, and the suite is deliberately small.** All 291 were deleted on an
   explicit instruction, along with `e2e/`, `src/test/`, `vitest.config.mts` and every test
   dependency. `npm test` was then re-added — also on request — when the money screens landed,

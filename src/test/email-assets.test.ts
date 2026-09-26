@@ -23,6 +23,8 @@ import nextConfig from '../../next.config';
  */
 
 const LOGO = 'public/email/oxshare-logo-v1.png';
+/** Where mail sent before the move points — see the last case. */
+const LEGACY_SOURCE = '/brand/oxshare-email-logo.png';
 
 /** The chunk names of a PNG, in order — enough to see an alpha or transparency chunk. */
 function chunkNames(png: Buffer): string[] {
@@ -60,9 +62,22 @@ describe('the images our emails load (public/email)', () => {
 
   it('is cached for a year and embeddable from any origin', async () => {
     const rules = (await nextConfig.headers?.()) ?? [];
-    const rule = rules.find((r) => r.source === '/email/:path*');
-    const value = (key: string) => rule?.headers.find((h) => h.key === key)?.value;
-    expect(value('Cache-Control')).toBe('public, max-age=31536000, immutable');
-    expect(value('Cross-Origin-Resource-Policy')).toBe('cross-origin');
+    for (const source of ['/email/:path*', LEGACY_SOURCE]) {
+      const rule = rules.find((r) => r.source === source);
+      const value = (key: string) => rule?.headers.find((h) => h.key === key)?.value;
+      expect(value('Cache-Control'), source).toBe('public, max-age=31536000, immutable');
+      expect(value('Cross-Origin-Resource-Policy'), source).toBe('cross-origin');
+    }
+  });
+
+  /*
+   * The logo's FIRST address. The backend deployed as production release be0341e
+   * (26 Sep 2026) points every email at `/brand/oxshare-email-logo.png` until the
+   * release carrying the move is deployed, and mail it sends keeps that address
+   * for as long as it sits in an inbox. So the old address serves the same bytes
+   * for good; deleting it would blank the logo in every one of those messages.
+   */
+  it('still serves the logo at its first address, byte for byte', () => {
+    expect(readFileSync(`public${LEGACY_SOURCE}`).equals(png)).toBe(true);
   });
 });

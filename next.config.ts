@@ -123,6 +123,11 @@ const nextConfig: NextConfig = {
       { source: '/:path*', headers: securityHeaders },
       // After the site-wide rule, so these win where a key is set by both.
       { source: '/email/:path*', headers: emailAssetHeaders },
+      // The same logo at its FIRST address. The backend deployed as production
+      // release be0341e (26 Sep 2026) points every email here until the release
+      // carrying the move to `/email/` is deployed, and mail it sends keeps this
+      // address for as long as it is kept — so this path is served for good.
+      { source: '/brand/oxshare-email-logo.png', headers: emailAssetHeaders },
     ];
   },
 };
