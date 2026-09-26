@@ -59,6 +59,28 @@ const securityHeaders = [
     : []),
 ];
 
+/*
+ * `public/email/` holds the images our emails load — the logo in every message's
+ * masthead (backend `modules/email/templates/layout.ts`). Each file there is a
+ * CONTRACT with mail already delivered: a message keeps loading it for as long
+ * as it sits in an inbox. So a file there is never edited or deleted — a new
+ * logo is a new version (`oxshare-logo-v2.png`) beside the old one — and that
+ * is what makes these two headers safe:
+ *
+ *  - a year's `immutable` cache. The `public/` default is `max-age=0`, which
+ *    sent every open of every email back here to ask again; now mail clients,
+ *    the Gmail and Apple image proxies and the CDN edge keep their copy;
+ *  - `Cross-Origin-Resource-Policy: cross-origin`, stating outright that any
+ *    origin may embed these. A webmail client does exactly that, and a
+ *    site-wide `same-origin` added later must not blank the logo in every inbox.
+ *
+ * `src/test/email-assets.test.ts` pins the file and both headers.
+ */
+const emailAssetHeaders = [
+  { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+  { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+];
+
 const nextConfig: NextConfig = {
   /*
    * Do not announce the framework.
@@ -97,7 +119,11 @@ const nextConfig: NextConfig = {
   // through the proxy inherits nosniff and the CSP from here as well as from the
   // API's own response.
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      // After the site-wide rule, so these win where a key is set by both.
+      { source: '/email/:path*', headers: emailAssetHeaders },
+    ];
   },
 };
 
