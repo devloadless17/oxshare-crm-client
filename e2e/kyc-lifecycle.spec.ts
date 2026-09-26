@@ -12,6 +12,7 @@ import {
   TINY_PNG,
   waitForMail,
   VERIFICATION_SUBJECT,
+  kycStepPath,
 } from './helpers';
 
 /**
@@ -99,6 +100,9 @@ test('a client is verified end to end: submit → reject with reason → resubmi
         phone: '+96170000009',
         nationality: 'Lebanese',
         country: 'Lebanon',
+        // Required to verify since 26 Sep 2026 (the platform's identity core).
+        address: '12 Hamra Street',
+        city: 'Beirut',
       },
     });
     expect(personal.status, 'saving the personal step failed').toBeLessThan(300);
@@ -130,7 +134,7 @@ test('a client is verified end to end: submit → reject with reason → resubmi
     await page.goto('/kyc');
     await page.waitForURL(/\/kyc\/step\/\d/, { timeout: 20_000 });
     // The wizard resumes at the REVIEW step — everything before it is complete.
-    await page.goto('/kyc/step/5');
+    await page.goto(await kycStepPath(page, 'review'));
     const [submitted] = await Promise.all([
       page.waitForResponse(
         (r) => r.url().includes('/kyc/submit') && r.request().method() === 'POST',

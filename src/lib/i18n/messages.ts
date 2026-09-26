@@ -150,6 +150,12 @@ export const messages = {
   'profile.verificationTitle': 'Verification',
   'profile.verificationApproved': 'Your identity is verified.',
   'profile.verificationPending': 'Identity verification is not complete yet.',
+  'profile.verificationReview':
+    'Your verification is being reviewed. We will email you when it is complete.',
+  'profile.verificationRejected':
+    'Your verification needs attention. Open it to see what to correct.',
+  'profile.verificationReverify':
+    'Your verification needs an update. Deposits and withdrawals are paused until it is reviewed.',
   'profile.verificationCta': 'Continue verification',
   'profile.securityTitle': 'Password',
   'profile.securitySubtitle':
@@ -848,6 +854,8 @@ export const messages = {
   'dashboard.kycLoading': 'Checking your verification status…',
   'dashboard.kycPending': 'Under review — we will email you when it is complete.',
   'dashboard.kycRejected': 'Action required — your documents were not approved.',
+  'dashboard.kycReverify':
+    'Update needed — deposits and withdrawals are paused until your updated verification is reviewed.',
   'dashboard.kycNotStarted': 'Not started — verify your identity to enable trading.',
   'dashboard.openPositions': '{count} Open Positions',
   'dashboard.underReview': '{count} Under Review',
@@ -1162,6 +1170,9 @@ export const messages = {
   'kyc.resumingTitle': 'Resuming Identity Verification',
   'kyc.resumingBody': 'Fetching your progress and loading your last active step…',
   'kyc.layoutTitle': 'Identity Verification',
+  'kyc.progressLabel': 'Verification steps',
+  'kyc.stepDone': '(completed)',
+  'kyc.stepCaption': 'Step {current} of {total} · {title}',
   'dashboard.firstDeposit': 'Make Your First Deposit',
 
   // ── KYC ───────────────────────────────────────────────────────────────────
@@ -1181,6 +1192,11 @@ export const messages = {
   'kyc.submittedTitle': 'Verification Submitted',
   'kyc.approvedTitle': 'KYC Approved!',
   'kyc.rejectedTitle': 'KYC Verification Rejected',
+  // A VERIFIED client asked to update (26 Sep 2026) — a request, not a refusal.
+  'kyc.reverifyTitle': 'Please update your verification',
+  'kyc.reverifyBody':
+    'Your verification needs an update — the reason is below. Deposits and withdrawals are paused until your updated verification is reviewed; everything else stays as it is.',
+  'kyc.reverifyWhy': 'Why:',
   'kyc.backToDashboard': 'Back to Dashboard',
   'kyc.loadFailedShort': 'Could not load your verification details',
   'kyc.loadFailed': 'Could not load your verification details.',
@@ -1305,7 +1321,8 @@ export const messages = {
   // the quiet line that says so.
   'kyc.autosaveSaving': 'Saving…',
   'kyc.autosaveSaved': 'All changes saved',
-  'kyc.autosaveFailed': 'Not saved yet — we will try again',
+  'kyc.autosaveFailed': 'Not saved yet.',
+  'kyc.autosaveRetry': 'Try again',
   'kyc.answerYes': 'Yes',
   'kyc.answerNo': 'No',
 
@@ -1337,6 +1354,10 @@ export const messages = {
   'kyc.uploadingFile': 'Uploading File…',
   'kyc.uploadWait': 'Please wait a moment',
   'kyc.replaceHint': 'Replace',
+  // Choosing another document than the one on file (26 Sep 2026): one is kept.
+  'kyc.documentSwitchNotice':
+    'You already sent your {stored}. Uploading your {chosen} replaces it — only one is kept.',
+  'kyc.documentSwitchStoredFallback': 'other document',
   'kyc.uploadFormats': 'PNG, JPG, PDF · Max {limit}MB',
   // Device-neutral: most clients are on a phone, which has neither a drag nor a
   // drop. The two buttons beside this say what to actually do.
@@ -1427,6 +1448,9 @@ export const messages = {
   'kycGate.rejectedTitle': 'Your verification needs attention',
   'kycGate.rejectedBody':
     'Something in your submission could not be accepted. Open verification to see what to correct.',
+  'kycGate.reverifyBody':
+    'Your verification needs an update. Deposits, withdrawals and transfers are paused until your updated verification is reviewed.',
+  'kycGate.reverifyCta': 'Update verification',
   'kycGate.verifyCta': 'Verify my account',
   'kycGate.statusCta': 'View verification',
   'kycGate.dismiss': 'Not now',

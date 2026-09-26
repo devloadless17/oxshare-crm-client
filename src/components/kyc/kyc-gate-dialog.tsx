@@ -49,12 +49,18 @@ export function KycGateDialog({
   onOpenChange,
   pending = false,
   rejected = false,
+  reverification = false,
   emailUnverified = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pending?: boolean;
   rejected?: boolean;
+  /**
+   * The rejection is a REQUEST TO UPDATE a verified client (`useKycAccess`).
+   * Same doors, different words: they are asked to update, not told they failed.
+   */
+  reverification?: boolean;
   /**
    * The address has not been confirmed yet — the step BEFORE identity.
    *
@@ -65,7 +71,15 @@ export function KycGateDialog({
    */
   emailUnverified?: boolean;
 }) {
-  const state = emailUnverified ? 'email' : pending ? 'pending' : rejected ? 'rejected' : 'todo';
+  const state = emailUnverified
+    ? 'email'
+    : pending
+      ? 'pending'
+      : rejected
+        ? reverification
+          ? 'reverify'
+          : 'rejected'
+        : 'todo';
 
   const { Icon, tone, title, body, cta, href } = {
     email: {
@@ -92,6 +106,14 @@ export function KycGateDialog({
       title: t('kycGate.rejectedTitle'),
       body: t('kycGate.rejectedBody'),
       cta: t('kycGate.statusCta'),
+      href: '/kyc',
+    },
+    reverify: {
+      Icon: ShieldAlert,
+      tone: 'bg-warning/10 text-warning',
+      title: t('kyc.reverifyTitle'),
+      body: t('kycGate.reverifyBody'),
+      cta: t('kycGate.reverifyCta'),
       href: '/kyc',
     },
     todo: {

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import * as React from 'react';
-import { BadgeCheck, ShieldAlert } from 'lucide-react';
+import { BadgeCheck } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 import api from '@/lib/api';
 import type { components } from '@/lib/api/types.gen';
@@ -15,6 +15,7 @@ import { addressLine, formatDateOfBirth, formatPhone } from '@/lib/profile';
 import { AvatarUploader } from './avatar-uploader';
 import { ChangePasswordForm } from './change-password-form';
 import { SessionsList } from './sessions-list';
+import { VerificationStatus } from './verification-status';
 
 type KycStatusDto = components['schemas']['KycStatusDto'];
 
@@ -45,8 +46,10 @@ type KycStatusDto = components['schemas']['KycStatusDto'];
  *
  * ## Everything here is live
  *
- * Account details and Verification come from `GET /auth/me`, which
- * `UserContext` has already loaded, so those sections add no request.
+ * Account details come from `GET /auth/me`, which `UserContext` has already
+ * loaded. Verification comes from `GET /kyc/status` — the identity check its
+ * title names, never the email flag (`verification-status.tsx` says why) — the
+ * same cached read the documents section below uses.
  *
  * Password and Active sessions rendered `BackendPending` until the endpoints
  * behind them were built, because neither existed: the only password write was
@@ -169,29 +172,7 @@ export default function ProfilePage() {
           </Panel>
 
           <Panel title={t('profile.verificationTitle')}>
-            <div className="flex items-start gap-3">
-              {verified ? (
-                <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-success" aria-hidden="true" />
-              ) : (
-                <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
-              )}
-              <div className="min-w-0">
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  {verified ? t('profile.verificationApproved') : t('profile.verificationPending')}
-                </p>
-                {/* The one permanent route into KYC. The sidebar entry
-                    disappears once approved, so an unverified client needs a
-                    way back in from somewhere that does not move. */}
-                {!verified && (
-                  <Link
-                    href="/kyc"
-                    className="mt-2 inline-block rounded-md text-xs font-semibold text-link hover:underline focus-outline"
-                  >
-                    {t('profile.verificationCta')}
-                  </Link>
-                )}
-              </div>
-            </div>
+            <VerificationStatus kyc={kycQuery} verificationLevel={user.verificationLevel} />
           </Panel>
         </div>
 

@@ -21,7 +21,7 @@ import { profileApi, type ProfileOptions } from '@/lib/api/profile';
 import { keys } from '@/lib/query-keys';
 import { AsyncBoundary } from '@/components/async-boundary';
 import {
-  REQUIRED_DETAIL_FIELDS,
+  requiredDetailFields,
   hasNationalNumber,
   type RegisterField,
   type RegisterValues,
@@ -56,6 +56,8 @@ export function RegisterDetailsStep({
     // already one attempt — so no silent back-off before saying so.
     retry: 0,
   });
+  // Which details sign-up requires — the server's rule, served with the lists.
+  const required = requiredDetailFields(options.data);
 
   /*
    * Choosing where they live starts the phone number in that country — while
@@ -87,7 +89,12 @@ export function RegisterDetailsStep({
         error={options.error}
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field field="dateOfBirth" label={t('auth.register.dateOfBirth')} errors={errors}>
+          <Field
+            required={required.includes('dateOfBirth')}
+            field="dateOfBirth"
+            label={t('auth.register.dateOfBirth')}
+            errors={errors}
+          >
             <DatePicker
               id="dateOfBirth"
               value={values.dateOfBirth}
@@ -99,7 +106,12 @@ export function RegisterDetailsStep({
             />
           </Field>
 
-          <Field field="nationality" label={t('auth.register.nationality')} errors={errors}>
+          <Field
+            required={required.includes('nationality')}
+            field="nationality"
+            label={t('auth.register.nationality')}
+            errors={errors}
+          >
             <ChoiceSelect
               field="nationality"
               label={t('auth.register.nationality')}
@@ -111,7 +123,12 @@ export function RegisterDetailsStep({
             />
           </Field>
 
-          <Field field="country" label={t('auth.register.country')} errors={errors}>
+          <Field
+            required={required.includes('country')}
+            field="country"
+            label={t('auth.register.country')}
+            errors={errors}
+          >
             <ChoiceSelect
               field="country"
               label={t('auth.register.country')}
@@ -124,7 +141,12 @@ export function RegisterDetailsStep({
             />
           </Field>
 
-          <Field field="phone" label={t('auth.register.phone')} errors={errors}>
+          <Field
+            required={required.includes('phone')}
+            field="phone"
+            label={t('auth.register.phone')}
+            errors={errors}
+          >
             <PhoneInput
               aria-label={t('auth.register.phone')}
               value={values.phone}
@@ -132,7 +154,12 @@ export function RegisterDetailsStep({
             />
           </Field>
 
-          <Field field="city" label={t('auth.register.city')} errors={errors}>
+          <Field
+            required={required.includes('city')}
+            field="city"
+            label={t('auth.register.city')}
+            errors={errors}
+          >
             <Input
               id="city"
               value={values.city}
@@ -147,6 +174,7 @@ export function RegisterDetailsStep({
           </Field>
 
           <Field
+            required={required.includes('postalCode')}
             field="postalCode"
             label={t('auth.register.postalCode')}
             hint={t('auth.register.postalCodeHint')}
@@ -166,6 +194,7 @@ export function RegisterDetailsStep({
           </Field>
 
           <Field
+            required={required.includes('address')}
             field="address"
             label={t('auth.register.address')}
             errors={errors}
@@ -227,6 +256,7 @@ function Field({
   label,
   hint,
   errors,
+  required,
   className,
   children,
 }: {
@@ -234,10 +264,11 @@ function Field({
   label: string;
   hint?: string;
   errors: Partial<Record<RegisterField, string>>;
+  /** The server's rule — `requiredDetailFields`. */
+  required: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
-  const required = REQUIRED_DETAIL_FIELDS.includes(field);
   const error = errors[field];
   return (
     <div className={`space-y-1.5 ${className ?? ''}`}>

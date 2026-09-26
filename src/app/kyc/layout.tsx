@@ -2,6 +2,7 @@
 
 import './kyc-shell.css';
 
+import type { CSSProperties } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand-logo';
@@ -273,18 +274,27 @@ function KycShell({ children }: { children: React.ReactNode }) {
 
       {/* Progress rail. Unconditional now: shell 'none' and 'portal' both return
           above, so everything reaching here is a step — the `!isSubmittedPage`
-          guard that used to wrap this could no longer be false. */}
+          guard that used to wrap this could no longer be false.
+
+          As many steps as the broker configured (26 Sep 2026): the rail is sized
+          from the COUNT and every step gets the same width — kyc-shell.css says
+          why the connectors depend on that. */}
       <div className="kyc-progress-wrap">
-        <div className="kyc-progress-bar">
+        <ol
+          className="kyc-progress-bar"
+          aria-label={t('kyc.progressLabel')}
+          style={{ '--kyc-steps': steps.length } as CSSProperties}
+        >
           {steps.map((step) => {
             const active = step.num === currentStep;
             const done = !active && step.slug !== undefined && completed.has(step.slug);
             return (
-              <div
+              <li
                 key={step.num}
                 className={`kyc-step-node ${done ? 'done' : ''} ${active ? 'active' : ''}`}
+                aria-current={active ? 'step' : undefined}
               >
-                <div className="kyc-step-circle">
+                <div className="kyc-step-circle" aria-hidden="true">
                   {done ? (
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                       <path
@@ -299,14 +309,27 @@ function KycShell({ children }: { children: React.ReactNode }) {
                     <span>{step.num}</span>
                   )}
                 </div>
-                <span className="kyc-step-label">{step.label}</span>
+                {/* Clamped to two lines; the full title is one hover away. */}
+                <span className="kyc-step-label" title={step.label}>
+                  {step.label}
+                  {done && <span className="sr-only"> {t('kyc.stepDone')}</span>}
+                </span>
                 {step.num < steps.length && (
-                  <div className={`kyc-step-line ${done ? 'done' : ''}`} />
+                  <div className={`kyc-step-line ${done ? 'done' : ''}`} aria-hidden="true" />
                 )}
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ol>
+        {/* Phones show the rail without its labels — eight names cannot share a
+            393px row — so the step being filled in is named once, underneath. */}
+        <p className="kyc-progress-caption" aria-hidden="true">
+          {t('kyc.stepCaption', {
+            current: currentStep,
+            total: steps.length,
+            title: steps[currentStep - 1]?.label ?? '',
+          })}
+        </p>
       </div>
 
       {/* Content */}

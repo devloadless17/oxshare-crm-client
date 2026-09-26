@@ -4,12 +4,11 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { apiErrorMessage } from '@/lib/api/errors';
+import { apiErrorMessage, apiFieldErrors } from '@/lib/api/errors';
 import { forgetEdits, forgetSaved, readPersonalDraft, rememberEdit } from '@/lib/kyc-draft';
 import { useResource } from '@/hooks/use-resource';
 import { withReviewStep } from './review-step';
 import { chosenDocumentValue, savedDocumentChoices, storedDocValuesOf } from './doc-type';
-import { answersToSave } from './custom-step';
 import { firstOwed, owedMessage } from './owed-message';
 import {
   effectiveUploads,
@@ -19,7 +18,7 @@ import {
   type SessionUploads,
 } from './upload-state';
 import { isNetworkError, kycErrorMessage } from './kyc-errors';
-import { useStepAutosave } from './use-step-autosave';
+import { continueAnswers, useStepAutosave } from './use-step-autosave';
 import { ReturnedBanner, StepLoadError, StepLoading } from './step-screens';
 import type { components } from '@/lib/api/types.gen';
 import { Button } from '@/components/ui/button';
@@ -73,6 +72,8 @@ export function KycStepForm() {
   const [settled, setSettled] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  /** The server's sentence per field, from the last Continue. */
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   /** The form holds what the server has — autosave may start (`useStepAutosave`). */
   const [seeded, setSeeded] = useState(false);
 
@@ -80,6 +81,12 @@ export function KycStepForm() {
   const set = (k: string, v: string) => {
     setFormData((p) => ({ ...p, [k]: v }));
     rememberEdit(k, v);
+    // An edit answers the server's sentence about that field.
+    setFieldErrors((p) => {
+      if (!(k in p)) return p;
+      const { [k]: _answered, ...rest } = p;
+      return rest;
+    });
   };
 
   /*
@@ -292,6 +299,7 @@ export function KycStepForm() {
    */
   const handleNext = async () => {
     setError('');
+    setFieldErrors({});
     setLoading(true);
     try {
       const slug = currentStepConfig?.slug || 'personal';
@@ -309,7 +317,12 @@ export function KycStepForm() {
 
       // Anything typed in the last moment is saved first, so it is judged too.
       await autosave.flush();
-      const data = answersToSave(currentStepConfig, formData);
+      // The identity only where the client edited it — see `continueAnswers`.
+      const data = continueAnswers(
+        currentStepConfig,
+        formData,
+        new Set(Object.keys(readPersonalDraft())),
+      );
       // The document the client is presenting — judged, and never allowed to
       // relabel pages that belong to another one (`saveStep`).
       if (slug === 'document') data.docType = docType;
@@ -327,6 +340,7 @@ export function KycStepForm() {
       else await submit();
     } catch (e: unknown) {
       setError(kycErrorMessage(e));
+      setFieldErrors(apiFieldErrors(e));
     } finally {
       setLoading(false);
     }
@@ -364,6 +378,7 @@ export function KycStepForm() {
         onChange={set}
         onUpload={handleUpload}
         onPendingChange={handlePendingChange}
+        fieldErrors={fieldErrors}
       />
 
       {error && (
@@ -400,6 +415,17 @@ export function KycStepForm() {
                 : autosave.state === 'saved'
                   ? 'kyc.autosaveSaved'
                   : 'kyc.autosaveFailed',
+            )}
+            {/* Nothing retries on its own until the next change, so the way
+                to try again is right beside the sentence saying it failed. */}
+            {autosave.state === 'failed' && (
+              <button
+                type="button"
+                onClick={() => void autosave.flush()}
+                className="ms-1.5 rounded-sm font-semibold text-link hover:underline focus-outline"
+              >
+                {t('kyc.autosaveRetry')}
+              </button>
             )}
           </span>
         )}

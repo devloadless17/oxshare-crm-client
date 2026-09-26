@@ -107,6 +107,9 @@ test('a returned passport must be replaced, and the wizard resumes where the cli
         dateOfBirth: '1990-01-01',
         nationality: 'Lebanese',
         country: 'Lebanon',
+        // Required to verify since 26 Sep 2026 — so the phone is the ONE thing owed.
+        address: '12 Hamra Street',
+        city: 'Beirut',
         phone: '+961',
       },
     });
@@ -183,7 +186,8 @@ test('a returned passport must be replaced, and the wizard resumes where the cli
       expect(rejected.ok(), `reject answered ${rejected.status()}`).toBe(true);
 
       // No reload: the socket's event refreshes the status the screen reads.
-      await expect(page.getByText(/blurred — e2e correction round/i)).toBeVisible({
+      // On the SCREEN — the bell's toast carries the same sentence, outside it.
+      await expect(page.locator('main').getByText(/blurred — e2e correction round/i)).toBeVisible({
         timeout: 20_000,
       });
     });

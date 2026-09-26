@@ -38,6 +38,17 @@ describe('where a returning client lands', () => {
     expect(resumeStepNumber(null, STEPS)).toBe(1);
   });
 
+  it('opens the FIRST step on a first visit, even when sign-up already completed it', () => {
+    // The details the documents are checked against are seen and confirmed
+    // before anything is uploaded.
+    const status = {
+      status: 'not_started',
+      steps: [state('personal'), state('document', [owed('docType', 'choice')]), state('selfie')],
+    };
+    expect(resumeStepNumber(status, STEPS)).toBe(1);
+    expect(resumeStepNumber({ ...status, status: 'in_progress' }, STEPS)).toBe(2);
+  });
+
   it('skips the steps the server calls complete', () => {
     const status = {
       steps: [state('personal'), state('document', [owed('docType', 'choice')]), state('selfie')],

@@ -3,7 +3,7 @@ import {
   ACCOUNT_FIELDS,
   DETAIL_FIELDS,
   EMPTY_REGISTER_VALUES,
-  REQUIRED_DETAIL_FIELDS,
+  requiredDetailFields,
   firstErrorField,
   hasNationalNumber,
   missingFields,
@@ -56,14 +56,26 @@ describe('the two steps', () => {
 });
 
 describe('what counts as answered', () => {
-  it('asks for the identity and the way to reach them, and leaves the address optional', () => {
-    expect(REQUIRED_DETAIL_FIELDS).toEqual(['dateOfBirth', 'nationality', 'phone', 'country']);
-    expect(missingFields(filled, REQUIRED_DETAIL_FIELDS)).toEqual([]);
+  // What `GET /profile/options` serves — the SERVER's rule, never a copy here.
+  const OPTIONS = {
+    required: {
+      registration: ['firstName', 'lastName', 'dateOfBirth', 'nationality', 'phone', 'country'],
+    },
+  };
+  const REQUIRED = requiredDetailFields(OPTIONS);
+
+  it('asks for what the server requires on step 2, and leaves the address optional', () => {
+    expect(REQUIRED).toEqual(['dateOfBirth', 'nationality', 'phone', 'country']);
+    expect(missingFields(filled, REQUIRED)).toEqual([]);
+  });
+
+  it('claims nothing required before the server has said — the server still judges', () => {
+    expect(requiredDetailFields(undefined)).toEqual([]);
   });
 
   it('treats blank and whitespace as missing', () => {
     const values = { ...filled, nationality: '   ', dateOfBirth: '' };
-    expect(missingFields(values, REQUIRED_DETAIL_FIELDS)).toEqual(['dateOfBirth', 'nationality']);
+    expect(missingFields(values, REQUIRED)).toEqual(['dateOfBirth', 'nationality']);
   });
 
   it('counts a number typed WITH SPACES as a number — no four digits need be in a row', () => {

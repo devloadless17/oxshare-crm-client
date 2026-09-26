@@ -71,12 +71,28 @@ async function fillTheForm(user: User) {
   await fillDetails(user);
 }
 
+/** Which fields the SERVER requires, and when — served beside the lists. */
+const REQUIRED = {
+  registration: ['firstName', 'lastName', 'dateOfBirth', 'nationality', 'phone', 'country'],
+  verification: [
+    'firstName',
+    'lastName',
+    'dateOfBirth',
+    'nationality',
+    'phone',
+    'country',
+    'address',
+    'city',
+  ],
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   register.mockResolvedValue({ message: 'Check your inbox.' });
   options.mockResolvedValue({
     countries: ['Lebanon', 'United Arab Emirates'],
     nationalities: ['Emirati', 'Lebanese'],
+    required: REQUIRED,
   });
 });
 
@@ -231,6 +247,28 @@ describe('two steps, one registration (the client’s request, 25 Sep 2026)', ()
     }
   });
 
+  it('takes WHICH details are required from the server — the form keeps no copy of the rule', async () => {
+    // A server that requires no nationality at sign-up: the form must not
+    // refuse for one. (The server still judges every value it is sent.)
+    options.mockResolvedValue({
+      countries: ['Lebanon'],
+      nationalities: ['Lebanese'],
+      required: {
+        ...REQUIRED,
+        registration: REQUIRED.registration.filter((field) => field !== 'nationality'),
+      },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<RegisterPage />);
+    await fillAccount(user);
+    await user.click(screen.getByRole('button', { name: /^continue$/i }));
+    await user.click(await screen.findByRole('button', { name: /^create account$/i }));
+
+    expect(register).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/date of birth/i)).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText(/nationality/i)).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
   it('sends the whole profile in ONE registration — what the verification opens with', async () => {
     const user = userEvent.setup();
     renderWithProviders(<RegisterPage />);
@@ -369,7 +407,11 @@ describe('two steps, one registration (the client’s request, 25 Sep 2026)', ()
     expect(screen.queryByRole('combobox', { name: /nationality/i })).not.toBeInTheDocument();
 
     // The retry is the way on — the next fetch succeeds and the form appears.
-    options.mockResolvedValue({ countries: ['Lebanon'], nationalities: ['Lebanese'] });
+    options.mockResolvedValue({
+      countries: ['Lebanon'],
+      nationalities: ['Lebanese'],
+      required: REQUIRED,
+    });
     await user.click(screen.getByRole('button', { name: /try again|retry/i }));
     expect(await screen.findByRole('combobox', { name: /nationality/i })).toBeEnabled();
   });

@@ -32,12 +32,18 @@ interface StepLike {
 
 /** The step number to open; `steps` must already include the review step. */
 export function resumeStepNumber(
-  status: { steps?: readonly StepState[] } | null | undefined,
+  status: { status?: string; steps?: readonly StepState[] } | null | undefined,
   steps: readonly StepLike[],
 ): number {
   const answerable = steps.filter((step) => step.slug !== 'review');
   const review = steps.find((step) => step.slug === 'review');
   if (answerable.length === 0) return review?.stepNumber ?? 1;
+
+  // A FIRST visit opens the first step (26 Sep 2026): the personal step comes
+  // pre-filled from sign-up, and a client who typed their address there would
+  // otherwise be taken past their own details to the document upload — the
+  // details the documents are checked against, never seen and confirmed.
+  if (status?.status === 'not_started') return answerable[0]!.stepNumber;
 
   const stateOf = (slug: string) => status?.steps?.find((state) => state.slug === slug);
   const returned = answerable.find((step) => (stateOf(step.slug)?.returned.length ?? 0) > 0);

@@ -73,25 +73,19 @@ export const DETAIL_FIELDS: readonly RegisterField[] = [
 ];
 
 /**
- * What step 2 will not let the client leave empty.
- *
- * The identity and the way to reach them. The address is asked for and
- * optional — it is completed, with its proof, in the verification — and the
- * postal code is optional everywhere: much of the region the broker serves
- * (the UAE and Qatar among them) has none.
- *
- * The server requires the NAME only, and that is deliberate rather than an
- * inconsistency: an API client or an older build that sends only a name still
- * registers, and completeness is judged where it has always been — at KYC
- * submission, the one judge (`kyc-step-state.ts` in the backend). What the
- * server does refuse is any value that is WRONG, whichever form sent it.
+ * Which of step 2's details sign-up REQUIRES — the SERVER's rule, served with
+ * the country lists (`GET /profile/options` → `required.registration`), never
+ * a copy kept here (26 Sep 2026: the API enforces names, date of birth,
+ * nationality, phone and country, and refuses a sign-up without them, per
+ * field). Before the lists arrive nothing is claimed required: the server
+ * still judges, and answers under each field.
  */
-export const REQUIRED_DETAIL_FIELDS: readonly RegisterField[] = [
-  'dateOfBirth',
-  'nationality',
-  'phone',
-  'country',
-];
+export function requiredDetailFields(
+  options: { required?: { registration?: readonly string[] } } | undefined,
+): RegisterField[] {
+  const registration = options?.required?.registration ?? [];
+  return DETAIL_FIELDS.filter((field) => registration.includes(field));
+}
 
 /** Which step shows a field — where to send the client for a server's refusal. */
 export function stepOf(field: string): 1 | 2 {

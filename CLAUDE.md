@@ -163,6 +163,34 @@ the body). Then `/onboarding`: *Verify now* → `/kyc`, *Verify later* → `/das
   `e2e/confirm-email-screen.spec.ts` (phone layout and the fold, stubbed, spends none). E2E filters
   on the sign-up mail use `VERIFICATION_SUBJECT` — `/verify/i` does not match "verification".
 
+## KYC: the identity is the profile, and what the wizard may save (26 Sep 2026)
+
+The rules are in `../CLAUDE.md` ("The identity core is the PLATFORM's"). What this app owns:
+
+- **Which details are required comes from the server.** `requiredDetailFields(options)` reads
+  `GET /profile/options` → `required.registration`. Before the lists arrive it claims nothing
+  required, and the API still judges every value.
+- **Autosave** (`components/kyc/use-step-autosave.ts`). The identity fields (`system`) are sent only if
+  THIS client edited them (the tab's draft, `lib/kyc-draft.ts`), on the typing pause like any answer.
+  A phone whose digits do not yet make a number is never autosaved; an emptied phone is a clear and is
+  saved. Continue (`continueAnswers`) sends what is on screen, and the server answers per field, under
+  each field. A failed autosave says so and offers *Try again*.
+- **A first visit opens Personal Information** (`resume-step.ts`, status `not_started`), even when sign-up
+  already completed it: the details the documents are checked against are confirmed first.
+- **One identity document.** Choosing another card than the one on file changes nothing until a page
+  of the new one is uploaded; the note under the cards says the upload replaces it.
+- **A verification returned for UPDATE** (`reverificationRequestedAt`) reads as a request, never as a
+  rejection: `useKycAccess().reverification` drives the money gate dialog, the dashboard card, the step
+  banner and the outcome screen. The doors stay shut exactly as for a rejection.
+- **The progress rail holds any number of steps** (`app/kyc/kyc-shell.css`). Every step has ONE width,
+  because each connector is sized from its own step and only meets the next circle when the two are
+  equally wide. With eight steps, one-line labels broke that (reported): the lines stopped short and
+  the labels ran together. Labels wrap to two lines inside their step. Phones show the rail with a
+  "Step N of M · title" caption instead of the labels.
+- **`/profile`'s Verification panel reads `GET /kyc/status`** (`verification-status.tsx`), never the email
+  flag. Every signed-in client has confirmed their email, so it told all of them "Your identity is
+  verified."
+
 ## The bell: a client's notification is done once SEEN (25 Sep 2026, D-78)
 
 The owner's rule: a client's bell must never look full of things to do. Every row is an outcome

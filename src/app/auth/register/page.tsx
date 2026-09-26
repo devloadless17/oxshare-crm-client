@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { normaliseReferralCode } from '@/lib/referral-code';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -11,7 +12,7 @@ import { confirmEmailPath, rememberPendingEmail } from '@/lib/pending-email';
 import {
   ACCOUNT_FIELDS,
   EMPTY_REGISTER_VALUES,
-  REQUIRED_DETAIL_FIELDS,
+  requiredDetailFields,
   firstErrorField,
   missingFields,
   registerPayload,
@@ -20,6 +21,8 @@ import {
   type RegisterValues,
 } from '@/lib/register-form';
 import { t } from '@/lib/i18n';
+import { keys } from '@/lib/query-keys';
+import type { ProfileOptions } from '@/lib/api/profile';
 import { RedirectIfAuthenticated } from '@/components/auth/redirect-if-authenticated';
 import { AuthShell } from '@/components/auth/auth-shell';
 import {
@@ -65,6 +68,7 @@ export default function RegisterPage() {
 
 function RegisterForm() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   /*
    * `?ref=CODE` — the partner's referral link.
    *
@@ -198,7 +202,9 @@ function RegisterForm() {
     if (isLoading || registered) return;
     setError(null);
 
-    const missing = missingFields(values, REQUIRED_DETAIL_FIELDS);
+    // The server's rule, from the lists step 2 already loaded (`GET /profile/options`).
+    const options = queryClient.getQueryData<ProfileOptions>(keys.profileOptions.all());
+    const missing = missingFields(values, requiredDetailFields(options));
     if (missing.length > 0) {
       showErrors(Object.fromEntries(missing.map((f) => [f, t('auth.register.required')])));
       return;
