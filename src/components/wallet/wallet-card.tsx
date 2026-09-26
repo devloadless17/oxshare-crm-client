@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Check, Copy, Eye, EyeOff, Wallet as WalletIcon } from 'lucide-react';
 import type { Wallet as WalletRecord } from '@/lib/api/wallet';
 import { formatMoney, isZeroMoney } from '@/lib/money';
+import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 
 /**
@@ -50,6 +51,8 @@ export function WalletCard({
   currency,
   wallet,
   holder,
+  onOpen,
+  opening = false,
 }: {
   label: string;
   /* A currency CODE. Not the generated union — currencies are operator data,
@@ -58,6 +61,14 @@ export function WalletCard({
   wallet: WalletRecord | undefined;
   /** The signed-in client's name, for the card foot. Absent renders nothing. */
   holder?: string;
+  /**
+   * Open this wallet — shown on an UNOPENED card only (owner, 26 Sep 2026).
+   * Adding a currency opens no wallets; each enabled currency the client does
+   * not hold appears as a card they open themselves.
+   */
+  onOpen?: () => void;
+  /** The open request is in flight: the button waits instead of firing twice. */
+  opening?: boolean;
 }) {
   const opened = wallet !== undefined;
 
@@ -192,6 +203,18 @@ export function WalletCard({
                 number. See the component note. */}
             <p className="text-3xl font-bold sm:text-4xl">—</p>
             <p className="mt-1 text-[11px]">{t('wallet.notOpened', { currency })}</p>
+            {onOpen && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="mt-3"
+                loading={opening}
+                onClick={onOpen}
+              >
+                {t('wallet.openWallet', { currency })}
+              </Button>
+            )}
           </>
         )}
       </div>

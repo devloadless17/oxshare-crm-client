@@ -59,10 +59,16 @@ export function WalletCarousel({
   entries,
   byCurrency,
   holder,
+  onOpen,
+  opening,
 }: {
   entries: CarouselEntry[];
   byCurrency: Map<string, WalletRecord>;
   holder?: string;
+  /** Open an unopened currency's wallet — see `WalletCard.onOpen`. */
+  onOpen?: (currency: string) => void;
+  /** The currency whose open request is in flight, if any. */
+  opening?: string | null;
 }) {
   return (
     <Carousel className="w-full max-w-md" aria-label={t('wallet.carouselLabel')}>
@@ -74,6 +80,8 @@ export function WalletCarousel({
               currency={code}
               wallet={byCurrency.get(code)}
               holder={holder}
+              onOpen={onOpen ? () => onOpen(code) : undefined}
+              opening={opening === code}
             />
           </CarouselItem>
         ))}

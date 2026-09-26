@@ -1,7 +1,9 @@
 'use client';
 
 import * as React from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Coins } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { CommissionTransferDialog } from '@/components/partner/commission-transfer-dialog';
 import {
@@ -12,6 +14,11 @@ import {
   formatDate,
 } from '@/components/partner/partner-ui';
 import type { Wallet } from '@/lib/api/wallet';
+import { currenciesApi } from '@/lib/api/currencies';
+import { apiErrorMessage } from '@/lib/api/errors';
+import { partnerApi } from '@/lib/api/partner';
+import { useResource } from '@/hooks/use-resource';
+import { keys } from '@/lib/query-keys';
 import { compareMoney, formatMoney, isZeroMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
 
@@ -72,6 +79,29 @@ export function CommissionBalances({ wallets }: { wallets: Wallet[] }) {
     [wallets],
   );
 
+  /*
+   * Every OFFERED currency the partner holds no commission wallet in, as a cell
+   * they can open (owner, 26 Sep 2026). Adding a currency opens no wallets for
+   * anybody; the partner opens the ones they want. Commission is still credited
+   * into a wallet opened on the first confirmed payout, so this is about seeing
+   * the balance before then, never about being able to earn.
+   */
+  const currencies = useResource(keys.currencies.all(), (signal) => currenciesApi.list(signal));
+  const held = new Set(wallets.map((wallet) => wallet.currency));
+  const unopened = (currencies.data ?? []).filter((currency) => !held.has(currency.code));
+
+  const queryClient = useQueryClient();
+  const openWallet = useMutation({
+    mutationFn: (currency: string) => partnerApi.openCommissionWallet(currency),
+    onSuccess: (wallet) => {
+      void queryClient.invalidateQueries({ queryKey: keys.partner.overview() });
+      toast.success(t('partner.commissionWalletOpened', { currency: wallet.currency }));
+    },
+    onError: (error) =>
+      toast.error(apiErrorMessage(error, t('partner.commissionWalletOpenFailed'))),
+  });
+  const cells = sorted.length + unopened.length;
+
   return (
     <Surface>
       <SectionHeader
@@ -83,7 +113,7 @@ export function CommissionBalances({ wallets }: { wallets: Wallet[] }) {
         meta={sorted.length > 1 ? t('partner.balancesCount', { count: sorted.length }) : undefined}
       />
 
-      {sorted.length === 0 ? (
+      {cells === 0 ? (
         <EmptyPanel
           icon={Coins}
           title={t('partner.commissionEmpty')}
@@ -102,15 +132,20 @@ export function CommissionBalances({ wallets }: { wallets: Wallet[] }) {
          */
         <div
           className={`grid gap-px bg-border ${
-            sorted.length === 1
-              ? ''
-              : sorted.length === 2
-                ? 'sm:grid-cols-2'
-                : 'sm:grid-cols-2 xl:grid-cols-3'
+            cells === 1 ? '' : cells === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 xl:grid-cols-3'
           }`}
         >
           {sorted.map((wallet) => (
-            <BalanceCell key={wallet.id} wallet={wallet} sole={sorted.length === 1} />
+            <BalanceCell key={wallet.id} wallet={wallet} sole={cells === 1} />
+          ))}
+          {unopened.map((currency) => (
+            <UnopenedCell
+              key={currency.code}
+              currency={currency.code}
+              sole={cells === 1}
+              opening={openWallet.isPending && openWallet.variables === currency.code}
+              onOpen={() => openWallet.mutate(currency.code)}
+            />
           ))}
         </div>
       )}
@@ -188,6 +223,52 @@ function BalanceCell({ wallet, sole }: { wallet: Wallet; sole: boolean }) {
           dialog animates on close, and unmounting it the instant `open` flips
           would cut that animation off mid-way. */}
       <CommissionTransferDialog wallet={wallet} open={open} onOpenChange={setOpen} />
+    </div>
+  );
+}
+
+/**
+ * A currency the partner holds no commission wallet in: not a zero, and says
+ * so, with the button that opens it. Same anatomy as `BalanceCell` so the grid
+ * reads as one set of currencies.
+ */
+function UnopenedCell({
+  currency,
+  sole,
+  opening,
+  onOpen,
+}: {
+  currency: string;
+  sole: boolean;
+  opening: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <div
+      className={`flex flex-col gap-4 bg-card p-5 ${
+        sole ? 'sm:flex-row sm:items-center sm:justify-between sm:gap-8' : ''
+      }`}
+    >
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+            {t('partner.commissionWalletLabel')}
+          </p>
+          <Pill tone="neutral">{currency}</Pill>
+        </div>
+        <p className="mt-1.5 text-2xl font-semibold tracking-tight text-muted-foreground">—</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t('partner.commissionNotOpened')}</p>
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className={sole ? 'w-full shrink-0 sm:w-auto' : 'w-full'}
+        loading={opening}
+        onClick={onOpen}
+      >
+        {t('partner.openCommissionWallet', { currency })}
+      </Button>
     </div>
   );
 }

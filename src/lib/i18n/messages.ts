@@ -516,7 +516,11 @@ export const messages = {
   'wallet.loading': 'Loading your wallet balances',
   'wallet.loadFailed': 'Could not load your wallet balances.',
   'wallet.heading': 'My Wallet',
-  'wallet.notOpened': 'Not opened yet. This wallet appears after your first {currency} deposit.',
+  'wallet.notOpened': 'You don’t have a {currency} wallet yet.',
+  // Adding a currency opens no wallets; each one is opened by the client here.
+  'wallet.openWallet': 'Open {currency} wallet',
+  'wallet.opened': '{currency} wallet opened',
+  'wallet.openFailed': 'Could not open that wallet. Please try again.',
   'wallet.deposit': 'Deposit',
   'wallet.depositUsdt': 'Deposit USDT',
   'wallet.withdraw': 'Withdraw',
@@ -1683,6 +1687,12 @@ export const messages = {
   'partner.balanceAvailable': 'Available to move',
   'partner.balancesCount': '{count} currencies',
   'partner.balanceOpened': 'Opened {date}',
+  // A currency the partner holds no commission wallet in, opened with a click.
+  'partner.commissionWalletLabel': 'Commission wallet',
+  'partner.commissionNotOpened': 'Not opened yet',
+  'partner.openCommissionWallet': 'Open {currency} commission wallet',
+  'partner.commissionWalletOpened': '{currency} commission wallet opened',
+  'partner.commissionWalletOpenFailed': 'Could not open that commission wallet. Please try again.',
   // The "never credited" state — no wallet in ANY currency. Says what has not
   // happened and what will make it happen, never "$0.00", which would claim a
   // wallet that does not exist.

@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { ArrowDownLeft, ArrowUpRight, Receipt } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { MoneyAction } from '@/components/kyc/money-action';
@@ -12,6 +14,7 @@ import { useResource } from '@/hooks/use-resource';
 import { walletApi } from '@/lib/api/wallet';
 import { currenciesApi } from '@/lib/api/currencies';
 import { paymentsApi, type Transaction } from '@/lib/api/payments';
+import { apiErrorMessage } from '@/lib/api/errors';
 import { SignedAmount } from '@/components/money/signed-amount';
 import { t, type MessageKey } from '@/lib/i18n';
 import { movementLabelKey } from '@/lib/movement-label';
@@ -69,6 +72,25 @@ export default function WalletPage() {
    */
   const currencies = useResource(keys.currencies.all(), (signal) => currenciesApi.list(signal));
   const { user } = useUser();
+  const queryClient = useQueryClient();
+
+  /*
+   * Open a wallet in a currency the client does not hold yet.
+   *
+   * Adding a currency opens no wallets for anybody (owner, 26 Sep 2026): a
+   * write per client for every currency an operator adds does not scale. The
+   * card below offers it instead, and this writes the one wallet the client
+   * asked for. The server is idempotent, so a double click opens nothing twice.
+   */
+  const openWallet = useMutation({
+    mutationFn: (currency: string) => walletApi.openWallet(currency),
+    onSuccess: (wallet) => {
+      void queryClient.invalidateQueries({ queryKey: keys.wallets.all() });
+      void queryClient.invalidateQueries({ queryKey: keys.dashboard.all() });
+      toast.success(t('wallet.opened', { currency: wallet.currency }));
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, t('wallet.openFailed'))),
+  });
 
   /*
    * `/payments/*` sits behind `EmailVerifiedGuard`, so for an unverified client
@@ -136,7 +158,7 @@ export default function WalletPage() {
   const rank = new Map(catalogue.map((entry, index) => [entry.code, index]));
   const nameOf = new Map(catalogue.map((entry) => [entry.code, entry.name]));
 
-  const held: CarouselEntry[] = (wallets.data ?? [])
+  const heldEntries: CarouselEntry[] = (wallets.data ?? [])
     .map((wallet) => ({
       code: wallet.currency,
       label: nameOf.get(wallet.currency) ?? wallet.currency,
@@ -146,6 +168,21 @@ export default function WalletPage() {
       const right = rank.get(b.code) ?? Number.MAX_SAFE_INTEGER;
       return left === right ? a.code.localeCompare(b.code) : left - right;
     });
+
+  /*
+   * Every OFFERED currency the client does not hold, as a card they can open
+   * (owner, 26 Sep 2026) — after the wallets they hold, in the operator's
+   * order. `GET /currencies` lists enabled currencies only, so a disabled one
+   * is never offered here. Still never a fabricated `$0.00`: the card says it
+   * is not opened and offers the button that opens it.
+   */
+  const unopened: CarouselEntry[] = catalogue
+    .filter((entry) => !byCurrency.has(entry.code))
+    .map((entry) => ({ code: entry.code, label: entry.name }));
+
+  const held: CarouselEntry[] = [...heldEntries, ...unopened];
+  const open = (currency: string) => openWallet.mutate(currency);
+  const opening = openWallet.isPending ? (openWallet.variables ?? null) : null;
 
   /*
    * The lone wallet, bound once rather than indexed at three call sites —
@@ -203,10 +240,18 @@ export default function WalletPage() {
                   currency={only.code}
                   wallet={byCurrency.get(only.code)}
                   holder={holder}
+                  onOpen={() => open(only.code)}
+                  opening={opening === only.code}
                 />
               </div>
             ) : held.length > 1 ? (
-              <WalletCarousel entries={held} byCurrency={byCurrency} holder={holder} />
+              <WalletCarousel
+                entries={held}
+                byCurrency={byCurrency}
+                holder={holder}
+                onOpen={open}
+                opening={opening}
+              />
             ) : null}
 
             {/*
