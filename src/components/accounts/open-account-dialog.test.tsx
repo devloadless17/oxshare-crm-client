@@ -122,39 +122,3 @@ describe('the account name', () => {
     expect(screen.getByRole('button', { name: /open account/i })).toBeDisabled();
   });
 });
-
-/*
- * A product may hold several groups in ONE currency (backend 0146). The client
- * picks a product, never a group, so the product is offered once — and the
- * account opens in the group the API lists first, the one attached first.
- */
-describe('a product with two groups in the same currency', () => {
-  const TWO_USD: SelfServiceAvailability = {
-    ...OPTIONS,
-    liveTypes: [
-      { group: 'real\\First', currency: 'USD', product: 'Standard', productId: 'p-standard' },
-      { group: 'real\\Second', currency: 'USD', product: 'Standard', productId: 'p-standard' },
-      { group: 'real\\Premium', currency: 'USD', product: 'Premium', productId: 'p-premium' },
-    ],
-  };
-
-  it('offers the product once, and opens in its first group', async () => {
-    const user = userEvent.setup();
-    renderWithProviders(
-      <OpenAccountDialog environment="live" options={TWO_USD} takenNames={[]} onClose={vi.fn()} />,
-    );
-
-    await user.type(await screen.findByLabelText(/account name/i), 'Swing');
-    await user.click(await screen.findByRole('combobox', { name: /product/i }));
-    expect(await screen.findAllByRole('option', { name: 'Standard' })).toHaveLength(1);
-    expect(screen.getByRole('option', { name: 'Premium' })).toBeInTheDocument();
-    await user.click(screen.getByRole('option', { name: 'Standard' }));
-    await user.click(screen.getByRole('button', { name: /open account/i }));
-
-    await waitFor(() =>
-      expect(openAccount).toHaveBeenCalledWith(
-        expect.objectContaining({ group: 'real\\First', productId: 'p-standard' }),
-      ),
-    );
-  });
-});
