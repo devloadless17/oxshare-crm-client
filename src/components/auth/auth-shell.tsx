@@ -67,46 +67,60 @@ export function AuthShell({
   homeHref?: string;
 }) {
   return (
-    <main className="flex h-dvh overflow-y-auto bg-background">
+    <main className="flex h-dvh bg-background">
       <BrandPanel homeHref={homeHref} />
 
-      {/* The form column. `min-w-0` so a long error message wraps instead of
-          widening the flex child and pushing the brand panel off-screen. */}
-      <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center px-5 pb-10 pt-20 sm:px-8">
-        {/*
-          A HEADER ROW, as on the broker's own site: the logo on the left and the
-          light/dark toggle on the right.
+      {/*
+        The form column SCROLLS, and what it scrolls is at least a screen tall.
 
-          The logo is `lg:invisible` rather than removed on wide screens, where
-          the brand panel already carries it — invisible keeps its box, so
-          `justify-between` still pins the toggle to the right edge. The top
-          padding is `pt-20` so a form tall enough to fill a short phone never
-          slides under the row.
-        */}
-        <div className="absolute inset-x-5 top-5 flex items-center justify-between sm:inset-x-8">
-          <Link
-            href={homeHref}
-            aria-label={t('app.name')}
-            className="inline-flex items-center rounded-md focus-outline lg:invisible"
-          >
-            <BrandLogo className="h-7 w-auto" />
-          </Link>
-          <ThemeToggle />
-        </div>
+        It used to be one fixed-height flex column that CENTRED the form. On a
+        phone the registration form is taller than the screen, and a centred
+        column that overflows spills out equally above and below — the part
+        above cannot be scrolled to. The title slid up under the logo and the
+        theme toggle, and the bottom padding went off the end (owner, 26 Sep
+        2026). Now the inner block is `min-h-full`: a short form is still
+        centred in it, a tall one makes it grow downwards, and both paddings
+        always hold. `min-w-0` so a long error message wraps instead of widening
+        the column and pushing the brand panel off-screen.
+      */}
+      <div className="min-w-0 flex-1 overflow-y-auto">
+        <div className="relative flex min-h-full flex-col items-center justify-center px-5 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-24 sm:px-8">
+          {/*
+            A HEADER ROW, as on the broker's own site: the logo on the left and
+            the light/dark toggle on the right.
 
-        <div className="w-full max-w-[26rem]">
-          <header className="mb-7 text-center">
-            <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-foreground">
-              {heading}
-            </h1>
-            {subheading && (
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{subheading}</p>
+            The logo is `lg:invisible` rather than removed on wide screens,
+            where the brand panel already carries it — invisible keeps its box,
+            so `justify-between` still pins the toggle to the right edge. The
+            form starts at `pt-24`, a clear gap below the row.
+          */}
+          <div className="absolute inset-x-5 top-5 flex items-center justify-between sm:inset-x-8">
+            <Link
+              href={homeHref}
+              aria-label={t('app.name')}
+              className="inline-flex items-center rounded-md focus-outline lg:invisible"
+            >
+              <BrandLogo className="h-7 w-auto" />
+            </Link>
+            <ThemeToggle />
+          </div>
+
+          <div className="w-full max-w-[26rem]">
+            <header className="mb-7 text-center">
+              <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-foreground">
+                {heading}
+              </h1>
+              {subheading && (
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{subheading}</p>
+              )}
+            </header>
+
+            {children}
+
+            {footer && (
+              <div className="mt-7 text-center text-sm text-muted-foreground">{footer}</div>
             )}
-          </header>
-
-          {children}
-
-          {footer && <div className="mt-7 text-center text-sm text-muted-foreground">{footer}</div>}
+          </div>
         </div>
       </div>
     </main>
