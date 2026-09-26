@@ -399,34 +399,44 @@ test.describe('what is open is on the screen, at 393px', () => {
       .not.toBe(before);
   });
 
-  test('the date-range picker, including the button that commits it', async ({ page }) => {
+  test('the statement’s choices open on the screen — a custom range included', async ({ page }) => {
+    /*
+     * The Statement (25 Sep 2026) replaced the transactions list and its
+     * date-range picker. On a phone one button names the wallet and the period
+     * and opens the choices as a bottom sheet; they apply as they are chosen, so
+     * there is no Apply to leave below the fold. A custom range adds the two
+     * date fields — the tallest the sheet gets — and all of it must still fit.
+     */
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
-    await page.getByRole('button', { name: /date range/i }).click();
+    await page.getByRole('button', { name: /wallet · /i }).click();
 
-    const panel = page.getByRole('dialog', { name: /date range/i });
-    await expect(panel).toBeVisible();
+    const sheet = page.getByRole('dialog');
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole('combobox', { name: /^period$/i }).click();
+    await page.getByRole('option', { name: /custom range/i }).click();
+    await expect(sheet.locator('input[type="date"]').first()).toBeVisible();
 
-    /*
-     * Apply specifically, not just the panel. A completed range commits on the
-     * second day click, so this button is the ONLY way to commit "from the 5th
-     * onward, no end date" — a filter that is otherwise unreachable on a phone.
-     */
-    const apply = panel.getByRole('button', { name: /apply/i });
-    const box = await apply.boundingBox();
-    expect(box, 'the Apply button has no box').not.toBeNull();
     expect(
-      box!.y + box!.height,
-      `Apply ends ${Math.round(box!.y + box!.height)}px down an 851px screen — below the fold`,
-    ).toBeLessThanOrEqual(851);
-
-    expect(await offScreen(page, '[role="dialog"]'), 'the picker is off the screen').toEqual([]);
+      await offScreen(page, '[role="dialog"], [role="dialog"] input, [role="dialog"] button'),
+      'part of the statement sheet is off the screen',
+    ).toEqual([]);
   });
 
   test('no table needs a sideways drag to read', async ({ page }) => {
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('table')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^statement$/i })).toBeVisible();
+    /*
+     * The Statement's ledger is a TABLE from md up and a list below it
+     * (statement-body.tsx) — a phone is not handed a table at all. So the
+     * phone's rule is the page's: nothing scrolls sideways. Any table that IS
+     * shown must still fit the box that scrolls it.
+     */
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+      'the statement scrolls sideways on a phone',
+    ).toBeLessThanOrEqual(0);
 
     const overflow = await page.evaluate(() => {
       const bad: string[] = [];
