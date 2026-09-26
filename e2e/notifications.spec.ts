@@ -168,12 +168,22 @@ test.describe('the notification bell', () => {
   });
 
   test('the cleared bell stays cleared across a reload', async ({ page }) => {
-    await creditWalletAsAdmin('7.00000000', `E2E reload ${Date.now()}`);
+    const reason = `E2E reload ${Date.now()}`;
+    await creditWalletAsAdmin('7.00000000', reason);
 
     await page.goto('/dashboard');
     await expect(bell(page)).toHaveAccessibleName(/\d+ new/i, { timeout: 20_000 });
     await bell(page).click();
-    await expect(page.getByRole('dialog')).toBeVisible();
+    /*
+     * THIS run's row, not merely the dialog. Closing marks read only what the
+     * panel SHOWED (`markAllRead(upTo)`), so an Escape pressed while the list is
+     * still loading has seen nothing and rightly clears nothing. That is how this
+     * case failed on the phone viewport (26 Sep 2026), where the sheet is open
+     * before its list has rendered; "seeing is enough" above always waited.
+     */
+    await expect(
+      page.getByRole('dialog').getByRole('link', { name: new RegExp(reason) }),
+    ).toBeVisible();
     /*
      * Closed before the badge is asserted, and not for tidiness: Radix marks
      * everything behind an open dialog `aria-hidden`, so the trigger is not
