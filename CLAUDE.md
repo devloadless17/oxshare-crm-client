@@ -706,6 +706,15 @@ admin's.
 - The `sessionStorage` restore effect in `kyc/step/[step]/page.tsx` carries a reasoned
   `react-hooks/set-state-in-effect` exemption. Keep the comment and the disable — a lazy
   `useState` initialiser there would cause a hydration mismatch on a half-filled form.
+- **`public/email/` is a contract with mail already delivered** (26 Sep 2026). The backend's
+  email masthead loads `${PORTAL_URL}/email/oxshare-logo-v1.png`, and a message keeps loading it
+  for as long as it sits in an inbox. Never edit, rename or delete a file there: a new logo is a
+  new version (`oxshare-logo-v2.png`) beside the old one. That is what makes the year-long
+  `immutable` cache in `next.config.ts` safe. `src/test/email-assets.test.ts` pins the file (an
+  opaque PNG, 400×177, under 40 KB) and both headers. Deploy this app BEFORE a backend that points
+  at a new version. `public/brand/oxshare-email-logo.png` is the SAME file at its first address:
+  the backend deployed as release be0341e points mail there until the next backend deploy, so it
+  stays for good, byte-identical, and the test pins that too.
 - **Tests are back, on request, and the suite is deliberately small.** All 291 were deleted on an
   explicit instruction, along with `e2e/`, `src/test/`, `vitest.config.mts` and every test
   dependency. `npm test` was then re-added — also on request — when the money screens landed,
