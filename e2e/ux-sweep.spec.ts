@@ -230,6 +230,56 @@ test.describe('no page scrolls sideways on a phone', () => {
   }
 });
 
+/*
+ * AN AUTH SCREEN FITS A SHORT PHONE, top and bottom (owner, 26 Sep 2026).
+ *
+ * Reported on registration: the heading slid up under the logo and the theme
+ * toggle, and the last line sat on the bottom edge. The form column CENTRED
+ * its content in a fixed-height box, and a tall form overflowing a centred
+ * column spills out above as well as below — where nothing can scroll to it.
+ * The 393px sweep above never saw it: at that height the form fits.
+ *
+ * Signed out and at 320×568 (the first iPhone SE, the smallest phone still in
+ * use), where the registration form is well taller than the screen. Measured
+ * through the heading's own scrolling ancestor, so it holds for any markup.
+ */
+test.describe('an auth screen keeps clear of its header and its bottom edge on a short phone', () => {
+  test.use({ viewport: { width: 320, height: 568 }, storageState: { cookies: [], origins: [] } });
+
+  for (const path of ['/auth/register', '/auth/login', '/auth/forgot-password']) {
+    test(`${path} starts below the header row and ends above the edge`, async ({ page }) => {
+      await page.goto(path);
+      await page.waitForLoadState('networkidle');
+
+      const heading = await page.getByRole('heading', { level: 1 }).boundingBox();
+      const toggle = await page
+        .getByRole('button', { name: /switch to (dark|light)/i })
+        .first()
+        .boundingBox();
+      expect(heading, `${path} rendered no heading`).not.toBeNull();
+      expect(toggle, `${path} rendered no theme toggle`).not.toBeNull();
+      expect(heading!.y, `${path}: the heading starts under the header row`).toBeGreaterThanOrEqual(
+        toggle!.y + toggle!.height,
+      );
+
+      // Scrolled to its end, the form keeps its bottom padding.
+      const gap = await page.evaluate(() => {
+        const h1 = document.querySelector('h1');
+        // The form block: the heading's header, the form and the footer line.
+        const content = h1?.closest('header')?.parentElement;
+        let scroller = h1?.parentElement ?? null;
+        while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
+          scroller = scroller.parentElement;
+        }
+        if (!content || !scroller) return -1;
+        scroller.scrollTop = scroller.scrollHeight;
+        return scroller.getBoundingClientRect().bottom - content.getBoundingClientRect().bottom;
+      });
+      expect(gap, `${path}: the last line sits on the bottom edge`).toBeGreaterThanOrEqual(24);
+    });
+  }
+});
+
 test.describe('every control can be announced', () => {
   for (const path of [...PRIVATE, ...STANDALONE]) {
     test(`${path} has no unnamed buttons or links`, async ({ page }) => {
