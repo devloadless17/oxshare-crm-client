@@ -362,7 +362,9 @@ export function KycStepForm() {
   if (fetchingInitialData) return <StepLoading />;
 
   return (
-    <div className="space-y-8">
+    // Fills the shell's content area (kyc-shell.css), so the bar below can sit
+    // at its bottom — `gap`, not `space-y`, so its `mt-auto` is not overridden.
+    <div className="flex flex-1 flex-col gap-8">
       <ReturnedBanner status={status} />
 
       <DynamicStepRenderer
@@ -390,7 +392,18 @@ export function KycStepForm() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
+      {/*
+        BACK / CONTINUE, AT THE BOTTOM OF THE PAGE on every step (owner, 26 Sep
+        2026). It followed the step's last field, so it jumped up and down the
+        screen from one step to the next — a short document step put it
+        mid-page, a long personal step pushed it off the bottom. Now a short step
+        leaves it on the bottom edge (`mt-auto` in a column that fills the
+        screen) and a long one keeps it there while the fields scroll under it
+        (`sticky`, with the page's own background so nothing shows through —
+        and `-mx-5 px-5`, the content column's own padding, so the edges of the
+        fields scrolling under it are covered too).
+      */}
+      <div className="sticky bottom-0 z-10 -mx-5 mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4">
         {stepNumber > 1 ? (
           <Button
             type="button"
