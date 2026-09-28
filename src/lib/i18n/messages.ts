@@ -279,7 +279,7 @@ export const messages = {
   'auth.register.back': 'Back',
   // An address that already has an account (the owner's ruling, 28 Sep 2026):
   // said on the form itself, with the two ways in — never a code screen.
-  'auth.register.emailTakenTitle': 'This email already has an account',
+  'auth.register.emailTakenTitle': 'This email is already in use',
   'auth.register.emailTakenBody':
     '{email} is already registered with OxShare. Reset your password if you have forgotten it, or sign in.',
   'auth.register.resetPassword': 'Reset password',

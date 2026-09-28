@@ -101,7 +101,7 @@ describe('an address that already has an account', () => {
     await user.click(screen.getByRole('button', { name: /^continue$/i }));
 
     const panel = await screen.findByTestId('email-taken');
-    expect(panel).toHaveTextContent(/this email already has an account/i);
+    expect(panel).toHaveTextContent(/this email is already in use/i);
     expect(panel).toHaveTextContent('ada@example.test');
     expect(within(panel).getByRole('link', { name: /reset password/i })).toHaveAttribute(
       'href',
@@ -116,6 +116,39 @@ describe('an address that already has an account', () => {
     expect(register).not.toHaveBeenCalled();
     expect(push).not.toHaveBeenCalled();
     expect(emailAvailable).toHaveBeenCalledWith('ada@example.test');
+  });
+
+  /*
+   * The owner's call (28 Sep 2026): the notice sat between the email and the
+   * password inputs and split the form. It is the form's error now — last, in
+   * red — and the email input turns red with it, so which field it is about is
+   * not lost by the move.
+   */
+  it('shows the notice at the END of the form, in red, and marks the email input', async () => {
+    emailAvailable.mockResolvedValue(false);
+    const user = userEvent.setup();
+    renderWithProviders(<RegisterPage />);
+    await fillAccount(user);
+    const cont = screen.getByRole('button', { name: /^continue$/i });
+    await user.click(cont);
+
+    const panel = await screen.findByTestId('email-taken');
+    const password = screen.getByLabelText(/^password$/i);
+    // After Continue and after the password input — never between the fields.
+    expect(cont.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(password.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(panel.parentElement?.lastElementChild).toBe(panel);
+    expect(panel.className).toMatch(/border-destructive/);
+    expect(panel.className).toMatch(/bg-destructive/);
+
+    const email = screen.getByLabelText(/email/i);
+    expect(email).toHaveAttribute('aria-invalid', 'true');
+    expect(email.getAttribute('aria-describedby')).toContain(panel.id);
+
+    // Editing the address clears both.
+    await user.type(email, 'x');
+    expect(screen.queryByTestId('email-taken')).not.toBeInTheDocument();
+    expect(email).toHaveAttribute('aria-invalid', 'false');
   });
 
   it('hands the address to the password reset, so it is not typed again', async () => {

@@ -8,7 +8,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, User, Eye, EyeOff, AlertCircle, Handshake, ArrowLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { apiErrorCode, apiErrorMessage, apiFieldErrors } from '@/lib/api/errors';
-import { EMAIL_TAKEN_ACTION_ID, EmailTakenNotice } from '@/components/auth/email-taken-notice';
+import {
+  EMAIL_TAKEN_ACTION_ID,
+  EMAIL_TAKEN_NOTICE_ID,
+  EmailTakenNotice,
+} from '@/components/auth/email-taken-notice';
 import { confirmEmailPath, rememberPendingEmail } from '@/lib/pending-email';
 import {
   ACCOUNT_FIELDS,
@@ -299,6 +303,7 @@ function RegisterForm() {
       /* The MARK carries the code too, not only the "Sign in" line below.
          Clicking the logo is the same detour through a different control. */
       homeHref={signInHref}
+      wide
     >
       <div className="space-y-6">
         <div className="space-y-5">
@@ -374,21 +379,12 @@ function RegisterForm() {
                 icon={Mail}
                 value={values.email}
                 error={fieldErrors.email}
+                invalid={Boolean(takenEmail)}
+                describedBy={takenEmail ? EMAIL_TAKEN_NOTICE_ID : undefined}
                 onChange={update}
                 placeholder={t('auth.login.emailPlaceholder')}
                 autoComplete="email"
               />
-              {takenEmail && (
-                <EmailTakenNotice
-                  email={takenEmail}
-                  signInHref={signInHref}
-                  onUseAnother={() => {
-                    setTakenEmail(null);
-                    setValues((current) => ({ ...current, email: '' }));
-                    setFocusTarget('email');
-                  }}
-                />
-              )}
 
               <TextField
                 field="password"
@@ -416,6 +412,25 @@ function RegisterForm() {
               <Button type="submit" size="lg" className="w-full" loading={checkingEmail}>
                 {t('auth.register.continue')}
               </Button>
+
+              {/*
+                AT THE END of the form, under Continue — the button the client
+                just pressed, so the answer is where their eyes already are. It
+                sat between the email and password inputs and split the form in
+                two (owner, 28 Sep 2026). The email input still turns red, so
+                which field it is about is not lost by the move.
+              */}
+              {takenEmail && (
+                <EmailTakenNotice
+                  email={takenEmail}
+                  signInHref={signInHref}
+                  onUseAnother={() => {
+                    setTakenEmail(null);
+                    setValues((current) => ({ ...current, email: '' }));
+                    setFocusTarget('email');
+                  }}
+                />
+              )}
             </form>
           ) : (
             <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-5">

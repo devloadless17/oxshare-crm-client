@@ -42,6 +42,8 @@ export function TextField({
   value,
   error,
   hint,
+  invalid = false,
+  describedBy: extraDescribedBy,
   type = 'text',
   trailing,
   onChange,
@@ -53,6 +55,13 @@ export function TextField({
   value: string;
   error?: string;
   hint?: string;
+  /**
+   * Red without a sentence of its own under the box — for when the sentence is
+   * elsewhere on the form (a taken email's notice sits under Continue).
+   */
+  invalid?: boolean;
+  /** The id of that sentence, so a screen reader reads it with the box. */
+  describedBy?: string;
   type?: string;
   trailing?: React.ReactNode;
   onChange: (field: RegisterField, value: string) => void;
@@ -61,7 +70,7 @@ export function TextField({
   'placeholder' | 'autoComplete' | 'maxLength'
 >) {
   const describedBy =
-    [error ? `${field}-error` : '', hint && !error ? `${field}-hint` : '']
+    [error ? `${field}-error` : '', hint && !error ? `${field}-hint` : '', extraDescribedBy ?? '']
       .filter(Boolean)
       .join(' ') || undefined;
   return (
@@ -80,9 +89,9 @@ export function TextField({
           required
           value={value}
           onChange={(e) => onChange(field, e.target.value)}
-          aria-invalid={Boolean(error)}
+          aria-invalid={Boolean(error) || invalid}
           aria-describedby={describedBy}
-          className={`h-11 pl-10 ${trailing ? 'pr-11' : ''}`}
+          className={`h-11 pl-10 aria-invalid:border-destructive ${trailing ? 'pr-11' : ''}`}
           {...input}
         />
         {trailing}
