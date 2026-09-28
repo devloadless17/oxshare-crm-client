@@ -46,6 +46,17 @@ describe('addressLine', () => {
     expect(addressLine({ city: 'Dubai' })).toBe('Dubai');
     expect(addressLine({})).toBeUndefined();
   });
+
+  it('puts the state between the city and the postal code (28 Sep 2026)', () => {
+    expect(
+      addressLine({
+        address: 'Main Road',
+        city: 'Jounieh',
+        stateProvince: 'Mount Lebanon',
+        postalCode: '1200',
+      }),
+    ).toBe('Main Road, Jounieh, Mount Lebanon, 1200');
+  });
 });
 
 describe('isProfileKey', () => {

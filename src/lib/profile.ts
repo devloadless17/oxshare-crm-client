@@ -18,6 +18,7 @@ export const PROFILE_FIELD_KEYS = [
   'country',
   'address',
   'city',
+  'stateProvince',
   'postalCode',
 ] as const;
 
@@ -54,13 +55,14 @@ export function formatPhone(value?: string | null): string | undefined {
   return parsePhoneNumberFromString(text)?.formatInternational() ?? text;
 }
 
-/** The address as one line — street, city, postal code — leaving out what is absent. */
+/** The address as one line — street, city, state, postal code — leaving out what is absent. */
 export function addressLine(parts: {
   address?: string | null;
   city?: string | null;
+  stateProvince?: string | null;
   postalCode?: string | null;
 }): string | undefined {
-  const line = [parts.address, parts.city, parts.postalCode]
+  const line = [parts.address, parts.city, parts.stateProvince, parts.postalCode]
     .map((part) => part?.trim())
     .filter(Boolean)
     .join(', ');

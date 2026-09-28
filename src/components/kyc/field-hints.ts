@@ -87,6 +87,8 @@ export function textInputHints(name: string): {
       return { autoComplete: 'street-address', autoCapitalize: 'words' };
     case 'city':
       return { autoComplete: 'address-level2', autoCapitalize: 'words' };
+    case 'stateProvince':
+      return { autoComplete: 'address-level1', autoCapitalize: 'words' };
     case 'postalCode':
     case 'postcode':
       // `inputMode` rather than `type="number"`: postcodes are not numbers —
