@@ -1346,6 +1346,9 @@ export const messages = {
   'kyc.uploadingSelfie': 'Uploading…',
   'kyc.selfieCaptured': 'Selfie Captured',
   'kyc.retakePhoto': 'Retake Photo',
+  // During a retake the photo on file is still the reviewer's, and the client is told so.
+  'kyc.retakeKeepsCurrent': 'Your current photo stays on file until you take a new one.',
+  'kyc.keepCurrentPhoto': 'Keep current photo',
   /*
    * Quality hints, not refusals — `lib/image-quality.ts` says why they cannot be
    * anything stronger. Worded as a suggestion with a reason, because the client

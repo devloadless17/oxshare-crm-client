@@ -60,6 +60,13 @@ export function SelfieCamera({
   const [cameraError, setCameraError] = React.useState(false);
   const [uploadError, setUploadError] = React.useState<string | null>(null);
   const [qualityProblem, setQualityProblem] = React.useState<QualityProblem | null>(null);
+  /*
+   * The client pressed Retake and has not taken the new photo yet. While this
+   * is true the photo ON FILE is still the one the reviewer will see, and the
+   * screen says so (reported 28 Sep 2026: a client "changed" their selfie,
+   * never took the new one, and the reviewer kept seeing the old photo).
+   */
+  const [retaking, setRetaking] = React.useState(false);
 
   /*
    * Follow the server's answer when it arrives AFTER this mounted.
@@ -70,9 +77,16 @@ export function SelfieCamera({
    * "uploaded", and never over a capture in progress.
    */
   React.useEffect(() => {
+    /*
+     * Never over a RETAKE the client asked for. Retake clears `captured`, which
+     * re-ran this with the server still saying "a selfie is on file" — so the
+     * camera closed the instant it opened and the screen went back to "Selfie
+     * captured" (reported 28 Sep 2026: the first Retake after a photo did
+     * nothing).
+     */
     // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronising with a prop that arrives after mount
-    if (uploaded && !captured) setUploadedSuccess(true);
-  }, [uploaded, captured]);
+    if (uploaded && !captured && !retaking) setUploadedSuccess(true);
+  }, [uploaded, captured, retaking]);
 
   const stopCamera = React.useCallback(() => {
     if (streamRef.current) {
@@ -188,6 +202,7 @@ export function SelfieCamera({
       const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
       await onUpload(field, file);
       setUploadedSuccess(true);
+      setRetaking(false);
     } catch (err: unknown) {
       setUploadError(apiErrorMessage(err, t('kyc.selfieFailed')));
     } finally {
@@ -196,11 +211,19 @@ export function SelfieCamera({
   };
 
   const handleRetake = () => {
+    setRetaking(true);
     setCaptured(null);
     setQualityProblem(null);
     setUploadedSuccess(false);
     setUploadError(null);
     void startCamera();
+  };
+
+  /** Back out of a retake: the photo on file stays, and nothing is uploaded. */
+  const keepCurrent = () => {
+    stopCamera();
+    setRetaking(false);
+    setUploadedSuccess(true);
   };
 
   return (
@@ -260,6 +283,22 @@ export function SelfieCamera({
           <p className="text-xs font-medium text-muted-foreground text-center">
             {t('kyc.cameraHint')}
           </p>
+
+          {/* A retake in progress: the photo on file is still the reviewer's. */}
+          {retaking && uploaded && (
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <p className="text-[11px] text-muted-foreground">{t('kyc.retakeKeepsCurrent')}</p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={keepCurrent}
+                className="text-xs"
+              >
+                {t('kyc.keepCurrentPhoto')}
+              </Button>
+            </div>
+          )}
 
           {!cameraError && (
             <Button
