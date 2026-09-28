@@ -409,15 +409,12 @@ function RegisterForm() {
                 }
               />
 
-              <Button type="submit" size="lg" className="w-full" loading={checkingEmail}>
-                {t('auth.register.continue')}
-              </Button>
-
               {/*
-                AT THE END of the form, under Continue — the button the client
-                just pressed, so the answer is where their eyes already are. It
-                sat between the email and password inputs and split the form in
-                two (owner, 28 Sep 2026). The email input still turns red, so
+                AFTER THE LAST INPUT AND BEFORE CONTINUE (owner, 28 Sep 2026).
+                It sat between the email and password inputs and split the form
+                in two; then under Continue, where it read as detached from the
+                form. Here it closes the fields and sits right above the button
+                the client just pressed. The email input still turns red, so
                 which field it is about is not lost by the move.
               */}
               {takenEmail && (
@@ -431,6 +428,10 @@ function RegisterForm() {
                   }}
                 />
               )}
+
+              <Button type="submit" size="lg" className="w-full" loading={checkingEmail}>
+                {t('auth.register.continue')}
+              </Button>
             </form>
           ) : (
             <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-5">

@@ -120,11 +120,11 @@ describe('an address that already has an account', () => {
 
   /*
    * The owner's call (28 Sep 2026): the notice sat between the email and the
-   * password inputs and split the form. It is the form's error now — last, in
-   * red — and the email input turns red with it, so which field it is about is
-   * not lost by the move.
+   * password inputs and split the form. It is the form's error now — after the
+   * last input and right above Continue (not under it), in red — and the email
+   * input turns red with it, so which field it is about is not lost by the move.
    */
-  it('shows the notice at the END of the form, in red, and marks the email input', async () => {
+  it('shows the notice under the password and above Continue, in red, and marks the email input', async () => {
     emailAvailable.mockResolvedValue(false);
     const user = userEvent.setup();
     renderWithProviders(<RegisterPage />);
@@ -134,10 +134,10 @@ describe('an address that already has an account', () => {
 
     const panel = await screen.findByTestId('email-taken');
     const password = screen.getByLabelText(/^password$/i);
-    // After Continue and after the password input — never between the fields.
-    expect(cont.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // After the last input, and the element directly before Continue — never
+    // between the fields, and never under the button.
     expect(password.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(panel.parentElement?.lastElementChild).toBe(panel);
+    expect(panel.nextElementSibling).toBe(cont);
     expect(panel.className).toMatch(/border-destructive/);
     expect(panel.className).toMatch(/bg-destructive/);
 

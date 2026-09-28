@@ -22,7 +22,7 @@ export const EMAIL_TAKEN_NOTICE_ID = 'email-taken';
  * the next step is one click away. Both buttons hand the typed address over
  * (`email-handoff.ts`), so it is not typed a third time.
  *
- * RED, and under the Continue button (owner, 28 Sep 2026). It was a brand-blue
+ * RED, under the password and right above Continue (owner, 28 Sep 2026). It was a brand-blue
  * panel between the email and password inputs, which read as a tip rather than
  * as the reason the form did not move on. It is the form's error now, and looks
  * like one: the same destructive tint as the form-level error banner.
