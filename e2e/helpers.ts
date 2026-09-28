@@ -379,11 +379,7 @@ export async function fillRegisterForm(
   page: Page,
   client: { email: string; password: string; firstName?: string; lastName?: string },
 ): Promise<void> {
-  await page.getByPlaceholder('John').fill(client.firstName ?? 'Kaya');
-  await page.getByPlaceholder('Doe').fill(client.lastName ?? 'Newman');
-  await page.getByPlaceholder('you@example.com').fill(client.email);
-  await page.locator('input[type="password"]').first().fill(client.password);
-  await page.getByRole('button', { name: /^continue$/i }).click();
+  await fillAccountStep(page, client);
 
   await page.getByLabel(/date of birth/i).fill(SIGN_UP_DETAILS.dateOfBirth);
   await pickOption(page, /nationality/i, SIGN_UP_DETAILS.nationality);
@@ -395,6 +391,22 @@ export async function fillRegisterForm(
 }
 
 /** One of the styled drop-downs: open it, pick the exact entry. */
+/**
+ * The sign-up form's FIRST step, then Continue — which asks the server whether
+ * the address is free before the details open (the owner's ruling, 28 Sep
+ * 2026). A taken address stops here, on the "already has an account" panel.
+ */
+export async function fillAccountStep(
+  page: Page,
+  client: { email: string; password: string; firstName?: string; lastName?: string },
+): Promise<void> {
+  await page.getByPlaceholder('John').fill(client.firstName ?? 'Kaya');
+  await page.getByPlaceholder('Doe').fill(client.lastName ?? 'Newman');
+  await page.getByPlaceholder('you@example.com').fill(client.email);
+  await page.locator('input[type="password"]').first().fill(client.password);
+  await page.getByRole('button', { name: /^continue$/i }).click();
+}
+
 async function pickOption(page: Page, label: RegExp, option: string): Promise<void> {
   await page.getByRole('combobox', { name: label }).click();
   await page.getByRole('option', { name: option, exact: true }).click();
@@ -605,6 +617,55 @@ export async function uploadKycFile(page: Page, field: string, docType?: string)
   if (status !== 429) return status;
   await new Promise((resolve) => setTimeout(resolve, 61_000));
   return send();
+}
+
+/**
+ * Answer every REQUIRED question and upload of the broker's OWN, read from the
+ * live configuration, so a journey that submits works on a form the builder has
+ * changed — a development database carries custom steps, and a journey that
+ * knew only the shipped defaults had its submission refused for the fixture's
+ * reasons. The admin suite's `answerBrokersQuestions` is the same rule over the
+ * wire. The platform's own fields (the identity, the documents, the selfie) are
+ * left to the journey, which is usually what it is testing.
+ */
+export async function answerBrokersQuestions(page: Page): Promise<void> {
+  const platformSlots = new Set([
+    'doc_front',
+    'doc_back',
+    'selfie',
+    'address_proof',
+    'address_proof_2',
+  ]);
+  const config = await apiFromPage(page, 'GET', '/kyc/config');
+  const steps = config.body as {
+    slug: string;
+    fields?: {
+      name: string;
+      type: string;
+      required?: boolean;
+      system?: boolean;
+      options?: string[];
+    }[];
+  }[];
+  for (const step of steps) {
+    const answers: Record<string, string> = {};
+    for (const field of step.fields ?? []) {
+      if (!field.required || field.system || platformSlots.has(field.name)) continue;
+      // A document CHOICE is made by uploading its pages, never typed.
+      if (field.type.startsWith('doc')) continue;
+      if (field.type === 'file' || field.type === 'camera') {
+        expect(await uploadKycFile(page, field.name), `uploading ${field.name}`).toBeLessThan(300);
+      } else if (field.type === 'select') answers[field.name] = field.options?.[0] ?? 'E2E';
+      // Answered only TICKED — "true", or one of its choices.
+      else if (field.type === 'checkbox') answers[field.name] = field.options?.[0] ?? 'true';
+      else if (field.type === 'date') answers[field.name] = '1990-01-01';
+      else if (field.type === 'phone') answers[field.name] = '+96170000011';
+      else answers[field.name] = 'Endtoend answer';
+    }
+    if (Object.keys(answers).length === 0) continue;
+    const saved = await apiFromPage(page, 'POST', '/kyc/step', { step: step.slug, data: answers });
+    expect(saved.status, `answering ${step.slug}: ${JSON.stringify(saved.body)}`).toBeLessThan(300);
+  }
 }
 
 /**

@@ -138,9 +138,16 @@ the body). Then `/onboarding`: *Verify now* → `/kyc`, *Verify later* → `/das
   `next=` do ride in the URL; `next` goes through `safeReturnTo` like everywhere else.
 - **Every server rule is the server's**: keyed-hash storage, 5 attempts, 15 minutes, single use, a
   30-second resend cooldown (`RESEND_COOLDOWN_MS` mirrors it — a resend inside it is answered
-  normally and sends NOTHING). Every refusal is the one code `EMAIL_CODE_INVALID`, so the screen
-  can never say which addresses hold accounts; the "already have an account?" line names both
-  outcomes of a sign-up without choosing.
+  normally and sends NOTHING). Every wrong code is the one code `EMAIL_CODE_INVALID`.
+- **An address that already has an account is told so ON THE SIGN-UP FORM** (the owner's ruling,
+  28 Sep 2026, reversing the enumeration-safe design). The first step's Continue asks
+  `POST /auth/register/email-available`, and `register` itself answers 409
+  `EMAIL_ALREADY_REGISTERED` if the address was taken in between. Either way the form stays on step 1
+  and shows `components/auth/email-taken-notice.tsx` (Reset password · Sign in · Use a different
+  email), and it never reaches the code screen. Both buttons hand the address over
+  (`lib/email-handoff.ts`, sessionStorage, read once) so the next screen opens pre-filled. Nothing is
+  emailed. The code screen no longer hedges about an existing account: only a new address reaches it.
+  Don't re-raise the enumeration trade-off; it was the owner's call.
 - **A visitor with no remembered address is ASKED for it and sent no code** — they may already hold
   a good one, and a new code kills it. The resend button is one tap away.
 - **The emailed LINK still works and never signs anyone in** (mail scanners follow links); it ends

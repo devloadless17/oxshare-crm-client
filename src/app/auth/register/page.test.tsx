@@ -24,11 +24,12 @@ import RegisterPage from './page';
  */
 
 const register = vi.hoisted(() => vi.fn());
+const emailAvailable = vi.hoisted(() => vi.fn());
 const push = vi.hoisted(() => vi.fn());
 const options = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/api', () => ({
-  api: { auth: { register } },
+  api: { auth: { register, emailAvailable } },
 }));
 
 // The server's lists (GET /profile/options) — the only choices the form offers.
@@ -89,6 +90,8 @@ const REQUIRED = {
 beforeEach(() => {
   vi.clearAllMocks();
   register.mockResolvedValue({ message: 'Check your inbox.' });
+  emailAvailable.mockResolvedValue(true);
+  sessionStorage.clear();
   options.mockResolvedValue({
     countries: ['Lebanon', 'United Arab Emirates'],
     nationalities: ['Emirati', 'Lebanese'],
@@ -313,7 +316,8 @@ describe('two steps, one registration (the client’s request, 25 Sep 2026)', ()
 
     expect(screen.getByLabelText(/first name/i)).toHaveValue('Ada');
     await user.click(screen.getByRole('button', { name: /^continue$/i }));
-    expect(screen.getByLabelText(/^city/i)).toHaveValue('Beirut');
+    // Continue first asks whether the address is free, so step 2 arrives a beat later.
+    expect(await screen.findByLabelText(/^city/i)).toHaveValue('Beirut');
     expect(screen.getByLabelText(/date of birth/i)).toHaveValue('1991-03-09');
   });
 

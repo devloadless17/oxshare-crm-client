@@ -68,6 +68,7 @@ export type VerifyEmailCodeDto = components['schemas']['VerifyEmailCodeDto'];
  * oracle, not a convenience.
  */
 export type RegistrationResponse = components['schemas']['RegistrationResponseDto'];
+export type EmailAvailabilityResponse = components['schemas']['EmailAvailabilityResponseDto'];
 
 // The backend mounts these under both /auth and /identity
 // (@Controller(['auth', 'identity'])). This file used /identity while
@@ -88,6 +89,19 @@ export const authApi = {
   async register(dto: RegisterDto) {
     const { data } = await apiClient.post<RegistrationResponse>('/auth/register', dto);
     return data;
+  },
+
+  /**
+   * Whether an address is free to sign up with — asked at the sign-up form's
+   * FIRST step, so a client who already has an account is told at once (the
+   * owner's ruling, 28 Sep 2026). POST: the address stays out of URLs.
+   */
+  async emailAvailable(email: string): Promise<boolean> {
+    const { data } = await apiClient.post<EmailAvailabilityResponse>(
+      '/auth/register/email-available',
+      { email },
+    );
+    return data.available;
   },
 
   /**

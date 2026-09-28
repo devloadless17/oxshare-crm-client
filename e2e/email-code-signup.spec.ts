@@ -4,6 +4,7 @@ import {
   API_NODE_BASE,
   APP_ORIGIN,
   E2E_CLIENT,
+  fillAccountStep,
   SIGN_UP_DETAILS,
   apiFromPage,
   deleteCookie,
@@ -344,21 +345,38 @@ test.describe('an account that was never confirmed', () => {
 });
 
 test.describe('an address that already has an account', () => {
-  test('gets the same code screen as a new one — the screen cannot tell them apart', async ({
+  test('is told so on the sign-up form, never sent to a code screen, and handed to a reset', async ({
     browser,
   }) => {
     /*
-     * Registration answers identically for a new address and a taken one (the
-     * owner of a taken one is emailed a sign-in link instead), so the screen
-     * after it must be identical too, and say both things at once.
+     * The owner's ruling (28 Sep 2026). Registration used to answer a taken
+     * address exactly like a new one, so this journey asserted the SAME code
+     * screen, hedging with "we sent you a sign-in link instead". Clients found
+     * it confusing: a code screen for a code that never came. Now the form says
+     * it plainly at the first step, with a password reset and sign-in, and the
+     * reset opens with the address already typed. Nothing is registered, so
+     * this spends no sign-up budget.
      */
     const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const tab = await ctx.newPage();
-    await register(tab, { email: E2E_CLIENT.email, password: 'not-their-password-1' });
-    await tab.waitForURL(/\/auth\/confirm-email\?from=register$/, { timeout: 30_000 });
-    await expect(tab.getByRole('heading', { name: /confirm your email/i })).toBeVisible();
-    await expect(tab.getByText(E2E_CLIENT.email, { exact: true })).toBeVisible();
-    await expect(tab.getByText(/already have an account with this email/i)).toBeVisible();
+    await tab.goto('/auth/register');
+    const [check] = await Promise.all([
+      tab.waitForResponse((r) => isApi(r, '/auth/register/email-available', 'POST')),
+      fillAccountStep(tab, { email: E2E_CLIENT.email, password: 'not-their-password-1' }),
+    ]);
+    expect(await check.json()).toEqual({ available: false });
+
+    const panel = tab.getByTestId('email-taken');
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText(/this email already has an account/i);
+    await expect(panel).toContainText(E2E_CLIENT.email);
+    await expect(tab).toHaveURL(/\/auth\/register$/);
+    await expect(tab.getByText(/step 2 of 2/i)).toHaveCount(0);
+    await tab.screenshot({ path: test.info().outputPath('email-taken.png'), fullPage: true });
+
+    await panel.getByRole('link', { name: /reset password/i }).click();
+    await tab.waitForURL(/\/auth\/forgot-password$/, { timeout: 30_000 });
+    await expect(tab.getByLabel(/email/i)).toHaveValue(E2E_CLIENT.email);
     await ctx.close();
   });
 });

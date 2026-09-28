@@ -225,6 +225,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/register/email-available": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Whether an email address is free to sign up with */
+        post: operations["AuthController_emailAvailable[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/identity/register/email-available": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Whether an email address is free to sign up with */
+        post: operations["AuthController_emailAvailable[1]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/verify-email": {
         parameters: {
             query?: never;
@@ -4677,8 +4711,16 @@ export interface components {
             referralCode?: string;
         };
         RegistrationResponseDto: {
-            /** @example Registration successful. Please check your email to verify your account. */
+            /** @example We have sent a 6-digit code to your email to confirm it. */
             message: string;
+        };
+        EmailAvailabilityDto: {
+            /** @example john@example.com */
+            email: string;
+        };
+        EmailAvailabilityResponseDto: {
+            /** @example true */
+            available: boolean;
         };
         VerifyEmailDto: {
             /**
@@ -8414,6 +8456,8 @@ export interface components {
             amount: string;
             currency: string;
             methodKey: string | null;
+            /** @description The payment or payout method’s display name. Null for money that went through no method — a manual credit (`provider` = manual_admin) — which a screen names from `provider`. */
+            methodName: string | null;
             provider: string | null;
             providerRef: string | null;
             /** Format: date-time */
@@ -8861,6 +8905,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RegistrationResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_emailAvailable[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailAvailabilityDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailAvailabilityResponseDto"];
+                };
+            };
+        };
+    };
+    "AuthController_emailAvailable[1]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailAvailabilityDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailAvailabilityResponseDto"];
                 };
             };
         };
@@ -11437,6 +11527,8 @@ export interface operations {
             query?: {
                 /** @description Accounts of one client. */
                 userId?: string;
+                /** @description Accounts of every client this partner introduced, by the partner’s Portal ID (users.referred_by_ib_user_id). Scoped like every other filter. */
+                referredBy?: string;
                 /** @description A number matches the MT5 login OR the owner’s Portal ID — both exact, because an operator holding one cannot tell which it is. Anything else searches the OWNER by email or name — the identifiers the Owner column displays. */
                 q?: string;
                 environment?: "live" | "demo";
