@@ -608,6 +608,55 @@ export async function uploadKycFile(page: Page, field: string, docType?: string)
 }
 
 /**
+ * Answer every REQUIRED question and upload of the broker's OWN, read from the
+ * live configuration, so a journey that submits works on a form the builder has
+ * changed — a development database carries custom steps, and a journey that
+ * knew only the shipped defaults had its submission refused for the fixture's
+ * reasons. The admin suite's `answerBrokersQuestions` is the same rule over the
+ * wire. The platform's own fields (the identity, the documents, the selfie) are
+ * left to the journey, which is usually what it is testing.
+ */
+export async function answerBrokersQuestions(page: Page): Promise<void> {
+  const platformSlots = new Set([
+    'doc_front',
+    'doc_back',
+    'selfie',
+    'address_proof',
+    'address_proof_2',
+  ]);
+  const config = await apiFromPage(page, 'GET', '/kyc/config');
+  const steps = config.body as {
+    slug: string;
+    fields?: {
+      name: string;
+      type: string;
+      required?: boolean;
+      system?: boolean;
+      options?: string[];
+    }[];
+  }[];
+  for (const step of steps) {
+    const answers: Record<string, string> = {};
+    for (const field of step.fields ?? []) {
+      if (!field.required || field.system || platformSlots.has(field.name)) continue;
+      // A document CHOICE is made by uploading its pages, never typed.
+      if (field.type.startsWith('doc')) continue;
+      if (field.type === 'file' || field.type === 'camera') {
+        expect(await uploadKycFile(page, field.name), `uploading ${field.name}`).toBeLessThan(300);
+      } else if (field.type === 'select') answers[field.name] = field.options?.[0] ?? 'E2E';
+      // Answered only TICKED — "true", or one of its choices.
+      else if (field.type === 'checkbox') answers[field.name] = field.options?.[0] ?? 'true';
+      else if (field.type === 'date') answers[field.name] = '1990-01-01';
+      else if (field.type === 'phone') answers[field.name] = '+96170000011';
+      else answers[field.name] = 'Endtoend answer';
+    }
+    if (Object.keys(answers).length === 0) continue;
+    const saved = await apiFromPage(page, 'POST', '/kyc/step', { step: step.slug, data: answers });
+    expect(saved.status, `answering ${step.slug}: ${JSON.stringify(saved.body)}`).toBeLessThan(300);
+  }
+}
+
+/**
  * Reach a document step with its upload tiles actually rendered.
  *
  * A document step shows a CHOICE of type first — Passport / ID card, or

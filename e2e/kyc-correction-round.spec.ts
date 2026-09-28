@@ -2,14 +2,17 @@ import { type Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import {
   adminApiSession,
+  answerBrokersQuestions,
   apiFromPage,
   APP_ORIGIN,
   csrfOf,
+  kycStepPath,
   linkIn,
   newClient,
   register,
   signIn,
   TINY_PNG,
+  uploadKycFile,
   waitForMail,
   VERIFICATION_SUBJECT,
 } from './helpers';
@@ -57,26 +60,36 @@ async function uploadSlot(page: Page, field: string, docType?: string): Promise<
   expect(status, `uploading ${field} answered ${status}`).toBeLessThan(300);
 }
 
-/** Pick a file in the first document tile and confirm it — the client's own path. */
-async function uploadThroughTile(page: Page): Promise<void> {
+/**
+ * Pick a file in the first document tile and confirm it — the client's own path.
+ * `held` is the document the server must then hold; a passport by default.
+ */
+async function uploadThroughTile(
+  page: Page,
+  held: { key: 'document' | 'addressProof'; docType: string } = {
+    key: 'document',
+    docType: 'passport',
+  },
+): Promise<void> {
   await page
     .locator('[data-testid="kyc-document-tile"] input[type="file"]')
     .first()
-    .setInputFiles({ name: 'passport.png', mimeType: 'image/png', buffer: TINY_PNG });
+    .setInputFiles({ name: `${held.docType}.png`, mimeType: 'image/png', buffer: TINY_PNG });
   const [upload] = await Promise.all([
     page.waitForResponse((r) => r.url().includes('/kyc/upload') && r.request().method() === 'POST'),
     page.getByRole('button', { name: /^use this$/i }).click(),
   ]);
   expect(upload.ok(), `the tile's upload answered ${upload.status()}`).toBe(true);
 
-  // The page said WHICH document it belongs to: the server holds it as a
-  // passport before Continue is pressed. It used to guess, and only Continue
+  // The page said WHICH document it belongs to: the server holds it as that
+  // document before Continue is pressed. It used to guess, and only Continue
   // corrected it — how a passport stood in for a national ID.
   const status = await apiFromPage(page, 'GET', '/kyc/status');
-  const document = (status.body as { document?: { docType?: string; frontFilePath?: string } })
-    .document;
-  expect(document?.docType).toBe('passport');
-  expect(document?.frontFilePath).toBeTruthy();
+  const document = (
+    status.body as Record<string, { docType?: string; frontFilePath?: string; filePath?: string }>
+  )[held.key];
+  expect(document?.docType).toBe(held.docType);
+  expect(document?.frontFilePath ?? document?.filePath).toBeTruthy();
 }
 
 test('a returned passport must be replaced, and the wizard resumes where the client is', async ({
@@ -229,6 +242,122 @@ test('a returned passport must be replaced, and the wizard resumes where the cli
       await expect(page).toHaveURL(/\/kyc\/step\/3$/, { timeout: 20_000 });
 
       await page.goto('/kyc/step/5');
+      await page.getByRole('button', { name: /submit verification/i }).click();
+      await expect(page).toHaveURL(/\/kyc\/submitted/, { timeout: 20_000 });
+      await expect(page.getByText(/verification submitted/i).first()).toBeVisible();
+    });
+  } finally {
+    await admin.dispose();
+  }
+});
+
+/** The wizard path of the step after `path` — steps are numbered by position. */
+function stepAfter(path: string): RegExp {
+  const index = Number(path.split('/').pop());
+  return new RegExp(`/kyc/step/${index + 1}$`);
+}
+
+/*
+ * Reported 28 Sep 2026, on both document steps. The reviewer returned ONE page —
+ * the back of a national ID, the additional page of a tenancy agreement — and
+ * the client, correcting it, chose a document without that page: a passport, a
+ * utility bill. The step said "Please upload a new Passport — the reviewer
+ * returned the one on file" and would not let them on until they sent the very
+ * document they had moved away from.
+ *
+ * Its own client, because a decision cannot be undone; it reads the served
+ * configuration, so a development form with custom steps is answered too.
+ */
+test('choosing another document answers a returned page, on both document steps', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(
+    isMobile,
+    'a correction round is LOGIC, not layout — and each run registers a client and spends the upload budget',
+  );
+  test.setTimeout(300_000);
+  const client = newClient();
+
+  await test.step('register, verify, sign in', async () => {
+    await register(page, client);
+    const mail = await waitForMail(client.email, { subject: VERIFICATION_SUBJECT });
+    await page.goto(linkIn(mail, APP_ORIGIN));
+    await expect(page.getByText(/verified|welcome/i).first()).toBeVisible({ timeout: 15_000 });
+    await signIn(page, client);
+  });
+
+  await test.step('submit a national ID and a two-page tenancy agreement', async () => {
+    const saved = await apiFromPage(page, 'POST', '/kyc/step', {
+      step: 'personal',
+      data: {
+        firstName: 'Switch',
+        lastName: 'Round',
+        dateOfBirth: '1990-01-01',
+        nationality: 'Lebanese',
+        country: 'Lebanon',
+        address: '12 Hamra Street',
+        city: 'Beirut',
+        phone: '+961 70 123 456',
+      },
+    });
+    expect(saved.status, JSON.stringify(saved.body)).toBeLessThan(300);
+    for (const field of ['doc_front', 'doc_back']) {
+      expect(await uploadKycFile(page, field, 'national_id'), field).toBeLessThan(300);
+    }
+    for (const field of ['address_proof', 'address_proof_2']) {
+      expect(await uploadKycFile(page, field, 'tenancy_agreement'), field).toBeLessThan(300);
+    }
+    expect(await uploadKycFile(page, 'selfie'), 'selfie').toBeLessThan(300);
+    await answerBrokersQuestions(page);
+    const submitted = await apiFromPage(page, 'POST', '/kyc/submit');
+    expect(submitted.status, JSON.stringify(submitted.body)).toBeLessThan(300);
+  });
+
+  const admin = await adminApiSession();
+  try {
+    await test.step('the reviewer returns the ID’s back and the agreement’s second page', async () => {
+      const found = await admin.get(`/admin/clients?q=${encodeURIComponent(client.email)}&limit=5`);
+      const clientId =
+        ((await found.json()) as { items: { id: string; email: string }[] }).items.find(
+          (c) => c.email === client.email,
+        )?.id ?? '';
+      expect(clientId, 'the fresh client is not on the admin index').toBeTruthy();
+      const rejected = await admin.patch(`/admin/kyc/${clientId}/reject`, {
+        reason: 'Two pages are unreadable — e2e switch round.',
+        rejectedFields: ['doc_back', 'address_proof_2'],
+      });
+      expect(rejected.ok(), `reject answered ${rejected.status()}`).toBe(true);
+    });
+
+    await test.step('a passport answers the returned back of the national ID', async () => {
+      const documentStep = await kycStepPath(page, 'document');
+      await page.goto(documentStep);
+      await page
+        .getByRole('button', { name: /passport/i })
+        .first()
+        .click();
+      await uploadThroughTile(page);
+      await expect(page.getByText(/returned the one on file/i)).toHaveCount(0);
+      await page.getByRole('button', { name: /^continue$/i }).click();
+      await expect(page).toHaveURL(stepAfter(documentStep), { timeout: 20_000 });
+    });
+
+    await test.step('a utility bill answers the returned page of the tenancy agreement', async () => {
+      const addressStep = await kycStepPath(page, 'address');
+      await page.goto(addressStep);
+      await page
+        .getByRole('button', { name: /utility bill/i })
+        .first()
+        .click();
+      await uploadThroughTile(page, { key: 'addressProof', docType: 'utility_bill' });
+      await expect(page.getByText(/returned the one on file/i)).toHaveCount(0);
+      await page.getByRole('button', { name: /^continue$/i }).click();
+      await expect(page).toHaveURL(stepAfter(addressStep), { timeout: 20_000 });
+    });
+
+    await test.step('and the submission goes back', async () => {
+      await page.goto(await kycStepPath(page, 'review'));
       await page.getByRole('button', { name: /submit verification/i }).click();
       await expect(page).toHaveURL(/\/kyc\/submitted/, { timeout: 20_000 });
       await expect(page.getByText(/verification submitted/i).first()).toBeVisible();
