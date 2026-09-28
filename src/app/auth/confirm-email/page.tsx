@@ -1,9 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle, ArrowLeft, CheckCircle2, ClipboardPaste, Info } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, ClipboardPaste } from 'lucide-react';
 import { api } from '@/lib/api';
 import { apiErrorCode, apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
@@ -362,21 +361,6 @@ function ConfirmEmail() {
               {t('auth.confirm.spamHint')}
             </p>
           </div>
-
-          {origin === 'register' && (
-            <div className="flex items-start gap-2 rounded-xl border border-border p-3 text-xs text-muted-foreground">
-              <Info className="mt-px h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="leading-relaxed">
-                {t('auth.confirm.alreadyRegistered')}{' '}
-                <Link
-                  href="/auth/login"
-                  className="font-semibold text-link hover:underline rounded-xs focus-outline"
-                >
-                  {t('auth.confirm.signIn')}
-                </Link>
-              </span>
-            </div>
-          )}
         </form>
       )}
     </AuthShell>

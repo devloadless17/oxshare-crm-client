@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { apiErrorMessage, isEmailUnverified } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
+import { takeHandedEmail } from '@/lib/email-handoff';
 import { useUser } from '@/context/UserContext';
 import { RedirectIfAuthenticated } from '@/components/auth/redirect-if-authenticated';
 import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/return-to';
@@ -84,6 +85,17 @@ function LoginForm() {
   const { refetchUser } = useUser();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  /*
+   * The address sign-up's "already has an account" panel handed over, so it is
+   * not typed again (`email-handoff.ts`). Read in an effect, once: the server
+   * rendered this box empty, and reading storage during render would disagree
+   * with that HTML.
+   */
+  React.useEffect(() => {
+    const handed = takeHandedEmail();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a one-shot read of browser storage the server could not see
+    if (handed) setEmail(handed);
+  }, []);
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);

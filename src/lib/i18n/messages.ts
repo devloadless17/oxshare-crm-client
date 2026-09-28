@@ -277,6 +277,14 @@ export const messages = {
   'auth.register.stepDetails': 'Personal details',
   'auth.register.continue': 'Continue',
   'auth.register.back': 'Back',
+  // An address that already has an account (the owner's ruling, 28 Sep 2026):
+  // said on the form itself, with the two ways in — never a code screen.
+  'auth.register.emailTakenTitle': 'This email already has an account',
+  'auth.register.emailTakenBody':
+    '{email} is already registered with OxShare. Reset your password if you have forgotten it, or sign in.',
+  'auth.register.resetPassword': 'Reset password',
+  'auth.register.signInInstead': 'Sign in',
+  'auth.register.useAnotherEmail': 'Use a different email',
   'auth.register.nameAsOnId': 'Use your name exactly as it appears on your passport or ID.',
   'auth.register.detailsNote':
     'These fill in your identity verification, so you will not need to type them again. Enter them exactly as they appear on your ID.',
@@ -301,12 +309,9 @@ export const messages = {
   // ── Auth: confirm the email with the 6-digit code ────────────────────────
   /*
    * The screen sign-up ends on since 25 Sep 2026: the code from the email, and
-   * the client is signed in by it. Every sentence stays TRUE whichever of two
-   * things happened at registration — a new account, or an address that
-   * already had one — because the server answers both identically and this
-   * screen must not tell them apart. Hence "if this address is waiting" and the
-   * "already have an account?" line, which name both outcomes and commit to
-   * neither.
+   * the client is signed in by it. Only a NEW address reaches it from sign-up —
+   * one that already has an account is told so on the sign-up form itself, the
+   * owner's ruling of 28 Sep 2026 — so it no longer hedges between two outcomes.
    */
   'auth.confirm.heading': 'Confirm your email',
   'auth.confirm.registerTagline':
@@ -344,9 +349,6 @@ export const messages = {
     'If this address is waiting to be confirmed, a new code is on its way. Earlier codes no longer work.',
   'auth.confirm.resendFailed': 'We could not send a new code. Please try again in a moment.',
   'auth.confirm.spamHint': "Can't find it? Check your spam folder. Codes expire after 15 minutes.",
-  'auth.confirm.alreadyRegistered':
-    'Already have an account with this email? We sent you a sign-in link instead of a code.',
-  'auth.confirm.signIn': 'Sign in',
   'auth.confirm.back': 'Back',
 
   // ── Onboarding: verify your identity now, or later ────────────────────────

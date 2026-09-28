@@ -7,7 +7,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, User, Eye, EyeOff, AlertCircle, Handshake, ArrowLeft } from 'lucide-react';
 import { api } from '@/lib/api';
-import { apiErrorMessage, apiFieldErrors } from '@/lib/api/errors';
+import { apiErrorCode, apiErrorMessage, apiFieldErrors } from '@/lib/api/errors';
+import { EMAIL_TAKEN_ACTION_ID, EmailTakenNotice } from '@/components/auth/email-taken-notice';
 import { confirmEmailPath, rememberPendingEmail } from '@/lib/pending-email';
 import {
   ACCOUNT_FIELDS,
@@ -128,6 +129,15 @@ function RegisterForm() {
    */
   const [registered, setRegistered] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  /*
+   * The address the server says ALREADY HAS AN ACCOUNT — the owner's ruling
+   * (28 Sep 2026): said here, with a password reset and sign-in one click away,
+   * never a code screen for a code that will not come. Asked at Continue on the
+   * first step, and answered again by the final submit if the address was taken
+   * in between.
+   */
+  const [takenEmail, setTakenEmail] = React.useState<string | null>(null);
+  const [checkingEmail, setCheckingEmail] = React.useState(false);
 
   /*
    * Where the keyboard goes when the screen changes under it: the first field
@@ -147,6 +157,7 @@ function RegisterForm() {
 
   const update = (field: RegisterField, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
+    if (field === 'email') setTakenEmail(null);
     // An edited field has been answered; its old sentence no longer applies.
     setFieldErrors((current) => {
       if (!current[field]) return current;
@@ -164,9 +175,18 @@ function RegisterForm() {
     setFocusTarget(first);
   };
 
-  /** Step 1 → 2, once the account fields are there to send. */
-  const handleContinue = (e: React.FormEvent) => {
+  /** The address is taken: step 1, the panel, and the keyboard on its first way in. */
+  const showTaken = (email: string) => {
+    setTakenEmail(email);
+    setError(null);
+    setStep(1);
+    setFocusTarget(EMAIL_TAKEN_ACTION_ID);
+  };
+
+  /** Step 1 → 2, once the account fields are there to send — and the address is free. */
+  const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (checkingEmail) return;
     setError(null);
     const errors: FieldErrors = {};
     for (const field of missingFields(values, ACCOUNT_FIELDS)) {
@@ -181,6 +201,23 @@ function RegisterForm() {
     if (Object.keys(errors).length > 0) {
       showErrors(errors);
       return;
+    }
+    /*
+     * Taken already? Asked before the details step, so a client who has an
+     * account is not made to type their details only to be refused. A check
+     * that FAILS (offline, rate limited) does not stop them: the final submit
+     * asks again, and answers the same way.
+     */
+    setCheckingEmail(true);
+    try {
+      if (!(await api.auth.emailAvailable(values.email.trim()))) {
+        showTaken(values.email.trim());
+        return;
+      }
+    } catch {
+      // Carry on; `register` refuses a taken address with the same panel.
+    } finally {
+      setCheckingEmail(false);
     }
     // The account step's sentences are answered; a refusal the server gave
     // about a DETAIL still stands, and stays under its box on the next step.
@@ -223,10 +260,8 @@ function RegisterForm() {
        * Straight to the code (the client's request, 25 Sep 2026). The address
        * travels in this tab's storage, never the URL — see lib/pending-email.ts.
        *
-       * The same screen is right whatever the server did with the address: a
-       * new one has just been sent a code, and one that already held an account
-       * has been sent a sign-in link instead — the response is identical by
-       * design, and the code screen names both outcomes without choosing.
+       * Only a NEW address gets here: one that already has an account is
+       * refused (409 `EMAIL_ALREADY_REGISTERED`) and answered on this form.
        *
        * `push`, not `replace`: "Back" from the code screen returns here, which is
        * where somebody who mistyped their address needs to be.
@@ -234,6 +269,11 @@ function RegisterForm() {
       rememberPendingEmail(values.email.trim());
       router.push(confirmEmailPath('register'));
     } catch (err: unknown) {
+      // Taken between the first step's check and now: the same panel.
+      if (apiErrorCode(err) === 'EMAIL_ALREADY_REGISTERED') {
+        showTaken(values.email.trim());
+        return;
+      }
       /*
        * The server answers per FIELD for anything it refuses — a name with a
        * digit, a phone nobody can dial, an under-18 date of birth — and each
@@ -298,7 +338,7 @@ function RegisterForm() {
           <StepIndicator step={step} />
 
           {step === 1 ? (
-            <form onSubmit={handleContinue} noValidate className="space-y-4">
+            <form onSubmit={(e) => void handleContinue(e)} noValidate className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <TextField
                   field="firstName"
@@ -338,6 +378,17 @@ function RegisterForm() {
                 placeholder={t('auth.login.emailPlaceholder')}
                 autoComplete="email"
               />
+              {takenEmail && (
+                <EmailTakenNotice
+                  email={takenEmail}
+                  signInHref={signInHref}
+                  onUseAnother={() => {
+                    setTakenEmail(null);
+                    setValues((current) => ({ ...current, email: '' }));
+                    setFocusTarget('email');
+                  }}
+                />
+              )}
 
               <TextField
                 field="password"
@@ -362,7 +413,7 @@ function RegisterForm() {
                 }
               />
 
-              <Button type="submit" size="lg" className="w-full">
+              <Button type="submit" size="lg" className="w-full" loading={checkingEmail}>
                 {t('auth.register.continue')}
               </Button>
             </form>

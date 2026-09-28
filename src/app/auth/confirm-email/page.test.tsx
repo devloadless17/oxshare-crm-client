@@ -224,10 +224,15 @@ describe('who the screen is waiting on', () => {
 });
 
 describe('what it says, and never says, about the account', () => {
-  it('after a sign-up, names both outcomes of registering without choosing one', () => {
+  it('after a sign-up, no longer hedges about an existing account — only a new address gets here', () => {
+    // It used to say "Already have an account? We sent you a sign-in link
+    // instead": sign-up answered a taken address as if it were new. Since the
+    // owner's ruling (28 Sep 2026) the sign-up form itself says an address is
+    // taken, so this screen speaks only to someone creating an account.
     remember();
     renderWithProviders(<ConfirmEmailPage />);
-    expect(screen.getByText(/already have an account with this email/i)).toBeInTheDocument();
+    expect(screen.queryByText(/already have an account/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/finish creating your account/i)).toBeInTheDocument();
   });
 
   it('after a sign-in, does not — the password already proved the account', () => {

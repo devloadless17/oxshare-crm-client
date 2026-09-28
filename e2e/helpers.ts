@@ -379,11 +379,7 @@ export async function fillRegisterForm(
   page: Page,
   client: { email: string; password: string; firstName?: string; lastName?: string },
 ): Promise<void> {
-  await page.getByPlaceholder('John').fill(client.firstName ?? 'Kaya');
-  await page.getByPlaceholder('Doe').fill(client.lastName ?? 'Newman');
-  await page.getByPlaceholder('you@example.com').fill(client.email);
-  await page.locator('input[type="password"]').first().fill(client.password);
-  await page.getByRole('button', { name: /^continue$/i }).click();
+  await fillAccountStep(page, client);
 
   await page.getByLabel(/date of birth/i).fill(SIGN_UP_DETAILS.dateOfBirth);
   await pickOption(page, /nationality/i, SIGN_UP_DETAILS.nationality);
@@ -395,6 +391,22 @@ export async function fillRegisterForm(
 }
 
 /** One of the styled drop-downs: open it, pick the exact entry. */
+/**
+ * The sign-up form's FIRST step, then Continue — which asks the server whether
+ * the address is free before the details open (the owner's ruling, 28 Sep
+ * 2026). A taken address stops here, on the "already has an account" panel.
+ */
+export async function fillAccountStep(
+  page: Page,
+  client: { email: string; password: string; firstName?: string; lastName?: string },
+): Promise<void> {
+  await page.getByPlaceholder('John').fill(client.firstName ?? 'Kaya');
+  await page.getByPlaceholder('Doe').fill(client.lastName ?? 'Newman');
+  await page.getByPlaceholder('you@example.com').fill(client.email);
+  await page.locator('input[type="password"]').first().fill(client.password);
+  await page.getByRole('button', { name: /^continue$/i }).click();
+}
+
 async function pickOption(page: Page, label: RegExp, option: string): Promise<void> {
   await page.getByRole('combobox', { name: label }).click();
   await page.getByRole('option', { name: option, exact: true }).click();

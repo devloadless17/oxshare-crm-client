@@ -6,12 +6,24 @@ import { Mail, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
+import { takeHandedEmail } from '@/lib/email-handoff';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = React.useState('');
+  /*
+   * The address sign-up's "already has an account" panel handed over, so it is
+   * not typed again (`email-handoff.ts`). Read in an effect, once: the server
+   * rendered this box empty, and reading storage during render would disagree
+   * with that HTML.
+   */
+  React.useEffect(() => {
+    const handed = takeHandedEmail();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a one-shot read of browser storage the server could not see
+    if (handed) setEmail(handed);
+  }, []);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState(false);
