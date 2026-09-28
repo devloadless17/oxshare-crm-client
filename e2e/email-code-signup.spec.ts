@@ -368,7 +368,7 @@ test.describe('an address that already has an account', () => {
 
     const panel = tab.getByTestId('email-taken');
     await expect(panel).toBeVisible();
-    await expect(panel).toContainText(/this email already has an account/i);
+    await expect(panel).toContainText(/this email is already in use/i);
     await expect(panel).toContainText(E2E_CLIENT.email);
     await expect(tab).toHaveURL(/\/auth\/register$/);
     await expect(tab.getByText(/step 2 of 2/i)).toHaveCount(0);

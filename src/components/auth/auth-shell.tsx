@@ -41,12 +41,19 @@ export function AuthShell({
   children,
   footer,
   homeHref = '/auth/login',
+  wide = false,
 }: {
   heading: string;
   subheading?: string;
   children: React.ReactNode;
   /** The "no account? register" line. Optional — reset screens have no next step. */
   footer?: React.ReactNode;
+  /**
+   * A wider column for a form with many fields — registration. Its details
+   * step lays its inputs out two to a row, and at the sign-in width each of
+   * those was too narrow to read a country or a phone number in.
+   */
+  wide?: boolean;
   /**
    * Where the MARK points. Defaults to sign-in, which is home for a signed-out
    * visitor.
@@ -105,7 +112,13 @@ export function AuthShell({
             <ThemeToggle />
           </div>
 
-          <div className="w-full max-w-[26rem]">
+          {/*
+            The column's width. It was 26rem (416px) at every size, which fits a
+            phone and looked cramped on a laptop, where the form column has
+            twice that room beside the brand panel (owner, 28 Sep 2026). On a
+            phone `w-full` still decides, so the mobile layout is unchanged.
+          */}
+          <div className={`w-full ${wide ? 'max-w-[40rem]' : 'max-w-[30rem]'}`}>
             <header className="mb-7 text-center">
               <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-foreground">
                 {heading}

@@ -1,13 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { KeyRound, LogIn, UserRoundCheck } from 'lucide-react';
+import { AlertCircle, KeyRound, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { handEmailOver } from '@/lib/email-handoff';
 import { t } from '@/lib/i18n';
 
 /** The id sign-up moves the keyboard to when the panel opens. */
 export const EMAIL_TAKEN_ACTION_ID = 'email-taken-reset';
+
+/** The panel's own id — the email input names it in `aria-describedby`. */
+export const EMAIL_TAKEN_NOTICE_ID = 'email-taken';
 
 /**
  * "This email already has an account" — on the sign-up form, with the two ways
@@ -18,6 +21,11 @@ export const EMAIL_TAKEN_ACTION_ID = 'email-taken-reset';
  * came, while an email told them the opposite. Now the form says it plainly and
  * the next step is one click away. Both buttons hand the typed address over
  * (`email-handoff.ts`), so it is not typed a third time.
+ *
+ * RED, and under the Continue button (owner, 28 Sep 2026). It was a brand-blue
+ * panel between the email and password inputs, which read as a tip rather than
+ * as the reason the form did not move on. It is the form's error now, and looks
+ * like one: the same destructive tint as the form-level error banner.
  */
 export function EmailTakenNotice({
   email,
@@ -30,14 +38,15 @@ export function EmailTakenNotice({
 }) {
   return (
     <div
+      id={EMAIL_TAKEN_NOTICE_ID}
       role="alert"
       data-testid="email-taken"
-      className="space-y-3 rounded-lg border border-primary/30 bg-primary/10 p-4"
+      className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4"
     >
       <div className="flex items-start gap-2.5">
-        <UserRoundCheck className="mt-0.5 h-4 w-4 shrink-0 text-link" aria-hidden="true" />
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
         <div className="space-y-1">
-          <p className="text-sm font-bold text-foreground">{t('auth.register.emailTakenTitle')}</p>
+          <p className="text-sm font-bold text-destructive">{t('auth.register.emailTakenTitle')}</p>
           <p className="text-xs leading-relaxed text-muted-foreground">
             {t('auth.register.emailTakenBody', { email })}
           </p>
