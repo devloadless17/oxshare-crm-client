@@ -1,22 +1,16 @@
 import { expect, test } from './fixtures';
-import { adminApiSession, apiFromPage, kycStepPath, requirePrecondition } from './helpers';
+import { adminApiSession, kycStepPath, requirePrecondition } from './helpers';
 
 /**
- * EXTRA QUESTIONS AND UPLOADS BELONG ON A STEP OF THE BROKER'S OWN — never on a
- * built-in document step (the owner's ruling, 26 Sep 2026).
+ * A BUILT-IN STEP TAKES THE BROKER'S OWN QUESTIONS (Phase 2, 29 Sep 2026 — the
+ * owner: "every step in the builder must be able from me to add in it fields").
  *
- * This file used to prove the opposite. Local testing asked for "new fields on
- * steps like Proof of Address", and a built-in step kept its extras beside its
- * document. The ruling that replaced it: Identity Document, Proof of Address and
- * the Selfie hold only what they are for, so a document a client sends is never
- * mixed with a form of the broker's, and a reviewer reads additional information
- * as what it is — in its own section. Migration 0147 moved every existing extra
- * onto a step of their own ("Additional documents"), answers included.
- *
- * What the extras DO — a required question and upload holding a step until
- * answered, a custom file never landing on the passport — is proved on a
- * broker's step by `kyc-custom-step-portal.spec.ts`. This file proves the door
- * is shut, and that the client never meets the old shape.
+ * From 26 Sep until then this file proved the opposite: Identity Document,
+ * Proof of Address and the Selfie held only their documents, and extras went on
+ * a step of the broker's own. The owner reversed that. A question or an upload
+ * on Proof of Address is asked there, beside the documents, and its answer is
+ * stored under the step — a custom file never lands on the bill, the same rule
+ * `kyc-custom-step-portal.spec.ts` proves for the passport.
  */
 
 test.use({ storageState: 'e2e/.auth/kyc-client.json' });
@@ -37,14 +31,14 @@ const TEXT: Field = {
   name: 'customField_e2e_landlord',
   label: 'E2E Landlord',
   type: 'text',
-  required: true,
+  required: false,
 };
 const FILE: Field = {
   id: 'f-e2e-extra-file',
   name: 'customField_e2e_lease',
   label: 'E2E Lease',
   type: 'file',
-  required: true,
+  required: false,
 };
 
 let admin: Awaited<ReturnType<typeof adminApiSession>> | undefined;
@@ -68,58 +62,44 @@ async function addressStep(): Promise<StepConfig> {
   return step!;
 }
 
-test('Proof of Address refuses a question and an upload, and says where they go instead', async ({
-  isMobile,
-}) => {
-  test.skip(isMobile, 'a rule of the API — nothing here is layout');
-  const before = await addressStep();
+const saveAddressStep = (step: StepConfig, fields: Field[]) =>
+  admin!.put(`/admin/kyc-config/steps/${step.id}`, {
+    slug: step.slug,
+    title: step.title,
+    description: step.description,
+    icon: step.icon,
+    enabled: step.enabled,
+    fields,
+  });
 
-  for (const extra of [TEXT, FILE]) {
-    const res = await admin!.put(`/admin/kyc-config/steps/${before.id}`, {
-      slug: before.slug,
-      title: before.title,
-      description: before.description,
-      icon: before.icon,
-      enabled: before.enabled,
-      fields: [...before.fields, extra],
-    });
-    expect(res.status(), `"${extra.label}" was accepted onto Proof of Address`).toBe(400);
-    const body = (await res.json()) as { message?: string; fields?: Record<string, string> };
-    // The sentence names the way on, not only the refusal — and is placed on the field.
-    expect(body.message).toMatch(/holds only its documents/i);
-    expect(body.message).toMatch(/a step of your own/i);
-    expect(Object.keys(body.fields ?? {}).some((key) => /\.fields\.\d+$/.test(key))).toBe(true);
-  }
-
-  expect(await addressStep(), 'a refused save changed the step anyway').toEqual(before);
-});
-
-test('the client’s Proof of Address step asks for its documents and nothing else', async ({
+test('Proof of Address asks the broker’s own question and upload beside its documents', async ({
   page,
   isMobile,
 }) => {
   test.skip(isMobile, 'the served form is the same on every screen');
-  await page.goto('/kyc');
-
-  // What the portal is served: address documents only.
-  const config = await apiFromPage(page, 'GET', '/kyc/config');
-  const step = (config.body as StepConfig[]).find((candidate) => candidate.slug === 'address');
-  expect(step, 'the portal is served no Proof of Address step').toBeDefined();
+  const before = await addressStep();
   requirePrecondition(
-    !step!.enabled,
+    !before.enabled,
     'Proof of Address is switched off here — there is no step to look at',
   );
-  expect(
-    step!.fields.filter((field) => !field.type.startsWith('doc:')).map((field) => field.label),
-    'the portal was served something other than documents on Proof of Address',
-  ).toEqual([]);
 
-  // What the client sees: the documents to choose from, and no form beside them.
-  await page.goto(await kycStepPath(page, 'address'));
-  await page.waitForLoadState('networkidle');
-  const main = page.locator('main');
-  for (const field of step!.fields) {
-    await expect(main.getByRole('button', { name: new RegExp(field.label, 'i') })).toBeVisible();
+  const saved = await saveAddressStep(before, [...before.fields, TEXT, FILE]);
+  expect(saved.status(), await saved.text()).toBe(200);
+  try {
+    await page.goto('/kyc');
+    await page.goto(await kycStepPath(page, 'address'));
+    await page.waitForLoadState('networkidle');
+    const main = page.locator('main');
+
+    // The documents are still the step's choices…
+    for (const field of before.fields) {
+      await expect(main.getByRole('button', { name: new RegExp(field.label, 'i') })).toBeVisible();
+    }
+    // …and the broker's question and upload are asked beside them.
+    await expect(main.getByRole('textbox', { name: /E2E Landlord/ })).toBeVisible();
+    await expect(main.getByText('E2E Lease', { exact: false })).toBeVisible();
+  } finally {
+    const restored = await saveAddressStep(before, before.fields);
+    expect(restored.status(), 'FAILED TO RESTORE Proof of Address').toBe(200);
   }
-  await expect(main.getByRole('textbox')).toHaveCount(0);
 });

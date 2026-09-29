@@ -1261,6 +1261,7 @@ export const messages = {
 
   // ── KYC: review summary and steps ─────────────────────────────────────────
   'kyc.personalInfo': 'Personal Information',
+  'kyc.evidenceOptional': 'This step is optional — you can continue without it.',
   'kyc.personalPrefilled':
     'We have filled in the details you gave when you signed up. Check that each one matches your ID — any change you make here updates your account too.',
   'kyc.fullName': 'Full Name',

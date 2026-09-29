@@ -182,6 +182,13 @@ The rules are in `../CLAUDE.md` ("The identity core is the PLATFORM's"). What th
   A phone whose digits do not yet make a number is never autosaved; an emptied phone is a clear and is
   saved. Continue (`continueAnswers`) sends what is on screen, and the server answers per field, under
   each field. A failed autosave says so and offers *Try again*.
+- **The form is the broker's to arrange (Phase 2, 29 Sep 2026)**, and this app renders whatever it
+  is served. The identity details on Personal Information are the ones the builder placed, in its
+  order, required or not. Any step, built-in included, may carry the broker's own questions and
+  uploads; a file there is stored under that step, never on the passport or the bill. An evidence
+  step the broker made optional (`evidenceRequired: false`) says so (`kyc.evidenceOptional`), and
+  Continue stays the server's call. `e2e/kyc-builtin-extras.spec.ts` drives a question and an upload
+  on Proof of Address.
 - **A first visit opens Personal Information** (`resume-step.ts`, status `not_started`), even when sign-up
   already completed it: the details the documents are checked against are confirmed first.
 - **One identity document.** Choosing another card than the one on file changes nothing until a page
