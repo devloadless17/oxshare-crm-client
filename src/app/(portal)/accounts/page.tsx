@@ -102,7 +102,6 @@ export default function AccountsPage() {
    * the check costs nothing and there is no second request to disagree with the
    * first.
    */
-  const takenNames = rows.map((row) => row.name).filter((name): name is string => Boolean(name));
 
   /*
    * Local state rather than the URL.
@@ -179,7 +178,6 @@ export default function AccountsPage() {
           <EnvironmentPanel
             environment="live"
             accounts={live}
-            takenNames={takenNames}
             emptyTitle={t('accounts.liveEmpty')}
             emptyBody={t('accounts.liveEmptyBody')}
           />
@@ -194,7 +192,6 @@ export default function AccountsPage() {
           <EnvironmentPanel
             environment="demo"
             accounts={demo}
-            takenNames={takenNames}
             emptyTitle={t('accounts.demoEmpty')}
             emptyBody={t('accounts.demoEmptyBody')}
           />
@@ -228,14 +225,12 @@ export default function AccountsPage() {
 function EnvironmentPanel({
   environment,
   accounts,
-  takenNames,
   emptyTitle,
   emptyBody,
 }: {
   environment: 'live' | 'demo';
   accounts: TradingAccount[];
   /** Names this client has used on ANY account — the rule is per client, not per tab. */
-  takenNames: string[];
   emptyTitle: string;
   emptyBody: string;
 }) {
@@ -248,12 +243,7 @@ function EnvironmentPanel({
         <p className="text-sm font-semibold">{emptyTitle}</p>
         <p className="max-w-sm text-xs text-muted-foreground">{emptyBody}</p>
         <div className="pt-1">
-          <OpenAccountButton
-            environment={environment}
-            held={accounts.length}
-            takenNames={takenNames}
-            explainWhenClosed
-          />
+          <OpenAccountButton environment={environment} held={accounts.length} explainWhenClosed />
         </div>
       </div>
     );
@@ -269,12 +259,7 @@ function EnvironmentPanel({
         stops being read at all.
       */}
       <div className="flex justify-end">
-        <OpenAccountButton
-          environment={environment}
-          held={accounts.length}
-          takenNames={takenNames}
-          variant="outline"
-        />
+        <OpenAccountButton environment={environment} held={accounts.length} variant="outline" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

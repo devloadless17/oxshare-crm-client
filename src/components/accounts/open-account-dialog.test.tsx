@@ -40,14 +40,9 @@ const OPTIONS: SelfServiceAvailability = {
   maxDemoDeposit: '10000',
 };
 
-function renderDialog(takenNames: string[] = []) {
+function renderDialog() {
   return renderWithProviders(
-    <OpenAccountDialog
-      environment="live"
-      options={OPTIONS}
-      takenNames={takenNames}
-      onClose={vi.fn()}
-    />,
+    <OpenAccountDialog environment="live" options={OPTIONS} onClose={vi.fn()} />,
   );
 }
 
@@ -61,7 +56,6 @@ describe('opening a live account', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.type(await screen.findByLabelText(/account name/i), 'Swing');
     await user.click(await screen.findByRole('combobox', { name: /product/i }));
     await user.click(await screen.findByRole('option', { name: 'Premium' }));
     await user.click(screen.getByRole('button', { name: /open account/i }));
@@ -81,7 +75,6 @@ describe('opening a live account', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.type(await screen.findByLabelText(/account name/i), 'Swing');
     await user.click(screen.getByRole('button', { name: /open account/i }));
 
     await waitFor(() =>
@@ -92,33 +85,61 @@ describe('opening a live account', () => {
   });
 });
 
+/*
+ * NO NAME FIELD (owner, 29 Sep 2026): the server names the account after the
+ * client — "First Last", then "First Last-2", "-3"…
+ */
 describe('the account name', () => {
-  it('is required before the account can be opened', async () => {
-    renderDialog();
-
-    expect(await screen.findByLabelText(/account name/i)).toBeRequired();
-    expect(screen.getByRole('button', { name: /open account/i })).toBeDisabled();
-  });
-
-  it('is sent trimmed', async () => {
+  it('is not asked for, and none is sent', async () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.type(await screen.findByLabelText(/account name/i), '  Swing trading  ');
+    await screen.findByRole('combobox', { name: /product/i });
+    expect(screen.queryByLabelText(/account name/i)).toBeNull();
     await user.click(screen.getByRole('button', { name: /open account/i }));
 
-    await waitFor(() =>
-      expect(openAccount).toHaveBeenCalledWith(expect.objectContaining({ name: 'Swing trading' })),
-    );
+    await waitFor(() => expect(openAccount).toHaveBeenCalled());
+    expect(openAccount.mock.calls[0]?.[0]).not.toHaveProperty('name');
   });
+});
 
-  it('refuses a name the client already uses, whatever its case', async () => {
+/*
+ * PRODUCT FIRST (owner, 29 Sep 2026): the client picks the product, and the
+ * currency is filled in from the ones that product is offered in.
+ */
+describe('product first, currency from it', () => {
+  const MIXED: SelfServiceAvailability = {
+    ...OPTIONS,
+    liveTypes: [
+      { group: 'real\StdUsd', currency: 'USD', product: 'Standard', productId: 'p-standard' },
+      { group: 'real\StdEur', currency: 'EUR', product: 'Standard', productId: 'p-standard' },
+      { group: 'real\ProEur', currency: 'EUR', product: 'Pro', productId: 'p-pro' },
+    ],
+  };
+
+  it('asks the product first, then fills in its currency', async () => {
     const user = userEvent.setup();
-    renderDialog(['Swing trading']);
+    renderWithProviders(<OpenAccountDialog environment="live" options={MIXED} onClose={vi.fn()} />);
 
-    await user.type(await screen.findByLabelText(/account name/i), 'SWING TRADING');
+    const product = await screen.findByRole('combobox', { name: /product/i });
+    const currency = screen.getByRole('combobox', { name: /currency/i });
+    // The product comes before the currency in the form.
+    expect(
+      product.compareDocumentPosition(currency) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(currency).toHaveTextContent('USD');
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/already have an account with this name/i);
-    expect(screen.getByRole('button', { name: /open account/i })).toBeDisabled();
+    await user.click(product);
+    await user.click(await screen.findByRole('option', { name: 'Pro' }));
+    expect(screen.getByRole('combobox', { name: /currency/i })).toHaveTextContent('EUR');
+    // One currency for Pro: nothing to choose.
+    expect(screen.getByRole('combobox', { name: /currency/i })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /open account/i }));
+    await waitFor(() =>
+      expect(openAccount).toHaveBeenCalledWith(
+        expect.objectContaining({ group: 'real\ProEur', productId: 'p-pro' }),
+      ),
+    );
   });
 });

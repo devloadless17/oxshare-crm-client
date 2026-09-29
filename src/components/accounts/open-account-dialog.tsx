@@ -47,12 +47,10 @@ const DEFAULT_DEMO_FUNDING = '10000';
 export function OpenAccountDialog({
   environment,
   options,
-  takenNames,
   onClose,
 }: {
   environment: TradingEnvironment;
   options: SelfServiceAvailability;
-  takenNames: string[];
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -81,25 +79,30 @@ export function OpenAccountDialog({
    * offered — which already carries the agency filter, so a client under a
    * partner sees only what that partner sells.
    */
-  const currencies = React.useMemo(
-    () => [...new Set(types.map((type) => type.currency))].filter(Boolean).sort(),
+  /*
+   * PRODUCT FIRST, then the currency it is offered in (owner, 29 Sep 2026).
+   * The products in the order the API sent them — `offeredTo` orders by the
+   * product's sort order then its name, so "first" is the broker's preference.
+   */
+  const products = React.useMemo(
+    () => [...new Set(types.map((type) => type.product))].filter(Boolean),
     [types],
   );
+  const [product, setProduct] = React.useState(products[0] ?? '');
 
-  const [currency, setCurrency] = React.useState(currencies[0] ?? '');
-
-  /*
-   * The products available IN THE CHOSEN CURRENCY, in the order the API sent
-   * them — `offeredTo` orders by the product's sort order then its name, so
-   * "first offered" is the broker's own preference rather than an accident of
-   * iteration.
-   */
-  const productsForCurrency = React.useMemo(
-    () => types.filter((type) => type.currency === currency),
-    [types, currency],
+  /** The currencies a product is offered in — demo, which asks no product: all of them. */
+  const currenciesFor = React.useCallback(
+    (chosen: string) =>
+      [
+        ...new Set(
+          types.filter((type) => isDemo || type.product === chosen).map((type) => type.currency),
+        ),
+      ].filter(Boolean),
+    [types, isDemo],
   );
-
-  const [product, setProduct] = React.useState(productsForCurrency[0]?.product ?? '');
+  const currencies = React.useMemo(() => currenciesFor(product), [currenciesFor, product]);
+  // Chosen FOR the client: the first currency the product is offered in.
+  const [currency, setCurrency] = React.useState(currencies[0] ?? '');
 
   const [leverage, setLeverage] = React.useState(
     /*
@@ -108,37 +111,9 @@ export function OpenAccountDialog({
      */
     String(leverages[Math.floor(leverages.length / 2)] ?? leverages[0] ?? 100),
   );
-  const [name, setName] = React.useState('');
   const [startingBalance, setStartingBalance] = React.useState(isDemo ? DEFAULT_DEMO_FUNDING : '');
-  /*
-   * The names already in use, folded for comparison exactly as the server folds
-   * them.
-   *
-   * `lower()` and a trim on both sides, because `trading_accounts_user_name_uq`
-   * is on `lower(name)` and `assertNameFree` compares the same way. If this
-   * check were stricter or looser than the server's, the form would either
-   * refuse a name the API would have accepted or wave through one it will
-   * refuse — and the second is the worse half, because the client finds out
-   * after pressing open.
-   */
-  const taken = React.useMemo(
-    () => new Set(takenNames.map((entry) => entry.trim().toLowerCase())),
-    [takenNames],
-  );
-  const trimmedName = name.trim();
-  const nameTaken = trimmedName.length > 0 && taken.has(trimmedName.toLowerCase());
-
   const [opened, setOpened] = React.useState<OpenedAccount | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  /*
-   * Separate from `error`, and it belongs to the NAME field.
-   *
-   * Only ever set from the server's `ACCOUNT_NAME_TAKEN`: the local check below
-   * is derived from what the client is typing and needs no state of its own,
-   * while this survives a failed submit and must be cleared when they edit the
-   * field.
-   */
-  const [nameError, setNameError] = React.useState<string | null>(null);
   const [needsKyc, setNeedsKyc] = React.useState(false);
 
   /*
@@ -153,8 +128,8 @@ export function OpenAccountDialog({
    * the broker's preferred one, by the ordering above.
    */
   const chosenType = isDemo
-    ? productsForCurrency[0]
-    : productsForCurrency.find((type) => type.product === product);
+    ? types.find((type) => type.currency === currency)
+    : types.find((type) => type.product === product && type.currency === currency);
   const group = chosenType?.group ?? '';
   /*
    * Sent WITH the group. One MT5 group may back several products (backend
@@ -170,14 +145,8 @@ export function OpenAccountDialog({
         ...(group ? { group } : {}),
         ...(productId ? { productId } : {}),
         ...(leverage ? { leverage: Number.parseInt(leverage, 10) } : {}),
-        /*
-         * Always sent, because the form will not submit without it — see the
-         * field. It used to be omitted when blank so the API could fall back to
-         * the client's own name; that fallback still exists server-side and is
-         * now unreachable from here, which is the point of making the field
-         * required rather than merely encouraged.
-         */
-        name: trimmedName,
+        // No name (owner, 29 Sep 2026): the account is named after the client —
+        // "First Last", then "First Last-2", "-3"… — by the server.
         // Demo only. The API REFUSES this on a live account rather than
         // ignoring it, so sending it would turn a valid request into an error.
         ...(isDemo && startingBalance.trim() ? { startingBalance: startingBalance.trim() } : {}),
@@ -204,20 +173,6 @@ export function OpenAccountDialog({
       const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
       if (code === 'KYC_NOT_VERIFIED') {
         setNeedsKyc(true);
-        setError(null);
-        return;
-      }
-      /*
-       * The name was taken after all — this client opened one in another tab, or
-       * pressed twice fast enough to beat the check above.
-       *
-       * Reported ON THE FIELD rather than as a general error at the foot of the
-       * form, which is why the API gives this its own code instead of a bare
-       * 409. The client has exactly one thing to change and a message at the
-       * bottom of a four-field dialog does not say which one.
-       */
-      if (code === 'ACCOUNT_NAME_TAKEN') {
-        setNameError(t('accounts.nameTaken'));
         setError(null);
         return;
       }
@@ -270,7 +225,7 @@ export function OpenAccountDialog({
       {/* `max-w-md` is the default and is too narrow for two columns of inputs;
           the width class only widens the CEILING, so the mobile
           `w-[calc(100%-2rem)]` still governs on a phone. */}
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {isDemo ? t('accounts.openDemoTitle') : t('accounts.openLiveTitle')}
@@ -278,36 +233,24 @@ export function OpenAccountDialog({
         </DialogHeader>
 
         {/*
-          TWO COLUMNS from `sm` up, ONE below it.
-
-          The form grew from one field to four, and stacked they pushed the
-          submit button off a laptop screen — a dialog that scrolls to reach its
-          own confirm button is a dialog people abandon.
-
-          The ORDER is name → currency → product → leverage, and it is the order
-          a client answers in: which account is this, then what is it held in,
-          then what is it, then on what terms. Each field's own note says why it
-          sits where it does. The grid fills row-wise, so the DOM order IS the
-          reading order and IS the tab order — there is no CSS reordering here,
-          because a form whose visual order and tab order disagree is a form
-          keyboard users fill in wrong.
-
-          Everything that is not a field spans both columns, so the intro, the
-          KYC notice, the error and the buttons stay full width at every size.
+          ONE FIELD PER ROW (owner, 29 Sep 2026), in the order a client answers:
+          the product, the currency it is held in (filled in from the product),
+          then the leverage. Demo asks no product. There is no name field: the
+          server names the account after the client.
         */}
         <form
-          className="grid gap-x-4 gap-y-4 sm:grid-cols-2"
+          className="grid gap-4"
           onSubmit={(e) => {
             e.preventDefault();
             create.mutate();
           }}
         >
-          <p className="text-xs text-muted-foreground sm:col-span-2">
+          <p className="text-xs text-muted-foreground">
             {isDemo ? t('accounts.demoBody') : t('accounts.liveBody')}
           </p>
 
           {needsKyc && (
-            <div className="flex gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 sm:col-span-2">
+            <div className="flex gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3">
               <ShieldAlert className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
               <div className="space-y-2">
                 <p className="text-xs leading-relaxed">{t('accounts.liveNeedsKyc')}</p>
@@ -318,79 +261,19 @@ export function OpenAccountDialog({
             </div>
           )}
 
-          {/*
-            THE NAME FIRST.
-
-            It sat fourth, after currency, product and leverage, on the reasoning
-            that the terms come before the label. In front of the form that reads
-            backwards: the first three fields are the account's TERMS, and a
-            client who has just pressed "Open a live account" is answering
-            "which account is this" before they are answering "on what terms".
-            The name is also the only field they compose rather than choose, and
-            a free-text box is a poor thing to meet halfway down a form after
-            three dropdowns.
-
-            REQUIRED, which it was not. The API still accepts an account with no
-            name and falls back to the client's own — so this is a form rule
-            rather than a server one, and it is enforced in the two places a form
-            rule has to be: the submit button will not fire without it, and the
-            input carries `required` so a keyboard submit is refused too.
-
-            The hint under it is gone with the optionality it described. A
-            standing line of prose under a field the client must fill in is
-            reading between them and the next control, and "helps you tell your
-            accounts apart" is a thing the placeholder already demonstrates by
-            example.
-          */}
-          <div className="space-y-1.5">
-            <Label htmlFor="account-name" className="text-xs">
-              {t('accounts.fieldName')}
-            </Label>
-            <Input
-              id="account-name"
-              required
-              maxLength={64}
-              placeholder={t('accounts.namePlaceholder')}
-              value={name}
-              // Announced as invalid, not merely coloured — the message below is
-              // tied to the input with `aria-describedby` so a screen reader
-              // reaches it rather than leaving the field silently refusing.
-              aria-invalid={nameTaken || nameError !== null}
-              aria-describedby={nameTaken || nameError ? 'account-name-error' : undefined}
-              onChange={(e) => {
-                setName(e.target.value);
-                setError(null);
-                // The server's refusal was about the PREVIOUS value; keeping it
-                // on screen while they type a new name is a message about
-                // nothing.
-                setNameError(null);
-              }}
-            />
-            {(nameTaken || nameError) && (
-              <p id="account-name-error" role="alert" className="text-[11px] text-destructive">
-                {nameError ?? t('accounts.nameTaken')}
-              </p>
-            )}
-          </div>
-
           <AccountTypeFields
+            products={products}
+            product={product}
+            onProduct={(next) => {
+              setProduct(next);
+              // The currency follows the product: its first offered currency.
+              setCurrency(currenciesFor(next)[0] ?? '');
+              setError(null);
+            }}
             currencies={currencies}
             currency={currency}
             onCurrency={(next) => {
               setCurrency(next);
-              /*
-                The product is re-chosen with the currency, never carried
-                across. Products are not offered in every currency, so a kept
-                selection can name a pairing that has no group, and the form
-                would look complete while resolving to nothing.
-              */
-              setProduct(types.find((type) => type.currency === next)?.product ?? '');
-              setError(null);
-            }}
-            productsForCurrency={productsForCurrency}
-            product={product}
-            onProduct={(next) => {
-              setProduct(next);
               setError(null);
             }}
             isDemo={isDemo}
@@ -445,12 +328,12 @@ export function OpenAccountDialog({
           )}
 
           {error && (
-            <p role="alert" className="text-xs font-medium text-destructive sm:col-span-2">
+            <p role="alert" className="text-xs font-medium text-destructive">
               {error}
             </p>
           )}
 
-          <div className="flex justify-end gap-2 pt-1 sm:col-span-2">
+          <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               {t('accounts.cancel')}
             </Button>
@@ -481,12 +364,7 @@ export function OpenAccountDialog({
               `disabled` is the two reasons that are NOT loading — Button ORs
               them.
             */}
-            <Button
-              type="submit"
-              size="sm"
-              loading={create.isPending}
-              disabled={!trimmedName || nameTaken}
-            >
+            <Button type="submit" size="sm" loading={create.isPending}>
               {create.isPending ? t('accounts.opening') : t('accounts.openConfirm')}
             </Button>
           </div>

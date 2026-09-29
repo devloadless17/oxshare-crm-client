@@ -54,7 +54,6 @@ import { keys } from '@/lib/query-keys';
 export function OpenAccountButton({
   environment,
   held,
-  takenNames,
   explainWhenClosed = false,
   variant = 'default',
 }: {
@@ -75,7 +74,6 @@ export function OpenAccountButton({
    * is already rendering these accounts, so there is no second request to
    * disagree with the first.
    */
-  takenNames: string[];
   /**
    * Say WHY when this environment is switched off, instead of rendering
    * nothing.
@@ -193,7 +191,6 @@ export function OpenAccountButton({
         <OpenAccountDialog
           environment={environment}
           options={options}
-          takenNames={takenNames}
           onClose={() => setOpen(false)}
         />
       )}
