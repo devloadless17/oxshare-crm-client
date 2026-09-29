@@ -160,7 +160,9 @@ test('a client is verified end to end: submit → reject with reason → resubmi
       expect((await admin.patch(`/admin/kyc/${clientId}/claim`)).ok()).toBe(true);
       const rejected = await admin.patch(`/admin/kyc/${clientId}/reject`, {
         reason: 'The identity document is unreadable — e2e lifecycle check.',
-        rejectedFields: ['document'],
+        // The PAGE on file, as the review returns it — never the whole step
+        // (`document` is refused: the client can only answer what exists).
+        rejectedFields: ['doc_front'],
       });
       expect(rejected.ok(), `reject answered ${rejected.status()}`).toBe(true);
     });
@@ -186,9 +188,12 @@ test('a client is verified end to end: submit → reject with reason → resubmi
       expect(`${mail.subject} ${mail.text}`).toMatch(/reject|not approved|returned|unreadable/i);
     });
 
-    await test.step('they re-apply and resubmit — the documents survived the rejection', async () => {
+    await test.step('they replace the returned page and resubmit — the rest survived', async () => {
       await page.getByRole('link', { name: /update and re-?submit|re-?apply/i }).click();
       await page.waitForURL(/\/kyc\/step\/\d/, { timeout: 20_000 });
+      // A returned document must be replaced before the submission can go back;
+      // the selfie and the bill were not returned and are kept as they are.
+      await uploadSlot(page, 'doc_front');
       const resubmit = await apiFromPage(page, 'POST', '/kyc/submit');
       expect(resubmit.status, `resubmit answered ${resubmit.status}`).toBeLessThan(300);
     });
