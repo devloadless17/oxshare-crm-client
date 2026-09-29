@@ -267,7 +267,7 @@ function KycShell({ children }: { children: React.ReactNode }) {
             product that did it (reported, 25 Sep 2026). The link carries the
             name, so the drawing is decorative.
           */}
-          <BrandLogo className="kyc-logo-wordmark" />
+          <BrandLogo className="block" />
         </Link>
         <div className="kyc-header-tag">{t('kyc.layoutTitle')}</div>
       </header>

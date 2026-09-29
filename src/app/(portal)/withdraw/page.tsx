@@ -10,6 +10,7 @@ import { paymentsApi, type WithdrawalMethod } from '@/lib/api/payments';
 import { newIdempotencyKey } from '@/lib/api/client';
 import { compareMoney, floorToScale, formatMoney, isZeroMoney } from '@/lib/money';
 import { useCurrencyScale } from '@/hooks/use-currency-scale';
+import { WithdrawAmountHint } from '@/components/money/withdraw-amount-hint';
 import { Button } from '@/components/ui/button';
 import { WithdrawalDestinationField } from '@/components/money/withdrawal-fields';
 import {
@@ -526,13 +527,7 @@ function WithdrawForm({
                       }
                     : undefined
                 }
-                hint={
-                  selected
-                    ? t('withdraw.available', {
-                        amount: formatMoney(selected.available, selected.currency),
-                      })
-                    : undefined
-                }
+                hint={selected && <WithdrawAmountHint {...selected} />}
               />
 
               {presets.length > 0 && (

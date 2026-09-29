@@ -62,6 +62,9 @@ function Onboarding() {
 
   const firstName = user?.firstName.trim();
 
+  // Spaced so BOTH answers sit above the fold on a 1280×720 laptop: "Verify
+  // later" is a real choice, and one a client has to scroll to find reads as
+  // no choice (e2e/confirm-email-screen.spec.ts, 29 Sep 2026).
   return (
     <main className="flex h-dvh overflow-y-auto bg-background">
       {/*
@@ -70,20 +73,20 @@ function Onboarding() {
         one pixel under the fold at 720, which is the one control this screen
         exists to show.
       */}
-      <div className="m-auto w-full max-w-lg px-5 py-8 sm:px-8">
-        <div className="mb-5 flex justify-center">
-          <BrandLogo className="h-7 w-auto" />
+      <div className="m-auto w-full max-w-lg px-5 py-5 sm:px-8">
+        <div className="mb-4 flex justify-center">
+          <BrandLogo />
         </div>
 
         <section
           aria-labelledby="onboarding-title"
-          className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8"
+          className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-7"
         >
           <ProgressRing current={1} total={2} />
 
           <h1
             id="onboarding-title"
-            className="mt-4 text-center text-2xl font-bold leading-tight tracking-tight text-foreground"
+            className="mt-3 text-center text-2xl font-bold leading-tight tracking-tight text-foreground"
           >
             {t('onboarding.title')}
           </h1>
@@ -94,10 +97,10 @@ function Onboarding() {
             {t('onboarding.body')}
           </p>
 
-          <h2 className="mt-6 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t('onboarding.benefitsHeading')}
           </h2>
-          <ul className="mt-3 space-y-2.5">
+          <ul className="mt-3 space-y-2">
             <Benefit
               icon={Wallet}
               title={t('onboarding.benefitFundTitle')}
@@ -115,12 +118,12 @@ function Onboarding() {
             />
           </ul>
 
-          <p className="mt-5 flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-2.5 text-xs text-muted-foreground">
+          <p className="mt-4 flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-2.5 text-xs text-muted-foreground">
             <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
             {t('onboarding.duration')}
           </p>
 
-          <div className="mt-5 space-y-2">
+          <div className="mt-4 space-y-2">
             <Button asChild size="lg" className="w-full">
               <Link href="/kyc">
                 {t('onboarding.verifyNow')}
@@ -172,7 +175,7 @@ function Benefit({
  * muted colours in light and dark, and costs no request.
  */
 function ProgressRing({ current, total }: { current: number; total: number }) {
-  const size = 64;
+  const size = 56;
   const stroke = 6;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
