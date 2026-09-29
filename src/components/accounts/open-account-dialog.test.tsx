@@ -40,14 +40,9 @@ const OPTIONS: SelfServiceAvailability = {
   maxDemoDeposit: '10000',
 };
 
-function renderDialog(takenNames: string[] = []) {
+function renderDialog() {
   return renderWithProviders(
-    <OpenAccountDialog
-      environment="live"
-      options={OPTIONS}
-      takenNames={takenNames}
-      onClose={vi.fn()}
-    />,
+    <OpenAccountDialog environment="live" options={OPTIONS} onClose={vi.fn()} />,
   );
 }
 
@@ -61,7 +56,6 @@ describe('opening a live account', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.type(await screen.findByLabelText(/account name/i), 'Swing');
     await user.click(await screen.findByRole('combobox', { name: /product/i }));
     await user.click(await screen.findByRole('option', { name: 'Premium' }));
     await user.click(screen.getByRole('button', { name: /open account/i }));
@@ -81,7 +75,6 @@ describe('opening a live account', () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.type(await screen.findByLabelText(/account name/i), 'Swing');
     await user.click(screen.getByRole('button', { name: /open account/i }));
 
     await waitFor(() =>
@@ -92,33 +85,20 @@ describe('opening a live account', () => {
   });
 });
 
+/*
+ * NO NAME FIELD (owner, 29 Sep 2026): the server names the account after the
+ * client — "First Last", then "First Last-2", "-3"…
+ */
 describe('the account name', () => {
-  it('is required before the account can be opened', async () => {
-    renderDialog();
-
-    expect(await screen.findByLabelText(/account name/i)).toBeRequired();
-    expect(screen.getByRole('button', { name: /open account/i })).toBeDisabled();
-  });
-
-  it('is sent trimmed', async () => {
+  it('is not asked for, and none is sent', async () => {
     const user = userEvent.setup();
     renderDialog();
 
-    await user.type(await screen.findByLabelText(/account name/i), '  Swing trading  ');
+    await screen.findByRole('combobox', { name: /product/i });
+    expect(screen.queryByLabelText(/account name/i)).toBeNull();
     await user.click(screen.getByRole('button', { name: /open account/i }));
 
-    await waitFor(() =>
-      expect(openAccount).toHaveBeenCalledWith(expect.objectContaining({ name: 'Swing trading' })),
-    );
-  });
-
-  it('refuses a name the client already uses, whatever its case', async () => {
-    const user = userEvent.setup();
-    renderDialog(['Swing trading']);
-
-    await user.type(await screen.findByLabelText(/account name/i), 'SWING TRADING');
-
-    expect(screen.getByRole('alert')).toHaveTextContent(/already have an account with this name/i);
-    expect(screen.getByRole('button', { name: /open account/i })).toBeDisabled();
+    await waitFor(() => expect(openAccount).toHaveBeenCalled());
+    expect(openAccount.mock.calls[0]?.[0]).not.toHaveProperty('name');
   });
 });
