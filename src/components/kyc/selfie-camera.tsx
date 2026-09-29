@@ -25,6 +25,11 @@ export interface SelfieCameraProps {
   uploaded?: boolean;
   /** The reviewer returned this photo: say so, and ask for a new one. */
   isErrored?: boolean;
+  /**
+   * The broker made this photo OPTIONAL (Phase 2): a blocked camera must not
+   * tell the client it is required — the step above says they may skip it.
+   */
+  optional?: boolean;
 }
 
 /**
@@ -49,6 +54,7 @@ export function SelfieCamera({
   field = 'selfie',
   uploaded = false,
   isErrored = false,
+  optional = false,
 }: SelfieCameraProps) {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -261,7 +267,9 @@ export function SelfieCamera({
                 <VideoOff className="h-10 w-10 text-destructive" />
                 <p className="text-xs font-bold text-foreground">{t('kyc.cameraDeniedTitle')}</p>
                 <p className="text-xs text-muted-foreground">{t('kyc.cameraDeniedBody')}</p>
-                <p className="text-xs text-muted-foreground">{t('kyc.cameraDeniedHow')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t(optional ? 'kyc.cameraDeniedHowOptional' : 'kyc.cameraDeniedHow')}
+                </p>
                 <Button size="sm" onClick={() => void startCamera()} className="mt-2 text-xs">
                   {t('kyc.cameraRetry')}
                 </Button>

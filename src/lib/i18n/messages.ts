@@ -1341,6 +1341,8 @@ export const messages = {
   // would otherwise be stuck with no explanation.
   'kyc.cameraDeniedHow':
     'A live photo is required for this step, so we can tell it is really you. Allow camera access in your browser settings — or if you opened this link inside another app, open it in Safari or Chrome instead.',
+  'kyc.cameraDeniedHowOptional':
+    'This photo is optional — you can continue without it. To take it, allow camera access in your browser settings, or if you opened this link inside another app, open it in Safari or Chrome instead.',
   'kyc.cameraRetry': 'Retry Camera',
   'kyc.cameraHint': 'Center your face inside the circle and click snap photo.',
   'kyc.snapPhoto': 'Snap Photo',

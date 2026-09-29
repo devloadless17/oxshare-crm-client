@@ -111,6 +111,7 @@ export function StepField({
           field={uploadField}
           uploaded={isCanonicalSelfie ? selfieUploaded : uploadsState[field.name]}
           isErrored={isErrored}
+          optional={!field.required}
         />
       </div>
     );
