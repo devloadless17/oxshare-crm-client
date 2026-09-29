@@ -110,9 +110,13 @@ export function KycStepForm() {
 
   const fetchingInitialData = configQuery.status === 'loading' || statusQuery.status === 'loading';
   const loadError =
-    configQuery.status === 'error' || configQuery.status === 'unavailable'
+    configQuery.status === 'error' ||
+    configQuery.status === 'unavailable' ||
+    configQuery.status === 'notFound'
       ? apiErrorMessage(configQuery.error, t('kyc.loadFailed'))
-      : statusQuery.status === 'error' || statusQuery.status === 'unavailable'
+      : statusQuery.status === 'error' ||
+          statusQuery.status === 'unavailable' ||
+          statusQuery.status === 'notFound'
         ? apiErrorMessage(statusQuery.error, t('kyc.loadFailed'))
         : '';
 

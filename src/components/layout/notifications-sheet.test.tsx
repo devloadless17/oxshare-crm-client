@@ -235,7 +235,9 @@ describe('the list', () => {
   });
 
   it('a 404 renders BackendPending, never sample rows', async () => {
-    getNotifications.mockRejectedValue({ response: { status: 404 } });
+    getNotifications.mockRejectedValue({
+      response: { status: 404, data: { code: 'ROUTE_NOT_FOUND' } },
+    });
     renderWithProviders(<NotificationsSheet />);
     await openSheet();
 

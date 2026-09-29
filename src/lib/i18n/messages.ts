@@ -1407,6 +1407,8 @@ export const messages = {
     'This part of the portal is still being built. It will appear here automatically as soon as it is ready.',
 
   'common.retry': 'Try again',
+  'common.notFoundTitle': 'Not found',
+  'common.notFoundBody': 'We could not find what you were looking for. It may have been removed.',
   /*
    * Two labels for one action, preserved rather than unified.
    *
