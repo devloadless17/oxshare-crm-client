@@ -79,25 +79,30 @@ export function OpenAccountDialog({
    * offered — which already carries the agency filter, so a client under a
    * partner sees only what that partner sells.
    */
-  const currencies = React.useMemo(
-    () => [...new Set(types.map((type) => type.currency))].filter(Boolean).sort(),
+  /*
+   * PRODUCT FIRST, then the currency it is offered in (owner, 29 Sep 2026).
+   * The products in the order the API sent them — `offeredTo` orders by the
+   * product's sort order then its name, so "first" is the broker's preference.
+   */
+  const products = React.useMemo(
+    () => [...new Set(types.map((type) => type.product))].filter(Boolean),
     [types],
   );
+  const [product, setProduct] = React.useState(products[0] ?? '');
 
-  const [currency, setCurrency] = React.useState(currencies[0] ?? '');
-
-  /*
-   * The products available IN THE CHOSEN CURRENCY, in the order the API sent
-   * them — `offeredTo` orders by the product's sort order then its name, so
-   * "first offered" is the broker's own preference rather than an accident of
-   * iteration.
-   */
-  const productsForCurrency = React.useMemo(
-    () => types.filter((type) => type.currency === currency),
-    [types, currency],
+  /** The currencies a product is offered in — demo, which asks no product: all of them. */
+  const currenciesFor = React.useCallback(
+    (chosen: string) =>
+      [
+        ...new Set(
+          types.filter((type) => isDemo || type.product === chosen).map((type) => type.currency),
+        ),
+      ].filter(Boolean),
+    [types, isDemo],
   );
-
-  const [product, setProduct] = React.useState(productsForCurrency[0]?.product ?? '');
+  const currencies = React.useMemo(() => currenciesFor(product), [currenciesFor, product]);
+  // Chosen FOR the client: the first currency the product is offered in.
+  const [currency, setCurrency] = React.useState(currencies[0] ?? '');
 
   const [leverage, setLeverage] = React.useState(
     /*
@@ -123,8 +128,8 @@ export function OpenAccountDialog({
    * the broker's preferred one, by the ordering above.
    */
   const chosenType = isDemo
-    ? productsForCurrency[0]
-    : productsForCurrency.find((type) => type.product === product);
+    ? types.find((type) => type.currency === currency)
+    : types.find((type) => type.product === product && type.currency === currency);
   const group = chosenType?.group ?? '';
   /*
    * Sent WITH the group. One MT5 group may back several products (backend
@@ -220,7 +225,7 @@ export function OpenAccountDialog({
       {/* `max-w-md` is the default and is too narrow for two columns of inputs;
           the width class only widens the CEILING, so the mobile
           `w-[calc(100%-2rem)]` still governs on a phone. */}
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {isDemo ? t('accounts.openDemoTitle') : t('accounts.openLiveTitle')}
@@ -228,37 +233,24 @@ export function OpenAccountDialog({
         </DialogHeader>
 
         {/*
-          TWO COLUMNS from `sm` up, ONE below it.
-
-          The form grew from one field to four, and stacked they pushed the
-          submit button off a laptop screen — a dialog that scrolls to reach its
-          own confirm button is a dialog people abandon.
-
-          The ORDER is currency → product → leverage, and it is the order a
-          client answers in: what is it held in, then what is it, then on what
-          terms. There is no name field (owner, 29 Sep 2026): the server names
-          the account after the client. Each field's own note says why it
-          sits where it does. The grid fills row-wise, so the DOM order IS the
-          reading order and IS the tab order — there is no CSS reordering here,
-          because a form whose visual order and tab order disagree is a form
-          keyboard users fill in wrong.
-
-          Everything that is not a field spans both columns, so the intro, the
-          KYC notice, the error and the buttons stay full width at every size.
+          ONE FIELD PER ROW (owner, 29 Sep 2026), in the order a client answers:
+          the product, the currency it is held in (filled in from the product),
+          then the leverage. Demo asks no product. There is no name field: the
+          server names the account after the client.
         */}
         <form
-          className="grid gap-x-4 gap-y-4 sm:grid-cols-2"
+          className="grid gap-4"
           onSubmit={(e) => {
             e.preventDefault();
             create.mutate();
           }}
         >
-          <p className="text-xs text-muted-foreground sm:col-span-2">
+          <p className="text-xs text-muted-foreground">
             {isDemo ? t('accounts.demoBody') : t('accounts.liveBody')}
           </p>
 
           {needsKyc && (
-            <div className="flex gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 sm:col-span-2">
+            <div className="flex gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3">
               <ShieldAlert className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
               <div className="space-y-2">
                 <p className="text-xs leading-relaxed">{t('accounts.liveNeedsKyc')}</p>
@@ -270,23 +262,18 @@ export function OpenAccountDialog({
           )}
 
           <AccountTypeFields
+            products={products}
+            product={product}
+            onProduct={(next) => {
+              setProduct(next);
+              // The currency follows the product: its first offered currency.
+              setCurrency(currenciesFor(next)[0] ?? '');
+              setError(null);
+            }}
             currencies={currencies}
             currency={currency}
             onCurrency={(next) => {
               setCurrency(next);
-              /*
-                The product is re-chosen with the currency, never carried
-                across. Products are not offered in every currency, so a kept
-                selection can name a pairing that has no group, and the form
-                would look complete while resolving to nothing.
-              */
-              setProduct(types.find((type) => type.currency === next)?.product ?? '');
-              setError(null);
-            }}
-            productsForCurrency={productsForCurrency}
-            product={product}
-            onProduct={(next) => {
-              setProduct(next);
               setError(null);
             }}
             isDemo={isDemo}
@@ -341,12 +328,12 @@ export function OpenAccountDialog({
           )}
 
           {error && (
-            <p role="alert" className="text-xs font-medium text-destructive sm:col-span-2">
+            <p role="alert" className="text-xs font-medium text-destructive">
               {error}
             </p>
           )}
 
-          <div className="flex justify-end gap-2 pt-1 sm:col-span-2">
+          <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               {t('accounts.cancel')}
             </Button>

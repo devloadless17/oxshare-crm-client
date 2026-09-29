@@ -102,3 +102,44 @@ describe('the account name', () => {
     expect(openAccount.mock.calls[0]?.[0]).not.toHaveProperty('name');
   });
 });
+
+/*
+ * PRODUCT FIRST (owner, 29 Sep 2026): the client picks the product, and the
+ * currency is filled in from the ones that product is offered in.
+ */
+describe('product first, currency from it', () => {
+  const MIXED: SelfServiceAvailability = {
+    ...OPTIONS,
+    liveTypes: [
+      { group: 'real\StdUsd', currency: 'USD', product: 'Standard', productId: 'p-standard' },
+      { group: 'real\StdEur', currency: 'EUR', product: 'Standard', productId: 'p-standard' },
+      { group: 'real\ProEur', currency: 'EUR', product: 'Pro', productId: 'p-pro' },
+    ],
+  };
+
+  it('asks the product first, then fills in its currency', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<OpenAccountDialog environment="live" options={MIXED} onClose={vi.fn()} />);
+
+    const product = await screen.findByRole('combobox', { name: /product/i });
+    const currency = screen.getByRole('combobox', { name: /currency/i });
+    // The product comes before the currency in the form.
+    expect(
+      product.compareDocumentPosition(currency) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(currency).toHaveTextContent('USD');
+
+    await user.click(product);
+    await user.click(await screen.findByRole('option', { name: 'Pro' }));
+    expect(screen.getByRole('combobox', { name: /currency/i })).toHaveTextContent('EUR');
+    // One currency for Pro: nothing to choose.
+    expect(screen.getByRole('combobox', { name: /currency/i })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /open account/i }));
+    await waitFor(() =>
+      expect(openAccount).toHaveBeenCalledWith(
+        expect.objectContaining({ group: 'real\ProEur', productId: 'p-pro' }),
+      ),
+    );
+  });
+});
