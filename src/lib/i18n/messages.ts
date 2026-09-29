@@ -707,6 +707,8 @@ export const messages = {
   'deposit.proofFormats': 'JPG, PNG, WEBP or PDF · Max {limit}MB',
   'deposit.proofTooLarge': 'That file is {size}MB. The limit is {limit}MB.',
   'deposit.proofFailed': 'Could not read that file. Please try another.',
+  'deposit.detailOptional': '(optional)',
+  'deposit.detailRequired': '{label} is required.',
   'deposit.proofRequired': 'Please attach your transfer receipt.',
   'transactions.detailReceipt': 'Your receipt',
   'transactions.detailReceiptOpen': 'View',
