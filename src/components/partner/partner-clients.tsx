@@ -167,7 +167,7 @@ export function PartnerClients({ data }: { data: IbOverview }) {
           caption={t('partner.tabClients')}
           columns={columns}
           rows={rows}
-          rowKey={(row) => row.userId}
+          rowKey={(row) => String(row.userId)}
           clientPagination={PAGING}
           fill
           empty={

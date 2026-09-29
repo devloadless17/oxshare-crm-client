@@ -57,7 +57,7 @@ const submission = {
   },
   selfie: { filePath: 'uploads/kyc/s.jpg' },
   addressProof: { docType: 'utility_bill' },
-  stepData: { extra: { proof: { filePath: 'uploads/kyc/x.pdf', fileName: 'x.pdf' }, note: 'hi' } },
+  stepData: { extra: { proof: { filePath: 'uploads/kyc/x.pdf' }, note: 'hi' } },
 };
 
 describe('kycDocumentsOf', () => {

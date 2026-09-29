@@ -85,7 +85,7 @@ describe('seeding a step from what was already saved', () => {
 describe('only typed answers come back into the form', () => {
   /*
    * Reported from production: a custom step's upload is stored as
-   * `{ filePath, fileName }`; `String()` of it seeded the form with
+   * `{ filePath }`; `String()` of it seeded the form with
    * "[object Object]", which the review screen then posted back as the client's
    * personal details.
    */
@@ -106,7 +106,7 @@ describe('only typed answers come back into the form', () => {
         stepData: {
           'source-of-funds': {
             employer: 'Acme',
-            payslip: { filePath: 'uploads/kyc/p.jpg', fileName: 'p.jpg' },
+            payslip: { filePath: 'uploads/kyc/p.jpg' },
           },
         },
       } as never,

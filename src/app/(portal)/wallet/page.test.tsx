@@ -42,7 +42,7 @@ function wallet(currency: string, balance = '100.00000000'): Wallet {
     id: `w-${currency}`,
     walletNumber: `n${currency.toLowerCase()}`,
     name: `${currency} wallet`,
-    userId: 'u-1',
+    userId: 1000001,
     currency,
     kind: 'main',
     balance,

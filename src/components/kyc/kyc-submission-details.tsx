@@ -66,8 +66,6 @@ export function KycSubmissionDetails({
   );
   const steps = useMemo(() => configQuery.data ?? [], [configQuery.data]);
 
-  // The generated DTO omits `page2FileName` (the API returns it); the helper's
-  // structural type carries it, so this is a widening rather than an assertion.
   const statusLike = status as KycStatusLike;
   const documents = useMemo(() => kycDocumentsOf(statusLike, steps), [statusLike, steps]);
   const personal = useMemo(
@@ -83,7 +81,6 @@ export function KycSubmissionDetails({
     () =>
       documents.map((d) => ({
         filePath: d.filePath,
-        fileName: d.fileName,
         label: d.part ? `${d.type} · ${d.part}` : d.type,
       })),
     [documents],
@@ -102,11 +99,6 @@ export function KycSubmissionDetails({
             {row.type}
             {row.part && <span className="font-normal text-muted-foreground"> · {row.part}</span>}
           </p>
-          {row.fileName && (
-            <p className="max-w-[16rem] truncate text-[11px] text-muted-foreground">
-              {row.fileName}
-            </p>
-          )}
         </div>
       ),
     },

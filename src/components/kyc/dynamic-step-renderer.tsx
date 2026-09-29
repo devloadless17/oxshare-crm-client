@@ -208,6 +208,20 @@ export function DynamicStepRenderer({
       )}
 
       {/*
+       * AN OPTIONAL STEP SAYS SO (Phase 2, 29 Sep 2026): the broker may let the
+       * client skip the identity document, the proof of address or the selfie
+       * (`evidenceRequired: false`, served on those steps only). Continue is the
+       * server's call either way; the sentence is what tells a client with no
+       * bill to hand that they are not stuck.
+       */}
+      {currentStepConfig.evidenceRequired === false && (
+        <p className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+          <Info className="mt-px h-4 w-4 shrink-0 text-link" aria-hidden="true" />
+          <span>{t('kyc.evidenceOptional')}</span>
+        </p>
+      )}
+
+      {/*
        * EVERY FIELD COMES FROM THE CONFIG. No slug branching, no hard-coded
        * document types, no layout the builder cannot see.
        *

@@ -51,10 +51,10 @@ test.describe.configure({ mode: 'serial' });
 async function clientIdOf(
   admin: Awaited<ReturnType<typeof adminApiSession>>,
   email: string,
-): Promise<string | undefined> {
+): Promise<number | undefined> {
   const res = await admin.get(`/admin/clients?q=${encodeURIComponent(email)}&limit=5`);
   expect(res.ok(), `the admin client index answered ${res.status()}`).toBe(true);
-  const body = (await res.json()) as { items?: { id: string; email: string }[] };
+  const body = (await res.json()) as { items?: { id: number; email: string }[] };
   return body.items?.find((r) => r.email === email)?.id;
 }
 
@@ -306,7 +306,7 @@ test('approval nests the recruited partner one rung beneath their introducer', a
       expect(detail.ok(), `partner detail answered ${detail.status()}`).toBe(true);
       const body = JSON.parse(detailBody) as {
         level: number;
-        parent: { userId: string } | null;
+        parent: { userId: number } | null;
       };
       expect(body.level).toBe(2);
       expect(body.parent?.userId).toBe(l1Id);

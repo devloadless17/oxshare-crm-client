@@ -9,7 +9,6 @@ import { t } from '@/lib/i18n';
 export interface LightboxDoc {
   filePath: string;
   label: string;
-  fileName?: string;
 }
 
 const ZOOM_STEP = 0.5;
@@ -102,7 +101,6 @@ export function DocLightbox({
               <DialogPrimitive.Title className="truncate text-sm font-semibold text-white">
                 {doc.label}
               </DialogPrimitive.Title>
-              {doc.fileName && <p className="truncate text-xs text-white/60">{doc.fileName}</p>}
             </div>
 
             <div className="flex items-center gap-1">
