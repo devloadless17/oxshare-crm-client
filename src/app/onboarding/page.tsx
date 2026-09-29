@@ -72,7 +72,7 @@ function Onboarding() {
       */}
       <div className="m-auto w-full max-w-lg px-5 py-8 sm:px-8">
         <div className="mb-5 flex justify-center">
-          <BrandLogo className="h-7 w-auto" />
+          <BrandLogo />
         </div>
 
         <section

@@ -107,7 +107,7 @@ export function AuthShell({
               aria-label={t('app.name')}
               className="inline-flex items-center rounded-md focus-outline lg:invisible"
             >
-              <BrandLogo className="h-7 w-auto" />
+              <BrandLogo />
             </Link>
             <ThemeToggle />
           </div>
@@ -178,7 +178,7 @@ function BrandPanel({ homeHref }: { homeHref: string }) {
           wordmark is correct on both and a `dark:` variant here would put the
           near-black one on a near-black panel in one of them.
         */}
-        <BrandLogo tone="onDark" className="h-8 w-auto" />
+        <BrandLogo tone="onDark" />
       </Link>
 
       <div className="relative">
