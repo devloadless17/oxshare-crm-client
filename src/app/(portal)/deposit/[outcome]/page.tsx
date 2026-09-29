@@ -47,17 +47,14 @@ export default function DepositOutcomePage() {
 
   const reference = search.get('reference');
   /*
-   * The method the deposit was filed under. The server now puts it in the
-   * redirect it hands the provider, so this reads it rather than assuming.
+   * The method the deposit was filed under, when the redirect carries one.
    *
-   * The `whish` fallback is kept for links already in flight — a client
-   * mid-payment when this shipped comes back to a URL built by the old code —
-   * and it is a fallback rather than the answer: it was previously the ONLY
-   * value, and the day a second gateway is added, defaulting would settle its
-   * payments against the wrong provider, find nothing, and leave a paid client
-   * on "not confirmed yet".
+   * No `whish` default any more (backend 0168): the server finds a deposit by
+   * its reference and its owner alone, and guessing a method would send a
+   * second provider's payer looking for a Rival deposit — find nothing, and
+   * leave a paid client on "not confirmed yet".
    */
-  const method = search.get('method') ?? 'whish';
+  const method = search.get('method') ?? undefined;
   /** Only ever the FIRST impression. The server's answer replaces it. */
   const hinted = params?.outcome === 'failure' ? 'failure' : 'success';
 

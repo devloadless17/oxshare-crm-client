@@ -638,16 +638,16 @@ export const messages = {
   // "Destination": it names who is being paid, which is the question, where
   // the old word named a database column.
   'withdraw.recipient': 'Recipient',
-  'withdraw.whishPhoneLabel': 'Whish phone number',
-  // Names the consequence rather than saying "double-check", and says WHOSE
-  // number it has to be — a client who has just typed their own needs to know.
-  'withdraw.whishPhoneHint':
-    'The Whish account that will receive the money. A payout sent to the wrong number cannot be recalled.',
   // The fallback for a rail this build does not know yet — `{method}` is the
   // operator's own name for it, so the field is still specific.
   'withdraw.genericAccountLabel': '{method} account',
-  'withdraw.genericAccountHint':
-    'The {method} account that will receive the money. A payout sent to the wrong account cannot be recalled.',
+  // By the payout channel's kind (backend 0168), not the method's key.
+  'withdraw.phoneLabel': '{method} phone number',
+  'withdraw.cryptoAddressLabel': 'Wallet address',
+  'withdraw.cryptoAddressNetworkLabel': '{network} wallet address',
+  'withdraw.ibanLabel': 'IBAN',
+  'withdraw.cashPickup':
+    'Collected in person. Nothing to enter here: our team will arrange the pickup.',
   'withdraw.submit': 'Request withdrawal',
   'withdraw.submitting': 'Submitting…',
   'withdraw.needMethod': 'Choose how you want to be paid.',
