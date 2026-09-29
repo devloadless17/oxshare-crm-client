@@ -621,7 +621,11 @@ export const messages = {
   'withdraw.amountPlaceholder': '0.00',
   'withdraw.available': 'Available: {amount}',
   // The currency's own withdrawal range (backend 0162).
-  'withdraw.limits': 'Between {min} and {max} per withdrawal, up to {daily} a day',
+  'withdraw.limits': 'Between {min} and {max} per withdrawal',
+  // Said under the amount BEFORE submitting — the server still refuses the same.
+  'withdraw.amountBelowMin': 'The minimum withdrawal is {min}.',
+  'withdraw.amountAboveMax': 'The maximum withdrawal is {max}.',
+  'withdraw.amountAboveAvailable': 'You have {available} available to withdraw.',
   /*
    * ── The payout-target field, per rail ────────────────────────────────────
    *

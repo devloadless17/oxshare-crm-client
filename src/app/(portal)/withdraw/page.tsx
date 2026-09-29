@@ -529,7 +529,7 @@ function WithdrawForm({
                       }
                     : undefined
                 }
-                hint={selected && <WithdrawAmountHint {...selected} />}
+                hint={selected && <WithdrawAmountHint {...selected} amount={amount} />}
               />
 
               {presets.length > 0 && (
