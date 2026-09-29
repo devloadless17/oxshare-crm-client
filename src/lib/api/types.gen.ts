@@ -5092,7 +5092,10 @@ export interface components {
         IbAccountDto: {
             userId: string;
             level: number;
+            /** @description Null at the top of a chain — or, on an admin response, when the parent is outside your territory (`parentOutsideTerritory`). */
             parentIbUserId: string | null;
+            /** @description Admin responses only: true when a parent exists that the reader may not see. The fact, never the id (R1). */
+            parentOutsideTerritory?: boolean;
             /** @description What a client types at registration to be attributed here. */
             referralCode: string;
             active: boolean;
@@ -5472,10 +5475,14 @@ export interface components {
             parent: components["schemas"]["IbPartnerPersonDto"] | null;
             /** @description True when this partner has a parent the reader may not see. Distinguishes “deals with the broker directly” from “parent outside your territory”. */
             parentOutsideTerritory: boolean;
-            /** @description SCOPED to the reader’s territory. No out-of-territory total accompanies it — a count is itself a disclosure, and there is no row cap here for one to describe. */
+            /** @description SCOPED to the reader’s territory. The ones withheld are counted in `directPartnersOutsideScope` — never named. */
             directPartners: components["schemas"]["IbSubPartnerRowDto"][];
+            /** @description How many direct sub-partners sit OUTSIDE the reader’s territory, and so are absent from `directPartners`. Zero for an unrestricted reader. A count, no identity (R2): a line that silently dropped them would read as a partner with nobody beneath them. */
+            directPartnersOutsideScope: number;
             /** @description How many clients they introduced. */
             referredClientCount: number;
+            /** @description How many clients this partner introduced sit OUTSIDE the reader’s territory, and so are absent from `referredClientCount`. Zero for an unrestricted reader. A count, no identity. */
+            referredClientsOutsideScope: number;
             /** @description One entry per currency they have earned in, sorted by currency. Empty when nothing has accrued yet — never a zero in a currency nobody chose. */
             earnings: components["schemas"]["IbPartnerEarningsDto"][];
             maskedFields?: string[];
@@ -7098,7 +7105,8 @@ export interface components {
             createdAt: string;
         };
         ClientRowReferrerDto: {
-            ibUserId: string;
+            /** @description Absent when the introducer is outside your territory. */
+            ibUserId?: string;
             /** @description The introducer’s Portal ID. Absent, with their name, when they are outside your territory. */
             portalId?: number;
             /** @description Absent when the introducer is outside your territory. */
@@ -7176,7 +7184,8 @@ export interface components {
             createdAt: string;
         };
         ProfileReferrerDto: {
-            ibUserId: string;
+            /** @description Absent when the introducer is outside your territory. */
+            ibUserId?: string;
             /** @description The introducer’s Portal ID — what the profile links by. Absent, with the rest of their identity, when the introducer is outside your territory. */
             portalId?: number;
             /** @description Absent when the introducer is outside your territory. */
@@ -7187,8 +7196,8 @@ export interface components {
             lastName?: string;
             /** @description True when this client WAS introduced by a partner the reader may not see. Keeps “introduced, by someone outside your territory” distinct from “not introduced”. */
             outsideTerritory: boolean;
-            /** @description False when the attribution was switched off. */
-            active: boolean;
+            /** @description False when the attribution was switched off. Absent when the introducer is outside your territory: whether a partner you may not see is suspended is not yours to learn. */
+            active?: boolean;
             /** Format: date-time */
             since: string;
         };
