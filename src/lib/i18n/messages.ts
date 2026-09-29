@@ -620,6 +620,8 @@ export const messages = {
   'withdraw.amount': 'Amount',
   'withdraw.amountPlaceholder': '0.00',
   'withdraw.available': 'Available: {amount}',
+  // The currency's own withdrawal range (backend 0162).
+  'withdraw.limits': 'Between {min} and {max} per withdrawal, up to {daily} a day',
   /*
    * ── The payout-target field, per rail ────────────────────────────────────
    *

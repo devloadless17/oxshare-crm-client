@@ -34,3 +34,28 @@ export function useCurrencyScale(): (currency: string) => number {
     [rows],
   );
 }
+
+/**
+ * A currency's WITHDRAWAL limits, as the operator set them (backend 0162) — in
+ * that currency's own units, so an LBP wallet shows millions and a USD one tens.
+ *
+ * Shown to the client, never enforced here: the server refuses outside them
+ * with its own sentence (R-5.1). `undefined` while the catalogue loads, and the
+ * screen then simply shows no range.
+ */
+export function useWithdrawalLimits(): (
+  currency: string,
+) => { min: string; max: string; daily: string } | undefined {
+  const currencies = useResource(keys.currencies.all(), (signal) => currenciesApi.list(signal));
+  const rows = currencies.status === 'ready' ? currencies.data : undefined;
+
+  return React.useCallback(
+    (code: string) => {
+      const row = rows?.find((c) => c.code === code);
+      return row
+        ? { min: row.minWithdrawal, max: row.maxWithdrawal, daily: row.maxWithdrawalDaily }
+        : undefined;
+    },
+    [rows],
+  );
+}
