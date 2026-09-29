@@ -45,16 +45,14 @@ export function useCurrencyScale(): (currency: string) => number {
  */
 export function useWithdrawalLimits(): (
   currency: string,
-) => { min: string; max: string; daily: string } | undefined {
+) => { min: string; max: string } | undefined {
   const currencies = useResource(keys.currencies.all(), (signal) => currenciesApi.list(signal));
   const rows = currencies.status === 'ready' ? currencies.data : undefined;
 
   return React.useCallback(
     (code: string) => {
       const row = rows?.find((c) => c.code === code);
-      return row
-        ? { min: row.minWithdrawal, max: row.maxWithdrawal, daily: row.maxWithdrawalDaily }
-        : undefined;
+      return row ? { min: row.minWithdrawal, max: row.maxWithdrawal } : undefined;
     },
     [rows],
   );

@@ -12,7 +12,7 @@ import { compareMoney, floorToScale, formatMoney, isZeroMoney } from '@/lib/mone
 import { useCurrencyScale } from '@/hooks/use-currency-scale';
 import { WithdrawAmountHint } from '@/components/money/withdraw-amount-hint';
 import { Button } from '@/components/ui/button';
-import { WithdrawalDestinationField } from '@/components/money/withdrawal-fields';
+import { WithdrawalDestinationField, needsDestination } from '@/components/money/withdrawal-fields';
 import {
   AmountField,
   AmountPresets,
@@ -211,7 +211,9 @@ function WithdrawForm({
      */
     if (!amount.trim()) return setError(t('withdraw.needAmount'));
     if (!methodKey) return setError(t('withdraw.needMethod'));
-    if (!destination.trim()) return setError(t('withdraw.needDestination'));
+    if (needsDestination(selectedMethod?.destinationKind) && !destination.trim()) {
+      return setError(t('withdraw.needDestination'));
+    }
 
     idempotencyKey.current ??= newIdempotencyKey();
 
@@ -527,7 +529,7 @@ function WithdrawForm({
                       }
                     : undefined
                 }
-                hint={selected && <WithdrawAmountHint {...selected} />}
+                hint={selected && <WithdrawAmountHint {...selected} amount={amount} />}
               />
 
               {presets.length > 0 && (
@@ -537,9 +539,9 @@ function WithdrawForm({
           </MoneySection>
 
           {/*
-          The destination control is chosen by the METHOD, not fixed by this
-          screen — see `withdrawal-fields.tsx`. Whish asks for a phone number;
-          a rail added later asks for whatever it needs, under its own label.
+          The destination control is chosen by the METHOD's payout channel, not
+          fixed by this screen — see `withdrawal-fields.tsx`. Whish asks for a
+          phone number, a cash pickup for nothing.
         */}
           {/* The last section takes the slack, so the footer sits on the bottom
             edge of a full-height card instead of halfway up it. */}
@@ -552,7 +554,8 @@ function WithdrawForm({
             short form longer to read for something they had not asked about yet.
           */}
             <WithdrawalDestinationField
-              methodKey={methodKey}
+              kind={selectedMethod?.destinationKind}
+              network={selectedMethod?.destinationNetwork ?? null}
               methodName={selectedMethod?.name ?? methodKey}
               value={destination}
               onChange={setDestination}

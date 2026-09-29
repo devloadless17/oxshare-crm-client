@@ -1,124 +1,92 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { WithdrawalDestinationField, fieldSpecFor } from './withdrawal-fields';
+import { WithdrawalDestinationField, needsDestination } from './withdrawal-fields';
 
 /**
- * The rail decides what the withdrawal form asks for.
- *
- * The rails themselves are DATA (`withdrawal_payment_methods`), so this file
- * pins the half that is code: that a known rail gets its own control and its
- * own words, and that a rail this build has never heard of still renders
- * something a client can fill in rather than nothing or a crash.
+ * The method's payout CHANNEL decides what the withdrawal form asks for
+ * (backend 0168) — never the method's key. These pin that each kind gets its
+ * own control and its own words, that a cash pickup asks for nothing, and that
+ * an older API with no kind still renders something a client can fill in.
  */
 
-describe('the per-rail field spec', () => {
-  it('gives Whish a phone control, not a generic text box', () => {
-    // The whole point of the registry: Whish pays a phone number, so the client
-    // gets the country-code input rather than a box labelled "Destination".
-    expect(fieldSpecFor('whish')?.kind).toBe('phone');
-  });
-
-  it('returns nothing for a rail this build has not learned', () => {
-    expect(fieldSpecFor('sepa')).toBeUndefined();
-  });
-
-  it('is not fooled by inherited object properties', () => {
-    /*
-     * `Object.hasOwn`, not a bare lookup. A rail keyed 'constructor' would
-     * otherwise resolve to an inherited function — truthy — and skip the
-     * fallback, rendering a spec that is not a spec.
-     */
-    expect(fieldSpecFor('constructor')).toBeUndefined();
-    expect(fieldSpecFor('toString')).toBeUndefined();
+describe('what a payout asks the client for', () => {
+  it('asks nothing of a cash pickup, and something of every other kind', () => {
+    expect(needsDestination('none')).toBe(false);
+    for (const kind of ['phone', 'crypto_address', 'iban', 'text'] as const) {
+      expect(needsDestination(kind)).toBe(true);
+    }
+    // No kind (an API before 0168): ask, as the form always did.
+    expect(needsDestination(undefined)).toBe(true);
   });
 });
 
 describe('the destination field', () => {
-  it('labels Whish by its own field, never as a "destination"', () => {
+  it('gives a phone channel the phone control, named by the method, never "destination"', () => {
+    /*
+     * By KIND: a second Whish method with a generated key gets the same phone
+     * control — keyed by method key, it fell back to a text box.
+     */
     render(
       <WithdrawalDestinationField
-        methodKey="whish"
+        kind="phone"
+        network={null}
         methodName="Whish Money"
         value=""
         onChange={vi.fn()}
       />,
     );
 
-    // The old copy called this "Destination" — a database column rather than a
-    // question — and hinted at an IBAN for a rail the client had not chosen.
-    expect(screen.getByText(/whish phone number/i)).toBeInTheDocument();
+    // `getByLabelText`: the visible label is sr-only (the section heading says
+    // "Recipient"), and PhoneInput has no id to point at, so the phone field
+    // must carry its name itself — the field that decides WHERE MONEY GOES.
+    expect(screen.getByLabelText(/whish money phone number/i)).toBeInTheDocument();
     expect(screen.queryByText(/^destination$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/IBAN/i)).not.toBeInTheDocument();
   });
 
-  it('keeps the phone field ACCESSIBLY named once the visible label is hidden', () => {
-    /*
-     * The regression this exists to catch, and it is invisible on screen.
-     *
-     * The visible label was dropped so the field is not headed twice — once by
-     * the "Recipient" section and once by itself. `PhoneInput` renders a country
-     * button and a bare text box with no text of its own and no id for a
-     * `htmlFor` to point at, so hiding the label without passing `aria-label`
-     * leaves the one field that decides WHERE A CLIENT'S MONEY GOES announcing
-     * as an unlabelled edit box. Nothing about the rendered page would look
-     * wrong, which is exactly why a test has to hold it.
-     */
+  it('names a crypto address by its network, since an address is valid on one only', () => {
     render(
       <WithdrawalDestinationField
-        methodKey="whish"
-        methodName="Whish Money"
+        kind="crypto_address"
+        network="TRC20"
+        methodName="USDT"
         value=""
         onChange={vi.fn()}
       />,
     );
-
-    expect(screen.getByLabelText(/whish phone number/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/TRC20 wallet address/i)).toBeInTheDocument();
   });
 
-  it('falls back to the RAIL’S OWN NAME for an unknown key', () => {
-    /*
-     * The forward-compatible branch. An operator can enable a rail before this
-     * app learns its field, and the client must still be able to be paid — so
-     * the fallback is a labelled text box, not a hidden field or a crash.
-     */
+  it('shows no field for a cash pickup', () => {
     render(
       <WithdrawalDestinationField
-        methodKey="sepa"
-        methodName="SEPA transfer"
+        kind="none"
+        network={null}
+        methodName="Cash"
         value=""
         onChange={vi.fn()}
       />,
     );
-
-    /*
-     * `getByLabelText`, not `getByText`, and this is now load-bearing rather
-     * than merely tidier.
-     *
-     * The visible label was removed (the section heading above it already says
-     * "Recipient") and survives only as `sr-only`, so a text query would still
-     * pass while proving nothing a client can use. Querying the input BY its
-     * label proves the `htmlFor`/`id` association a screen reader depends on —
-     * which is the whole reason the element was hidden instead of deleted.
-     */
-    expect(screen.getByLabelText(/SEPA transfer account/i)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.getByText(/collected in person/i)).toBeInTheDocument();
   });
 
-  it('reports what the client typed, verbatim', async () => {
-    // The value goes to the server as a plain string; this control shapes the
-    // typing and does not validate — the server owns Whish's own rules.
+  it('falls back to a text box named by the method when the API sends no kind', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-
     render(
       <WithdrawalDestinationField
-        methodKey="sepa"
+        kind={undefined}
+        network={null}
         methodName="SEPA transfer"
         value=""
         onChange={onChange}
       />,
     );
 
+    expect(screen.getByLabelText(/SEPA transfer account/i)).toBeInTheDocument();
+    // The value goes to the server verbatim; the server owns each provider's rules.
     await user.type(screen.getByRole('textbox'), 'A');
     expect(onChange).toHaveBeenCalledWith('A');
   });
