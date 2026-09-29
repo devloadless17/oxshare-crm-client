@@ -160,7 +160,7 @@ export function PartnerOverview({
               </p>
               <RecentList
                 rows={referredClients.slice(0, PREVIEW).map((client) => ({
-                  key: client.userId,
+                  key: String(client.userId),
                   name: client.name,
                   meta: formatDate(client.since),
                   pill: (
@@ -218,7 +218,7 @@ export function PartnerOverview({
               </p>
               <RecentList
                 rows={subPartners.slice(0, PREVIEW).map((partner) => ({
-                  key: partner.userId,
+                  key: String(partner.userId),
                   name: partner.name,
                   meta: formatDate(partner.since),
                   pill: (

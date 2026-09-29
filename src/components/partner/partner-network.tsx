@@ -59,7 +59,7 @@ export function PartnerNetwork({ subPartners }: { subPartners: IbSubPartner[] })
         caption={t('partner.tabNetwork')}
         columns={columns}
         rows={subPartners}
-        rowKey={(row) => row.userId}
+        rowKey={(row) => String(row.userId)}
         clientPagination={PAGING}
         fill
         empty={<EmptyState icon={Network} message={t('partner.subPartnersEmpty')} />}

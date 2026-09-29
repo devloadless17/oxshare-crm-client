@@ -126,7 +126,7 @@ test.describe('the "verify now or later" screen', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          id: '00000000-0000-4000-8000-000000000001',
+          id: 1000001,
           email: EMAIL,
           firstName: 'Ada',
           lastName: 'Lovelace',

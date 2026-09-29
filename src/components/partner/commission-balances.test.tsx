@@ -26,7 +26,7 @@ function commission(currency: string, available = '25.00000000'): Wallet {
     id: `c-${currency}`,
     walletNumber: `c${currency.toLowerCase()}`,
     name: `${currency} commission`,
-    userId: 'p-1',
+    userId: 1000002,
     currency,
     kind: 'commission',
     balance: available,

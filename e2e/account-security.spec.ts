@@ -230,27 +230,25 @@ test.describe('changing a password', () => {
 });
 
 test.describe('the client knows their Portal ID', () => {
-  test('the profile shows the number the broker knows them by, and never their uuid', async ({
-    page,
-  }) => {
+  test('the profile shows the number the broker knows them by', async ({ page }) => {
     /*
      * The Portal ID (0133) is how every screen of the broker's console names a
      * client and what every search there takes — so it is the number a client
-     * quotes to support, and the profile says so. The uuid still keys their
-     * account and must not appear: nobody on either side reads one.
+     * quotes to support, and the profile says so. Since backend 0159 it is
+     * also the account's only identifier — `id` and `portalId` are one number.
      */
     await page.goto('/profile');
     await page.waitForLoadState('networkidle');
 
     const me = await page.evaluate(async (api) => {
       const res = await fetch(`${api}/auth/me`, { credentials: 'include' });
-      return (await res.json()) as { id: string; portalId: number };
+      return (await res.json()) as { id: number; portalId: number };
     }, API_BASE);
 
     expect(me.portalId, 'the profile API sent no Portal ID').toBeGreaterThan(0);
     const field = page.locator('div', { has: page.getByText('Portal ID', { exact: true }) }).last();
     await expect(field).toContainText(String(me.portalId));
     await expect(page.getByText(/quote it when you contact us/i)).toBeVisible();
-    expect(await page.content()).not.toContain(me.id);
+    expect(me.id, 'the account has a second identifier beside its Portal ID').toBe(me.portalId);
   });
 });
