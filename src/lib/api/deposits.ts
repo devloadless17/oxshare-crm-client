@@ -126,6 +126,12 @@ export const depositsApi = {
     },
     file: File,
     idempotencyKey: string,
+    /**
+     * The answers to the method's `proofFields` — the phone the money was sent
+     * from, a transfer code (backend 0163) — keyed by field id. Sent as
+     * `details[<id>]` parts, which the server folds into one object.
+     */
+    details: Record<string, string> = {},
   ): Promise<DepositRequest> {
     const form = new FormData();
     form.append('amount', input.amount);
@@ -134,6 +140,7 @@ export const depositsApi = {
     if (input.destinationTradingAccountId) {
       form.append('destinationTradingAccountId', input.destinationTradingAccountId);
     }
+    for (const [id, value] of Object.entries(details)) form.append(`details[${id}]`, value);
     form.append('file', file);
 
     const { data } = await apiClient.post<DepositRequest>('/payments/deposits/offline', form, {

@@ -134,6 +134,14 @@ export function TransactionDetails({
                 </div>
               )}
               {/*
+                What they gave to identify the payment — the phone it was sent
+                from, a transfer code (backend 0163) — each under the question
+                they were asked, which the server kept with the answer.
+              */}
+              {tx.proofDetails?.map((detail) => (
+                <Row key={detail.fieldId} label={detail.label} value={detail.value} mono />
+              ))}
+              {/*
                 ── WHERE A TRANSFER WENT, WHICH NOTHING ELSE SAYS ────────────
                 
                 A transfer has no method, no provider and no destination — the

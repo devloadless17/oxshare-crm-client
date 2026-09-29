@@ -1,5 +1,6 @@
 'use client';
 
+import { DepositDetailsFields } from '@/components/money/deposit-details-fields';
 import Decimal from 'decimal.js';
 import { TileGroups, type TileGroup } from '@/components/money/tile-groups';
 import { AmountField, AmountPresets, MoneySection } from '@/components/money/money-shell';
@@ -159,6 +160,9 @@ export function DepositForm({
   disabled,
   proof = null,
   onProofChange,
+  details = {},
+  onDetailsChange,
+  detailErrors,
   section,
 }: {
   method: PaymentMethod;
@@ -176,6 +180,14 @@ export function DepositForm({
    */
   proof?: File | null;
   onProofChange?: (file: File | null) => void;
+  /**
+   * The answers to the method's own questions (backend 0163) — held by the
+   * PAGE for the same reason as the receipt: they are submitted with the form.
+   * `detailErrors` is keyed by field id.
+   */
+  details?: Record<string, string>;
+  onDetailsChange?: (details: Record<string, string>) => void;
+  detailErrors?: Record<string, string>;
   /**
    * WHICH STEP is being drawn.
    *
@@ -303,6 +315,19 @@ export function DepositForm({
           own `requiresProof` flag rather than from its key, so adding OMT beside
           a bank transfer needs no change here.
         */}
+        {/*
+          What identifies the payment — the phone it was sent from, a transfer
+          code — asked in the method's own words, beside the receipt it proves.
+        */}
+        {method.requiresProof && onDetailsChange && (
+          <DepositDetailsFields
+            fields={method.proofFields}
+            values={details}
+            onChange={onDetailsChange}
+            errors={detailErrors}
+            disabled={disabled}
+          />
+        )}
         {method.requiresProof && onProofChange && (
           <DepositProofField
             file={proof}

@@ -22,7 +22,9 @@ import { DepositCreated } from '@/components/money/deposit-created';
 import { useResource } from '@/hooks/use-resource';
 import { newIdempotencyKey } from '@/lib/api/client';
 import { depositsApi, type DepositRequest, type PaymentMethod } from '@/lib/api/deposits';
-import { apiErrorMessage } from '@/lib/api/errors';
+import { apiErrorMessage, apiFieldErrors } from '@/lib/api/errors';
+import { useQueryClient } from '@tanstack/react-query';
+import { answeredDetails, missingDetail } from '@/components/money/deposit-details-fields';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { walletApi, type Wallet } from '@/lib/api/wallet';
 import { formatMoney } from '@/lib/money';
@@ -212,6 +214,11 @@ function DepositFlow({
    * of its own to own.
    */
   const [proof, setProof] = React.useState<File | null>(null);
+  // The answers to the method's own questions (backend 0163), and the server's
+  // refusals of them — keyed by field id, shown under each input.
+  const [details, setDetails] = React.useState<Record<string, string>>({});
+  const [detailErrors, setDetailErrors] = React.useState<Record<string, string>>({});
+  const queryClient = useQueryClient();
   const idempotencyKey = React.useRef<string | null>(null);
 
   if (methods.length === 0) {
@@ -240,6 +247,8 @@ function DepositFlow({
             setCreated(null);
             setStep(1);
             setAmount('');
+            setDetails({});
+            setDetailErrors({});
             setError(null);
           }}
         />
@@ -254,7 +263,17 @@ function DepositFlow({
    * the client presses anything.
    */
   const missingProof = Boolean(selected?.requiresProof) && proof === null;
-  const problem = amountIssue ?? (missingProof ? t('deposit.proofRequired') : null);
+  // A required detail left empty says so before the server has to.
+  const missing = selected?.requiresProof
+    ? missingDetail(selected.proofFields, details)
+    : undefined;
+  const problem =
+    amountIssue ??
+    (missing
+      ? t('deposit.detailRequired', { label: missing.label })
+      : missingProof
+        ? t('deposit.proofRequired')
+        : null);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -262,6 +281,7 @@ function DepositFlow({
 
     setBusy(true);
     setError(null);
+    setDetailErrors({});
     idempotencyKey.current ??= newIdempotencyKey();
 
     /*
@@ -287,7 +307,12 @@ function DepositFlow({
        */
       const deposit =
         selected.requiresProof && proof
-          ? await depositsApi.requestOffline(payload, proof, idempotencyKey.current)
+          ? await depositsApi.requestOffline(
+              payload,
+              proof,
+              idempotencyKey.current,
+              answeredDetails(selected.proofFields, details),
+            )
           : await depositsApi.request(payload, idempotencyKey.current);
       idempotencyKey.current = null;
       /*
@@ -336,6 +361,18 @@ function DepositFlow({
       // pay-to details ARE the outcome.
       setCreated({ deposit, method: selected });
     } catch (err) {
+      // A refused detail is shown under its own input (`details.<fieldId>`).
+      const refused = Object.fromEntries(
+        Object.entries(apiFieldErrors(err))
+          .filter(([key]) => key.startsWith('details.'))
+          .map(([key, message]) => [key.slice('details.'.length), message]),
+      );
+      setDetailErrors(refused);
+      // One this page does not show means the broker changed the form while it
+      // was open: read the method again, and the question appears with its error.
+      if (Object.keys(refused).some((id) => !selected.proofFields.some((f) => f.id === id))) {
+        void queryClient.invalidateQueries({ queryKey: keys.paymentMethods.deposit() });
+      }
       setError(apiErrorMessage(err, t('deposit.failed')));
     } finally {
       // `finally` runs on the redirect path's `return` too, so it is guarded:
@@ -378,6 +415,9 @@ function DepositFlow({
                       // The amount too: the bounds are per method, so a figure
                       // valid under one can be refused by the next.
                       setAmount('');
+                      // And the answers: each method asks its own questions.
+                      setDetails({});
+                      setDetailErrors({});
                     }}
                     title={method.name}
                     logoUrl={method.logoUrl}
@@ -411,6 +451,9 @@ function DepositFlow({
                 onAmountChange={setAmount}
                 proof={proof}
                 onProofChange={setProof}
+                details={details}
+                onDetailsChange={setDetails}
+                detailErrors={detailErrors}
                 disabled={busy}
                 section={step === 2 ? 'destination' : 'amount'}
               />

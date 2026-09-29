@@ -3195,6 +3195,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/clients/{id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every document a client has handed the platform, each with where it stands
+         * @description KYC document versions (with their review status) and offline-deposit receipts (with their deposit's state — a receipt on a refused deposit reads rejected), newest first. KYC needs kyc.documents.view or kyc.review; receipts need deposits.proofs.view or deposits.approve — a half the reader may not see is named in `hidden`.
+         */
+        get: operations["AdminClientIdentityController_documentsFor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/tags": {
         parameters: {
             query?: never;
@@ -5569,6 +5589,12 @@ export interface components {
             active: boolean;
             /** Format: date-time */
             approvedAt: string;
+            /** @description How many clients THIS sub-partner introduced — a count, never who (R2), so it spans territories, unlike the partner's own referredClientCount, which is scoped. */
+            clientCount: number;
+            /** @description How many partners sit directly beneath THIS sub-partner. */
+            subPartnerCount: number;
+            /** @description The agency they sell under; null offers their clients the full catalogue. */
+            agencyName: string | null;
         };
         IbPartnerDetailDto: {
             userId: number;
@@ -5749,6 +5775,23 @@ export interface components {
             enabled?: boolean;
             sortOrder?: number;
         };
+        AskedProofFieldDto: {
+            /**
+             * @description Answers are keyed by it.
+             * @example f_k3m9x2q7ab
+             */
+            id: string;
+            /** @example Phone number you sent from */
+            label: string;
+            /**
+             * @example phone
+             * @enum {string}
+             */
+            type: "text" | "phone";
+            required: boolean;
+            /** @example The number on your OMT slip. */
+            hint: string | null;
+        };
         PaymentMethodDto: {
             /**
              * @description A stable machine key. Never renamed.
@@ -5774,6 +5817,8 @@ export interface components {
             sortOrder: number;
             /** @description The client must attach a receipt: this method is paid outside the platform and an operator approves it by hand. The portal reads this to decide whether to ask for one, rather than branching on the method key. */
             requiresProof: boolean;
+            /** @description What the client must also give with the receipt, in order — only the fields shown to clients, and only for a method paid outside the platform. Answer them as `details[<id>]` parts of POST /payments/deposits/offline. */
+            proofFields: components["schemas"]["AskedProofFieldDto"][];
         };
         RequestDepositDto: {
             /** @example 500.00000000 */
@@ -5852,6 +5897,25 @@ export interface components {
              */
             methodKey: string;
         };
+        ProofDetailDto: {
+            /** @example f_k3m9x2q7ab */
+            fieldId: string;
+            /**
+             * @description The question as asked.
+             * @example Phone number you sent from
+             */
+            label: string;
+            /**
+             * @example phone
+             * @enum {string}
+             */
+            type: "text" | "phone";
+            /**
+             * @description A phone is E.164.
+             * @example +96170123456
+             */
+            value: string;
+        };
         TransactionDto: {
             id: string;
             userId: number;
@@ -5880,6 +5944,7 @@ export interface components {
             rivalExternalId?: string | null;
             destination?: string | null;
             proofFilename?: string | null;
+            proofDetails?: components["schemas"]["ProofDetailDto"][] | null;
             rejectionReason?: string | null;
             reviewedBy?: string | null;
             /** Format: date-time */
@@ -5957,6 +6022,25 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        ProofFieldDto: {
+            /**
+             * @description Answers are keyed by it.
+             * @example f_k3m9x2q7ab
+             */
+            id: string;
+            /** @example Phone number you sent from */
+            label: string;
+            /**
+             * @example phone
+             * @enum {string}
+             */
+            type: "text" | "phone";
+            required: boolean;
+            /** @example The number on your OMT slip. */
+            hint: string | null;
+            /** @description Shown to clients. A hidden field is kept but never asked. */
+            enabled: boolean;
+        };
         AdminPaymentMethodDto: {
             /**
              * @description A stable machine key. Never renamed.
@@ -5982,6 +6066,8 @@ export interface components {
             sortOrder: number;
             /** @description The client must attach a receipt: this method is paid outside the platform and an operator approves it by hand. The portal reads this to decide whether to ask for one, rather than branching on the method key. */
             requiresProof: boolean;
+            /** @description Every detail the method asks for, hidden ones included. The details an OFFLINE method asks the client for with the receipt — e.g. the phone the money was sent from, or a transfer code. Ordered; the whole list is replaced on save. Asked only while `requiresProof` is true. */
+            proofFields: components["schemas"]["ProofFieldDto"][];
             /** @description The method's own minimum as the operator set it — null means the currency's. `minAmount` is what clients are actually held to. */
             ownMinAmount: string | null;
             /** @description The method's own maximum as the operator set it — null means the currency's. `maxAmount` is what clients are actually held to. */
@@ -5995,6 +6081,21 @@ export interface components {
             builtIn: boolean;
             /** @description A transaction references this method. Such a method cannot be deleted — disable it. */
             inUse: boolean;
+        };
+        ProofFieldInputDto: {
+            /**
+             * @description Permanent; generated by the console.
+             * @example f_k3m9x2q7ab
+             */
+            id: string;
+            /** @example Phone number you sent from */
+            label: string;
+            /** @enum {string} */
+            type: "text" | "phone";
+            required: boolean;
+            /** @description Shown to clients. */
+            enabled: boolean;
+            hint?: string | null;
         };
         CreatePaymentMethodDto: {
             /**
@@ -6029,6 +6130,8 @@ export interface components {
             sortOrder?: number;
             /** @description OFFLINE: the client pays outside the platform and must attach a receipt. Such a deposit is filed through POST /payments/deposits/offline and settles when an operator approves it — the JSON deposit route refuses the method. Cannot be combined with a gateway key. */
             requiresProof?: boolean;
+            /** @description The details an OFFLINE method asks the client for with the receipt — e.g. the phone the money was sent from, or a transfer code. Ordered; the whole list is replaced on save. Asked only while `requiresProof` is true. */
+            proofFields?: components["schemas"]["ProofFieldInputDto"][];
         };
         UpdatePaymentMethodDto: {
             name?: string;
@@ -6054,6 +6157,8 @@ export interface components {
              * @example 5000
              */
             ownMaxAmount?: string | null;
+            /** @description The details an OFFLINE method asks the client for with the receipt — e.g. the phone the money was sent from, or a transfer code. Ordered; the whole list is replaced on save. Asked only while `requiresProof` is true. */
+            proofFields?: components["schemas"]["ProofFieldInputDto"][];
         };
         DeletedMethodDto: {
             /** @example typo_method */
@@ -7687,6 +7792,59 @@ export interface components {
             /** @description Newest first. Absent without kyc.view. */
             verifications?: components["schemas"]["ClientVerificationDto"][];
         };
+        ClientDocumentFileDto: {
+            /** @example Identity document — first page */
+            label: string;
+            /**
+             * @description Opened through GET /v1/<path>, which checks the reader against the file and audits it.
+             * @example uploads/kyc/2f0c….jpg
+             */
+            path: string;
+        };
+        ClientDocumentDto: {
+            /** @description The KYC version id, or the deposit transaction id. */
+            id: string;
+            /** @enum {string} */
+            category: "identity" | "address" | "selfie" | "kyc_other" | "deposit_receipt";
+            /**
+             * @description What the document is.
+             * @example Identity document
+             */
+            title: string;
+            /**
+             * @description The document type, or for a receipt the deposit it proves.
+             * @example Passport
+             */
+            detail?: string | null;
+            /**
+             * @description KYC: draft (not presented) · pending (awaiting review) · approved (verified) · rejected (returned) · reverification_requested. Receipt: its DEPOSIT — pending, approved (credited) or rejected (refused or failed).
+             * @enum {string}
+             */
+            status: "draft" | "pending" | "approved" | "rejected" | "reverification_requested";
+            /** @description False for an older KYC version the client has since replaced; always true for a receipt. */
+            current: boolean;
+            files: components["schemas"]["ClientDocumentFileDto"][];
+            /** @description Why it was rejected, when the source recorded one (a refused deposit). */
+            reason?: string | null;
+            /** @description For a receipt: the deposit transaction it belongs to. */
+            transactionId?: string | null;
+            /**
+             * Format: date-time
+             * @description When it was uploaded (a KYC version) or filed (a deposit).
+             */
+            uploadedAt: string;
+        };
+        ClientDocumentListDto: {
+            /** @description Newest first. */
+            items: components["schemas"]["ClientDocumentDto"][];
+            /**
+             * @description Categories left OUT because the reader lacks the permission that guards those files (KYC: kyc.documents.view or kyc.review; receipts: deposits.proofs.view or deposits.approve), so an empty list is never mistaken for "has none".
+             * @example [
+             *       "deposit_receipt"
+             *     ]
+             */
+            hidden: string[];
+        };
         ClientTagWithCountDto: {
             id: string;
             /** @description Stable machine name. Filter with ?tag=<slug>; a rename does not change it. */
@@ -8556,11 +8714,15 @@ export interface components {
             tradingAccountId?: string | null;
             /** @description The RECEIPT on an offline deposit — the stored filename, served from GET /v1/uploads/deposit-proofs/<file>. Null on every other movement. On the list so the deposit desk can show the image beside the row it decides on, rather than fetching one per row. */
             proofFilename?: string | null;
+            /** @description What the client gave with an OFFLINE deposit to identify the payment — the phone it was sent from, a transfer code — each with the question as asked (0163). Null otherwise. Never masked: it is the proof the desk approves the deposit on, like the receipt. */
+            proofDetails?: components["schemas"]["ProofDetailDto"][] | null;
             walletId: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             settledAt?: string | null;
+            /** Format: date-time */
+            reviewedAt?: string | null;
             /** @description A person must reconcile this payment. False on transfers. */
             needsAttention: boolean;
             /** @description WHY it needs attention, in words the operator can act on. Null when not flagged. */
@@ -11155,6 +11317,10 @@ export interface operations {
                     method: string;
                     /** Format: uuid */
                     destinationTradingAccountId?: string;
+                    /** @description Answers to the method's `proofFields`, as `details[<fieldId>]` parts — e.g. the phone the money was sent from. Refused per field as `details.<fieldId>`. */
+                    details?: {
+                        [key: string]: string;
+                    };
                 };
             };
         };
@@ -13319,6 +13485,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClientIdentityRecordDto"];
+                };
+            };
+        };
+    };
+    AdminClientIdentityController_documentsFor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientDocumentListDto"];
                 };
             };
         };
