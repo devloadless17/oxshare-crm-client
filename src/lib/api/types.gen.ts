@@ -2249,6 +2249,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/mt5/accounts/{login}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Look up an MT5 login to link it to a client
+         * @description MT5's snapshot and holder name/email, the products that sell its group, whether the CRM already owns the login (the owner is named only inside your territory), and how many of its deals are waiting to accrue. Read-only.
+         */
+        get: operations["Mt5AccountsController_lookup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/trading-accounts/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link an existing MT5 account to a client
+         * @description Records the login under the client with its product; its waiting deals accrue on the next commission run. Refuses a login the CRM already has (409), one MT5 does not have (404), a currency the platform does not hold, and a product that does not sell the group.
+         */
+        post: operations["Mt5AccountsController_link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/trading-accounts/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync MT5's accounts into the CRM
+         * @description Records every MT5 login the CRM has no account for, with no client; they list under GET /admin/trading-accounts?client=unassigned. 409 while another sync runs.
+         */
+        post: operations["Mt5AccountsController_syncAccounts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/trading-accounts/{id}/product": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Set a trading account's product
+         * @description The product must sell the account's MT5 group. Applies to trades not yet decided; accruals already written keep the terms that priced them.
+         */
+        patch: operations["Mt5AccountsController_setProduct"];
+        trace?: never;
+    };
     "/v1/admin/trading-accounts/{id}/live": {
         parameters: {
             query?: never;
@@ -6748,6 +6828,109 @@ export interface components {
             credentialsSentTo?: string;
             maskedFields?: string[];
         };
+        Mt5ProductOptionDto: {
+            /** Format: uuid */
+            id: string;
+            /** @example Standard */
+            name: string;
+        };
+        Mt5AccountOwnerDto: {
+            /** @description Absent when the owner is outside your territory. */
+            portalId?: number;
+            /** @description Absent when the owner is outside your territory. */
+            name?: string;
+            /** @description True when a client you may not see already owns it. */
+            outsideTerritory: boolean;
+        };
+        Mt5AccountLookupDto: {
+            /** @example 5000123 */
+            login: string;
+            /** @example real\Standard */
+            group: string;
+            /** @example USD */
+            currency: string;
+            leverage: number;
+            /** @example 1250.00000000 */
+            balance: string;
+            /** @example 1250.00000000 */
+            equity: string;
+            /** @example 0.00000000 */
+            credit: string;
+            /** @description The holder's name as MT5 records it; null if the bridge could not say or your role hides names. */
+            holderName?: string | null;
+            /** @description Null if the bridge could not say or your role hides emails. */
+            holderEmail?: string | null;
+            /**
+             * @description What the catalogue sells the group as; null when no product carries it.
+             * @enum {string|null}
+             */
+            environment: "live" | "demo" | null;
+            /** @description Whether the account's currency is one this platform holds. */
+            currencyKnown: boolean;
+            /** @description The products that sell this group. */
+            products: components["schemas"]["Mt5ProductOptionDto"][];
+            /** @description The CRM client who already owns this login; null when nobody does. */
+            owner?: components["schemas"]["Mt5AccountOwnerDto"] | null;
+            /** @description Deals on this login ingested but not yet paid on — they accrue once it is linked. */
+            waitingDeals: number;
+        };
+        LinkMt5AccountDto: {
+            /** @description The client the account is linked to. */
+            userId: number;
+            /**
+             * @description The MT5 login, as digits.
+             * @example 5000123
+             */
+            login: string;
+            /**
+             * Format: uuid
+             * @description The product whose commission terms the account's trades pay. Must sell the account's group; required when several products do, and optional when one does (it is used).
+             */
+            productId?: string;
+        };
+        LinkedMt5AccountDto: {
+            /** Format: uuid */
+            id: string;
+            login: string;
+            group: string;
+            /** Format: uuid */
+            productId: string | null;
+            /** @enum {string} */
+            environment: "live" | "demo";
+            currency: string;
+            balance: string;
+            /** @description Deals now waiting to accrue on the next run. */
+            waitingDeals: number;
+        };
+        Mt5AccountsSyncRunDto: {
+            /** @description Logins MT5 reported, in every group the bridge watches. */
+            onServer: number;
+            /** @description Of those, logins the CRM had no account for before this run. */
+            newOnServer: number;
+            /** @description Accounts this run recorded, with no client, ready to assign. */
+            added: number;
+            /** @description New logins left for the scheduled runs, every ten minutes. */
+            remaining: number;
+            /** @description Currencies MT5 holds accounts in that this platform does not; those are skipped. */
+            unknownCurrency: string[];
+            /** @description Unowned accounts MT5 confirmed it no longer has, removed. */
+            removed: number;
+            /** @description Why the run stopped early, when it did. */
+            stoppedEarly?: string;
+        };
+        SetTradingAccountProductDto: {
+            /**
+             * Format: uuid
+             * @description A product that sells the account's MT5 group, or null to record none.
+             */
+            productId: string | null;
+        };
+        TradingAccountProductDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            productId: string | null;
+        };
         Mt5GroupCommissionTierDto: {
             /**
              * @description The unit of `value`: the group deposit currency, the currency in `currency`, a symbol currency, points, or a percentage of turnover.
@@ -8936,6 +9119,10 @@ export interface components {
             limit: number;
             maskedFields?: string[];
         };
+        Mt5HolderDto: {
+            name?: string | null;
+            email?: string | null;
+        };
         TradingAccountRowDto: {
             id: string;
             /** @description The MT5 login, once there is an MT5 to issue one. NULL until assigned, and a STRING rather than a number because leading zeros are significant to the bridge. */
@@ -8960,7 +9147,8 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
-            user: components["schemas"]["HoldingOwnerDto"];
+            user: components["schemas"]["HoldingOwnerDto"] | null;
+            mt5Holder?: components["schemas"]["Mt5HolderDto"] | null;
         };
         TradingAccountListResponseDto: {
             items: components["schemas"]["TradingAccountRowDto"][];
@@ -12150,6 +12338,8 @@ export interface operations {
                 q?: string;
                 environment?: "live" | "demo";
                 status?: "active" | "suspended" | "closed";
+                /** @description `unassigned`: accounts the MT5 sync found that no client owns yet (shown only to a reader who sees every client); `assigned`: the rest. */
+                client?: "assigned" | "unassigned";
                 /** @description Legacy offset paging. Prefer cursor. */
                 page?: string;
                 limit?: string;
@@ -12196,6 +12386,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CreatedMt5AccountDto"];
+                };
+            };
+        };
+    };
+    Mt5AccountsController_lookup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                login: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mt5AccountLookupDto"];
+                };
+            };
+        };
+    };
+    Mt5AccountsController_link: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkMt5AccountDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkedMt5AccountDto"];
+                };
+            };
+        };
+    };
+    Mt5AccountsController_syncAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mt5AccountsSyncRunDto"];
+                };
+            };
+        };
+    };
+    Mt5AccountsController_setProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetTradingAccountProductDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradingAccountProductDto"];
                 };
             };
         };
@@ -15358,6 +15636,8 @@ export interface operations {
                 userId?: number;
                 environment?: "live" | "demo";
                 status?: "active" | "suspended" | "closed";
+                /** @description `unassigned`: accounts the MT5 sync found that no client owns yet (shown only to a reader who sees every client); `assigned`: the rest. */
+                client?: "assigned" | "unassigned";
             };
             header?: never;
             path?: never;
