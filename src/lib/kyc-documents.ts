@@ -30,8 +30,10 @@ export interface KycDocumentRow {
   /** Stable React key; unique per row. */
   key: string;
   filePath: string;
-  fileName?: string;
-  /** What the document is: "Passport", "Selfie", "Utility bill". */
+  /**
+   * What the document is: "Passport", "Selfie", "Utility bill". Never the name
+   * the file had on the client's device — the API does not keep it (0160, D-84).
+   */
   type: string;
   /** Which page of it, when the document has more than one. */
   part?: string;
@@ -64,23 +66,19 @@ interface StepLike {
   fields: FieldLike[];
 }
 
-type StoredFile = { filePath?: string; fileName?: string };
+type StoredFile = { filePath?: string };
 
 export interface KycStatusLike {
   status: KycStatus;
   document?: {
     docType?: string;
     frontFilePath?: string;
-    frontFileName?: string;
     backFilePath?: string;
-    backFileName?: string;
   };
   selfie?: StoredFile;
   addressProof?: StoredFile & {
     docType?: string;
     page2FilePath?: string;
-    /** Stored and returned by the API; missing from the generated DTO. */
-    page2FileName?: string;
   };
   stepData?: Record<string, Record<string, unknown>>;
   rejectedFields?: string[];
@@ -106,7 +104,7 @@ function unconfiguredLabel(key: string): string {
   return /^customField_\d+$/.test(key) ? t('kyc.docs.retiredQuestion') : humanise(key);
 }
 
-function isStoredFile(value: unknown): value is { filePath: string; fileName?: string } {
+function isStoredFile(value: unknown): value is { filePath: string } {
   return (
     typeof value === 'object' &&
     value !== null &&
@@ -144,7 +142,6 @@ export function kycDocumentsOf(
     {
       key: 'doc_front',
       filePath: status.document?.frontFilePath,
-      fileName: status.document?.frontFileName,
       type: idLabel,
       // A one-page document has no "front" worth naming.
       part: idHasBack ? (idDoc?.parts[0]?.label ?? t('kyc.docs.front')) : undefined,
@@ -153,7 +150,6 @@ export function kycDocumentsOf(
     {
       key: 'doc_back',
       filePath: status.document?.backFilePath,
-      fileName: status.document?.backFileName,
       type: idLabel,
       part: idDoc?.parts[1]?.label ?? t('kyc.docs.back'),
       fieldKeys: ['doc_back', ...idNames],
@@ -167,7 +163,6 @@ export function kycDocumentsOf(
   rows.push({
     key: 'selfie',
     filePath: status.selfie?.filePath,
-    fileName: status.selfie?.fileName,
     type: t('kyc.selfiePhoto'),
     fieldKeys: ['selfie', ...selfieNames],
   });
@@ -184,7 +179,6 @@ export function kycDocumentsOf(
     {
       key: 'address_proof',
       filePath: status.addressProof?.filePath,
-      fileName: status.addressProof?.fileName,
       type: addrLabel,
       part: addrHasPage2 ? (addrDoc?.parts[0]?.label ?? t('kyc.docs.page', { n: 1 })) : undefined,
       fieldKeys: ['address_proof', ...addrNames],
@@ -192,7 +186,6 @@ export function kycDocumentsOf(
     {
       key: 'address_proof_2',
       filePath: status.addressProof?.page2FilePath,
-      fileName: status.addressProof?.page2FileName,
       type: addrLabel,
       part: addrDoc?.parts[1]?.label ?? t('kyc.docs.page', { n: 2 }),
       fieldKeys: ['address_proof_2', ...addrNames],
@@ -209,7 +202,6 @@ export function kycDocumentsOf(
       rows.push({
         key: `${slug}:${name}`,
         filePath: value.filePath,
-        fileName: value.fileName,
         type: field?.label ?? unconfiguredLabel(name),
         part: step?.title,
         fieldKeys: [name],

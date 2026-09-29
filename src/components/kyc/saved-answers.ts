@@ -48,7 +48,7 @@ export function savedAnswersFor(
  * field, pass a non-empty check.
  *
  * So is anything that is not a scalar — and that was a real bug. A custom
- * step's UPLOAD is stored as `{ filePath, fileName }`, and `String()` of it is
+ * step's UPLOAD is stored as `{ filePath }`, and `String()` of it is
  * "[object Object]". That string went into the form, the review screen posted
  * the whole form back as the personal step, and the reviewer read
  * "Custom Field 1790263652846: [object Object]" (reported from production). An
