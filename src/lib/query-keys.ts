@@ -151,6 +151,11 @@ export const keys = {
     withdrawal: () => ['payment-methods', 'withdrawal'] as const,
   },
 
+  /** One hosted deposit's state, polled by the waiting card (backend 0173). */
+  depositStatus: {
+    one: (reference: string) => ['deposit-status', reference] as const,
+  },
+
   currencies: {
     all: () => ['currencies'] as const,
   },

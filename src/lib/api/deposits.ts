@@ -164,6 +164,19 @@ export const depositsApi = {
    * outcome this flow has. Whichever arrives first settles it; the other is a
    * no-op.
    */
+  /**
+   * READ-ONLY: what this deposit is now, from our own records. The waiting card
+   * polls this — never `settle`, which asks the provider on every call and
+   * would spend its request budget (3pay: 60 a minute, for everybody).
+   */
+  async status(reference: string, signal?: AbortSignal): Promise<{ state: string }> {
+    const { data } = await apiClient.get<{ state: string }>(
+      `/payments/deposits/${encodeURIComponent(reference)}/status`,
+      { signal },
+    );
+    return data;
+  },
+
   async settle(
     reference: string,
     /** The redirect's method, when it carried one; the server needs only the reference. */

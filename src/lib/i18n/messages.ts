@@ -675,6 +675,7 @@ export const messages = {
   'withdraw.stepMethod': 'Method',
   'withdraw.stepWallet': 'Which wallet?',
   'withdraw.needWallet': 'Choose the wallet you want to withdraw from.',
+  'withdraw.paysOutOnly': '{method} pays out {currencies} only.',
   'withdraw.fromWallet': '{currency} wallet · {amount}',
   'withdraw.continue': 'Continue',
   'withdraw.noMethods':
@@ -2157,6 +2158,23 @@ export const messages = {
   'deposit.gatewayReturnNote':
     'Once you have paid, you will be returned here and your balance updates automatically.',
   'deposit.openPaymentPage': 'Open the payment page',
+  'deposit.waitingTitle': 'Complete your payment',
+  'deposit.waitingBody':
+    'Open the payment page in a new tab and send the amount it shows. This page updates on its own when your payment arrives.',
+  'deposit.waitingNetwork':
+    'Send only {asset}. Any other coin, or USDT on another network, is lost.',
+  'deposit.waitingPar':
+    'Your {currency} wallet is credited with what arrives, 1 USDT = 1 {currency}.',
+  'deposit.waitingExpiresIn': 'The payment page closes in {time}.',
+  'deposit.waitingExpired':
+    'The payment page has closed. If you already sent the payment it is credited once the provider confirms it; otherwise start a new deposit.',
+  'deposit.waitingPending': 'Waiting for your payment…',
+  'deposit.waitingReceived': 'Payment received and credited to your {currency} wallet.',
+  'deposit.waitingFailed': 'This payment was not completed. No money was taken from your wallet.',
+  'deposit.waitingCheckNow': 'I have paid — check now',
+  'deposit.waitingCheckFailed':
+    'Could not check the payment right now. It is checked automatically too.',
+  'deposit.waitingViewWallet': 'Go to my wallet',
   'deposit.paymentLinkReady': 'Your payment link is ready',
   'deposit.paymentLinkBody':
     'If the payment page did not open, use the button below. The link stays valid until you pay ' +
