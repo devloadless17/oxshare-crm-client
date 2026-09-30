@@ -36,6 +36,11 @@ export interface KindConfig {
   titleKey: MessageKey;
   bodyKey: MessageKey;
   /**
+   * The body when `vars` yields no `reason` — a missing reason is common
+   * (`reason ?? null`) and must read as a sentence, never a `{reason}`.
+   */
+  noReasonBodyKey?: MessageKey;
+  /**
    * Interpolation vars for the body — money params go through formatMoney.
    *
    * A value may be `undefined`: `t()` then leaves the `{placeholder}` visible,
@@ -86,7 +91,7 @@ const payoutVars = (params: AppNotification['params']) => ({
 });
 const moneyReasonVars = (params: AppNotification['params']) => ({
   amount: formatMoney(str(params.amount), str(params.currency)),
-  reason: text(params.reason),
+  reason: reasonText(params.reason),
 });
 
 export const KIND_CONFIG: Record<string, KindConfig> = {
@@ -118,16 +123,15 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     icon: ArrowDownToLine,
     titleKey: 'notifications.kindDepositRejectedTitle',
     bodyKey: 'notifications.kindDepositRejectedBody',
-    vars: (params) => ({
-      amount: formatMoney(str(params.amount), str(params.currency)),
-      reason: str(params.reason),
-    }),
+    noReasonBodyKey: 'notifications.kindDepositRejectedBodyNoReason',
+    vars: moneyReasonVars,
     href: '/deposit?tab=history',
   },
   'wallet.credited': {
     icon: Wallet,
     titleKey: 'notifications.kindWalletCreditedTitle',
     bodyKey: 'notifications.kindWalletCreditedBody',
+    noReasonBodyKey: 'notifications.kindWalletCreditedBodyNoReason',
     vars: moneyReasonVars,
     href: '/wallet',
   },
@@ -142,6 +146,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     icon: ArrowUpFromLine,
     titleKey: 'notifications.kindWithdrawalRejectedTitle',
     bodyKey: 'notifications.kindWithdrawalRejectedBody',
+    noReasonBodyKey: 'notifications.kindWithdrawalRejectedBodyNoReason',
     vars: moneyReasonVars,
     href: '/withdraw?tab=history',
   },
@@ -162,6 +167,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     icon: ShieldCheck,
     titleKey: 'notifications.kindKycRejectedTitle',
     bodyKey: 'notifications.kindKycRejectedBody',
+    noReasonBodyKey: 'notifications.kindKycRejectedBodyNoReason',
     vars: (params) => ({ reason: reasonText(params.reason) }),
     href: '/kyc',
   },
@@ -176,6 +182,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     // The same title the KYC screens use, so the bell and the page agree.
     titleKey: 'kyc.reverifyTitle',
     bodyKey: 'notifications.kindKycReverificationBody',
+    noReasonBodyKey: 'notifications.kindKycReverificationBodyNoReason',
     vars: (params) => ({ reason: reasonText(params.reason) }),
     href: '/kyc',
   },
@@ -211,6 +218,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     icon: Handshake,
     titleKey: 'notifications.kindPartnerRejectedTitle',
     bodyKey: 'notifications.kindPartnerRejectedBody',
+    noReasonBodyKey: 'notifications.kindPartnerRejectedBodyNoReason',
     vars: (params) => ({ reason: reasonText(params.reason) }),
     href: '/partner',
   },
@@ -239,7 +247,16 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     icon: CandlestickChart,
     titleKey: 'notifications.kindTradingAccountOpenedTitle',
     bodyKey: 'notifications.kindTradingAccountOpenedBody',
-    vars: (params) => ({ login: str(params.login), environment: str(params.environment) }),
+    vars: (params) => ({
+      login: str(params.login),
+      // Translated, like `direction` below — never the backend's enum verbatim.
+      environment:
+        params.environment === 'live'
+          ? t('notifications.environmentLive')
+          : params.environment === 'demo'
+            ? t('notifications.environmentDemo')
+            : undefined,
+    }),
     href: '/accounts',
   },
   /*
@@ -378,6 +395,14 @@ export function resyncKeysOnReconnect(): readonly PortalQueryKey[] {
     }
   }
   return out;
+}
+
+/** A row's body: the no-reason variant when the kind has one and no reason came. */
+export function bodyText(config: KindConfig, params: AppNotification['params']): string {
+  const vars = config.vars?.(params);
+  const key =
+    config.noReasonBodyKey && vars?.reason === undefined ? config.noReasonBodyKey : config.bodyKey;
+  return t(key, vars);
 }
 
 export function resolveKind(kind: string): KindConfig | undefined {

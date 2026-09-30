@@ -75,10 +75,30 @@ const notification = (over: Record<string, unknown> = {}) => ({
 
 const page = (items: unknown[], nextCursor: string | null = null) => ({ items, nextCursor });
 
+/**
+ * The feed as the server serves it: New asks `?unread=true`, Earlier
+ * `?read=true`, and each gets only its own rows — never one mixed page.
+ */
+function serve(all: { items: unknown[]; nextCursor: string | null }) {
+  const readAtOf = (item: unknown) => (item as { readAt?: string | null }).readAt;
+  getNotifications.mockImplementation((params?: { view?: 'new' | 'earlier' }) =>
+    Promise.resolve({
+      ...all,
+      items: all.items.filter((item) =>
+        params?.view === 'new'
+          ? !readAtOf(item)
+          : params?.view === 'earlier'
+            ? !!readAtOf(item)
+            : true,
+      ),
+    }),
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   session.emailVerified = true;
-  getNotifications.mockResolvedValue(page([]));
+  serve(page([]));
   getUnreadCount.mockResolvedValue({ count: 0 });
   markRead.mockResolvedValue(notification({ readAt: new Date().toISOString() }));
   markAllRead.mockResolvedValue({ updated: 0 });
@@ -107,7 +127,7 @@ describe('the badge', () => {
 
 describe('the list', () => {
   it('renders a known kind with formatted money and no placeholder residue', async () => {
-    getNotifications.mockResolvedValue(page([notification()]));
+    serve(page([notification()]));
     renderWithProviders(<NotificationsSheet />);
     await openSheet();
 
@@ -118,9 +138,7 @@ describe('the list', () => {
   });
 
   it('renders an unknown kind as a generic row, never a raw slug', async () => {
-    getNotifications.mockResolvedValue(
-      page([notification({ id: 'n-x', kind: 'future.event', params: {} })]),
-    );
+    serve(page([notification({ id: 'n-x', kind: 'future.event', params: {} })]));
     renderWithProviders(<NotificationsSheet />);
     await openSheet();
 
@@ -128,8 +146,20 @@ describe('the list', () => {
     expect(screen.queryByText('future.event')).not.toBeInTheDocument();
   });
 
+  it('counts New from the server and pages it — never "caught up" while unread remain', async () => {
+    // 125 unseen, one page of them loaded: the tab says 125 and offers more.
+    serve(page([notification({ id: 'n-1' })], 'next-page'));
+    getUnreadCount.mockResolvedValue({ count: 125 });
+    renderWithProviders(<NotificationsSheet />);
+    await openSheet();
+
+    expect(await screen.findByRole('tab', { name: 'New (125)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Load more' })).toBeInTheDocument();
+    expect(screen.queryByText(/all caught up/i)).not.toBeInTheDocument();
+  });
+
   it('splits NEW from EARLIER by the read marker', async () => {
-    getNotifications.mockResolvedValue(
+    serve(
       page([
         notification({ id: 'n-new' }),
         notification({
@@ -155,10 +185,11 @@ describe('the list', () => {
 
   it('marks nothing while OPEN, and on close marks up to the newest row SHOWN', async () => {
     const newest = new Date(Date.now() - 60_000).toISOString();
-    getNotifications.mockResolvedValue(
+    const oldest = new Date(Date.now() - 600_000).toISOString();
+    serve(
       page([
         notification({ id: 'n-2', createdAt: newest }),
-        notification({ id: 'n-1', createdAt: new Date(Date.now() - 600_000).toISOString() }),
+        notification({ id: 'n-1', createdAt: oldest }),
       ]),
     );
     getUnreadCount.mockResolvedValue({ count: 2 });
@@ -172,12 +203,13 @@ describe('the list', () => {
 
     await userEvent.keyboard('{Escape}');
     // Closed: seen, up to the newest row on screen — never "now", so a
-    // notification that landed after the list rendered stays new.
-    await waitFor(() => expect(markAllRead).toHaveBeenCalledWith(newest));
+    // notification that landed after the list rendered stays new — and down to
+    // the oldest shown, so an unread row past the first page stays new too.
+    await waitFor(() => expect(markAllRead).toHaveBeenCalledWith({ upTo: newest, from: oldest }));
   });
 
   it('closing a panel that showed nothing new marks nothing', async () => {
-    getNotifications.mockResolvedValue(page([notification({ readAt: new Date().toISOString() })]));
+    serve(page([notification({ readAt: new Date().toISOString() })]));
     renderWithProviders(<NotificationsSheet />);
     await openSheet();
     await screen.findByText("You're all caught up");
@@ -190,17 +222,17 @@ describe('the list', () => {
 
   it('opening a row closes the sheet, which marks what was shown', async () => {
     const newest = new Date(Date.now() - 120_000).toISOString();
-    getNotifications.mockResolvedValue(page([notification({ createdAt: newest })]));
+    serve(page([notification({ createdAt: newest })]));
     getUnreadCount.mockResolvedValue({ count: 1 });
     renderWithProviders(<NotificationsSheet />);
     await openSheet();
 
     await userEvent.click(await screen.findByRole('link', { name: /withdrawal approved/i }));
-    await waitFor(() => expect(markAllRead).toHaveBeenCalledWith(newest));
+    await waitFor(() => expect(markAllRead).toHaveBeenCalledWith({ upTo: newest, from: newest }));
   });
 
   it('says "all caught up" when nothing is new, with the way to what came before', async () => {
-    getNotifications.mockResolvedValue(page([notification({ readAt: new Date().toISOString() })]));
+    serve(page([notification({ readAt: new Date().toISOString() })]));
     renderWithProviders(<NotificationsSheet />);
     await openSheet();
 

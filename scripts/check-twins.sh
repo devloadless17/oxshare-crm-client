@@ -107,6 +107,7 @@ TWINS=(
   src/lib/env.ts
   src/lib/api/errors.ts
   src/hooks/use-resource.ts
+  src/hooks/use-infinite-resource.ts
   src/components/query-provider.tsx
   src/components/theme-provider.tsx
   src/components/theme-toggle.tsx

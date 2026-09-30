@@ -171,6 +171,8 @@ export const keys = {
   notifications: {
     all: () => ['notifications'] as const,
     list: () => ['notifications', 'list'] as const,
+    /** One tab of the bell — New (unread) or Earlier (seen), each paged on its own. */
+    feed: (view: 'new' | 'earlier') => ['notifications', 'list', view] as const,
     unreadCount: () => ['notifications', 'unread-count'] as const,
   },
 } as const;

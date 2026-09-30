@@ -12,7 +12,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { notificationsApi } from '@/lib/api/notifications';
+import { notificationsApi, type SeenRange } from '@/lib/api/notifications';
 import { useUser } from '@/context/UserContext';
 import { queryKeysFor, resyncKeysOnReconnect } from './notification-kinds';
 import { t } from '@/lib/i18n';
@@ -248,9 +248,9 @@ export function NotificationsSheet() {
    * rows arrive, read once when the sheet closes. A ref, not state: nothing
    * renders from it.
    */
-  const seenUpTo = React.useRef<string | null>(null);
-  const onShown = React.useCallback((newestNewAt: string | null) => {
-    seenUpTo.current = newestNewAt;
+  const seenUpTo = React.useRef<SeenRange | null>(null);
+  const onShown = React.useCallback((shown: SeenRange | null) => {
+    seenUpTo.current = shown;
   }, []);
 
   /*
@@ -260,11 +260,11 @@ export function NotificationsSheet() {
    * interrupt a client who has already moved on.
    */
   function markSeen() {
-    const upTo = seenUpTo.current;
+    const shown = seenUpTo.current;
     seenUpTo.current = null;
-    if (!upTo) return;
+    if (!shown) return;
     notificationsApi
-      .markAllRead(upTo)
+      .markAllRead(shown)
       .then(() => queryClient.invalidateQueries({ queryKey: LIST_KEY }))
       .catch(() => undefined);
   }
@@ -329,8 +329,8 @@ export function NotificationsSheet() {
             <button
               type="button"
               aria-pressed={soundOn}
-              aria-label={soundOn ? t('notifications.soundOn') : t('notifications.soundOff')}
-              title={soundOn ? t('notifications.soundOn') : t('notifications.soundOff')}
+              aria-label={t('notifications.sound')}
+              title={t('notifications.sound')}
               onClick={() => {
                 const next = !soundOn;
                 setSoundEnabled(next);
@@ -353,7 +353,7 @@ export function NotificationsSheet() {
           </SheetDescription>
         </SheetHeader>
         {/* Mounted only while open — see the component note. */}
-        <NotificationPanel enabled={verified} onShown={onShown} />
+        <NotificationPanel enabled={verified} onShown={onShown} unreadCount={unread} />
       </SheetContent>
     </Sheet>
   );
