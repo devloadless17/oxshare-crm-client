@@ -347,7 +347,9 @@ function DepositFlow({
        * with its link. When the redirect works the page unloads first and the
        * timer never fires.
        */
-      if (deposit.paymentUrl) {
+      // Only a provider that brings the client BACK gets the same-tab redirect;
+      // one that does not (3pay) keeps them here, on the waiting card.
+      if (deposit.paymentUrl && deposit.returnsAfterPayment) {
         const url = deposit.paymentUrl;
         window.setTimeout(() => setCreated({ deposit, method: selected }), REDIRECT_FALLBACK_MS);
         leaving = true;

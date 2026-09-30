@@ -13,6 +13,7 @@ import { useCurrencyScale } from '@/hooks/use-currency-scale';
 import { WithdrawAmountHint } from '@/components/money/withdraw-amount-hint';
 import { Button } from '@/components/ui/button';
 import { WithdrawalDestinationField, needsDestination } from '@/components/money/withdrawal-fields';
+import { paysOut, walletFor, walletNote } from '@/components/money/wallet-choice';
 import {
   AmountField,
   AmountPresets,
@@ -323,6 +324,9 @@ function WithdrawForm({
             onClick={() => {
               if (!methodKey) return setError(t('withdraw.needMethod'));
               setError(null);
+              // Onto a wallet this rail can pay out of (backend 0173: a 3pay
+              // method pays out USD only), when the one chosen is not.
+              setCurrency(walletFor(selectedMethod, fundable, currency));
               setStep('wallet');
             }}
             className="h-10 w-full"
@@ -370,7 +374,7 @@ function WithdrawForm({
                  * beside it says why, which is the part that was missing when
                  * the wallet was simply absent from the list.
                  */
-                disabled={isZeroMoney(w.available)}
+                disabled={isZeroMoney(w.available) || !paysOut(selectedMethod, w.currency)}
                 onChange={(value) => {
                   setCurrency(value);
                   /*
@@ -385,9 +389,7 @@ function WithdrawForm({
                 title={t('deposit.toWallet', { currency: w.currency })}
                 badge={
                   <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                    {t('money.availableBalance', {
-                      amount: formatMoney(w.available, w.currency),
-                    })}
+                    {walletNote(selectedMethod, w.available, w.currency)}
                   </span>
                 }
               />
@@ -474,6 +476,7 @@ function WithdrawForm({
                   name="withdraw-method"
                   value={method.key}
                   checked={methodKey === method.key}
+                  disabled={!paysOut(method, currency)}
                   onChange={(key) => {
                     setMethodKey(key);
                     /*

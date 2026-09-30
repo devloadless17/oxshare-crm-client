@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Check, Copy, ExternalLink, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SummaryRow } from '@/components/money/money-shell';
+import { DepositWaiting } from '@/components/money/deposit-waiting';
 import type { DepositRequest, PaymentMethod } from '@/lib/api/deposits';
 import { formatMoney } from '@/lib/money';
 import { t } from '@/lib/i18n';
@@ -43,6 +44,11 @@ export function DepositCreated({
   method: PaymentMethod;
   onReset: () => void;
 }) {
+  // A provider that sends nobody back (3pay): the client waits HERE.
+  if (deposit.paymentUrl && !deposit.returnsAfterPayment) {
+    return <DepositWaiting deposit={deposit} method={method} onReset={onReset} />;
+  }
+
   if (deposit.paymentUrl) {
     return (
       <>

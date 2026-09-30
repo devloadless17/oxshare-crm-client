@@ -675,6 +675,7 @@ export const messages = {
   'withdraw.stepMethod': 'Method',
   'withdraw.stepWallet': 'Which wallet?',
   'withdraw.needWallet': 'Choose the wallet you want to withdraw from.',
+  'withdraw.paysOutOnly': '{method} pays out {currencies} only.',
   'withdraw.fromWallet': '{currency} wallet · {amount}',
   'withdraw.continue': 'Continue',
   'withdraw.noMethods':
@@ -717,7 +718,9 @@ export const messages = {
   'transactions.detailReceipt': 'Your receipt',
   'transactions.detailReceiptOpen': 'View',
   'notifications.kindDepositRejectedTitle': 'Deposit not accepted',
-  'notifications.kindDepositRejectedBody': 'Your deposit of {amount} was not accepted: {reason}',
+  'notifications.kindDepositRejectedBody': 'Your deposit of {amount} was not accepted: {reason}.',
+  // The same sentence when no reason was recorded — never a dangling colon.
+  'notifications.kindDepositRejectedBodyNoReason': 'Your deposit of {amount} was not accepted.',
   'deposit.offlinePendingTitle': 'We have your deposit request',
   'deposit.offlinePendingBody':
     'Our team will check your receipt and add the money to your wallet. You can follow it in your transactions.',
@@ -1510,10 +1513,11 @@ export const messages = {
   'notifications.caughtUpTitle': "You're all caught up",
   'notifications.caughtUpBody': 'New updates about your account will appear here.',
   'notifications.seeEarlier': 'See earlier notifications',
-  'notifications.recentNotice': 'Showing your {count} most recent notifications.',
+  'notifications.loadMore': 'Load more',
+  'notifications.loadingMore': 'Loading…',
   'notifications.fallbackTitle': 'Notification',
-  'notifications.soundOn': 'Notification sound is on',
-  'notifications.soundOff': 'Notification sound is off',
+  // Fixed name; `aria-pressed` carries the state (a changing label would say it twice).
+  'notifications.sound': 'Notification sound',
   'notifications.verifyEmailTitle': 'Verify your email first',
   'notifications.verifyEmailBody':
     'Account alerts appear here once your email address is confirmed.',
@@ -1524,13 +1528,16 @@ export const messages = {
   'notifications.kindDepositFailedBody':
     'Your deposit of {amount} could not be completed. You can try again.',
   'notifications.kindWalletCreditedTitle': 'Wallet credited',
-  'notifications.kindWalletCreditedBody': '{amount} was added to your wallet: {reason}',
+  'notifications.kindWalletCreditedBody': '{amount} was added to your wallet: {reason}.',
+  'notifications.kindWalletCreditedBodyNoReason': '{amount} was added to your wallet.',
   'notifications.kindWithdrawalApprovedTitle': 'Withdrawal approved',
   'notifications.kindWithdrawalApprovedBody':
     'Your withdrawal of {amount} was approved and is being processed.',
   'notifications.kindWithdrawalRejectedTitle': 'Withdrawal declined',
   'notifications.kindWithdrawalRejectedBody':
     'Your withdrawal of {amount} was declined: {reason}. The funds are back in your balance.',
+  'notifications.kindWithdrawalRejectedBodyNoReason':
+    'Your withdrawal of {amount} was declined. The funds are back in your balance.',
   'notifications.kindWithdrawalPaidTitle': 'Withdrawal sent',
   'notifications.kindWithdrawalPaidBody':
     'Your withdrawal of {amount} has been sent to your nominated destination.',
@@ -1539,10 +1546,13 @@ export const messages = {
     'Your verification was approved. Deposits and withdrawals are unlocked.',
   'notifications.kindKycRejectedTitle': 'Verification needs attention',
   'notifications.kindKycRejectedBody': 'Your verification was declined: {reason}. You can retry.',
+  'notifications.kindKycRejectedBodyNoReason': 'Your verification was declined. You can retry.',
   // A verified client asked to update — a request, never "declined" (26 Sep 2026).
   // Its title is `kyc.reverifyTitle`, the one the KYC screens show.
   'notifications.kindKycReverificationBody':
     'We need an update: {reason}. Deposits and withdrawals are paused until it is reviewed.',
+  'notifications.kindKycReverificationBodyNoReason':
+    'We need an update to your verification. Deposits and withdrawals are paused until it is reviewed.',
   'notifications.kindCommissionConfirmedTitle': 'Commission credited',
   // The client's side of the same trade. "Rebate" rather than "commission",
   // because the money is theirs coming back rather than something they earned —
@@ -1562,7 +1572,8 @@ export const messages = {
   'notifications.kindPartnerApprovedBody':
     'Welcome to the partner programme. Your referral link is ready.',
   'notifications.kindPartnerRejectedTitle': 'Partner application declined',
-  'notifications.kindPartnerRejectedBody': 'Your partner application was declined: {reason}',
+  'notifications.kindPartnerRejectedBody': 'Your partner application was declined: {reason}.',
+  'notifications.kindPartnerRejectedBodyNoReason': 'Your partner application was declined.',
   'notifications.kindPartnerSuspendedTitle': 'Partner account suspended',
   'notifications.kindPartnerSuspendedBody':
     'Your partner account was suspended. Contact support for details.',
@@ -1581,6 +1592,9 @@ export const messages = {
   // backend's `wallet_to_account` enum.
   'notifications.transferToAccount': 'moved to your trading account',
   'notifications.transferToWallet': 'returned to your wallet',
+  // The account's environment, translated rather than the backend's enum.
+  'notifications.environmentLive': 'live',
+  'notifications.environmentDemo': 'demo',
   // The toast's action button. Short because it sits inside a toast, and a
   // verb because it does something rather than describing where it goes.
   'notifications.view': 'View',
@@ -2144,6 +2158,30 @@ export const messages = {
   'deposit.gatewayReturnNote':
     'Once you have paid, you will be returned here and your balance updates automatically.',
   'deposit.openPaymentPage': 'Open the payment page',
+  'deposit.waitingTitle': 'Complete your payment',
+  'deposit.waitingBody':
+    'Open the payment page in a new tab and send the amount it shows. This page updates on its own when your payment arrives.',
+  'deposit.waitingNetwork':
+    'Send only {asset}. Any other coin, or USDT on another network, is lost.',
+  'deposit.waitingPar':
+    'Your {currency} wallet is credited with what arrives, 1 USDT = 1 {currency}.',
+  'deposit.waitingExpiresIn': 'The payment page closes in {time}.',
+  'deposit.waitingExpired':
+    'The payment page has closed. If you already sent the payment it is credited once the provider confirms it; otherwise start a new deposit.',
+  'deposit.waitingPending': 'Waiting for your payment…',
+  'deposit.waitingReceived': '{amount} received and credited to your {currency} wallet.',
+  'deposit.waitingDifferent': 'You were asked for {requested}; what arrived was credited.',
+  'deposit.waitingDoneTitle': 'Payment received',
+  'deposit.reviewTitle': 'Your payment is being checked',
+  'deposit.reviewBody':
+    'A payment arrived that needs a check by our team. It is credited once confirmed — nothing more to do on your side.',
+  'deposit.waitingFailedTitle': 'Payment not completed',
+  'deposit.waitingFailed':
+    'Nothing arrived before the payment page closed. If you did send it, it is credited as soon as the provider confirms it.',
+  'deposit.waitingCheckNow': 'I have paid — check now',
+  'deposit.waitingCheckFailed':
+    'Could not check the payment right now. It is checked automatically too.',
+  'deposit.waitingViewWallet': 'Go to my wallet',
   'deposit.paymentLinkReady': 'Your payment link is ready',
   'deposit.paymentLinkBody':
     'If the payment page did not open, use the button below. The link stays valid until you pay ' +

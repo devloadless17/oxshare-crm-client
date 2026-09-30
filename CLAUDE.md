@@ -209,12 +209,15 @@ The rules are in `../CLAUDE.md` ("The identity core is the PLATFORM's"). What th
 
 The owner's rule: a client's bell must never look full of things to do. Every row is an outcome
 the client was waiting on (a deposit credited, a withdrawal paid, a KYC decision), so once seen it
-is finished. `components/notifications/notification-panel.tsx` shows **New** (unread) and
-**Earlier** (read), both cut from ONE read of the newest page; `layout/notifications-sheet.tsx`
-marks everything up to the newest row SHOWN as read when the sheet **closes** — on close, not on
-open, so nothing moves from New to Earlier while it is being read, and a row that arrived after the
-panel rendered is never swept (`markAllRead(upTo)`). There is no "Mark all" button: seeing clears
-the badge. `notification.changed` on the socket keeps other tabs in step.
+is finished. `components/notifications/notification-panel.tsx` shows **New** (`?unread=true`) and
+**Earlier** (`?read=true`) as two SEPARATE paged reads, each with "Load more" — never slices of one
+page: cut from the 30 newest rows, a client with 125 unseen had 30 marked seen, then New said "all
+caught up" while the badge said 95 (found live, 30 Sep 2026). The New tab's count is the server's
+unread total, the badge's own number. `layout/notifications-sheet.tsx` marks read exactly the span
+of New rows SHOWN when the sheet **closes** (`markAllRead({upTo, from})`, newest and oldest shown):
+on close, not on open, so nothing moves while it is read; a row that arrived after the panel
+rendered, or sat beyond the last page loaded, is never swept. There is no "Mark all" button: seeing
+clears the badge. `notification.changed` on the socket keeps other tabs in step.
 
 **Many arrivals are ONE announcement.** The hourly commission run confirms a partner's rebates
 together, so a client can be told about twenty credits in the same instant. The sheet gathers

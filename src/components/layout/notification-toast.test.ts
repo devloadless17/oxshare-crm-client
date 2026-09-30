@@ -101,6 +101,7 @@ describe('every kind the backend sends a client', () => {
         // rather than interpolating the database slug — see its note, and the
         // unknown-value case below.
         direction: 'wallet_to_account',
+        environment: 'live',
       },
     });
 
@@ -168,25 +169,26 @@ describe('what the socket can actually deliver', () => {
     expect(toast).not.toHaveBeenCalled();
   });
 
-  it('falls back for a kind this build has not learned', () => {
+  it('does not toast a kind this build has not learned', () => {
     // The forward-compatible branch, asserted so it stays deliberate: the
-    // backend may ship an event before the portal redeploys.
+    // backend may ship an event before the portal redeploys. A bare
+    // "Notification" says nothing; the badge and the row still update.
     toastNotification({ id: 'n-1', kind: 'something.new' });
 
-    expect(toast).toHaveBeenCalledWith(FALLBACK);
+    expect(toast).not.toHaveBeenCalled();
   });
 
   it('never renders an ADMIN kind as real copy', () => {
     /*
      * A client socket joins `client:<id>` and an admin's joins `admin:<id>`, so
      * this should be unreachable. Asserted anyway: if room targeting ever
-     * regressed, the failure must be a generic toast rather than the portal
+     * regressed, the failure must be NO toast rather than the portal
      * rendering "A withdrawal of $500 needs review" — copy that names another
      * client's money to whoever is holding the socket.
      */
     toastNotification({ id: 'n-1', kind: 'admin.withdrawal.requested' });
 
-    expect(toast).toHaveBeenCalledWith(FALLBACK);
+    expect(toast).not.toHaveBeenCalled();
   });
 
   it('omits the body when params are absent rather than rendering an empty line', () => {

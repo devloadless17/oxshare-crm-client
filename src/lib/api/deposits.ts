@@ -16,6 +16,8 @@ import { apiClient, idempotent } from './client';
 
 /** What the client filed. `reference` is the whole point of the response. */
 export type DepositRequest = components['schemas']['DepositRequestDto'];
+/** A hosted deposit's state for its owner — `amount` is what was CREDITED once it settled. */
+export type DepositState = components['schemas']['DepositStateDto'];
 
 /**
  * A way to send money, as the OPERATOR configured it.
@@ -164,18 +166,31 @@ export const depositsApi = {
    * outcome this flow has. Whichever arrives first settles it; the other is a
    * no-op.
    */
+  /**
+   * READ-ONLY: what this deposit is now, from our own records. The waiting card
+   * polls this — never `settle`, which asks the provider on every call and
+   * would spend its request budget (3pay: 60 a minute, for everybody).
+   */
+  async status(reference: string, signal?: AbortSignal): Promise<DepositState> {
+    const { data } = await apiClient.get<DepositState>(
+      `/payments/deposits/${encodeURIComponent(reference)}/status`,
+      { signal },
+    );
+    return data;
+  },
+
   async settle(
     reference: string,
     /** The redirect's method, when it carried one; the server needs only the reference. */
     method: string | undefined,
     signal?: AbortSignal,
-  ): Promise<{ state: string }> {
+  ): Promise<DepositState> {
     const query = method ? `?method=${encodeURIComponent(method)}` : '';
     // A POST, because this SETTLES — the API asks the provider and credits the
     // wallet. It used to ride on the status GET, which put a money-moving state
     // change behind a verb prefetchers and the back button issue freely and
     // outside the anti-forgery guard. `GET …/status` is read-only now.
-    const { data } = await apiClient.post<{ state: string }>(
+    const { data } = await apiClient.post<DepositState>(
       `/payments/deposits/${encodeURIComponent(reference)}/settle${query}`,
       {},
       { signal },

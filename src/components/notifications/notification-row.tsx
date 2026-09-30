@@ -6,7 +6,8 @@ import { SheetClose } from '@/components/ui/sheet';
 import type { AppNotification } from '@/lib/api/notifications';
 import { currentLocale, t } from '@/lib/i18n';
 import { relativeTime } from '@/lib/relative-time';
-import { resolveKind } from '@/components/layout/notification-kinds';
+import { bodyText, resolveKind } from '@/components/layout/notification-kinds';
+import { useMinuteTick } from '@/hooks/use-minute-tick';
 
 /**
  * One notification, as the bell lists it.
@@ -24,6 +25,8 @@ export function NotificationRow({ item }: { item: AppNotification }) {
   const config = resolveKind(item.kind);
   const Icon = config?.icon ?? Bell;
   const isNew = !item.readAt;
+  // Keeps "3 minutes ago" true while the panel stays open.
+  useMinuteTick();
 
   const body = (
     <>
@@ -50,7 +53,7 @@ export function NotificationRow({ item }: { item: AppNotification }) {
         </span>
         {config ? (
           <span className="block text-xs leading-relaxed text-muted-foreground">
-            {t(config.bodyKey, config.vars?.(item.params))}
+            {bodyText(config, item.params)}
           </span>
         ) : null}
       </span>

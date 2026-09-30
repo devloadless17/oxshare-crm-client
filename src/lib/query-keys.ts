@@ -151,6 +151,11 @@ export const keys = {
     withdrawal: () => ['payment-methods', 'withdrawal'] as const,
   },
 
+  /** One hosted deposit's state, polled by the waiting card (backend 0173). */
+  depositStatus: {
+    one: (reference: string) => ['deposit-status', reference] as const,
+  },
+
   currencies: {
     all: () => ['currencies'] as const,
   },
@@ -171,6 +176,8 @@ export const keys = {
   notifications: {
     all: () => ['notifications'] as const,
     list: () => ['notifications', 'list'] as const,
+    /** One tab of the bell — New (unread) or Earlier (seen), each paged on its own. */
+    feed: (view: 'new' | 'earlier') => ['notifications', 'list', view] as const,
     unreadCount: () => ['notifications', 'unread-count'] as const,
   },
 } as const;

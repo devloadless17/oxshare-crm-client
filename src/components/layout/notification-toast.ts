@@ -2,7 +2,7 @@ import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
 import type { RealtimePayload } from '@/hooks/use-realtime';
 import type { AppNotification } from '@/lib/api/notifications';
-import { resolveKind } from './notification-kinds';
+import { bodyText, resolveKind } from './notification-kinds';
 
 /**
  * Turn one `notification.created` socket event into a toast.
@@ -53,12 +53,9 @@ export function toastNotification(
   if (!kind) return;
 
   const config = resolveKind(kind);
-  if (!config) {
-    // A kind this build does not know. The generic title is the same one the
-    // bell row uses, so the two agree even here.
-    toast(t('notifications.fallbackTitle'));
-    return;
-  }
+  // A kind this build does not know: no toast. A bare "Notification" tells the
+  // client nothing; the badge and the bell row still update.
+  if (!config) return;
 
   /*
    * `params` is validated as an object before the catalogue's `vars` is allowed
@@ -72,12 +69,10 @@ export function toastNotification(
       ? (raw as AppNotification['params'])
       : undefined;
 
-  const description = params && config.vars ? t(config.bodyKey, config.vars(params)) : undefined;
-
   toast(t(config.titleKey), {
     // A body only when there is one to build. `undefined` renders no second
     // line; an empty string renders an empty line, which looks like a bug.
-    description: params ? (description ?? t(config.bodyKey)) : undefined,
+    description: params ? bodyText(config, params) : undefined,
     action:
       config.href && onView
         ? {

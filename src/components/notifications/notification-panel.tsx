@@ -4,8 +4,8 @@ import * as React from 'react';
 import { Bell, CheckCheck } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { Tabs, TabPanel } from '@/components/ui/tabs';
-import { useResource } from '@/hooks/use-resource';
-import { notificationsApi } from '@/lib/api/notifications';
+import { useInfiniteResource, type InfiniteResource } from '@/hooks/use-infinite-resource';
+import { notificationsApi, type AppNotification, type SeenRange } from '@/lib/api/notifications';
 import { keys } from '@/lib/query-keys';
 import { t } from '@/lib/i18n';
 import { NotificationRow } from './notification-row';
@@ -33,34 +33,53 @@ type PanelTab = 'new' | 'earlier';
  * This reverses the old "read is explicit" note, for clients only — an admin's
  * notification is a task and still leaves the bell only when read or handled.
  *
- * Both tabs are cut from ONE read of the newest page, so they can never
- * disagree about which rows are new.
+ * New and Earlier are SEPARATE reads (`?unread=true` / `?read=true`), each with
+ * its own "Load more". They were cut from one page of the 30 newest rows, which
+ * broke as soon as a client had more than that unseen: the 30 were marked seen,
+ * the newest page then held no unread row, and New said "all caught up" while
+ * the badge still counted 95. The tab's count is the server's own unread total
+ * — the badge's number — never the length of whatever page is loaded.
  */
 export function NotificationPanel({
   enabled,
   onShown,
+  unreadCount,
 }: {
   /** False until the email is verified — both feed routes are guarded. */
   enabled: boolean;
-  /** The `createdAt` of the newest NEW row on screen, or null when none. */
-  onShown: (newestNewAt: string | null) => void;
+  /** The server's unread total — the badge's number, for the New tab. */
+  unreadCount?: number;
+  /** The `createdAt` span of the NEW rows on screen, or null when none. */
+  onShown: (shown: SeenRange | null) => void;
 }) {
   const [tab, setTab] = React.useState<PanelTab>('new');
 
-  const query = useResource(
-    keys.notifications.list(),
-    (signal) => notificationsApi.getNotifications({ limit: PAGE_SIZE }, signal),
+  const freshFeed = useInfiniteResource(
+    keys.notifications.feed('new'),
+    (cursor, signal) =>
+      notificationsApi.getNotifications({ view: 'new', cursor, limit: PAGE_SIZE }, signal),
     { enabled },
   );
+  const earlierFeed = useInfiniteResource(
+    keys.notifications.feed('earlier'),
+    (cursor, signal) =>
+      notificationsApi.getNotifications({ view: 'earlier', cursor, limit: PAGE_SIZE }, signal),
+    // Read only once the tab is opened — most visits never look back.
+    { enabled: enabled && tab === 'earlier' },
+  );
 
-  const items = query.data?.items ?? [];
-  const fresh = items.filter((item) => !item.readAt);
-  const earlier = items.filter((item) => item.readAt);
-  // Newest first from the server, so the first new row is the newest one.
-  const newestNewAt = query.status === 'ready' ? (fresh[0]?.createdAt ?? null) : null;
+  const fresh = freshFeed.items;
+  const newCount = unreadCount ?? fresh.length;
+  // Newest first from the server. Every page the client loaded with "Load more"
+  // extends what they saw; an unread row past the last one was never shown.
+  const newestNewAt = freshFeed.status === 'ready' ? (fresh[0]?.createdAt ?? null) : null;
+  const oldestNewAt = freshFeed.status === 'ready' ? (fresh.at(-1)?.createdAt ?? null) : null;
 
   // Report what is on screen — writing the parent's ref is the whole effect.
-  React.useEffect(() => onShown(newestNewAt), [newestNewAt, onShown]);
+  React.useEffect(
+    () => onShown(newestNewAt && oldestNewAt ? { upTo: newestNewAt, from: oldestNewAt } : null),
+    [newestNewAt, oldestNewAt, onShown],
+  );
 
   if (!enabled) {
     /*
@@ -87,74 +106,94 @@ export function NotificationPanel({
           {
             value: 'new',
             label:
-              fresh.length > 0
-                ? t('notifications.tabNewCount', { count: fresh.length })
+              newCount > 0
+                ? t('notifications.tabNewCount', { count: newCount })
                 : t('notifications.tabNew'),
           },
           { value: 'earlier', label: t('notifications.tabEarlier') },
         ]}
       />
       <div className="flex-1 overflow-y-auto p-3">
-        <AsyncBoundary
-          status={query.status}
-          label={t('notifications.loading')}
-          endpoints={['GET /notifications']}
-          onRetry={query.refetch}
-          errorMessage={t('notifications.loadFailed')}
-          error={query.error}
-          fill
-        >
-          <TabPanel idPrefix="notifications" value="new" activeValue={tab} className="pt-0">
-            {fresh.length === 0 ? (
+        <TabPanel idPrefix="notifications" value="new" activeValue={tab} className="pt-0">
+          <Feed
+            feed={freshFeed}
+            empty={
               <EmptyState
                 icon={<CheckCheck className="h-5 w-5" aria-hidden="true" />}
                 title={t('notifications.caughtUpTitle')}
                 body={t('notifications.caughtUpBody')}
                 action={
-                  earlier.length > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => setTab('earlier')}
-                      className="mt-3 cursor-pointer text-xs font-medium text-primary hover:underline focus-outline"
-                    >
-                      {t('notifications.seeEarlier')}
-                    </button>
-                  ) : null
+                  <button
+                    type="button"
+                    onClick={() => setTab('earlier')}
+                    className="mt-3 cursor-pointer text-xs font-medium text-primary hover:underline focus-outline"
+                  >
+                    {t('notifications.seeEarlier')}
+                  </button>
                 }
               />
-            ) : (
-              <ul className="space-y-2">
-                {fresh.map((item) => (
-                  <NotificationRow key={item.id} item={item} />
-                ))}
-              </ul>
-            )}
-          </TabPanel>
-          <TabPanel idPrefix="notifications" value="earlier" activeValue={tab} className="pt-0">
-            {earlier.length === 0 ? (
+            }
+          />
+        </TabPanel>
+        <TabPanel idPrefix="notifications" value="earlier" activeValue={tab} className="pt-0">
+          <Feed
+            feed={earlierFeed}
+            empty={
               <EmptyState
                 icon={<Bell className="h-5 w-5" aria-hidden="true" />}
                 title={t('notifications.emptyTitle')}
                 body={t('notifications.emptyBody')}
               />
-            ) : (
-              <>
-                <ul className="space-y-2">
-                  {earlier.map((item) => (
-                    <NotificationRow key={item.id} item={item} />
-                  ))}
-                </ul>
-                {query.data?.nextCursor ? (
-                  <p className="pt-3 text-center text-[11px] text-muted-foreground">
-                    {t('notifications.recentNotice', { count: items.length })}
-                  </p>
-                ) : null}
-              </>
-            )}
-          </TabPanel>
-        </AsyncBoundary>
+            }
+          />
+        </TabPanel>
       </div>
     </div>
+  );
+}
+
+/** One tab's list: the six states, its rows, and "Load more" while there is more. */
+function Feed({
+  feed,
+  empty,
+}: {
+  feed: InfiniteResource<AppNotification>;
+  empty: React.ReactNode;
+}) {
+  return (
+    <AsyncBoundary
+      status={feed.status}
+      label={t('notifications.loading')}
+      endpoints={['GET /notifications']}
+      onRetry={feed.refetch}
+      errorMessage={t('notifications.loadFailed')}
+      error={feed.error}
+      fill
+    >
+      {feed.items.length === 0 ? (
+        empty
+      ) : (
+        <>
+          <ul className="space-y-2">
+            {feed.items.map((item) => (
+              <NotificationRow key={item.id} item={item} />
+            ))}
+          </ul>
+          {feed.hasMore && (
+            <div className="pt-3 text-center">
+              <button
+                type="button"
+                onClick={feed.loadMore}
+                disabled={feed.isLoadingMore}
+                className="cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted disabled:opacity-50 focus-outline"
+              >
+                {feed.isLoadingMore ? t('notifications.loadingMore') : t('notifications.loadMore')}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </AsyncBoundary>
   );
 }
 

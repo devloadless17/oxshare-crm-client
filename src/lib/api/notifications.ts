@@ -19,18 +19,28 @@ export type NotificationUnreadCount = components['schemas']['NotificationUnreadC
 export type NotificationsMarkAllRead = components['schemas']['NotificationsMarkAllReadResponseDto'];
 export type NotificationsReadAll = components['schemas']['NotificationsReadAllDto'];
 
+/** The `createdAt` span of the new rows a panel put on screen. */
+export interface SeenRange {
+  upTo: string;
+  from: string;
+}
+
 export const notificationsApi = {
   /**
    * Newest first. `cursor`/`limit` are accepted now so a later load-more is a
    * UI-only change; the sheet reads a fixed most-recent page.
    */
   async getNotifications(
-    params: { cursor?: string; limit?: number } = {},
+    params: { cursor?: string; limit?: number; view?: 'new' | 'earlier' } = {},
     signal?: AbortSignal,
   ): Promise<NotificationPage> {
     const query = new URLSearchParams();
     if (params.cursor) query.set('cursor', params.cursor);
     if (params.limit) query.set('limit', String(params.limit));
+    // New and Earlier are separate lists on the server, so each pages on its
+    // own and neither is ever a slice of one mixed page.
+    if (params.view === 'new') query.set('unread', 'true');
+    if (params.view === 'earlier') query.set('read', 'true');
     const { data } = await apiClient.get<NotificationPage>(`/notifications?${query.toString()}`, {
       signal,
     });
@@ -56,9 +66,12 @@ export const notificationsApi = {
    * `createdAt` of the newest one on screen. A notification that arrived after
    * the panel rendered is newer than `upTo` and stays unread — the bell marks
    * what it showed, never what it did not.
+   *
+   * `from` is the oldest new row on screen: the panel loads one page, so an
+   * unread row beyond it was never shown and stays unread.
    */
-  async markAllRead(upTo?: string): Promise<NotificationsMarkAllRead> {
-    const body: NotificationsReadAll = upTo ? { upTo } : {};
+  async markAllRead(shown?: SeenRange): Promise<NotificationsMarkAllRead> {
+    const body: NotificationsReadAll = shown ? { upTo: shown.upTo, from: shown.from } : {};
     const { data } = await apiClient.post<NotificationsMarkAllRead>(
       '/notifications/read-all',
       body,
