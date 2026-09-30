@@ -2169,8 +2169,15 @@ export const messages = {
   'deposit.waitingExpired':
     'The payment page has closed. If you already sent the payment it is credited once the provider confirms it; otherwise start a new deposit.',
   'deposit.waitingPending': 'Waiting for your payment…',
-  'deposit.waitingReceived': 'Payment received and credited to your {currency} wallet.',
-  'deposit.waitingFailed': 'This payment was not completed. No money was taken from your wallet.',
+  'deposit.waitingReceived': '{amount} received and credited to your {currency} wallet.',
+  'deposit.waitingDifferent': 'You were asked for {requested}; what arrived was credited.',
+  'deposit.waitingDoneTitle': 'Payment received',
+  'deposit.reviewTitle': 'Your payment is being checked',
+  'deposit.reviewBody':
+    'A payment arrived that needs a check by our team. It is credited once confirmed — nothing more to do on your side.',
+  'deposit.waitingFailedTitle': 'Payment not completed',
+  'deposit.waitingFailed':
+    'Nothing arrived before the payment page closed. If you did send it, it is credited as soon as the provider confirms it.',
   'deposit.waitingCheckNow': 'I have paid — check now',
   'deposit.waitingCheckFailed':
     'Could not check the payment right now. It is checked automatically too.',

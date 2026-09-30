@@ -8,9 +8,14 @@ import { Button } from '@/components/ui/button';
 import { SummaryRow } from '@/components/money/money-shell';
 import { useResource } from '@/hooks/use-resource';
 import { useMoneyRefresh } from '@/hooks/use-money-refresh';
-import { depositsApi, type DepositRequest, type PaymentMethod } from '@/lib/api/deposits';
+import {
+  depositsApi,
+  type DepositRequest,
+  type DepositState,
+  type PaymentMethod,
+} from '@/lib/api/deposits';
 import { apiErrorMessage } from '@/lib/api/errors';
-import { formatMoney } from '@/lib/money';
+import { compareMoney, formatMoney } from '@/lib/money';
 import { keys } from '@/lib/query-keys';
 import { t } from '@/lib/i18n';
 
@@ -46,21 +51,23 @@ export function DepositWaiting({
 }) {
   const refreshMoney = useMoneyRefresh();
   // What "I have paid — check now" learned; a later poll that is FINAL wins.
-  const [checked, setChecked] = React.useState<string | null>(null);
+  const [checked, setChecked] = React.useState<DepositState | null>(null);
 
   // Polling stops once either source says it is over: the last poll (read from
   // the cache, so no state is copied in an effect) or the client's own check.
   const queryClient = useQueryClient();
-  const last = queryClient.getQueryData<{ state: string }>(
-    keys.depositStatus.one(deposit.reference),
-  );
+  const last = queryClient.getQueryData<DepositState>(keys.depositStatus.one(deposit.reference));
   const status = useResource(
     keys.depositStatus.one(deposit.reference),
     (signal) => depositsApi.status(deposit.reference, signal),
-    { refetchInterval: isFinal(checked) || isFinal(last?.state) ? undefined : POLL_MS, retry: 0 },
+    {
+      refetchInterval: isFinal(checked?.state) || isFinal(last?.state) ? undefined : POLL_MS,
+      retry: 0,
+    },
   );
-  const polled = status.data?.state;
-  const state = isFinal(polled) ? polled : (checked ?? polled ?? 'pending');
+  // The newest word wins, a FINAL one over any other: the poll or the check.
+  const latest = isFinal(status.data?.state) ? status.data : (checked ?? status.data);
+  const state = latest?.state ?? 'pending';
   const final = isFinal(state);
   // The balance moved: refetch it (never patched — §6.1), once, on arrival.
   React.useEffect(() => {
@@ -74,7 +81,7 @@ export function DepositWaiting({
     setCheckError(null);
     try {
       const result = await depositsApi.settle(deposit.reference, undefined);
-      setChecked(result.state);
+      setChecked(result);
     } catch (error) {
       setCheckError(apiErrorMessage(error, t('deposit.waitingCheckFailed')));
     } finally {
@@ -87,10 +94,20 @@ export function DepositWaiting({
   return (
     <div className="space-y-4 p-5 sm:p-6">
       <div className="text-center">
-        <h2 className="text-lg font-bold">{t('deposit.waitingTitle')}</h2>
-        <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-          {t('deposit.waitingBody')}
-        </p>
+        <h2 className="text-lg font-bold">
+          {state === 'success'
+            ? t('deposit.waitingDoneTitle')
+            : final
+              ? t('deposit.waitingFailedTitle')
+              : latest?.underReview
+                ? t('deposit.reviewTitle')
+                : t('deposit.waitingTitle')}
+        </h2>
+        {!final && (
+          <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
+            {t('deposit.waitingBody')}
+          </p>
+        )}
       </div>
 
       <dl className="mx-auto max-w-sm divide-y divide-border">
@@ -103,7 +120,7 @@ export function DepositWaiting({
         <SummaryRow label={t('deposit.referenceLabel')} value={deposit.reference} />
       </dl>
 
-      {deposit.payWith && (
+      {deposit.payWith && !final && (
         <div className="mx-auto max-w-sm space-y-1 rounded-lg border border-warning/30 bg-warning/10 p-3 text-[11px] leading-relaxed text-warning">
           <p className="flex items-start gap-1.5 font-semibold">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -113,9 +130,9 @@ export function DepositWaiting({
         </div>
       )}
 
-      <StatusLine state={state} currency={deposit.currency} />
+      <StatusLine outcome={latest} currency={deposit.currency} />
 
-      {!final && deposit.paymentUrl && (
+      {!final && !latest?.underReview && deposit.paymentUrl && (
         <>
           {/* A real anchor, opened in a new tab by the client's own click. */}
           <Button asChild size="lg" className="w-full">
@@ -166,16 +183,35 @@ export function DepositWaiting({
   );
 }
 
-function StatusLine({ state, currency }: { state: string; currency: string }) {
-  if (state === 'success') {
+function StatusLine({
+  outcome,
+  currency,
+}: {
+  outcome: DepositState | null | undefined;
+  currency: string;
+}) {
+  const state = outcome?.state ?? 'pending';
+  if (state === 'success' && outcome) {
+    const differs =
+      outcome.requestedAmount !== null &&
+      compareMoney(outcome.requestedAmount, outcome.amount) !== 0;
     return (
-      <p
-        role="status"
-        className="flex items-center justify-center gap-2 text-sm font-semibold text-success"
-      >
-        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-        {t('deposit.waitingReceived', { currency })}
-      </p>
+      <div role="status" className="space-y-1 text-center">
+        <p className="flex items-center justify-center gap-2 text-sm font-semibold text-success">
+          <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+          {t('deposit.waitingReceived', {
+            amount: formatMoney(outcome.amount, outcome.currency),
+            currency,
+          })}
+        </p>
+        {differs && outcome.requestedAmount && (
+          <p className="text-[11px] text-muted-foreground">
+            {t('deposit.waitingDifferent', {
+              requested: formatMoney(outcome.requestedAmount, outcome.currency),
+            })}
+          </p>
+        )}
+      </div>
     );
   }
   if (state === 'failure' || state === 'rejected') {
@@ -195,7 +231,7 @@ function StatusLine({ state, currency }: { state: string; currency: string }) {
       className="flex items-center justify-center gap-2 text-xs text-muted-foreground"
     >
       <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-      {t('deposit.waitingPending')}
+      {outcome?.underReview ? t('deposit.reviewBody') : t('deposit.waitingPending')}
     </p>
   );
 }
