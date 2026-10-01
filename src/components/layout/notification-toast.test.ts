@@ -41,7 +41,7 @@ const CLIENT_KINDS = [
 ] as const;
 
 /**
- * `withdrawal.rival_submit_failed` is emitted but is NOT here on purpose: it
+ * `withdrawal.payout_submit_failed` is emitted but is NOT here on purpose: it
  * goes to `notifyAdminsWithPermission`, so it reaches the admin console's
  * catalogue and never a client socket. Listing it would force a portal entry
  * for copy no client should read — a payout provider's internals.

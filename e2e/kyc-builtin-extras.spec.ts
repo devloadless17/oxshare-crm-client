@@ -92,7 +92,9 @@ test('Proof of Address asks the broker’s own question and upload beside its do
     const main = page.locator('main');
 
     // The documents are still the step's choices…
-    for (const field of before.fields) {
+    // The document choices are cards (buttons); a broker's own fields already on
+    // the step are asked beside them, not as cards.
+    for (const field of before.fields.filter((f) => f.type.startsWith('doc:'))) {
       await expect(main.getByRole('button', { name: new RegExp(field.label, 'i') })).toBeVisible();
     }
     // …and the broker's question and upload are asked beside them.
