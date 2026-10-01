@@ -229,7 +229,14 @@ export function StepField({
      * The lists are served now (`common/kyc/country-options.ts`), so this
      * renders what it is given.
      */
-    const optionsList = (field.options ?? []).map((opt) => ({
+    /*
+     * A value the client already holds is always shown, even once it has left
+     * the list (the broker's offered countries, backend 0178): they keep it,
+     * and an empty dropdown would read as their answer being lost.
+     */
+    const offered = field.options ?? [];
+    const choices = val && !offered.includes(val) ? [val, ...offered] : offered;
+    const optionsList = choices.map((opt) => ({
       label: opt,
       value: opt,
       /*
