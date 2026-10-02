@@ -27,6 +27,32 @@ export type TradingEnvironment = TradingAccount['environment'];
 export type TradingAccountStatus = TradingAccount['status'];
 
 /**
+ * One row of the CRM's own `positions` table.
+ *
+ * ## `GET /trading/positions` STILL returns an empty list for everyone
+ *
+ * Nothing writes to that table. The bridge landing did not change this: it
+ * ingests CLOSED DEALS, and its position endpoint is a live read that is
+ * deliberately not persisted.
+ *
+ * **For a client's open trades, use `getAccountPositions`** — live, per account,
+ * with real floating P/L. This type is the stored shape and is what the
+ * dashboard's positions panel renders, which is why that panel is still empty.
+ *
+ * The table is kept rather than dropped for the reason it was created: a screen
+ * showing a hardcoded "nothing here" is indistinguishable from one whose query
+ * genuinely found nothing, and this codebase has already told a client with
+ * three live accounts that they had none.
+ *
+ * `profit` here is the REALISED result and is null while a position is open —
+ * unlike `AccountPosition.profit`, which is the live floating figure. Do not
+ * confuse the two: one is history, the other changes on every tick.
+ */
+export type Position = components['schemas']['PositionDto'];
+export type PositionSide = Position['side'];
+export type PositionStatus = Position['status'];
+
+/**
  * What MT5 holds on ONE account, right now.
  *
  * ## This is the live figure and `TradingAccount.balance` is not
@@ -483,6 +509,28 @@ export const tradingApi = {
     const { data } = await apiClient.get<TradingAccount[]>('/trading/accounts/transferable', {
       signal,
     });
+    return data;
+  },
+
+  /**
+   * The client's positions — open by default.
+   *
+   * Empty for everyone until a bridge writes to the table. A caller must render
+   * that as "no open positions" and NOT as a broken or unbuilt screen: the
+   * request succeeded and the answer was zero rows.
+   */
+  async getPositions(
+    options: { status?: PositionStatus; limit?: number; signal?: AbortSignal } = {},
+  ): Promise<Position[]> {
+    const params = new URLSearchParams();
+    if (options.status) params.set('status', options.status);
+    if (options.limit) params.set('limit', String(options.limit));
+
+    const query = params.toString();
+    const { data } = await apiClient.get<Position[]>(
+      query ? `/trading/positions?${query}` : '/trading/positions',
+      { signal: options.signal },
+    );
     return data;
   },
 };
