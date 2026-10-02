@@ -5,6 +5,7 @@ import { MoneyScreen } from '@/components/money/money-screen';
 import { ArrowRight } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { Button } from '@/components/ui/button';
+import { isPositiveAmount } from '@/components/money/withdraw-amount-hint';
 import {
   AmountField,
   AmountPresets,
@@ -268,6 +269,9 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!account || !source) return;
+    // Not a number at all is said under the field and never sent: the server's
+    // validator would answer in its own words. Limits and decimals stay its call.
+    if (!isPositiveAmount(amount)) return;
 
     setBusy(true);
     setError(null);
@@ -388,11 +392,13 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
                        */
                       max={spendable ? { amount: spendable, label: t('money.useMax') } : undefined}
                       hint={
-                        spendable
-                          ? t('money.availableBalance', {
-                              amount: formatMoney(spendable, account.currency),
-                            })
-                          : undefined
+                        amount.trim() && !isPositiveAmount(amount)
+                          ? t('withdraw.amountInvalid')
+                          : spendable
+                            ? t('money.availableBalance', {
+                                amount: formatMoney(spendable, account.currency),
+                              })
+                            : undefined
                       }
                     />
                     {presets.length > 0 && (
