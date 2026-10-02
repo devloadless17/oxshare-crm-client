@@ -10,7 +10,7 @@ import { paymentsApi, type WithdrawalMethod } from '@/lib/api/payments';
 import { newIdempotencyKey } from '@/lib/api/client';
 import { compareMoney, floorToScale, formatMoney, isZeroMoney } from '@/lib/money';
 import { useCurrencyScale } from '@/hooks/use-currency-scale';
-import { WithdrawAmountHint } from '@/components/money/withdraw-amount-hint';
+import { WithdrawAmountHint, isPositiveAmount } from '@/components/money/withdraw-amount-hint';
 import { Button } from '@/components/ui/button';
 import { WithdrawalDestinationField, needsDestination } from '@/components/money/withdrawal-fields';
 import { paysOut, walletFor, walletNote } from '@/components/money/wallet-choice';
@@ -211,6 +211,11 @@ function WithdrawForm({
      * own rules, and a second copy here would be a second thing to drift.
      */
     if (!amount.trim()) return setError(t('withdraw.needAmount'));
+    // Not a number at all never reaches the server, whose validator would answer in
+    // its own words ("amount must be a number string"). The hint under the field
+    // already says why, so this stops quietly rather than saying it twice.
+    // Limits stay the server's.
+    if (!isPositiveAmount(amount)) return;
     if (!methodKey) return setError(t('withdraw.needMethod'));
     if (needsDestination(selectedMethod?.destinationKind) && !destination.trim()) {
       return setError(t('withdraw.needDestination'));

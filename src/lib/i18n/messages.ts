@@ -626,6 +626,7 @@ export const messages = {
   'withdraw.limits': 'Between {min} and {max} per withdrawal',
   // Said under the amount BEFORE submitting — the server still refuses the same.
   'withdraw.amountBelowMin': 'The minimum withdrawal is {min}.',
+  'withdraw.amountInvalid': 'Enter the amount as a number above zero, for example 100.00.',
   'withdraw.amountAboveMax': 'The maximum withdrawal is {max}.',
   'withdraw.amountAboveAvailable': 'You have {available} available to withdraw.',
   /*

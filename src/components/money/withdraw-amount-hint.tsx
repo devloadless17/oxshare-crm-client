@@ -50,10 +50,20 @@ export function WithdrawAmountHint({
 /**
  * What is wrong with this amount, said under the field before the client
  * presses anything: below the minimum, above the maximum, or more than they
- * have. Null when it is fine or not yet a number (the server phrases that).
+ * have, or not a positive number. Null when it is fine.
  *
  * decimal.js, never `Number()`: these are NUMERIC(28,8) strings on a money path.
  */
+/** A positive decimal number at all — the one check that cannot drift from the server's. */
+export function isPositiveAmount(amount: string): boolean {
+  try {
+    const value = new Decimal(amount.trim());
+    return value.isFinite() && value.greaterThan(0);
+  } catch {
+    return false;
+  }
+}
+
 export function withdrawalAmountProblem(
   amount: string,
   currency: string,
@@ -61,13 +71,18 @@ export function withdrawalAmountProblem(
   limits: { min: string; max: string } | undefined,
 ): string | null {
   if (!amount.trim()) return null;
+  /*
+   * Not a number, zero or negative is said HERE, in the client's words. Left to
+   * the server it surfaced as the validator's own "amount must be a number
+   * string" (found live, 3 Oct 2026).
+   */
   let value: Decimal;
   try {
-    value = new Decimal(amount);
+    value = new Decimal(amount.trim());
   } catch {
-    return null;
+    return t('withdraw.amountInvalid');
   }
-  if (!value.isFinite() || !value.greaterThan(0)) return null;
+  if (!value.isFinite() || !value.greaterThan(0)) return t('withdraw.amountInvalid');
   if (limits && value.lessThan(limits.min)) {
     return t('withdraw.amountBelowMin', { min: formatMoney(limits.min, currency) });
   }
