@@ -138,3 +138,34 @@ describe('a resource whose BACKGROUND refetch fails', () => {
     await waitFor(() => expect(result.current.status).toBe('error'));
   });
 });
+
+describe('useResource keeps the client’s retry policy', () => {
+  /*
+   * `retry: options?.retry` handed React Query an explicit undefined, which its
+   * option SPREAD let replace QueryProvider's default — so a provider that never
+   * retries a 4xx retried every one three times, with backoff, behind a spinner.
+   */
+  it('does not retry a 403 when the caller passes no retry', async () => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: (count, error: unknown) =>
+            (error as { response?: { status?: number } }).response?.status === undefined &&
+            count < 2,
+          retryDelay: 0,
+        },
+      },
+    });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    const fetcher = vi.fn(() =>
+      Promise.reject(Object.assign(new Error('no'), { response: { status: 403 } })),
+    );
+
+    const { result } = renderHook(() => useResource(['probe', 'policy'], fetcher), { wrapper });
+
+    await waitFor(() => expect(result.current.status).toBe('forbidden'));
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+});

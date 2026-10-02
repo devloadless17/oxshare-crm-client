@@ -87,6 +87,11 @@ export function ApplyPanel({
    * for rather than that nothing is open.
    */
   const noneOffered = !inherited && agencies.status === 'ready' && options.length === 0;
+  /*
+   * The programmes could not be read. Without this the panel showed no options,
+   * no "none offered" note and a disabled button — a dead end that said nothing.
+   */
+  const agenciesFailed = !inherited && agencies.status !== 'ready' && agencies.status !== 'loading';
 
   /*
    * ── The gate in front of the button ────────────────────────────────────────
@@ -141,9 +146,13 @@ export function ApplyPanel({
        * request told the client they had submitted when they had not.
        */
       onApplied();
+      /*
+       * Stays busy on success: the panel is replaced once that refetch lands,
+       * and re-enabling the button in between let a second click send a second
+       * application into a refusal.
+       */
     } catch (err) {
       setError(apiErrorMessage(err, t('partner.submitFailed')));
-    } finally {
       setSubmitting(false);
     }
   };
@@ -266,6 +275,23 @@ export function ApplyPanel({
           >
             {error}
           </p>
+        )}
+
+        {agenciesFailed && (
+          <div
+            role="alert"
+            className="mt-8 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
+          >
+            <span>{t('partner.agenciesFailed')}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void agencies.refetch()}
+            >
+              {t('common.retry')}
+            </Button>
+          </div>
         )}
 
         {noneOffered && (

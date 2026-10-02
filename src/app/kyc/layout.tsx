@@ -6,18 +6,13 @@ import type { CSSProperties } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand-logo';
-import api from '@/lib/api';
-import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
 import { withReviewStep } from '@/components/kyc/review-step';
 import { useUser } from '@/context/UserContext';
 import { PortalLayout } from '@/components/layout/portal-layout';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { t } from '@/lib/i18n';
-import { keys } from '@/lib/query-keys';
-
-type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
-type KycStatusDto = components['schemas']['KycStatusDto'];
+import { kycConfigQuery, kycStatusQuery } from '@/lib/api/kyc';
 
 interface StepItem {
   num: number;
@@ -147,11 +142,9 @@ function KycShell({ children }: { children: React.ReactNode }) {
    */
   const kycReadable = user?.emailVerified === true;
 
-  const config = useResource(
-    keys.kyc.config(),
-    async (signal) => (await api.get<KycStepConfigDto[]>('/kyc/config', { signal })).data,
-    { enabled: kycReadable },
-  );
+  const config = useResource(kycConfigQuery.queryKey, kycConfigQuery.queryFn, {
+    enabled: kycReadable,
+  });
   /*
    * The SERVER's verdict on every step — the same key the form reads, so this
    * is the request it makes anyway. A tick on the rail used to mean only "comes
@@ -160,11 +153,9 @@ function KycShell({ children }: { children: React.ReactNode }) {
    * testing). A tick now means the server calls the step complete — the
    * judgement `submit` applies.
    */
-  const status = useResource(
-    keys.kyc.status(),
-    async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
-    { enabled: kycReadable },
-  );
+  const status = useResource(kycStatusQuery.queryKey, kycStatusQuery.queryFn, {
+    enabled: kycReadable,
+  });
   const completed = new Set(
     (status.data?.steps ?? []).filter((state) => state.complete).map((state) => state.slug),
   );

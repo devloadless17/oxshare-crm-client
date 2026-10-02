@@ -137,7 +137,24 @@ export function CommissionTransferDialog({
   const submittable = trimmed !== '' && !overBalance && !transfer.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        /*
+         * Not while a transfer is in flight: closing then hid its outcome — the
+         * refusal, or the success that clears the field — from the partner.
+         */
+        if (!next && transfer.isPending) return;
+        /*
+         * A refusal belongs to the attempt it answered. Kept, it greeted the
+         * partner the next time they opened the dialog, before they had sent
+         * anything. The amount and the idempotency key stay: a retry of the
+         * identical transfer must still resolve to one transfer.
+         */
+        if (!next) setError(null);
+        onOpenChange(next);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('partner.commissionTransferTitle')}</DialogTitle>
@@ -209,7 +226,10 @@ export function CommissionTransferDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => {
+                setError(null);
+                onOpenChange(false);
+              }}
               disabled={transfer.isPending}
             >
               {t('partner.commissionCancel')}

@@ -26,9 +26,7 @@ import {
 import { useUser } from '@/context/UserContext';
 import { usePartnerAccess } from '@/hooks/use-partner-access';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
 import { externalLinksApi, type ExternalLink } from '@/lib/api/external-links';
-import type { components } from '@/lib/api/types.gen';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { UserMenu } from './user-menu';
 import { isActivePath, NavGroup, NavLink, useNavSelection, type NavItem } from './sidebar-nav';
@@ -39,8 +37,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { NotificationsSheet } from './notifications-sheet';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
-
-type KycStatusDto = components['schemas']['KycStatusDto'];
+import { kycStatusQuery } from '@/lib/api/kyc';
 
 export type { NavItem } from './sidebar-nav';
 
@@ -120,8 +117,8 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
   const rail = collapsed && !mobileOpen;
 
   const { data: kycStatus = 'not_started' } = useQuery({
-    queryKey: keys.kyc.status(),
-    queryFn: async () => (await apiClient.get<KycStatusDto | null>('/kyc/status')).data ?? null,
+    queryKey: kycStatusQuery.queryKey,
+    queryFn: ({ signal }) => kycStatusQuery.queryFn(signal),
     select: (dto) => dto?.status ?? 'not_started',
     enabled: user?.emailVerified === true,
     retry: false,

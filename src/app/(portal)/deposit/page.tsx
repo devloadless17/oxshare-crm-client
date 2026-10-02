@@ -20,6 +20,7 @@ import {
 } from '@/components/money/deposit-forms';
 import { DepositCreated } from '@/components/money/deposit-created';
 import { useResource } from '@/hooks/use-resource';
+import { firstUnready } from '@/lib/resource-status';
 import { newIdempotencyKey } from '@/lib/api/client';
 import { depositsApi, type DepositRequest, type PaymentMethod } from '@/lib/api/deposits';
 import { apiErrorMessage, apiFieldErrors } from '@/lib/api/errors';
@@ -88,6 +89,13 @@ export default function DepositPage() {
   const accounts = useResource(keys.tradingAccounts.transferable(), (signal) =>
     tradingApi.getTransferableAccounts(signal),
   );
+  /*
+   * ONE boundary over all three reads. Only the methods used to gate the form,
+   * so while `GET /wallet` was in flight — or after it failed — the destination
+   * step said "Not opened yet" beside a wallet that holds money, and a failed
+   * accounts read silently offered no trading account at all.
+   */
+  const ready = firstUnready(methods, wallets, accounts);
 
   /*
    * `flex min-h-0 flex-1` so the card is BOUNDED by the viewport rather than as
@@ -115,12 +123,21 @@ export default function DepositPage() {
 
       <AsyncBoundary
         fill
-        status={methods.status}
+        status={ready.status}
         label={t('deposit.loadingMethods')}
-        endpoints={['GET /payments/methods', 'POST /payments/deposits']}
-        onRetry={() => methods.refetch()}
-        errorMessage={t('deposit.methodsFailed')}
-        error={methods.error}
+        endpoints={[
+          'GET /payments/methods',
+          'GET /wallet',
+          'GET /trading/accounts/transferable',
+          'POST /payments/deposits',
+        ]}
+        onRetry={() => {
+          void methods.refetch();
+          void wallets.refetch();
+          void accounts.refetch();
+        }}
+        errorMessage={ready === methods ? t('deposit.methodsFailed') : t('money.balancesFailed')}
+        error={ready.error}
       >
         <DepositFlow
           methods={methods.data ?? []}
@@ -249,6 +266,9 @@ function DepositFlow({
             setAmount('');
             setDetails({});
             setDetailErrors({});
+            // The receipt proved the deposit just declared. Kept, it rode along
+            // on the next one unless the client noticed and replaced it.
+            setProof(null);
             setError(null);
           }}
         />
@@ -420,6 +440,8 @@ function DepositFlow({
                       // And the answers: each method asks its own questions.
                       setDetails({});
                       setDetailErrors({});
+                      // And the receipt: it proves a payment made through ONE method.
+                      setProof(null);
                     }}
                     title={method.name}
                     logoUrl={method.logoUrl}

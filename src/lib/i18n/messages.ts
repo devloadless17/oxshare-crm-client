@@ -419,7 +419,9 @@ export const messages = {
   'auth.reset.confirmPassword': 'Confirm Password',
   'auth.reset.submitting': 'Resetting Password…',
   'auth.reset.submitCta': 'Update Password',
-  'auth.reset.missingToken': 'Password reset token is missing.',
+  'auth.reset.missingToken':
+    'This reset link is incomplete. Request a new one and use the link in that email.',
+  'auth.reset.requestNewLink': 'Request a new link',
   'auth.reset.failed': 'Password reset failed.',
 
   'auth.verify.heading': 'Email Verification',
@@ -1687,6 +1689,7 @@ export const messages = {
   'partner.applyFootnote': 'We review every request and email you the decision.',
   'partner.submit': 'Request to become a partner',
   'partner.submitting': 'Submitting…',
+  'partner.agenciesFailed': 'The programmes you can apply for could not be loaded.',
   'partner.submitFailed': 'Your application could not be submitted. Please try again.',
 
   // Awaiting a decision.
@@ -2139,6 +2142,7 @@ export const messages = {
   'money.stepDone': 'Done',
   'money.useMax': 'Use max',
   'money.back': 'Back',
+  'money.balancesFailed': 'Could not load your balances.',
   'money.continue': 'Continue',
   'money.availableBalance': 'Available: {amount}',
 

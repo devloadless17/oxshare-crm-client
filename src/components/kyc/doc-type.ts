@@ -1,25 +1,3 @@
-/**
- * The label an operator configures ↔ the value the API stores.
- *
- * The KYC builder holds document types as human labels — "National ID" — because
- * that is what the client reads on the form and what an operator types when
- * adding a new one. `kyc_submissions.document.docType` has always held
- * `national_id`, and `kyc.service.ts` still reads exactly that.
- *
- * So one of the two has to convert, and it is this: slugging a label is total
- * and stable, while asking operators to type snake_case in a client-facing
- * field would leak storage detail into the UI. Every submission written before
- * document types became configurable keeps reading correctly.
- */
-export function docTypeSlug(label: string | undefined): string {
-  if (!label) return '';
-  return label
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-}
-
 /** The shape this module needs off a field — structural, so generated types fit. */
 interface KycFieldLike {
   name: string;

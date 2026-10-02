@@ -22,6 +22,17 @@ export { compareValues, type SortType };
 import { Pagination } from './pagination';
 import { CursorPagination } from './cursor-pagination';
 import { t } from '@/lib/i18n';
+/* twin:config:start */
+// The portal has no reader mask: a client never has a field hidden from
+// themselves. These stand in for the admin's `useAdmin` and `isMasked`, which
+// the admin twin imports inside ITS config block, so the body stays identical.
+function useAdmin(): { admin?: { maskedFields?: readonly string[] } } {
+  return {};
+}
+function isMasked(field: string, mask: readonly string[] | undefined): boolean {
+  return Boolean(mask?.includes(field));
+}
+/* twin:config:end */
 
 export interface Column<T> {
   header: string;
@@ -46,13 +57,12 @@ export interface Column<T> {
    *                for every row, so the header offered a sort that did
    *                nothing at all.
    *   server-side  the header text was sent as `?sort=`, and the API answered
-   *                400 — "sort must be one of createdAt, amount, direction,
-   *                currency, state" — which the portal rendered as "Could not
-   *                load your transactions" over an empty page.
+   *                400 — `Cannot sort transactions by "Method". Allowed:
+   *                createdAt, amount, state.` — which the screen rendered as a
+   *                failed load over an empty table.
    *
-   * The second is how it was found: /transactions marks its Method column
-   * unsortable BY OMITTING `sortKey`, exactly as intended, and the fallback
-   * overrode that and broke the screen.
+   * This app hit the second on its /transactions screen; the admin twin carries
+   * the same shape across its server-sorted pages.
    */
   sortKey?: string;
   /**
@@ -132,6 +142,16 @@ export interface DataTableProps<T> {
    * it twice and then navigate away from the row it just opened.
    */
   onRowDoubleClick?: (row: T) => void;
+  /**
+   * Open the row's record — its detail panel. A single click anywhere on the
+   * row that did not land on a control inside it, or Enter/Space on the
+   * focused row; the row is then a keyboard stop, labelled by `rowLabel`.
+   */
+  onRowClick?: (row: T) => void;
+  /** Names a clickable row for assistive tech ("Open deposit of $11.11 from …"). */
+  rowLabel?: (row: T) => string;
+  /** The row whose record is open — marked so the reader keeps their place. */
+  activeRowKey?: string;
 
   // --- Row Selection Props ---
   selectable?: boolean;
@@ -213,6 +233,17 @@ export interface DataTableProps<T> {
   };
 }
 
+/**
+ * Sort keys that order by the CLIENT joined onto a row, on every list that
+ * offers them, by the field that hides them. The API refuses such a sort for a
+ * role that hides the field (D-82: a sort spells the column out), so the
+ * header is not offered. The clients list's own columns guard themselves.
+ */
+const CLIENT_IDENTITY_SORTS: Readonly<Record<string, string>> = {
+  userEmail: 'client.email',
+  userFirstName: 'client.firstName',
+};
+
 export function DataTable<T>({
   caption,
   columns,
@@ -224,6 +255,9 @@ export function DataTable<T>({
   loadingText = 'Loading table data...',
   fill = false,
   onRowDoubleClick,
+  onRowClick,
+  rowLabel,
+  activeRowKey,
   selectable = false,
   selectedRowKeys: controlledSelectedKeys,
   onSelectionChange,
@@ -238,6 +272,8 @@ export function DataTable<T>({
   clientPagination,
   cursorPagination,
 }: DataTableProps<T>) {
+  // The reader's own mask — null outside a signed-in console (tests, sign-in).
+  const readerMask = useAdmin().admin?.maskedFields;
   // Local states for uncontrolled usage
   const [localSelectedKeys, setLocalSelectedKeys] = React.useState<string[]>([]);
   const [localExpandedKeys, setLocalExpandedKeys] = React.useState<string[]>([]);
@@ -290,9 +326,24 @@ export function DataTable<T>({
    *
    * SCOPE, stated because it is not obvious from the UI: this sorts the rows
    * currently HELD, which for a paginated table is one page. "The largest
-   * withdrawal" is therefore the largest of 25 unless the endpoint sorts. No
-   * list endpoint accepts a sort parameter today (PLATFORM-CONVENTIONS R-2.5),
-   * so callers that need a true ordering must not mark a column sortable.
+   * withdrawal" is therefore the largest of 25 unless the endpoint sorts.
+   *
+   * ⚠️ "No list endpoint accepts a sort parameter today" — this comment said
+   * that, and it stopped being true. Twelve `*_SORT_COLUMNS` allowlists exist on
+   * the API and screens in both apps pass `onSortChange`, so the
+   * sentence described the system as it was before server-side sorting landed
+   * and was left vouching for a decision nobody was still making.
+   *
+   * The rule it was reaching for still holds, so here it is in the form that
+   * stays true: A COLUMN MAY ONLY BE `sortable` IF EITHER the caller passes
+   * `onSortChange` — server-side, a true ordering — OR the table holds the whole
+   * dataset (`clientPagination`), where sorting first and slicing second is
+   * honest. Marking a column sortable on a SERVER-PAGINATED table with no
+   * `onSortChange` is the case that lies, and it is the one this comment has to
+   * keep warning about.
+   *
+   * (In the admin twin, `products` and `agencies` are the callers on the second
+   * branch: their list endpoints take no pagination, so the array is everything.)
    *
    * This comment used to point at a `sortScopeNote` that told the operator which
    * of the two they were looking at. No such identifier existed anywhere in the
@@ -630,7 +681,11 @@ export function DataTable<T>({
                 {/* Columns */}
                 {columns.map((c, idx) => {
                   const sortKey = c.sortKey;
-                  const isSortable = c.sortable !== false && Boolean(sortKey);
+                  const hiddenField = sortKey ? CLIENT_IDENTITY_SORTS[sortKey] : undefined;
+                  const isSortable =
+                    c.sortable !== false &&
+                    Boolean(sortKey) &&
+                    !(hiddenField && isMasked(hiddenField, readerMask));
                   const isActiveSort = isSortable && sortCol === sortKey;
 
                   return (
@@ -724,13 +779,50 @@ export function DataTable<T>({
                 const key = rowKey(row);
                 const isSelected = selectedKeys.includes(key);
                 const isExpanded = expandedKeys.includes(key);
+                const isActive = activeRowKey === key;
+                // A click that landed on a control inside the row is the
+                // control's, never the row's.
+                const onControl = (target: EventTarget) =>
+                  (target as HTMLElement).closest(
+                    'a, button, input, select, textarea, label, [role="button"], [role="menuitem"]',
+                  ) !== null;
 
                 return (
                   <React.Fragment key={key}>
                     <tr
                       className={`group transition-colors ${
-                        isSelected ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-muted/40'
-                      }`}
+                        isActive
+                          ? 'bg-primary/10 shadow-[inset_3px_0_0_var(--color-primary)]'
+                          : isSelected
+                            ? 'bg-primary/5 hover:bg-primary/10'
+                            : 'hover:bg-muted/40'
+                      } ${onRowClick ? 'cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring' : ''}`}
+                      data-active={isActive || undefined}
+                      data-row-key={onRowClick ? key : undefined}
+                      aria-current={isActive || undefined}
+                      tabIndex={onRowClick ? 0 : undefined}
+                      aria-label={onRowClick && rowLabel ? rowLabel(row) : undefined}
+                      onClick={
+                        onRowClick
+                          ? (event) => {
+                              if (onControl(event.target)) return;
+                              // A drag that selected text is a copy, not a click.
+                              if (window.getSelection()?.toString()) return;
+                              onRowClick(row);
+                            }
+                          : undefined
+                      }
+                      onKeyDown={
+                        onRowClick
+                          ? (event) => {
+                              if (event.target !== event.currentTarget) return;
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                onRowClick(row);
+                              }
+                            }
+                          : undefined
+                      }
                       onDoubleClick={
                         onRowDoubleClick
                           ? (event) => {
