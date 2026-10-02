@@ -2230,6 +2230,7 @@ export const messages = {
   'deposit.toAccountHint': 'Funded automatically once the payment clears.',
   'deposit.amountRange': 'Between {min} and {max}',
   'deposit.amountBelowMin': 'The minimum deposit is {min}.',
+  'deposit.amountInvalid': 'Enter the amount as a number, for example 100.00.',
   // Names the rail rather than the currency: "USD takes 2 decimal places" reads
   // as a fact about money, which invites arguing with it. "Whish Money takes
   // USD to 2 decimal places" is a fact about the rail the client just chose.
