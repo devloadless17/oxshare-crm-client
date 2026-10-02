@@ -299,6 +299,7 @@ export const messages = {
   'auth.register.postalCodeHint': 'Leave blank if your address has none.',
   'auth.register.optional': '(optional)',
   'auth.register.required': 'This field is required.',
+  'auth.register.phoneIncomplete': 'Enter your full number after the country code.',
   'auth.register.emailInvalid': 'Enter a valid email address.',
   'auth.register.fixHighlighted': 'Please correct the highlighted fields.',
   'auth.register.listLoading': 'Loading…',
