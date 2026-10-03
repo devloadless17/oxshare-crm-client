@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { KIND_CONFIG, queryKeysFor, resyncKeysOnReconnect } from './notification-kinds';
 import { keys, REGISTERED_ROOTS } from '@/lib/query-keys';
+import { setActiveLocale } from '@/lib/i18n';
 
 /**
  * The test that would have caught the bug the owner reported: "when I fund a
@@ -135,6 +136,45 @@ describe('a reason set into a sentence', () => {
   it('does not double the full stop the reviewer typed', () => {
     const vars = KIND_CONFIG['kyc.rejected']?.vars?.({ reason: 'The photo is blurred.' });
     expect(vars).toEqual({ reason: 'The photo is blurred' });
+  });
+});
+
+/**
+ * `params.reasonAr` is the configured reason's Arabic, resolved by the server
+ * on read (0179). An Arabic reader gets it; an English reader, or a reason the
+ * reviewer typed themselves (no `reasonAr`), gets the English as written.
+ */
+describe('the reason in the reader’s language', () => {
+  afterEach(() => setActiveLocale('en'));
+  const params = { reason: 'Document expired.', reasonAr: 'الوثيقة منتهية الصلاحية.' };
+
+  it.each([
+    'kyc.rejected',
+    'deposit.rejected',
+    'withdrawal.rejected',
+    'partner.rejected',
+    'wallet.credited',
+  ])('%s: Arabic when reading Arabic', (kind) => {
+    setActiveLocale('ar');
+    expect(KIND_CONFIG[kind]?.vars?.(params)).toMatchObject({
+      reason: 'الوثيقة منتهية الصلاحية',
+    });
+  });
+
+  it('English when reading English, whatever Arabic was sent', () => {
+    expect(KIND_CONFIG['kyc.rejected']?.vars?.(params)).toEqual({ reason: 'Document expired' });
+  });
+
+  it("the reviewer's own English when there is no Arabic", () => {
+    setActiveLocale('ar');
+    expect(KIND_CONFIG['kyc.rejected']?.vars?.({ reason: 'Blurry photo' })).toEqual({
+      reason: 'Blurry photo',
+    });
+  });
+
+  it('still no reason at all when none was given', () => {
+    setActiveLocale('ar');
+    expect(KIND_CONFIG['kyc.rejected']?.vars?.({ reason: null })).toEqual({ reason: undefined });
   });
 });
 

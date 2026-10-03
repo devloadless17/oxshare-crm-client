@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { MethodTile, MoneySheet } from '@/components/money/money-shell';
 import type { TradingAccount } from '@/lib/api/trading';
 import type { Wallet } from '@/lib/api/wallet';
-import { formatMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { t } from '@/lib/i18n';
 
 /**
@@ -134,7 +134,7 @@ export function TransferDestinations({
             disabled={disabled}
             badge={
               <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                {formatMoney(option.balance, option.currency)}
+                {moneyText(option.balance, option.currency)}
               </span>
             }
           />
@@ -161,7 +161,7 @@ export function TransferDestinations({
           {t('transfer.walletLabel', { currency: currency ?? '' })}
         </p>
         <p className="text-[11px] text-muted-foreground">
-          {wallet ? formatMoney(wallet.available, wallet.currency) : t('transfer.walletUnopened')}
+          {wallet ? moneyText(wallet.available, wallet.currency) : t('transfer.walletUnopened')}
         </p>
       </div>
     </div>

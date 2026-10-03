@@ -1,6 +1,7 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/i18n/server';
 
-export const metadata: Metadata = { title: 'Partner programme — OXShare' };
+// In the visitor's language (lib/i18n/server.ts).
+export const generateMetadata = () => pageMetadata('meta.partner');
 
 export default function PartnerLayout({ children }: { children: React.ReactNode }) {
   return children;

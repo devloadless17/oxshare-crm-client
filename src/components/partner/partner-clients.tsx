@@ -48,7 +48,11 @@ type Filter = 'all' | 'verified' | 'unverified';
  * that overflowed the frame would scroll inside it, and the page already
  * scrolls; a page shorter than it would leave the pager floating in white space.
  */
-const PAGING = { noun: ['client', 'clients'] as [string, string], pageSize: TABLE_PAGE_SIZE };
+const paging = () => ({
+  // Resolved per render: the noun lands inside a translated sentence.
+  noun: [t('partner.nounClient'), t('partner.nounClients')] as [string, string],
+  pageSize: TABLE_PAGE_SIZE,
+});
 
 export function PartnerClients({ data }: { data: IbOverview }) {
   const [query, setQuery] = React.useState('');
@@ -168,7 +172,7 @@ export function PartnerClients({ data }: { data: IbOverview }) {
           columns={columns}
           rows={rows}
           rowKey={(row) => String(row.userId)}
-          clientPagination={PAGING}
+          clientPagination={paging()}
           fill
           empty={
             <EmptyState

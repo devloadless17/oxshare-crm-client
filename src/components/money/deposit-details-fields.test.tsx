@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/render';
+import { setActiveLocale } from '@/lib/i18n';
 import {
   answeredDetails,
   DepositDetailsFields,
@@ -21,6 +22,8 @@ const PHONE: ProofFieldQuestion = {
   type: 'phone',
   required: true,
   hint: null,
+  labelAr: null,
+  hintAr: null,
 };
 const CODE: ProofFieldQuestion = {
   id: 'f_code000001',
@@ -28,6 +31,8 @@ const CODE: ProofFieldQuestion = {
   type: 'text',
   required: false,
   hint: 'On your OMT slip',
+  labelAr: 'رمز التحويل',
+  hintAr: 'على إيصال OMT',
 };
 
 describe('the details an offline method asks for (backend 0163)', () => {
@@ -80,5 +85,28 @@ describe('the details an offline method asks for (backend 0163)', () => {
     const form = post.mock.calls[0]?.[1] as FormData;
     expect(form.get('details[f_phone00001]')).toBe('+961 70 123 456');
     expect(form.get('method')).toBe('omt');
+  });
+});
+
+/**
+ * ARABIC (0179): the question and its hint in the operator's Arabic, the
+ * answer still keyed by the field's id — nothing displayed reaches the request.
+ */
+describe('the details in Arabic', () => {
+  afterEach(() => setActiveLocale('en'));
+
+  it('asks in Arabic and answers under the same field id', async () => {
+    setActiveLocale('ar');
+    const onChange = vi.fn();
+    renderWithProviders(
+      <DepositDetailsFields fields={[PHONE, CODE]} values={{}} onChange={onChange} />,
+    );
+    expect(screen.getByText('رمز التحويل')).toBeInTheDocument();
+    expect(screen.getByText('على إيصال OMT')).toBeInTheDocument();
+    // No Arabic written for the phone question: its English, never a blank.
+    expect(screen.getByText('Phone number you sent from')).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/رمز التحويل/), 'Z');
+    expect(onChange).toHaveBeenLastCalledWith({ f_code000001: 'Z' });
   });
 });

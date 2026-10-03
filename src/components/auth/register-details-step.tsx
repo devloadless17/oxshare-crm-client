@@ -26,7 +26,8 @@ import {
   type RegisterField,
   type RegisterValues,
 } from '@/lib/register-form';
-import { t } from '@/lib/i18n';
+import { localized, t } from '@/lib/i18n';
+import { sortByLabel } from '@/lib/kyc-text';
 
 /**
  * Sign-up, step 2 — the personal details the identity verification opens with.
@@ -117,6 +118,7 @@ export function RegisterDetailsStep({
               label={t('auth.register.nationality')}
               value={values.nationality}
               choices={options.data?.nationalities}
+              labelsAr={options.data?.nationalityLabelsAr}
               status={options.status}
               invalid={Boolean(errors.nationality)}
               onChange={(value) => onChange('nationality', value)}
@@ -134,6 +136,7 @@ export function RegisterDetailsStep({
               label={t('auth.register.country')}
               value={values.country}
               choices={options.data?.countries}
+              labelsAr={options.data?.countryLabelsAr}
               status={options.status}
               invalid={Boolean(errors.country)}
               withFlags
@@ -308,6 +311,7 @@ function ChoiceSelect({
   label,
   value,
   choices,
+  labelsAr,
   status,
   invalid,
   withFlags = false,
@@ -317,6 +321,8 @@ function ChoiceSelect({
   label: string;
   value: string;
   choices: readonly string[] | undefined;
+  /** Arabic per choice, keyed by the English VALUE — shown, never submitted. */
+  labelsAr?: Record<string, string> | null;
   status: Resource<ProfileOptions>['status'];
   invalid: boolean;
   withFlags?: boolean;
@@ -339,13 +345,13 @@ function ChoiceSelect({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        {(choices ?? []).map((choice) => {
+        {sortByLabel(choices ?? [], labelsAr).map((choice) => {
           const flag = withFlags ? COUNTRY_CODE_BY_NAME.get(choice) : undefined;
           return (
             <SelectItem key={choice} value={choice}>
               <span className="flex items-center gap-2">
                 {flag && <CountryFlagIcon code={flag} />}
-                <span>{choice}</span>
+                <span>{localized(choice, labelsAr?.[choice])}</span>
               </span>
             </SelectItem>
           );

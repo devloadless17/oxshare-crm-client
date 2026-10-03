@@ -3,10 +3,10 @@
 import Decimal from 'decimal.js';
 import { HAIRLINE_GRID, Stat, Surface } from '@/components/partner/partner-ui';
 import type { Statement, StatementLine } from '@/lib/api/wallet';
-import { formatMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { describeLine, shortReference } from '@/lib/statement';
 import { formatDay } from '@/components/transactions/statement-export';
-import { t } from '@/lib/i18n';
+import { intlLocale, t } from '@/lib/i18n';
 
 /**
  * The statement itself: four figures that reconcile, then every line.
@@ -30,7 +30,7 @@ export function StatementBody({
   walletName: string;
   dimmed: boolean;
 }) {
-  const money = (value: string) => formatMoney(value, statement.currency);
+  const money = (value: string) => moneyText(value, statement.currency);
   const period = `${formatDay(statement.from)} – ${formatDay(statement.to)}`;
   const credits = statement.lines.filter((l) => !new Decimal(l.amount).isNegative()).length;
 
@@ -155,7 +155,7 @@ export function StatementBody({
                     <div className="min-w-0">
                       <p className="text-sm font-medium">{describeLine(line, walletName)}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        {new Date(line.createdAt).toLocaleString(undefined, {
+                        {new Date(line.createdAt).toLocaleString(intlLocale(), {
                           dateStyle: 'medium',
                           timeStyle: 'short',
                         })}{' '}
@@ -202,9 +202,9 @@ function LineRow({
   return (
     <tr className="h-px border-b border-border/60">
       <td className="px-5 py-2.5 whitespace-nowrap text-muted-foreground">
-        {at.toLocaleDateString()}{' '}
+        {at.toLocaleDateString(intlLocale())}{' '}
         <span className="text-xs">
-          {at.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+          {at.toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' })}
         </span>
       </td>
       <td className="px-3 py-2.5">{describeLine(line, walletName)}</td>

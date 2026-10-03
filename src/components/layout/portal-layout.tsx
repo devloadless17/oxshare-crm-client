@@ -36,8 +36,9 @@ import { useRailPreference } from './use-rail-preference';
 import { usePhoneDrawer } from './use-phone-drawer';
 import { BrandLogo } from '@/components/brand-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { NotificationsSheet } from './notifications-sheet';
-import { t } from '@/lib/i18n';
+import { localized, t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
 type KycStatusDto = components['schemas']['KycStatusDto'];
@@ -342,6 +343,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
               used to be a Theme ▸ submenu inside the account menu offering
               System as well; the toggle is the whole control now.
             */}
+            <LanguageSwitcher />
             <ThemeToggle />
             <NotificationsSheet />
 
@@ -460,33 +462,41 @@ function ExternalLinksSection({
         )}
       </div>
 
-      {links.map((link) => (
-        <a
-          key={link.id}
-          href={link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={onNavigate}
-          /*
-           * The DESCRIPTION is the tooltip when there is one, because that is
-           * the thing the operator wrote to explain the link. Collapsed with no
-           * description, the title is all there is to identify the icon by.
-           */
-          title={link.description ?? (collapsed ? link.title : undefined)}
-          aria-label={t('nav.opensInNewTab', { title: link.title })}
-          // The menu's NEUTRAL hover (see sidebar-nav.tsx) — a brand-tinted
-          // hover reads as a second selected row.
-          className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-outline ${
-            collapsed ? 'justify-center px-0' : ''
-          }`}
-        >
-          <ArrowUpRight
-            className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-foreground"
-            aria-hidden="true"
-          />
-          {!collapsed && <span className="flex-1 truncate">{link.title}</span>}
-        </a>
-      ))}
+      {links.map((raw) => {
+        // The operator's title and description in the reader's language (0179).
+        const link = {
+          ...raw,
+          title: localized(raw.title, raw.titleAr),
+          description: raw.description ? localized(raw.description, raw.descriptionAr) : null,
+        };
+        return (
+          <a
+            key={link.id}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onNavigate}
+            /*
+             * The DESCRIPTION is the tooltip when there is one, because that is
+             * the thing the operator wrote to explain the link. Collapsed with no
+             * description, the title is all there is to identify the icon by.
+             */
+            title={link.description ?? (collapsed ? link.title : undefined)}
+            aria-label={t('nav.opensInNewTab', { title: link.title })}
+            // The menu's NEUTRAL hover (see sidebar-nav.tsx) — a brand-tinted
+            // hover reads as a second selected row.
+            className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-outline ${
+              collapsed ? 'justify-center px-0' : ''
+            }`}
+          >
+            <ArrowUpRight
+              className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-foreground rtl:-scale-x-100"
+              aria-hidden="true"
+            />
+            {!collapsed && <span className="flex-1 truncate">{link.title}</span>}
+          </a>
+        );
+      })}
     </>
   );
 }

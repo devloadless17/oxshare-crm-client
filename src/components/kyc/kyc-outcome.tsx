@@ -8,7 +8,7 @@ import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { clearKycDraft } from '@/lib/kyc-draft';
-import { t } from '@/lib/i18n';
+import { localized, t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 import { KycSubmissionDetails } from './kyc-submission-details';
 import { rejectedFieldLabels } from '@/lib/kyc-documents';
@@ -57,7 +57,10 @@ export function KycOutcome() {
   const isRejected = status === 'rejected';
   // A verified client asked to UPDATE — worded as a request, never as a refusal.
   const isReverify = isRejected && Boolean(statusQuery.data?.reverificationRequestedAt);
-  const rejectionReason = statusQuery.data?.rejectionReason ?? '';
+  const rejectionReason = localized(
+    statusQuery.data?.rejectionReason ?? '',
+    statusQuery.data?.rejectionReasonAr,
+  );
   // Labels only — the same cached config the details table reads, and a failure
   // leaves the chips on humanised ids rather than blocking the screen.
   const configQuery = useResource(

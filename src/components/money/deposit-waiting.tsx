@@ -15,9 +15,10 @@ import {
   type PaymentMethod,
 } from '@/lib/api/deposits';
 import { apiErrorMessage } from '@/lib/api/errors';
-import { compareMoney, formatMoney } from '@/lib/money';
+import { compareMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { keys } from '@/lib/query-keys';
-import { t } from '@/lib/i18n';
+import { localized, t } from '@/lib/i18n';
 
 /** How often the card asks OUR API (never the provider) whether it has settled. */
 const POLL_MS = 8_000;
@@ -113,10 +114,13 @@ export function DepositWaiting({
       <dl className="mx-auto max-w-sm divide-y divide-border">
         <SummaryRow
           label={t('deposit.amountLabel')}
-          value={formatMoney(deposit.amount, deposit.currency)}
+          value={moneyText(deposit.amount, deposit.currency)}
           strong
         />
-        <SummaryRow label={t('deposit.methodTitle')} value={method.name} />
+        <SummaryRow
+          label={t('deposit.methodTitle')}
+          value={localized(method.name, method.nameAr)}
+        />
         <SummaryRow label={t('deposit.referenceLabel')} value={deposit.reference} />
       </dl>
 
@@ -138,7 +142,7 @@ export function DepositWaiting({
           <Button asChild size="lg" className="w-full">
             <a href={deposit.paymentUrl} target="_blank" rel="noopener noreferrer">
               {t('deposit.openPaymentPage')}
-              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              <ExternalLink className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
             </a>
           </Button>
           {remaining !== null && (
@@ -200,14 +204,14 @@ function StatusLine({
         <p className="flex items-center justify-center gap-2 text-sm font-semibold text-success">
           <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
           {t('deposit.waitingReceived', {
-            amount: formatMoney(outcome.amount, outcome.currency),
+            amount: moneyText(outcome.amount, outcome.currency),
             currency,
           })}
         </p>
         {differs && outcome.requestedAmount && (
           <p className="text-[11px] text-muted-foreground">
             {t('deposit.waitingDifferent', {
-              requested: formatMoney(outcome.requestedAmount, outcome.currency),
+              requested: moneyText(outcome.requestedAmount, outcome.currency),
             })}
           </p>
         )}

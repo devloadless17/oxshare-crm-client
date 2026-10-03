@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import { renderWithProviders } from '@/test/render';
+import { setActiveLocale } from '@/lib/i18n';
 import { ReviewSummary } from './review-summary';
 import type { components } from '@/lib/api/types.gen';
 
@@ -28,10 +29,13 @@ const docField = (
   document: {
     value,
     label,
+    // The catalogue's Arabic, as the API serves it (0179).
+    labelAr: `ar:${label}`,
     category: category as 'identity' | 'address',
     parts: parts.map((part, i) => ({
       key: i === 0 ? 'front' : 'back',
       label: part,
+      labelAr: `ar:${part}`,
       required: true,
     })),
   },
@@ -126,5 +130,58 @@ describe('the review screen, read off the server', () => {
     const done = { ...STATUS, steps: STATUS.steps.map((s) => complete(s.slug)) } as Status;
     renderWithProviders(<ReviewSummary title="Review" steps={STEPS} status={done} />);
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+});
+
+describe('the review screen in Arabic', () => {
+  beforeEach(() => setActiveLocale('ar'));
+  afterEach(() => setActiveLocale('en'));
+
+  const arabicSteps: Step[] = [
+    {
+      ...STEPS[0]!,
+      titleAr: 'المعلومات الشخصية',
+      fields: [
+        {
+          id: 'f1',
+          name: 'firstName',
+          label: 'First Name',
+          labelAr: 'الاسم الأول',
+          type: 'text',
+          required: true,
+        },
+        {
+          id: 'f2',
+          name: 'country',
+          label: 'Country',
+          labelAr: 'البلد',
+          type: 'select',
+          required: true,
+          options: ['Lebanon'],
+          optionsAr: { Lebanon: 'لبنان' },
+        },
+      ],
+    },
+    { ...STEPS[1]!, titleAr: 'وثيقة الهوية' },
+  ];
+  const status = {
+    ...STATUS,
+    personalInfo: { firstName: 'Jane', country: 'Lebanon' },
+    steps: [complete('personal'), complete('document')],
+  } as unknown as Status;
+
+  it('titles each section, labels each answer and shows a choice in Arabic', () => {
+    renderWithProviders(<ReviewSummary title="مراجعة" steps={arabicSteps} status={status} />);
+    const personal = sectionOf('المعلومات الشخصية');
+    expect(personal).toHaveTextContent('الاسم الأول');
+    expect(personal).toHaveTextContent('البلد');
+    // The stored English answer, read in Arabic — the value itself is untouched.
+    expect(personal).toHaveTextContent('لبنان');
+    expect(personal).not.toHaveTextContent('Lebanon');
+  });
+
+  it("names the document and its pages by the catalogue's Arabic", () => {
+    renderWithProviders(<ReviewSummary title="مراجعة" steps={arabicSteps} status={status} />);
+    expect(sectionOf('وثيقة الهوية')).toHaveTextContent('ar:National ID · ar:Front Side');
   });
 });

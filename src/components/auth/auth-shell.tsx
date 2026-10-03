@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { ShieldCheck, Globe2, LineChart } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
@@ -109,7 +110,10 @@ export function AuthShell({
             >
               <BrandLogo />
             </Link>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher />
+              <ThemeToggle />
+            </div>
           </div>
 
           {/*
@@ -159,7 +163,7 @@ function BrandPanel({ homeHref }: { homeHref: string }) {
       */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -right-24 -top-24 h-[30rem] w-[30rem] rounded-full opacity-[0.14] blur-3xl"
+        className="pointer-events-none absolute -end-24 -top-24 h-[30rem] w-[30rem] rounded-full opacity-[0.14] blur-3xl"
         style={{ background: 'radial-gradient(circle, var(--primary) 0%, transparent 70%)' }}
       />
 

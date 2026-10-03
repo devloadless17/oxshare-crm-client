@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { csvCell, describeLine, periodRange, shortReference, statementCsv } from './statement';
 import type { StatementLine } from '@/lib/api/wallet';
+import { setActiveLocale } from '@/lib/i18n';
 
 /**
  * The statement's pure rules. Each has a wrong answer that renders perfectly:
@@ -17,6 +18,7 @@ const line = (patch: Partial<StatementLine>): StatementLine => ({
   amount: '100.00000000',
   balanceAfter: '100.00000000',
   methodName: null,
+  methodNameAr: null,
   provider: null,
   tradingAccountLogin: null,
   tradingAccountName: null,
@@ -135,5 +137,24 @@ describe('CSV', () => {
     expect(rows).toHaveLength(5);
     expect(rows[2]).toContain(',1000.00000000,,1010.00000000,');
     expect(rows[3]).toContain(',,4.50000000,1005.50000000,');
+  });
+});
+
+/** The rail's name in the reader's language (`methodNameAr`, 0179). */
+describe('describeLine in Arabic', () => {
+  afterEach(() => setActiveLocale('en'));
+
+  it('names the rail in Arabic when the operator wrote one, else in English', () => {
+    setActiveLocale('ar');
+    expect(describeLine(line({ methodName: 'Whish Money', methodNameAr: 'ويش ماني' }))).toContain(
+      'ويش ماني',
+    );
+    expect(describeLine(line({ methodName: 'Whish Money' }))).toContain('Whish Money');
+  });
+
+  it('keeps the English name for an English reader', () => {
+    expect(describeLine(line({ methodName: 'Whish Money', methodNameAr: 'ويش ماني' }))).toContain(
+      'Whish Money',
+    );
   });
 });

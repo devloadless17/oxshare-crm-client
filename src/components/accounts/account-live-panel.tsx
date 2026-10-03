@@ -7,8 +7,9 @@ import type { Resource } from '@/hooks/use-resource';
 import { apiErrorMessage } from '@/lib/api/errors';
 import type { AccountSnapshot } from '@/lib/api/trading';
 import { formatDecimal, formatMoney, isZeroMoney } from '@/lib/money';
+import { ltr } from '@/lib/bidi';
 import { moneySign } from '@/lib/account-stats';
-import { t } from '@/lib/i18n';
+import { intlLocale, t } from '@/lib/i18n';
 
 /**
  * What MT5 holds on this account right now.
@@ -65,7 +66,7 @@ export function AccountLivePanel({ snapshot }: { snapshot: Resource<AccountSnaps
         */}
         <p className="text-xs text-muted-foreground">
           {readAt
-            ? t('accounts.liveFiguresReadAt', { time: readAt.toLocaleTimeString() })
+            ? t('accounts.liveFiguresReadAt', { time: readAt.toLocaleTimeString(intlLocale()) })
             : t('accounts.liveFiguresNote')}
         </p>
       </header>
@@ -241,7 +242,7 @@ function SignedFigure({
           sign === 'positive' ? 'text-success' : sign === 'negative' ? 'text-destructive' : ''
         }`}
       >
-        {sign === 'positive' ? `+${formatted}` : formatted}
+        {ltr(sign === 'positive' ? `+${formatted}` : formatted)}
       </dd>
       {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
     </div>

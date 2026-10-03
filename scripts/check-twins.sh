@@ -103,6 +103,11 @@ fi
 # (it compares them and reports them as its own), and `money.test.ts` is each
 # app's OWN suite, not a twin — `money.ts` is, and both suites test it. (This
 # note used to say the portal had no test suite; it has one again.)
+# NOT twins since Oct 2026: src/lib/i18n/{index,locale-storage}.ts and
+# src/components/locale-direction.tsx. The portal reads Arabic as well as
+# English, resolves the language per request from a cookie and renders it on the
+# server; the admin console is English-only and keeps its simpler copies. The
+# portal deleted locale-direction.tsx (the root layout sets <html lang dir>).
 TWINS=(
   src/lib/env.ts
   src/lib/api/errors.ts
@@ -122,9 +127,6 @@ TWINS=(
   src/components/pagination.tsx
   src/components/cursor-pagination.tsx
   src/lib/asset-url.test.ts
-  src/lib/i18n/index.ts
-  src/lib/i18n/locale-storage.ts
-  src/components/locale-direction.tsx
   src/components/ui/input.tsx
   src/components/ui/label.tsx
   src/components/ui/select.tsx

@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorDetail, errorDetailFor, withErrorDetail } from '@/components/error-detail';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -343,7 +344,7 @@ export function KycStepForm() {
       if (stepNumber < totalSteps) router.push(`/kyc/step/${stepNumber + 1}`);
       else await submit();
     } catch (e: unknown) {
-      setError(kycErrorMessage(e));
+      setError(withErrorDetail(e, kycErrorMessage(e)));
       setFieldErrors(apiFieldErrors(e));
     } finally {
       setLoading(false);
@@ -393,6 +394,7 @@ export function KycStepForm() {
           className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs font-semibold text-destructive animate-in fade-in-0"
         >
           {error}
+          <ErrorDetail detail={errorDetailFor(error)} />
         </div>
       )}
 

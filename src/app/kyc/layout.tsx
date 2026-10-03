@@ -6,6 +6,7 @@ import type { CSSProperties } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { BrandLogo } from '@/components/brand-logo';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import api from '@/lib/api';
 import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
@@ -14,6 +15,7 @@ import { useUser } from '@/context/UserContext';
 import { PortalLayout } from '@/components/layout/portal-layout';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { t } from '@/lib/i18n';
+import { stepTitle } from '@/lib/kyc-text';
 import { keys } from '@/lib/query-keys';
 
 type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
@@ -27,12 +29,13 @@ interface StepItem {
   slug?: string;
 }
 
-const DEFAULT_STEPS: StepItem[] = [
-  { num: 1, label: 'Personal Info', path: '/kyc/step/1' },
-  { num: 2, label: 'ID Document', path: '/kyc/step/2' },
-  { num: 3, label: 'Selfie', path: '/kyc/step/3' },
-  { num: 4, label: 'Address Proof', path: '/kyc/step/4' },
-  { num: 5, label: 'Review', path: '/kyc/step/5' },
+// A function, so the labels are read in the language of THIS render.
+const defaultSteps = (): StepItem[] => [
+  { num: 1, label: t('kyc.railPersonal'), path: '/kyc/step/1' },
+  { num: 2, label: t('kyc.railDocument'), path: '/kyc/step/2' },
+  { num: 3, label: t('kyc.railSelfie'), path: '/kyc/step/3' },
+  { num: 4, label: t('kyc.railAddress'), path: '/kyc/step/4' },
+  { num: 5, label: t('kyc.railReview'), path: '/kyc/step/5' },
 ];
 
 /**
@@ -131,7 +134,7 @@ function KycShell({ children }: { children: React.ReactNode }) {
    * from one request. These were two independent fetches of /kyc/config on every
    * visit to a step.
    *
-   * Falling back to DEFAULT_STEPS when the config is unavailable is deliberate and
+   * Falling back to `defaultSteps()` when the config is unavailable is deliberate and
    * is the one place in this repo where a fallback is right: this is the progress
    * rail, and showing generic step labels beside a page that is itself reporting
    * the error is better than a blank sidebar. The step page owns telling the user
@@ -180,10 +183,10 @@ function KycShell({ children }: { children: React.ReactNode }) {
    */
   const steps: StepItem[] = (() => {
     const configured = withReviewStep(config.data ?? []);
-    if (configured.length === 0) return DEFAULT_STEPS;
+    if (configured.length === 0) return defaultSteps();
     return configured.map((s) => ({
       num: s.stepNumber,
-      label: s.title,
+      label: stepTitle(s),
       path: `/kyc/step/${s.stepNumber}`,
       slug: s.slug,
     }));
@@ -269,7 +272,10 @@ function KycShell({ children }: { children: React.ReactNode }) {
           */}
           <BrandLogo className="block" />
         </Link>
-        <div className="kyc-header-tag">{t('kyc.layoutTitle')}</div>
+        <div className="flex items-center gap-3">
+          <div className="kyc-header-tag">{t('kyc.layoutTitle')}</div>
+          <LanguageSwitcher />
+        </div>
       </header>
 
       {/* Progress rail. Unconditional now: shell 'none' and 'portal' both return

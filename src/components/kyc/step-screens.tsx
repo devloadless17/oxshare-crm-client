@@ -3,7 +3,7 @@
 import { AlertCircle } from 'lucide-react';
 import { Spinner } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
-import { t } from '@/lib/i18n';
+import { localized, t } from '@/lib/i18n';
 
 /*
  * The KYC step form's states that are not the form — moved out of
@@ -60,7 +60,12 @@ export function StepLoading() {
 export function ReturnedBanner({
   status,
 }: {
-  status: { status?: string; rejectionReason?: string; reverificationRequestedAt?: string } | null;
+  status: {
+    status?: string;
+    rejectionReason?: string;
+    rejectionReasonAr?: string | null;
+    reverificationRequestedAt?: string;
+  } | null;
 }) {
   const returned =
     status?.status === 'rejected' ||
@@ -83,7 +88,7 @@ export function ReturnedBanner({
           <strong className="font-semibold text-destructive">
             {reverify ? t('kyc.reverifyWhy') : t('kyc.rejectionNote')}
           </strong>{' '}
-          {status.rejectionReason}
+          {localized(status.rejectionReason, status.rejectionReasonAr)}
         </p>
       )}
       <p className="text-[11px] text-muted-foreground pt-1">{t('kyc.updateHighlighted')}</p>

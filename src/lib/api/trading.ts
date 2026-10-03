@@ -153,6 +153,12 @@ export interface AccountType {
    */
   product: string;
   /**
+   * The same product's name in Arabic, for display only — `product` stays the
+   * value compared and resolved. Optional: an API without it (or an
+   * untranslated product) shows `product`.
+   */
+  productAr?: string | null;
+  /**
    * The product's id — sent back on create.
    *
    * One MT5 group may back several products since backend 0142, so the group

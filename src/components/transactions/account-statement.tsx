@@ -1,5 +1,6 @@
 'use client';
 
+import { walletName } from '@/lib/wallet-name';
 import * as React from 'react';
 import { Download, FileSpreadsheet, FileText, Printer, Share } from 'lucide-react';
 import { useResource } from '@/hooks/use-resource';
@@ -32,7 +33,8 @@ const PERIOD_LABEL: Record<StatementPeriod, MessageKey> = {
 };
 
 /** A wallet by the name the client knows it by — no currency code or wallet number beside it. */
-const walletLabel = (wallet: Wallet) => wallet.name?.trim() || wallet.currency;
+// Composed from kind + currency, in the reader's language (`lib/wallet-name`).
+const walletLabel = (wallet: Wallet) => walletName(wallet);
 
 /**
  * A wallet's ACCOUNT STATEMENT — the document a client files, prints, or hands

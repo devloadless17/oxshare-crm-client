@@ -12,7 +12,7 @@ import {
   formatDate,
 } from '@/components/partner/partner-ui';
 import type { IbOverview, IbStatus } from '@/lib/api/partner';
-import { t } from '@/lib/i18n';
+import { localized, t } from '@/lib/i18n';
 
 /**
  * The summary tab: the terms a partner sells on, the shape of their book, and
@@ -81,7 +81,9 @@ export function PartnerOverview({
               {t('partner.agencyLabel')}
             </p>
             <p className="mt-2 text-xl font-semibold tracking-tight">
-              {account.agencyName ?? t('partner.programmeNone')}
+              {account.agencyName
+                ? localized(account.agencyName, account.agencyNameAr)
+                : t('partner.programmeNone')}
             </p>
             {account.agencyName ? (
               <>
@@ -96,9 +98,9 @@ export function PartnerOverview({
                 */}
                 {account.products.length > 0 ? (
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {account.products.map((product) => (
+                    {account.products.map((product, i) => (
                       <Pill key={product} tone="neutral">
-                        {product}
+                        {localized(product, account.productsAr?.[i])}
                       </Pill>
                     ))}
                   </div>

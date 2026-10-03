@@ -7,6 +7,7 @@ import { DataTable, EmptyState, type Column } from '@/components/data-table';
 import { useResource } from '@/hooks/use-resource';
 import { tradingApi, type AccountDeal, type AccountHistory } from '@/lib/api/trading';
 import { formatDecimal, formatMoney } from '@/lib/money';
+import { ltr } from '@/lib/bidi';
 import { formatDealTime, moneySign } from '@/lib/account-stats';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
@@ -136,6 +137,7 @@ export function AccountPositions({ accountId, currency }: { accountId: string; c
             pageSize: PAGE_SIZE,
             total,
             onPageChange: setPage,
+            noun: [t('table.row'), t('table.rows')],
           }}
         />
       </AsyncBoundary>
@@ -298,7 +300,7 @@ function Signed({
         sign === 'positive' ? 'text-success' : sign === 'negative' ? 'text-destructive' : ''
       }`}
     >
-      {sign === 'positive' ? `+${formatted}` : formatted}
+      {ltr(sign === 'positive' ? `+${formatted}` : formatted)}
     </span>
   );
 }

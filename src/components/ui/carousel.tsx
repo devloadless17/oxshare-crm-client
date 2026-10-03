@@ -3,6 +3,7 @@
 import * as React from 'react';
 import useEmblaCarousel, { type UseEmblaCarouselType } from 'embla-carousel-react';
 import { cn } from '@/lib/utils';
+import { direction, t } from '@/lib/i18n';
 
 /**
  * shadcn's Carousel, on Embla.
@@ -149,6 +150,12 @@ export function Carousel({
      * being a MOVE rather than a cut.
      */
     duration: reducedMotion ? 12 : 25,
+    /*
+     * Embla lays the track out the way the page reads. Without it an Arabic
+     * page laid the slides left to right inside a right-to-left box, so the
+     * first wallet sat off-screen and a swipe ran the wrong way.
+     */
+    direction: direction(),
     ...opts,
   });
 
@@ -221,11 +228,13 @@ export function Carousel({
   const onKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       // Arrow keys are the keyboard equivalent of a swipe, for somebody already
-      // on the card. The dots below are buttons and reachable by tab.
-      if (event.key === 'ArrowLeft') {
+      // on the card. The dots below are buttons and reachable by tab. In a
+      // right-to-left page the NEXT card is to the left, so the keys swap.
+      const rtl = direction() === 'rtl';
+      if (event.key === (rtl ? 'ArrowRight' : 'ArrowLeft')) {
         event.preventDefault();
         scrollPrev();
-      } else if (event.key === 'ArrowRight') {
+      } else if (event.key === (rtl ? 'ArrowLeft' : 'ArrowRight')) {
         event.preventDefault();
         scrollNext();
       }
@@ -266,7 +275,7 @@ export function Carousel({
         onKeyDown={onKeyDown}
         className={cn('relative', className)}
         role="region"
-        aria-roledescription="carousel"
+        aria-roledescription={t('carousel.roleDescription')}
         {...props}
       >
         {children}
@@ -289,14 +298,14 @@ export function CarouselContent({ className, ...props }: React.HTMLAttributes<HT
       className={cn('overflow-hidden', dragging ? 'cursor-grabbing select-none' : 'cursor-grab')}
     >
       {/*
-        `-ml-2` against each slide's `pl-2` is how shadcn spaces slides: the
+        `-ms-2` against each slide's `ps-2` is how shadcn spaces slides: the
         padding puts the gap INSIDE the slide, where it is visible mid-drag, and
         the negative margin cancels it at the leading edge so the first card is
         not inset. A `gap` on the track sits entirely outside the window between
         two full-width slides and is never seen — the seam the previous build
         had.
       */}
-      <div className={cn('flex -ml-2', className)} {...props} />
+      <div className={cn('flex -ms-2', className)} {...props} />
     </div>
   );
 }
@@ -305,8 +314,8 @@ export function CarouselItem({ className, ...props }: React.HTMLAttributes<HTMLD
   return (
     <div
       role="group"
-      aria-roledescription="slide"
-      className={cn('min-w-0 shrink-0 grow-0 basis-full pl-2', className)}
+      aria-roledescription={t('carousel.slideRoleDescription')}
+      className={cn('min-w-0 shrink-0 grow-0 basis-full ps-2', className)}
       {...props}
     />
   );

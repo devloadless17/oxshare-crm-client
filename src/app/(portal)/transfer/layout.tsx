@@ -1,6 +1,7 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/i18n/server';
 
-export const metadata: Metadata = { title: 'Transfer — OXShare' };
+// In the visitor's language (lib/i18n/server.ts).
+export const generateMetadata = () => pageMetadata('meta.transfer');
 
 export default function TransferLayout({ children }: { children: React.ReactNode }) {
   return children;

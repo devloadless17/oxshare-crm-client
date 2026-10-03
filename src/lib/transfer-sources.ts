@@ -1,6 +1,7 @@
 import type { TradingAccount } from '@/lib/api/trading';
 import type { Wallet } from '@/lib/api/wallet';
-import { compareMoney, formatMoney } from '@/lib/money';
+import { compareMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { t } from '@/lib/i18n';
 
 /** Where a transfer can take money FROM. */
@@ -50,7 +51,7 @@ export function buildTransferSources(
        * a pending withdrawal, and offering that as transferable produces a
        * refusal the client cannot explain.
        */
-      hint: t('money.availableBalance', { amount: formatMoney(w.available, w.currency) }),
+      hint: t('money.availableBalance', { amount: moneyText(w.available, w.currency) }),
     }));
 
   const accountSources: SourceOption[] = accounts
@@ -60,7 +61,7 @@ export function buildTransferSources(
       key: `account:${a.id}`,
       source: { kind: 'account', account: a },
       title: t('transfer.accountLabel', { login: a.login ?? t('accounts.loginPending') }),
-      hint: t('money.availableBalance', { amount: formatMoney(a.balance, a.currency) }),
+      hint: t('money.availableBalance', { amount: moneyText(a.balance, a.currency) }),
     }));
 
   /* Flat, only to resolve the selected key back to its source. */

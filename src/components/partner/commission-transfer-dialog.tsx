@@ -17,7 +17,8 @@ import { newIdempotencyKey } from '@/lib/api/client';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi } from '@/lib/api/partner';
 import type { Wallet } from '@/lib/api/wallet';
-import { compareMoney, formatMoney } from '@/lib/money';
+import { compareMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
@@ -174,7 +175,7 @@ export function CommissionTransferDialog({
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground">
                 {t('partner.commissionAvailable', {
-                  amount: formatMoney(wallet.available, wallet.currency),
+                  amount: moneyText(wallet.available, wallet.currency),
                 })}
               </p>
               {/*

@@ -1,75 +1,75 @@
 import type { Locale } from './index';
 
 /**
- * Where the chosen language is remembered.
+ * Where the chosen language is remembered: ONE cookie, `oxshare-portal-locale`.
  *
- * TWIN FILE — an identical copy lives at the same path in `oxshare-crm-admin`.
+ * NO LONGER A TWIN (Oct 2026) — see `./index.ts`.
  *
- * The convention is the one every i18n stack uses and the one this platform's
- * reference CRM uses: a single localStorage key holding the language tag
- * (`i18nextLng` there), read on boot, written when the user chooses. Ours is
- * namespaced to match the theme key already in use (`oxshare-*-theme` via
- * next-themes) so one app's preferences cannot collide with another OxShare
- * site's on a shared registrable domain — the same reasoning that drove the
- * cookie names in the backend's session-cookies.ts.
+ * A COOKIE, where it used to be localStorage, because the server now renders
+ * the chosen language: `app/layout.tsx` reads this cookie to set `<html lang
+ * dir>` and the language of the first paint. localStorage never reaches the
+ * server, so an Arabic reader was served English and watched it flip.
  *
- * WHY THIS EXISTS BEFORE THE SWITCHER DOES
- *
- * `docs/CLAUDE.md` says not to build the language switcher yet, and this is not
- * one — there is no UI here. What it buys is that RTL becomes TESTABLE: set the
- * key in devtools, reload, and the layout either mirrors correctly or it does
- * not. Without it, `direction()` is a function nobody can exercise and the
- * Arabic layout sweep stays theoretical until the day it is urgent.
- *
- * `localStorage`, not a cookie: this is a display preference, it is not sent to
- * the API, and it should outlive the session — the same lifetime `theme-mode`
- * already has. It is deliberately NOT in the session cookie jar, which holds
- * credentials.
+ * Not a credential and not httpOnly — the client reads it too, before React
+ * hydrates. Namespaced per app (the `oxshare-portal-*` convention the theme key
+ * already follows) so another OxShare property on the same registrable domain
+ * cannot overwrite it. It also travels to the API through the `/api` rewrite,
+ * but the API reads the explicit `X-OxShare-Locale` header (`api/client.ts`),
+ * which this app sends on every request.
  */
+export const LOCALE_COOKIE = 'oxshare-portal-locale';
 
-// ─── twin:config:start ────────────────────────────────────────────────────────
-// The ONLY part of this file that differs from its twin. Everything below the
-// end marker must stay identical in both apps; scripts/check-twins.sh enforces
-// that by excluding this block and comparing the rest.
-//
-// Namespaced PER APP so two OxShare properties on one registrable domain cannot
-// overwrite each other's preference — the same reasoning as the backend's
-// oxshare_crm_<surface>_* cookie names. A bare `locale` or `i18nextLng` is
-// exactly what another team would also pick.
-export const LOCALE_STORAGE_KEY = 'oxshare-portal-locale';
-// ─── twin:config:end ──────────────────────────────────────────────────────────
+/** The localStorage key the pre-cookie builds wrote; read once to carry a choice over. */
+const LEGACY_STORAGE_KEY = 'oxshare-portal-locale';
+
+/** One year: a display preference should outlive any session. */
+const MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 const SUPPORTED: readonly Locale[] = ['en', 'ar'];
 
-function isSupported(value: string | null): value is Locale {
-  return value !== null && (SUPPORTED as readonly string[]).includes(value);
+export function parseLocale(value: string | null | undefined): Locale | null {
+  return typeof value === 'string' && (SUPPORTED as readonly string[]).includes(value)
+    ? (value as Locale)
+    : null;
+}
+
+function readCookie(): string | null {
+  const prefix = `${LOCALE_COOKIE}=`;
+  for (const part of document.cookie.split(';')) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith(prefix)) return decodeURIComponent(trimmed.slice(prefix.length));
+  }
+  return null;
 }
 
 /**
  * The stored language, or `null` when there is none or it is unusable.
  *
- * Returns null rather than throwing on every failure path — private browsing
- * denies localStorage entirely, an unknown value may be left by an older build,
- * and none of that is a reason to fail a page render. The caller falls back to
- * the default locale, which is always a valid answer.
+ * Returns null rather than throwing on every failure path — a blocked cookie
+ * jar, an unknown value left by an older build — none of that is a reason to
+ * fail a page render. The caller falls back to the default locale.
  */
 export function readStoredLocale(): Locale | null {
   if (typeof window === 'undefined') return null;
   try {
-    const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-    return isSupported(stored) ? stored : null;
+    const fromCookie = parseLocale(readCookie());
+    if (fromCookie) return fromCookie;
+    // A choice made before the cookie existed: honour it once, then it lives in the cookie.
+    const legacy = parseLocale(window.localStorage.getItem(LEGACY_STORAGE_KEY));
+    if (legacy) storeLocale(legacy);
+    return legacy;
   } catch {
     return null;
   }
 }
 
-/** Remember a language choice. Silently a no-op where storage is unavailable. */
+/** Remember a language choice. Silently a no-op where cookies are unavailable. */
 export function storeLocale(locale: Locale): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${LOCALE_COOKIE}=${locale}; Path=/; Max-Age=${MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
   } catch {
-    // Private browsing, or a full quota. A preference that cannot be saved is
-    // not worth breaking the page over.
+    // A preference that cannot be saved is not worth breaking the page over.
   }
 }

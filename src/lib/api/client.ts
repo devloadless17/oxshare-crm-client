@@ -10,6 +10,7 @@ import Cookies from 'js-cookie';
 // Resolved and validated in `lib/env.ts`, which refuses a production build with
 // no NEXT_PUBLIC_API_BASE_URL rather than silently falling back to localhost.
 import { API_BASE_URL } from '../env';
+import { currentLocale } from '../i18n';
 import { clearKycDraft } from '../kyc-draft';
 // Cleared alongside the KYC draft in `clearSession` — see the note there. Both
 // hold personal detail that `sessionStorage` would otherwise carry into the
@@ -109,6 +110,12 @@ const AUTH_ENDPOINT_PATTERN =
  */
 apiClient.interceptors.request.use((config) => {
   config.headers['X-Request-Id'] = newCorrelationId();
+  /*
+   * The language the API answers in — its error messages and every sentence it
+   * composes (backend `common/i18n/locale.ts`). Our own header rather than
+   * `Accept-Language`, which the browser fills in by itself.
+   */
+  config.headers[LOCALE_HEADER] = currentLocale();
 
   if (STATE_CHANGING.test(config.method ?? 'get')) {
     const csrf = currentCsrfToken();
@@ -118,6 +125,7 @@ apiClient.interceptors.request.use((config) => {
 });
 
 const STATE_CHANGING = /^(post|put|patch|delete)$/i;
+export const LOCALE_HEADER = 'X-OxShare-Locale';
 export const CSRF_HEADER = 'X-OxShare-CSRF';
 
 /**

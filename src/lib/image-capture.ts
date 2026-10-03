@@ -42,6 +42,8 @@
  * one format that is already both small and sharp.
  */
 
+import { t } from '@/lib/i18n';
+
 /** The longest edge we will store. See the note above on why it is generous. */
 export const MAX_EDGE = 2000;
 
@@ -138,7 +140,7 @@ async function decodeOriented(file: File): Promise<ImageBitmap | HTMLImageElemen
     return await new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image();
       const timer = setTimeout(
-        () => reject(new Error('Timed out reading that image.')),
+        () => reject(new Error(t('upload.imageTimedOut'))),
         DECODE_TIMEOUT_MS,
       );
       img.onload = () => {
@@ -147,7 +149,7 @@ async function decodeOriented(file: File): Promise<ImageBitmap | HTMLImageElemen
       };
       img.onerror = () => {
         clearTimeout(timer);
-        reject(new Error('Could not read that image.'));
+        reject(new Error(t('upload.imageUnreadable')));
       };
       img.src = url;
     });
@@ -172,7 +174,7 @@ function canvasToJpeg(canvas: HTMLCanvasElement, name: string): Promise<File> {
           : // A null blob means the browser could not encode. Rejecting beats
             // uploading an empty file, which reaches the reviewer as a corrupt
             // document and comes back as the client's fault.
-            reject(new Error('Could not process that image.')),
+            reject(new Error(t('upload.imageUnprocessable'))),
       'image/jpeg',
       JPEG_QUALITY,
     );

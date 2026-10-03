@@ -1,6 +1,7 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/i18n/server';
 
-export const metadata: Metadata = { title: 'Statement — OXShare' };
+// In the visitor's language (lib/i18n/server.ts).
+export const generateMetadata = () => pageMetadata('meta.statement');
 
 export default function TransactionsLayout({ children }: { children: React.ReactNode }) {
   return children;

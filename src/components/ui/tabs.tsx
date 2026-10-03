@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { direction } from '@/lib/i18n';
 
 /**
  * An accessible tab strip.
@@ -69,9 +70,13 @@ export function Tabs({
     const index = tabs.findIndex((tab) => tab.value === value);
     if (index === -1) return;
 
+    // The strip reads right to left in Arabic, so the arrow that points at
+    // the NEXT tab is the left one there.
+    const rtl = direction() === 'rtl';
     let next: number | null = null;
-    if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
-    else if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+    if (event.key === (rtl ? 'ArrowLeft' : 'ArrowRight')) next = (index + 1) % tabs.length;
+    else if (event.key === (rtl ? 'ArrowRight' : 'ArrowLeft'))
+      next = (index - 1 + tabs.length) % tabs.length;
     else if (event.key === 'Home') next = 0;
     else if (event.key === 'End') next = tabs.length - 1;
     if (next === null) return;

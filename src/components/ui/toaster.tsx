@@ -2,6 +2,7 @@
 
 import { useTheme } from 'next-themes';
 import { Toaster as Sonner } from 'sonner';
+import { direction } from '@/lib/i18n';
 
 /**
  * The one toast host for the portal — mounted in the ROOT layout.
@@ -51,7 +52,13 @@ export function Toaster() {
        * durable signal behind the transient one. It also keeps the toast clear
        * of the mobile header, which is where a client on a phone taps.
        */
-      position="bottom-right"
+      /*
+       * The END corner and the page's direction: bottom-right in English,
+       * bottom-left in Arabic, where the eye finishes a line. Sonner swaps the
+       * close button and the swipe direction from `dir`.
+       */
+      dir={direction()}
+      position={direction() === 'rtl' ? 'bottom-left' : 'bottom-right'}
       // Success green / error red without a per-call className. For a client
       // glancing over, the colour is read before the words.
       richColors

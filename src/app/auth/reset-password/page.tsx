@@ -77,7 +77,7 @@ function ResetPasswordForm() {
                 </label>
                 <div className="relative">
                   <Lock
-                    className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+                    className="pointer-events-none absolute start-3.5 top-3 h-4 w-4 text-muted-foreground"
                     aria-hidden="true"
                   />
                   <Input
@@ -88,13 +88,13 @@ function ResetPasswordForm() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder={t('auth.login.passwordPlaceholder')}
-                    className="h-11 pl-10 pr-11"
+                    className="h-11 ps-10 pe-11"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                    className="absolute right-3 top-3 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
+                    className="absolute end-3 top-3 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -107,7 +107,7 @@ function ResetPasswordForm() {
                 </label>
                 <div className="relative">
                   <Lock
-                    className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+                    className="pointer-events-none absolute start-3.5 top-3 h-4 w-4 text-muted-foreground"
                     aria-hidden="true"
                   />
                   <Input
@@ -118,7 +118,7 @@ function ResetPasswordForm() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder={t('auth.login.passwordPlaceholder')}
-                    className="h-11 pl-10"
+                    className="h-11 ps-10"
                   />
                 </div>
               </div>

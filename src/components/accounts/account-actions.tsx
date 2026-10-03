@@ -24,6 +24,7 @@ import {
 import { apiErrorMessage } from '@/lib/api/errors';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { t } from '@/lib/i18n';
+import { ltr } from '@/lib/bidi';
 import { keys } from '@/lib/query-keys';
 
 /**
@@ -393,7 +394,7 @@ export function AccountActions({ account }: { account: TradingAccount }) {
           <div className="flex gap-2 rounded-lg border border-success/40 bg-success/10 p-3">
             <MailCheck className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
             <p className="text-xs leading-relaxed">
-              {t('accounts.passwordSent', { email: sentTo ?? '' })}
+              {t('accounts.passwordSent', { email: ltr(sentTo ?? '') })}
             </p>
           </div>
           <DialogFooter>

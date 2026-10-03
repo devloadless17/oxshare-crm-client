@@ -6,7 +6,8 @@ import { AsyncBoundary } from '@/components/async-boundary';
 import { useResource } from '@/hooks/use-resource';
 import { accountApi, type Session } from '@/lib/api/account';
 import { apiErrorMessage } from '@/lib/api/errors';
-import { t } from '@/lib/i18n';
+import { intlLocale, t } from '@/lib/i18n';
+import { ltr } from '@/lib/bidi';
 import { relativeTime } from '@/lib/relative-time';
 import { Button } from '@/components/ui/button';
 import { keys } from '@/lib/query-keys';
@@ -143,7 +144,7 @@ export function SessionRow({
         </div>
         <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
           {t('profile.sessionLastActive', { when: relativeTime(session.lastActiveAt) })}
-          {session.ip ? ` · ${session.ip}` : ''}
+          {session.ip ? ` · ${ltr(session.ip)}` : ''}
         </p>
         <p className="truncate text-[11px] text-muted-foreground">
           {t('profile.sessionSignedIn', { when: absoluteDate(session.createdAt) })}
@@ -215,7 +216,7 @@ export function describeDevice(userAgent: string | null | undefined): string {
             ? 'Linux'
             : null;
 
-  if (browser && os) return `${browser} on ${os}`;
+  if (browser && os) return t('profile.sessionDevice', { browser, os });
   return browser ?? os ?? t('profile.sessionUnknownDevice');
 }
 
@@ -228,7 +229,7 @@ function looksMobile(userAgent: string | null | undefined): boolean {
 function absoluteDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString(intlLocale(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

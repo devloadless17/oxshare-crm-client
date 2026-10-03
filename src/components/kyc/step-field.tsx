@@ -15,6 +15,7 @@ import { COUNTRY_CODE_BY_NAME } from '@/lib/countries-data';
 import { DocumentUploader } from './document-uploader';
 import { SelfieCamera } from './selfie-camera';
 import { t } from '@/lib/i18n';
+import { displayOrder, fieldHint, fieldLabel, optionLabel } from '@/lib/kyc-text';
 import { MAX_DATE_OF_BIRTH, textInputHints, type KycFieldConfig } from './field-hints';
 
 /**
@@ -86,6 +87,9 @@ export function StepField({
    * box must stay a text box.
    */
   const isCanonicalSelfie = slug === 'selfie' && field.name === 'selfie';
+  // What the reader sees, in their language (`lib/kyc-text`). Values stay English.
+  const label = fieldLabel(field);
+  const hint = fieldHint(field);
 
   // Live camera — the canonical selfie, or a `camera` field anywhere else.
   if (isCanonicalSelfie || field.type === 'camera') {
@@ -137,9 +141,9 @@ export function StepField({
           </div>
         )}
         <DocumentUploader
-          label={field.label}
+          label={label}
           field={field.name}
-          hint={isErrored ? t('kyc.documentReturnedHint') : field.hint}
+          hint={isErrored ? t('kyc.documentReturnedHint') : hint}
           uploaded={uploadsState[field.name]}
           isErrored={isErrored}
           storedFilePath={uploadsState[field.name] ? storedFilePath : undefined}
@@ -156,7 +160,7 @@ export function StepField({
       <div key={field.id} className="space-y-1.5">
         <Label htmlFor={field.id} className="flex items-center justify-between">
           <span>
-            {field.label} {field.required && <span className="text-destructive">*</span>}
+            {label} {field.required && <span className="text-destructive">*</span>}
           </span>
           {isErrored && (
             <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
@@ -171,7 +175,7 @@ export function StepField({
         >
           {/* `aria-label`, because PhoneInput renders its own input and takes no id. */}
           <PhoneInput
-            aria-label={field.label}
+            aria-label={label}
             value={val}
             onChange={(phoneVal) => onChange(field.name, phoneVal)}
             {...(dialCode ? { defaultCountryCode: dialCode } : {})}
@@ -187,7 +191,7 @@ export function StepField({
       <div key={field.id} className="space-y-1.5">
         <Label htmlFor={field.id} className="flex items-center justify-between">
           <span>
-            {field.label} {field.required && <span className="text-destructive">*</span>}
+            {label} {field.required && <span className="text-destructive">*</span>}
           </span>
           {isErrored && (
             <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
@@ -235,9 +239,13 @@ export function StepField({
      * and an empty dropdown would read as their answer being lost.
      */
     const offered = field.options ?? [];
-    const choices = val && !offered.includes(val) ? [val, ...offered] : offered;
+    const choices = displayOrder(
+      field,
+      val && !offered.includes(val) ? [val, ...offered] : offered,
+    );
     const optionsList = choices.map((opt) => ({
-      label: opt,
+      // The Arabic is what the reader SEES; the English option is what is SUBMITTED.
+      label: optionLabel(field, opt),
       value: opt,
       /*
        * The flag is looked up BY NAME rather than configured, and stays local:
@@ -252,7 +260,7 @@ export function StepField({
       <div key={field.id} className="space-y-1.5">
         <Label htmlFor={field.id} className="flex items-center justify-between">
           <span>
-            {field.label} {field.required && <span className="text-destructive">*</span>}
+            {label} {field.required && <span className="text-destructive">*</span>}
           </span>
           {isErrored && (
             <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
@@ -277,9 +285,7 @@ export function StepField({
            */}
           <Select value={val} onValueChange={(selected) => onChange(field.name, selected)}>
             <SelectTrigger id={field.id}>
-              <SelectValue
-                placeholder={t('kyc.selectField', { label: field.label.toLowerCase() })}
-              />
+              <SelectValue placeholder={t('kyc.selectField', { label: label.toLowerCase() })} />
             </SelectTrigger>
             <SelectContent>
               {optionsList.map((opt) => (
@@ -325,7 +331,7 @@ export function StepField({
         }`}
       >
         <legend className="text-sm font-medium">
-          {field.label} {field.required && <span className="text-destructive">*</span>}
+          {label} {field.required && <span className="text-destructive">*</span>}
         </legend>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {options.map((option) => (
@@ -336,7 +342,7 @@ export function StepField({
                 onChange={(e) => toggle(option, e.target.checked)}
                 className="rounded border-input accent-primary focus:ring-ring h-4 w-4"
               />
-              <span>{option}</span>
+              <span>{optionLabel(field, option)}</span>
             </label>
           ))}
         </div>
@@ -356,7 +362,7 @@ export function StepField({
           className="rounded border-input accent-primary focus:ring-ring h-4 w-4"
         />
         <Label htmlFor={field.id} className="text-xs cursor-pointer">
-          {field.label} {field.required && <span className="text-destructive">*</span>}
+          {label} {field.required && <span className="text-destructive">*</span>}
         </Label>
       </div>
     );
@@ -405,7 +411,7 @@ export function StepField({
       */}
       <Label htmlFor={field.id} className="flex items-center justify-between">
         <span>
-          {field.label} {field.required && <span className="text-destructive">*</span>}
+          {label} {field.required && <span className="text-destructive">*</span>}
         </span>
         {isErrored && (
           <span className="text-[10px] font-bold text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded">
@@ -415,7 +421,7 @@ export function StepField({
       </Label>
       <Input
         id={field.id}
-        placeholder={field.hint || t('kyc.enterField', { label: field.label })}
+        placeholder={hint || t('kyc.enterField', { label })}
         value={val}
         onChange={(e) => onChange(field.name, e.target.value)}
         {...textInputHints(field.name)}

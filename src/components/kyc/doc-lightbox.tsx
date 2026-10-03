@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { ChevronLeft, ChevronRight, Minus, Plus, RotateCw, X } from 'lucide-react';
 import { buildKycDocUrl } from '@/lib/kyc-doc-url';
-import { t } from '@/lib/i18n';
+import { direction, t } from '@/lib/i18n';
 
 export interface LightboxDoc {
   filePath: string;
@@ -70,8 +70,11 @@ export function DocLightbox({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') go(1);
-      else if (e.key === 'ArrowLeft') go(-1);
+      // The NEXT document sits to the left in a right-to-left page.
+      const forward = direction() === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+      const back = direction() === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
+      if (e.key === forward) go(1);
+      else if (e.key === back) go(-1);
       else if (e.key === '+' || e.key === '=') setZoom((z) => Math.min(MAX_ZOOM, z + ZOOM_STEP));
       else if (e.key === '-') setZoom((z) => Math.max(MIN_ZOOM, z - ZOOM_STEP));
       else if (e.key === 'r') setTurns((n) => (n + 1) % 4);

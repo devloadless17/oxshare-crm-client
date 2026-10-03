@@ -103,13 +103,13 @@ export function MoneyAction({
           className={className}
           onClick={() => setGateOpen(true)}
         >
-          <Icon className="h-4 w-4" aria-hidden="true" />
+          <Icon className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
           {label}
         </Button>
       ) : (
         <Button asChild variant={variant} size={size} className={className}>
           <Link href={href}>
-            <Icon className="h-4 w-4" aria-hidden="true" />
+            <Icon className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
             {label}
           </Link>
         </Button>

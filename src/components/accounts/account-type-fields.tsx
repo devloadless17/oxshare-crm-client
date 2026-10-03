@@ -29,6 +29,7 @@ import { t } from '@/lib/i18n';
  */
 export function AccountTypeFields({
   products,
+  productLabel = (name) => name,
   product,
   onProduct,
   currencies,
@@ -38,6 +39,8 @@ export function AccountTypeFields({
 }: {
   /** The products offered, in the broker's own order. */
   products: string[];
+  /** What the reader sees for a product (its Arabic); the value stays the English name. */
+  productLabel?: (name: string) => string;
   product: string;
   onProduct: (next: string) => void;
   /** The currencies the chosen product is offered in (demo: every offered currency). */
@@ -61,7 +64,7 @@ export function AccountTypeFields({
             <SelectContent>
               {products.map((name) => (
                 <SelectItem key={name} value={name}>
-                  {name}
+                  {productLabel(name)}
                 </SelectItem>
               ))}
             </SelectContent>

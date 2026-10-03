@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/render';
 import type { SelfServiceAvailability } from '@/lib/api/trading';
+import { setActiveLocale, translate } from '@/lib/i18n';
 import { OpenAccountDialog } from './open-account-dialog';
 
 /**
@@ -89,6 +90,54 @@ describe('opening a live account', () => {
  * NO NAME FIELD (owner, 29 Sep 2026): the server names the account after the
  * client — "First Last", then "First Last-2", "-3"…
  */
+/**
+ * ARABIC (0179): each offered type carries `productAr`. The reader picks the
+ * Arabic name; the request still resolves on — and sends — the product the
+ * English name identifies.
+ */
+describe('in Arabic', () => {
+  beforeEach(() => setActiveLocale('ar'));
+  afterEach(() => setActiveLocale('en'));
+
+  const ARABIC: SelfServiceAvailability = {
+    ...OPTIONS,
+    liveTypes: [
+      { ...OPTIONS.liveTypes[0]!, productAr: 'قياسي' },
+      { ...OPTIONS.liveTypes[1]!, productAr: 'مميز' },
+    ],
+  };
+
+  it('lists the products in Arabic and opens the one picked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <OpenAccountDialog environment="live" options={ARABIC} onClose={vi.fn()} />,
+    );
+
+    await user.click(
+      await screen.findByRole('combobox', { name: translate('ar', 'accounts.fieldProduct') }),
+    );
+    const shown = (await screen.findAllByRole('option')).map((o) => o.textContent);
+    expect(shown).toEqual(['قياسي', 'مميز']);
+    await user.click(screen.getByRole('option', { name: 'مميز' }));
+    await user.click(screen.getByRole('button', { name: translate('ar', 'accounts.openConfirm') }));
+
+    await waitFor(() =>
+      expect(openAccount).toHaveBeenCalledWith(
+        expect.objectContaining({ group: 'real\\Shared', productId: 'p-premium' }),
+      ),
+    );
+  });
+
+  it('shows the English name of a product with no Arabic', async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await user.click(
+      await screen.findByRole('combobox', { name: translate('ar', 'accounts.fieldProduct') }),
+    );
+    expect(await screen.findByRole('option', { name: 'Premium' })).toBeInTheDocument();
+  });
+});
+
 describe('the account name', () => {
   it('is not asked for, and none is sent', async () => {
     const user = userEvent.setup();

@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import { renderWithProviders } from '@/test/render';
+import { setActiveLocale } from '@/lib/i18n';
 import { TransactionDetails } from './transaction-details';
 import type { Transaction } from '@/lib/api/payments';
 
@@ -171,5 +172,57 @@ describe('TransactionDetails', () => {
     // nothing in it reads as a settlement that lost its date.
     expect(screen.queryByText(/completed/i)).toBeNull();
     expect(screen.queryByText(/why this was refused/i)).toBeNull();
+  });
+});
+
+/**
+ * ARABIC (0179): the configured reason's Arabic (`rejectionReasonAr`), each
+ * proof question as asked in Arabic (`proofDetails[].labelAr`), and the wallet
+ * named from the catalogue — `WalletDto.name` is the database's English.
+ */
+describe('TransactionDetails in Arabic', () => {
+  beforeEach(() => setActiveLocale('ar'));
+  afterEach(() => setActiveLocale('en'));
+
+  it('gives the reason and the proof questions in Arabic, the answers as typed', () => {
+    renderWithProviders(
+      <TransactionDetails
+        tx={
+          {
+            ...base,
+            rejectionReason: 'Document expired',
+            rejectionReasonAr: 'الوثيقة منتهية الصلاحية',
+            proofDetails: [
+              { fieldId: 'f1', label: 'Transfer code', labelAr: 'رمز التحويل', value: 'ZX-9981' },
+              { fieldId: 'f2', label: 'Sender phone', value: '+961 70 123 456' },
+            ],
+          } as unknown as Transaction
+        }
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('الوثيقة منتهية الصلاحية')).toBeInTheDocument();
+    expect(screen.queryByText('Document expired')).not.toBeInTheDocument();
+    expect(screen.getByText('رمز التحويل')).toBeInTheDocument();
+    expect(screen.getByText('ZX-9981')).toBeInTheDocument();
+    // Untranslated question: its English, never a blank label.
+    expect(screen.getByText('Sender phone')).toBeInTheDocument();
+  });
+
+  it("keeps a reviewer's own English reason when there is no Arabic", () => {
+    renderWithProviders(
+      <TransactionDetails tx={{ ...base, rejectionReason: 'Call us first.' }} onClose={vi.fn()} />,
+    );
+    expect(screen.getByText('Call us first.')).toBeInTheDocument();
+  });
+
+  it('names the wallet end of a transfer in Arabic', async () => {
+    renderWithProviders(
+      <TransactionDetails
+        tx={{ ...base, kind: 'transfer', direction: 'deposit', state: 'success' }}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(await screen.findByText('محفظة USD')).toBeInTheDocument();
   });
 });

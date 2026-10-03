@@ -7,13 +7,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { formatMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { movementLabelKey } from '@/lib/movement-label';
-import { t, type MessageKey } from '@/lib/i18n';
+import { intlLocale, localized, t, type MessageKey } from '@/lib/i18n';
 import { assetUrl } from '@/lib/asset-url';
 import type { Transaction } from '@/lib/api/payments';
 import { useTransferEnds } from '@/components/transactions/transfer-ends';
 import { STATE } from '@/components/transactions/transaction-filters';
+import { Ltr } from '@/components/ltr';
 
 /**
  * What happened to one movement, in the client's own words.
@@ -59,7 +60,8 @@ export function TransactionDetails({
             <DialogHeader>
               <DialogTitle>{t(movementLabelKey(tx))}</DialogTitle>
               <DialogDescription>
-                {formatMoney(tx.amount, tx.currency)} · {new Date(tx.createdAt).toLocaleString()}
+                {moneyText(tx.amount, tx.currency)} ·{' '}
+                {new Date(tx.createdAt).toLocaleString(intlLocale())}
               </DialogDescription>
             </DialogHeader>
 
@@ -75,7 +77,7 @@ export function TransactionDetails({
                     {t('transactions.detailReason')}
                   </dt>
                   <dd className="mt-1 text-xs leading-snug text-destructive">
-                    {tx.rejectionReason}
+                    {localized(tx.rejectionReason, tx.rejectionReasonAr)}
                   </dd>
                   {/*
                     DEPOSITS ONLY, and the asymmetry is the whole point.
@@ -139,7 +141,12 @@ export function TransactionDetails({
                 they were asked, which the server kept with the answer.
               */}
               {tx.proofDetails?.map((detail) => (
-                <Row key={detail.fieldId} label={detail.label} value={detail.value} mono />
+                <Row
+                  key={detail.fieldId}
+                  label={localized(detail.label, detail.labelAr)}
+                  value={detail.value}
+                  mono
+                />
               ))}
               {/*
                 ── WHERE A TRANSFER WENT, WHICH NOTHING ELSE SAYS ────────────
@@ -169,13 +176,13 @@ export function TransactionDetails({
               {tx.reviewedAt && (
                 <Row
                   label={t('transactions.detailReviewed')}
-                  value={new Date(tx.reviewedAt).toLocaleString()}
+                  value={new Date(tx.reviewedAt).toLocaleString(intlLocale())}
                 />
               )}
               {tx.settledAt && (
                 <Row
                   label={t('transactions.detailSettled')}
-                  value={new Date(tx.settledAt).toLocaleString()}
+                  value={new Date(tx.settledAt).toLocaleString(intlLocale())}
                 />
               )}
             </dl>
@@ -190,8 +197,9 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
   return (
     <div className="flex items-start justify-between gap-4">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className={`text-right text-xs text-foreground ${mono ? 'font-mono break-all' : ''}`}>
-        {value}
+      <dd className={`text-end text-xs text-foreground ${mono ? 'font-mono break-all' : ''}`}>
+        {/* An id reads left to right; isolated so the cell keeps its alignment. */}
+        {mono ? <Ltr>{value}</Ltr> : value}
       </dd>
     </div>
   );

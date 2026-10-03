@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from './button';
 import { cn } from '@/lib/utils';
-import { t } from '@/lib/i18n';
+import { intlLocale, t } from '@/lib/i18n';
 import {
   applyDayClick,
   buildMonth,
@@ -482,14 +482,14 @@ function weekdayLabels(): { key: string; short: string; long: string }[] {
     const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index);
     return {
       key: String(index),
-      short: date.toLocaleDateString(undefined, { weekday: 'narrow' }),
-      long: date.toLocaleDateString(undefined, { weekday: 'long' }),
+      short: date.toLocaleDateString(intlLocale(), { weekday: 'narrow' }),
+      long: date.toLocaleDateString(intlLocale(), { weekday: 'long' }),
     };
   });
 }
 
 function monthLabel(year: number, month: number): string {
-  return new Date(year, month, 1).toLocaleDateString(undefined, {
+  return new Date(year, month, 1).toLocaleDateString(intlLocale(), {
     month: 'long',
     year: 'numeric',
   });
@@ -508,7 +508,7 @@ function longDateLabel(iso: string): string {
   // to the raw string rather than asserting keeps an unexpected value visible as
   // itself instead of crashing a calendar cell.
   if (!parts) return iso;
-  return new Date(parts.year, parts.month, parts.day).toLocaleDateString(undefined, {
+  return new Date(parts.year, parts.month, parts.day).toLocaleDateString(intlLocale(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -530,7 +530,7 @@ function formatRangeLabel(range: DateRange): string {
 function shortDate(iso: string): string {
   const parts = parseIso(iso);
   if (!parts) return iso;
-  return new Date(parts.year, parts.month, parts.day).toLocaleDateString(undefined, {
+  return new Date(parts.year, parts.month, parts.day).toLocaleDateString(intlLocale(), {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

@@ -7,8 +7,9 @@ import { AmountField, AmountPresets, MoneySection } from '@/components/money/mon
 import type { PaymentMethod } from '@/lib/api/deposits';
 import type { TradingAccount } from '@/lib/api/trading';
 import type { Wallet } from '@/lib/api/wallet';
-import { DISPLAY_SCALE, formatMoney } from '@/lib/money';
-import { t } from '@/lib/i18n';
+import { DISPLAY_SCALE } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
+import { localized, t } from '@/lib/i18n';
 import { DepositProofField } from './deposit-proof-field';
 import { PROOF_MAX_BYTES } from '@/lib/upload-limits';
 
@@ -118,7 +119,7 @@ export function amountProblem(method: PaymentMethod, amount: string): string | n
    */
   if (value.decimalPlaces() > DISPLAY_SCALE) {
     return t('deposit.amountTooPrecise', {
-      method: method.name,
+      method: localized(method.name, method.nameAr),
       currency: method.currency,
       places: String(DISPLAY_SCALE),
       suggestion: value.toFixed(DISPLAY_SCALE, Decimal.ROUND_HALF_UP),
@@ -127,10 +128,10 @@ export function amountProblem(method: PaymentMethod, amount: string): string | n
 
   const { min, max } = bounds(method);
   if (min && value.lessThan(min)) {
-    return t('deposit.amountBelowMin', { min: formatMoney(min.toFixed(8), method.currency) });
+    return t('deposit.amountBelowMin', { min: moneyText(min.toFixed(8), method.currency) });
   }
   if (max && value.greaterThan(max)) {
-    return t('deposit.amountAboveMax', { max: formatMoney(max.toFixed(8), method.currency) });
+    return t('deposit.amountAboveMax', { max: moneyText(max.toFixed(8), method.currency) });
   }
   return null;
 }
@@ -140,8 +141,8 @@ export function boundsHint(method: PaymentMethod): string | undefined {
   const { min, max } = bounds(method);
   if (!min || !max) return undefined;
   return t('deposit.amountRange', {
-    min: formatMoney(min.toFixed(8), method.currency),
-    max: formatMoney(max.toFixed(8), method.currency),
+    min: moneyText(min.toFixed(8), method.currency),
+    max: moneyText(max.toFixed(8), method.currency),
   });
 }
 
@@ -245,7 +246,7 @@ export function DepositForm({
            * not exist, which is the rule /wallet was rewritten for.
            */
           hint: wallet
-            ? formatMoney(wallet.available, wallet.currency)
+            ? moneyText(wallet.available, wallet.currency)
             : t('transfer.walletUnopened'),
         },
       ],
@@ -255,7 +256,7 @@ export function DepositForm({
       options: fundable.map((account) => ({
         key: account.id,
         title: t('deposit.toAccount', { login: account.login ?? '—' }),
-        hint: formatMoney(account.balance, account.currency),
+        hint: moneyText(account.balance, account.currency),
       })),
     },
   ];

@@ -4,7 +4,8 @@ import { BackendPending } from '@/components/backend-pending';
 import { PageLoader } from '@/components/ui/loader';
 import type { ResourceStatus } from '@/hooks/use-resource';
 import { t } from '@/lib/i18n';
-import { apiErrorMessage, apiErrorRequestId } from '@/lib/api/errors';
+import { ltr } from '@/lib/bidi';
+import { apiErrorDetail, apiErrorMessage, apiErrorRequestId } from '@/lib/api/errors';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -203,6 +204,7 @@ export function AsyncBoundary({
     const detail = apiErrorMessage(error, '');
     const headline = errorMessage ?? (detail || t('common.genericError'));
     const showDetail = detail !== '' && detail !== headline;
+    const technical = apiErrorDetail(error);
     const card = (
       <div
         className="rounded-xl border border-border bg-card p-8 text-center space-y-3"
@@ -210,6 +212,15 @@ export function AsyncBoundary({
       >
         <p className="text-sm text-muted-foreground">{headline}</p>
         {showDetail && <p className="text-xs text-muted-foreground/80">{detail}</p>}
+        {/* The envelope's technical `detail`, when sent: small, LTR, copyable. */}
+        {technical && (
+          <p
+            dir="ltr"
+            className="text-[11px] font-mono break-words text-muted-foreground/70 select-all"
+          >
+            {technical}
+          </p>
+        )}
         {/*
           The id the API already logged with this failure. Rendered small and
           selectable rather than hidden behind a "details" toggle: its whole
@@ -218,7 +229,7 @@ export function AsyncBoundary({
         */}
         {requestId && (
           <p className="text-[11px] font-mono text-muted-foreground/70 select-all">
-            {t('common.errorReference', { id: requestId })}
+            {t('common.errorReference', { id: ltr(requestId) })}
           </p>
         )}
         <Button type="button" variant="outline" size="sm" onClick={onRetry}>

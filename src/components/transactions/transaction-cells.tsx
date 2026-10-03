@@ -8,7 +8,7 @@
  */
 import { MANUAL_ADMIN_PROVIDER, type Transaction } from '@/lib/api/payments';
 import { STATE } from '@/components/transactions/transaction-filters';
-import { t, type MessageKey } from '@/lib/i18n';
+import { localized, t, type MessageKey } from '@/lib/i18n';
 
 /**
  * Where a movement came from, in the client's words rather than the system's.
@@ -45,7 +45,7 @@ export function MethodCell({
   ends?: { from: string; to: string } | null;
 }) {
   if (ends && (tx.kind === 'transfer' || tx.kind === 'commission_transfer')) {
-    return <TransferRoute label={`${ends.from} → ${ends.to}`} />;
+    return <TransferRoute label={t('common.route', { from: ends.from, to: ends.to })} />;
   }
 
   /*
@@ -90,7 +90,7 @@ export function MethodCell({
     return <TransferRoute label={t('transactions.transferFromCommission')} />;
   }
 
-  if (tx.methodName) return <span>{tx.methodName}</span>;
+  if (tx.methodName) return <span>{localized(tx.methodName, tx.methodNameAr)}</span>;
 
   if (tx.provider === MANUAL_ADMIN_PROVIDER) {
     return <span className="text-muted-foreground italic">{t('transactions.manualCredit')}</span>;

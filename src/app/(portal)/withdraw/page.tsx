@@ -1,5 +1,6 @@
 'use client';
 
+import { withErrorDetail } from '@/components/error-detail';
 import * as React from 'react';
 import { MoneyScreen } from '@/components/money/money-screen';
 import { useResource } from '@/hooks/use-resource';
@@ -8,12 +9,13 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { walletApi, type Wallet } from '@/lib/api/wallet';
 import { paymentsApi, type WithdrawalMethod } from '@/lib/api/payments';
 import { newIdempotencyKey } from '@/lib/api/client';
-import { compareMoney, floorToScale, formatMoney, isZeroMoney } from '@/lib/money';
+import { compareMoney, floorToScale, isZeroMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { useCurrencyScale } from '@/hooks/use-currency-scale';
 import { WithdrawAmountHint } from '@/components/money/withdraw-amount-hint';
 import { Button } from '@/components/ui/button';
 import { WithdrawalDestinationField, needsDestination } from '@/components/money/withdrawal-fields';
-import { paysOut, walletFor, walletNote } from '@/components/money/wallet-choice';
+import { methodName, paysOut, walletFor, walletNote } from '@/components/money/wallet-choice';
 import {
   AmountField,
   AmountPresets,
@@ -88,7 +90,8 @@ import { useMoneyRefresh } from '@/hooks/use-money-refresh';
  * client arrives at rather than a screen that replaces the flow. Naming it in
  * the rail is what makes the wait look like part of the process.
  */
-const WITHDRAW_STEPS = [
+// A function: `t()` at module load would freeze the server's first language.
+const withdrawSteps = () => [
   t('withdraw.stepMethod'),
   t('withdraw.stepWallet'),
   t('withdraw.stepDetails'),
@@ -245,7 +248,7 @@ function WithdrawForm({
        * the response — so keeping the key is what makes the client's retry
        * resolve to the SAME withdrawal instead of a second one.
        */
-      setError(apiErrorMessage(err, t('withdraw.failed')));
+      setError(withErrorDetail(err, apiErrorMessage(err, t('withdraw.failed'))));
     } finally {
       setSubmitting(false);
     }
@@ -288,7 +291,7 @@ function WithdrawForm({
   if (step === 'method') {
     return (
       <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <StepRail steps={WITHDRAW_STEPS} active={0} />
+        <StepRail steps={withdrawSteps()} active={0} />
 
         <MoneySection title={t('withdraw.method')} className="min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-2">
@@ -310,7 +313,7 @@ function WithdrawForm({
                   setDestination('');
                   setError(null);
                 }}
-                title={method.name}
+                title={methodName(method)}
                 logoUrl={method.logoUrl}
               />
             ))}
@@ -347,7 +350,7 @@ function WithdrawForm({
        * SECTION grows and the footer stays pinned to the bottom edge.
        */
       <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <StepRail steps={WITHDRAW_STEPS} active={1} />
+        <StepRail steps={withdrawSteps()} active={1} />
 
         {/*
           WHICH BALANCE IS BEING SPENT, asked first and asked plainly.
@@ -434,7 +437,7 @@ function WithdrawForm({
     // the card inside it would never see the space.
     <form onSubmit={(e) => void submit(e)} className="flex min-h-0 flex-1 flex-col">
       <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <StepRail steps={WITHDRAW_STEPS} active={2} />
+        <StepRail steps={withdrawSteps()} active={2} />
 
         {/*
           WHICH WALLET this is coming out of, and the way back to change it.
@@ -447,7 +450,7 @@ function WithdrawForm({
             {selected
               ? t('withdraw.fromWallet', {
                   currency,
-                  amount: formatMoney(selected.available, currency),
+                  amount: moneyText(selected.available, currency),
                 })
               : currency}
           </span>
@@ -489,7 +492,7 @@ function WithdrawForm({
                     setDestination('');
                     setError(null);
                   }}
-                  title={method.name}
+                  title={methodName(method)}
                   logoUrl={method.logoUrl}
                 />
               ))}
@@ -559,7 +562,7 @@ function WithdrawForm({
             <WithdrawalDestinationField
               kind={selectedMethod?.destinationKind}
               network={selectedMethod?.destinationNetwork ?? null}
-              methodName={selectedMethod?.name ?? methodKey}
+              methodName={selectedMethod ? methodName(selectedMethod) : methodKey}
               value={destination}
               onChange={setDestination}
             />

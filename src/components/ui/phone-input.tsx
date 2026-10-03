@@ -7,7 +7,35 @@ import * as Flags from 'country-flag-icons/react/3x2';
 import { cn } from '@/lib/utils';
 import { Input } from './input';
 import { ALL_COUNTRIES, type CountryItem } from '@/lib/countries-data';
-import { t } from '@/lib/i18n';
+import { currentLocale, direction, intlLocale, t } from '@/lib/i18n';
+
+/*
+ * The country's name in the page's language — "لبنان" in Arabic — from the
+ * browser's own ICU data by ISO code, so no second list is kept. English keeps
+ * the list's own names. A runtime without the data falls back to them too.
+ */
+let regionNames: { locale: string; names: Intl.DisplayNames | null } | undefined;
+function countryName(country: CountryItem): string {
+  if (currentLocale() === 'en') return country.name;
+  const locale = intlLocale() ?? 'en';
+  const cached =
+    regionNames?.locale === locale
+      ? regionNames
+      : (regionNames = { locale, names: displayNames(locale) });
+  try {
+    return cached.names?.of(country.code) ?? country.name;
+  } catch {
+    return country.name;
+  }
+}
+
+function displayNames(locale: string): Intl.DisplayNames | null {
+  try {
+    return new Intl.DisplayNames([locale], { type: 'region' });
+  } catch {
+    return null;
+  }
+}
 
 export function CountryFlagIcon({
   code,
@@ -192,16 +220,30 @@ export function PhoneInput({
     onChange?.(selectedCountry.dialCode + (cleaned ? ` ${cleaned}` : ''));
   };
 
+  // Searched by the name ON SCREEN as well as the English one, and sorted by
+  // the name on screen: an Arabic list in English alphabetical order cannot be
+  // scanned.
   const filteredCountries = ALL_COUNTRIES.filter((c) => {
     if (!search) return true;
     const q = search.toLowerCase().trim();
     return (
-      c.name.toLowerCase().includes(q) || c.dialCode.includes(q) || c.code.toLowerCase().includes(q)
+      c.name.toLowerCase().includes(q) ||
+      countryName(c).toLowerCase().includes(q) ||
+      c.dialCode.includes(q) ||
+      c.code.toLowerCase().includes(q)
     );
   });
+  if (currentLocale() !== 'en') {
+    filteredCountries.sort((a, b) => countryName(a).localeCompare(countryName(b), intlLocale()));
+  }
 
   return (
-    <div className={cn('relative flex items-center gap-2', className)} ref={dropdownRef}>
+    /*
+     * LEFT TO RIGHT in every language: a phone number is written dial code
+     * first, and an Arabic page would otherwise put `+961` on the right of the
+     * number it prefixes. The country LIST below reads in the page's direction.
+     */
+    <div dir="ltr" className={cn('relative flex items-center gap-2', className)} ref={dropdownRef}>
       {/* Country Selector Trigger */}
       <button
         type="button"
@@ -229,22 +271,25 @@ export function PhoneInput({
         placeholder={placeholder}
         disabled={disabled}
         aria-label={ariaLabel}
-        className="h-9 flex-1 font-mono text-xs"
+        className="h-9 flex-1 font-mono text-xs rtl:text-left"
       />
 
       {/* Searchable Dropdown Popover */}
       {open && (
-        <div className="absolute top-11 left-0 z-50 w-72 rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl p-2 animate-in fade-in-0 zoom-in-95 duration-150">
+        <div
+          dir={direction()}
+          className="absolute top-11 left-0 z-50 w-72 rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl p-2 animate-in fade-in-0 zoom-in-95 duration-150"
+        >
           {/* Search Box */}
           <div className="relative mb-2">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Search className="absolute start-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
             <input
               type="text"
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('country.searchPlaceholder')}
-              className="h-8 w-full rounded-md border border-input bg-muted/40 pl-8 pr-3 text-xs focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-8 w-full rounded-md border border-input bg-muted/40 ps-8 pe-3 text-xs focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
 
@@ -264,17 +309,17 @@ export function PhoneInput({
                     type="button"
                     onClick={() => handleSelectCountry(c)}
                     className={cn(
-                      'flex w-full items-center justify-between rounded-md px-2.5 py-2 text-xs hover:bg-accent hover:text-accent-foreground focus-outline text-left cursor-pointer',
+                      'flex w-full items-center justify-between rounded-md px-2.5 py-2 text-xs hover:bg-accent hover:text-accent-foreground focus-outline text-start cursor-pointer',
                       isSelected && 'bg-accent/80 font-semibold text-link',
                     )}
                   >
-                    <span className="flex items-center gap-2 truncate pr-2">
+                    <span className="flex items-center gap-2 truncate pe-2">
                       <CountryFlagIcon code={c.code} />
-                      <span className="text-foreground truncate">{c.name}</span>
+                      <span className="text-foreground truncate">{countryName(c)}</span>
                     </span>
                     <span className="flex items-center gap-1 shrink-0 font-mono text-[11px] text-muted-foreground">
-                      <span>{c.dialCode}</span>
-                      {isSelected && <Check className="h-3.5 w-3.5 text-link ml-1" />}
+                      <span dir="ltr">{c.dialCode}</span>
+                      {isSelected && <Check className="h-3.5 w-3.5 text-link ms-1" />}
                     </span>
                   </button>
                 );

@@ -980,6 +980,14 @@ export const messages = {
 
   'wallet.usdWallet': 'USD Wallet',
   'wallet.usdtWallet': 'USDT TRC20',
+  /*
+   * A wallet's NAME, composed here from its kind and currency instead of
+   * printing `WalletDto.name` — the database generates that in English
+   * ("USD Wallet", "Commission Wallet"), and an Arabic reader would see it
+   * untranslated. The English matches the database's wording exactly.
+   */
+  'wallet.nameMain': '{currency} Wallet',
+  'wallet.nameCommission': 'Commission Wallet',
 
   'accounts.title': 'Trading Accounts',
   'accounts.subtitle': 'Manage your MetaTrader 5 trading accounts and leverage settings',
@@ -2369,6 +2377,55 @@ export const messages = {
   'dashboard.bannerWelcome': 'Welcome back',
   'dashboard.bannerFallbackName': 'Trader',
   'dashboard.bannerTagline': 'Trade Smarter. Grow Further.',
+  // ── Page titles (the browser tab) — app/**/layout.tsx via lib/i18n/server ──
+  'meta.appTitle': 'OXShare Client Portal',
+  'meta.appDescription': 'OXShare client portal — trading accounts, wallet, and verification.',
+  'meta.pageTitle': '{page} — OXShare',
+  'meta.accounts': 'Trading Accounts',
+  'meta.dashboard': 'Dashboard',
+  'meta.deposit': 'Deposit',
+  'meta.partner': 'Partner programme',
+  'meta.platforms': 'Trading platforms',
+  'meta.profile': 'Profile',
+  'meta.statement': 'Statement',
+  'meta.transfer': 'Transfer',
+  'meta.wallet': 'My Wallet',
+  'meta.withdraw': 'Withdraw',
+  // ── Language (components/language-switcher.tsx) ─────────────────────────
+  // The NAMES of the languages are not here: each is written in its own
+  // language whatever the page is in (LOCALE_NAMES in lib/i18n).
+  'language.label': 'Language',
+  'language.switchTo': 'Switch to {language}',
+  // ── RTL / bidi pass (carousel roles, list nouns, KYC rail defaults, image errors…) ──
+  'carousel.roleDescription': 'carousel',
+  'carousel.slideRoleDescription': 'slide',
+  'partner.nounClient': 'client',
+  'partner.nounClients': 'clients',
+  'partner.nounEntry': 'entry',
+  'partner.nounEntries': 'entries',
+  'partner.nounPartner': 'partner',
+  'partner.nounPartners': 'partners',
+  'partner.nounTransfer': 'transfer',
+  'partner.nounTransfers': 'transfers',
+  'kyc.railPersonal': 'Personal Info',
+  'kyc.railDocument': 'ID Document',
+  'kyc.railSelfie': 'Selfie',
+  'kyc.railAddress': 'Address Proof',
+  'kyc.railReview': 'Review',
+  'upload.imageTimedOut': 'Timed out reading that image.',
+  'upload.imageUnreadable': 'Could not read that image.',
+  'upload.imageUnprocessable': 'Could not process that image.',
+  'profile.sessionDevice': '{browser} on {os}',
+  'common.route': '{from} → {to}',
+  'common.listSeparator': ', ',
+  // The shared data table's row/selection controls (components/data-table.tsx, a twin).
+  'table.selectAll': 'Select all',
+  'table.deselectAll': 'Deselect all',
+  'table.expandRow': 'Expand row',
+  'table.collapseRow': 'Collapse row',
+  'table.selectRow': 'Select this row',
+  'table.deselectRow': 'Deselect this row',
+  'table.loadingData': 'Loading table data…',
 } as const;
 
 /** Every valid key. A typo is a compile error, never a string rendered as itself. */

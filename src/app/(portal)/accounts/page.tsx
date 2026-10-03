@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
-import { formatMoney } from '@/lib/money';
-import { t, type MessageKey } from '@/lib/i18n';
+import { moneyText } from '@/lib/bidi';
+import { intlLocale, localized, t, type MessageKey } from '@/lib/i18n';
 import { OpenAccountButton } from '@/components/accounts/open-account-button';
 import { Tabs, TabPanel, type TabDefinition } from '@/components/ui/tabs';
 import { keys } from '@/lib/query-keys';
@@ -43,8 +43,11 @@ import { keys } from '@/lib/query-keys';
  * caveat that never changes is one a reader stops seeing — along with anything
  * else placed near it.
  */
-/** Two environments, in the order a client cares about them. */
-const TABS: TabDefinition[] = [
+/**
+ * Two environments, in the order a client cares about them. A function, not a
+ * constant: `t()` at module load would freeze the server's first language.
+ */
+const tabs = (): TabDefinition[] => [
   { value: 'live', label: t('accounts.liveHeading') },
   { value: 'demo', label: t('accounts.demoHeading') },
 ];
@@ -167,7 +170,7 @@ export default function AccountsPage() {
           It also gives each environment somewhere to put its OWN create button,
           which is what the old shared dialog was awkwardly working around.
         */}
-        <Tabs tabs={TABS} value={tab} onValueChange={setTab} idPrefix="accounts" />
+        <Tabs tabs={tabs()} value={tab} onValueChange={setTab} idPrefix="accounts" />
 
         <TabPanel
           value="live"
@@ -365,7 +368,7 @@ function AccountCard({ account, tone }: { account: TradingAccount; tone: 'live' 
         </p>
         {/* A decimal string through `formatMoney` — never coerced. */}
         <p className="text-2xl font-bold tabular-nums">
-          {formatMoney(account.balance, account.currency)}
+          {moneyText(account.balance, account.currency)}
         </p>
       </div>
 
@@ -404,7 +407,12 @@ function AccountCard({ account, tone }: { account: TradingAccount; tone: 'live' 
           grid reflows; nothing is left holding a space for an answer that is not
           coming.
         */}
-        {account.product && <Detail label={t('accounts.productLabel')} value={account.product} />}
+        {account.product && (
+          <Detail
+            label={t('accounts.productLabel')}
+            value={localized(account.product, account.productAr)}
+          />
+        )}
         <Detail label={t('accounts.openedLabel')} value={formatDate(account.createdAt)} />
       </dl>
 
@@ -526,5 +534,7 @@ function CopyableLogin({ login }: { login: string }) {
  */
 function formatDate(value: string): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? t('accounts.unknownValue') : date.toLocaleDateString();
+  return Number.isNaN(date.getTime())
+    ? t('accounts.unknownValue')
+    : date.toLocaleDateString(intlLocale());
 }

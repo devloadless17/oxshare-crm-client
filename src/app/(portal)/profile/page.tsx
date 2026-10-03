@@ -9,7 +9,8 @@ import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { KycSubmissionDetails } from '@/components/kyc/kyc-submission-details';
-import { t } from '@/lib/i18n';
+import { currentLocale, intlLocale, localized, t } from '@/lib/i18n';
+import { profileApi } from '@/lib/api/profile';
 import { keys } from '@/lib/query-keys';
 import { addressLine, formatDateOfBirth, formatPhone } from '@/lib/profile';
 import { AvatarUploader } from './avatar-uploader';
@@ -69,6 +70,22 @@ export default function ProfilePage() {
     keys.kyc.status(),
     async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
   );
+
+  /*
+   * The country and nationality are stored in ENGLISH (the canonical value);
+   * an Arabic reader sees the server's Arabic for them (`GET /profile/options`,
+   * 0179). Asked only in Arabic — English prints the stored value as is.
+   */
+  const arabic = currentLocale() === 'ar';
+  const optionsQuery = useResource(
+    keys.profileOptions.all(),
+    (signal) => profileApi.options(signal),
+    { enabled: arabic, retry: 0 },
+  );
+  const nationalityShown = (value: string | null | undefined) =>
+    value ? localized(value, optionsQuery.data?.nationalityLabelsAr?.[value]) : value;
+  const countryShown = (value: string | null | undefined) =>
+    value ? localized(value, optionsQuery.data?.countryLabelsAr?.[value]) : value;
 
   // `RequireAuth` in PortalLayout does not render this until the profile has
   // loaded, so `user` is non-null here in practice. The guard is for the type
@@ -149,9 +166,9 @@ export default function ProfilePage() {
                 a failed load, so "Not provided" says which it is.
               */}
               <Field label={t('profile.dateOfBirth')} value={formatDateOfBirth(user.dateOfBirth)} />
-              <Field label={t('profile.nationality')} value={user.nationality} />
+              <Field label={t('profile.nationality')} value={nationalityShown(user.nationality)} />
               <Field label={t('profile.phone')} value={formatPhone(user.phone)} />
-              <Field label={t('profile.country')} value={user.country} />
+              <Field label={t('profile.country')} value={countryShown(user.country)} />
               <Field label={t('profile.address')} value={addressLine(user)} />
               <Field
                 label={t('profile.accountType')}
@@ -273,12 +290,12 @@ function PageHeader({
         {t('profile.memberSince')}{' '}
         <span className="font-medium text-foreground">
           {/*
-            `toLocaleDateString` with no locale follows the browser, which is
-            what a client expects of their own join date. Money is the thing
+            `toLocaleDateString` in the page's language (`intlLocale`: Arabic
+            month names, Western digits). Money is the thing
             that must never be formatted this way — see lib/money.ts, where
             Intl is banned because it rounds.
           */}
-          {new Date(memberSince).toLocaleDateString(undefined, {
+          {new Date(memberSince).toLocaleDateString(intlLocale(), {
             year: 'numeric',
             month: 'long',
             day: 'numeric',

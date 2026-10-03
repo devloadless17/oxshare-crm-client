@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorDetail, errorDetailFor, withErrorDetail } from '@/components/error-detail';
 import * as React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { MailCheck, ShieldAlert } from 'lucide-react';
@@ -24,9 +25,10 @@ import {
   type SelfServiceAvailability,
   type TradingEnvironment,
 } from '@/lib/api/trading';
-import { formatMoney } from '@/lib/money';
-import { t } from '@/lib/i18n';
+import { ltr, moneyText } from '@/lib/bidi';
+import { localized, t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
+import { Ltr } from '@/components/ltr';
 
 /**
  * The form that opens ONE trading account.
@@ -89,6 +91,15 @@ export function OpenAccountDialog({
     [types],
   );
   const [product, setProduct] = React.useState(products[0] ?? '');
+  /*
+   * What the reader sees for each product: its Arabic when reading Arabic and
+   * one is served. The English name stays the select's VALUE — it is what the
+   * pair resolves on, and nothing displayed is ever sent.
+   */
+  const productLabel = React.useCallback(
+    (name: string) => localized(name, types.find((type) => type.product === name)?.productAr),
+    [types],
+  );
 
   /** The currencies a product is offered in — demo, which asks no product: all of them. */
   const currenciesFor = React.useCallback(
@@ -176,7 +187,7 @@ export function OpenAccountDialog({
         setError(null);
         return;
       }
-      setError(apiErrorMessage(e, t('accounts.openFailed')));
+      setError(withErrorDetail(e, apiErrorMessage(e, t('accounts.openFailed'))));
     },
   });
 
@@ -191,7 +202,7 @@ export function OpenAccountDialog({
             <div className="flex gap-2 rounded-lg border border-success/40 bg-success/10 p-3">
               <MailCheck className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
               <p className="text-xs leading-relaxed">
-                {t('accounts.credentialsEmailed', { email: opened.credentialsSentTo })}
+                {t('accounts.credentialsEmailed', { email: ltr(opened.credentialsSentTo) })}
               </p>
             </div>
 
@@ -201,7 +212,7 @@ export function OpenAccountDialog({
               <Fact label={t('accounts.colLeverage')} value={`1:${opened.leverage}`} />
               <Fact
                 label={t('accounts.colBalance')}
-                value={formatMoney(opened.balance, opened.currency)}
+                value={moneyText(opened.balance, opened.currency)}
               />
             </dl>
 
@@ -263,6 +274,7 @@ export function OpenAccountDialog({
 
           <AccountTypeFields
             products={products}
+            productLabel={productLabel}
             product={product}
             onProduct={(next) => {
               setProduct(next);
@@ -330,6 +342,7 @@ export function OpenAccountDialog({
           {error && (
             <p role="alert" className="text-xs font-medium text-destructive">
               {error}
+              <ErrorDetail detail={errorDetailFor(error)} />
             </p>
           )}
 
@@ -401,7 +414,9 @@ function Fact({ label, value, mono }: { label: string; value: string; mono?: boo
       <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </dt>
-      <dd className={`truncate font-medium ${mono ? 'font-mono' : ''}`}>{value}</dd>
+      <dd className={`truncate font-medium ${mono ? 'font-mono' : ''}`}>
+        {mono ? <Ltr>{value}</Ltr> : value}
+      </dd>
     </div>
   );
 }

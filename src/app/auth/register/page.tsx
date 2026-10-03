@@ -326,7 +326,7 @@ function RegisterForm() {
               <Handshake className="h-4 w-4 shrink-0 text-link" aria-hidden="true" />
               <span className="text-muted-foreground">
                 {t('auth.register.referredBy')}{' '}
-                <span className="font-mono font-semibold tracking-wide text-foreground">
+                <span dir="ltr" className="font-mono font-semibold tracking-wide text-foreground">
                   {referralCode}
                 </span>
               </span>
@@ -402,7 +402,7 @@ function RegisterForm() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                    className="absolute right-3 top-3 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
+                    className="absolute end-3 top-3 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -450,7 +450,7 @@ function RegisterForm() {
                   }}
                   className="sm:w-auto"
                 >
-                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                  <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
                   {t('auth.register.back')}
                 </Button>
                 {/* Still "working" once registered: the next screen is loading, and

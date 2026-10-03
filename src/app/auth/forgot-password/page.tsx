@@ -6,6 +6,7 @@ import { Mail, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { t } from '@/lib/i18n';
+import { ltr } from '@/lib/bidi';
 import { takeHandedEmail } from '@/lib/email-handoff';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { Button } from '@/components/ui/button';
@@ -61,7 +62,7 @@ export default function ForgotPasswordPage() {
               <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
               <h2 className="text-base font-bold text-success">{t('auth.forgot.sentTitle')}</h2>
               <p className="text-xs text-muted-foreground">
-                {t('auth.forgot.sentBody', { email })}
+                {t('auth.forgot.sentBody', { email: ltr(email) })}
               </p>
               <Link
                 href="/auth/login"
@@ -78,7 +79,7 @@ export default function ForgotPasswordPage() {
                 </label>
                 <div className="relative">
                   <Mail
-                    className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+                    className="pointer-events-none absolute start-3.5 top-3 h-4 w-4 text-muted-foreground"
                     aria-hidden="true"
                   />
                   <Input
@@ -89,7 +90,7 @@ export default function ForgotPasswordPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t('auth.login.emailPlaceholder')}
-                    className="h-11 pl-10"
+                    className="h-11 ps-10"
                   />
                 </div>
               </div>
@@ -106,7 +107,7 @@ export default function ForgotPasswordPage() {
             href="/auth/login"
             className="inline-flex items-center gap-1 font-semibold text-link hover:underline rounded-xs focus-outline"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
+            <ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" />
             <span>{t('auth.forgot.backToSignIn')}</span>
           </Link>
         </p>

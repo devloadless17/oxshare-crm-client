@@ -32,7 +32,7 @@ const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
 
     return (
       <div className={cn('relative flex items-center', className)}>
-        <CalendarIcon className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+        <CalendarIcon className="absolute start-3 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
         <Input
           ref={ref}
           type="date"
@@ -41,7 +41,7 @@ const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
           min={minDate}
           disabled={disabled}
           onChange={(e) => onChange?.(e.target.value)}
-          className="pl-9 pr-3 uppercase tracking-wider text-xs font-medium cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+          className="ps-9 pe-3 uppercase tracking-wider text-xs font-medium cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
           {...props}
         />
       </div>
