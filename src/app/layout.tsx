@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { cookies, headers } from 'next/headers';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, IBM_Plex_Sans_Arabic } from 'next/font/google';
 import './globals.css';
-import { DEFAULT_LOCALE, direction } from '@/lib/i18n';
-import { LocaleDirection } from '@/components/locale-direction';
+import { direction, translate } from '@/lib/i18n';
+import { serverLocale } from '@/lib/i18n/server';
+import { LocaleProvider } from '@/components/locale-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -21,10 +22,32 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-export const metadata: Metadata = {
-  title: 'OXShare Client Portal',
-  description: 'OXShare client portal — trading accounts, wallet, and verification.',
-};
+/*
+ * The ARABIC face. Geist has no Arabic glyphs, so without this an Arabic page
+ * falls back to whatever the operating system has — Segoe UI on Windows, Geeza
+ * Pro on a Mac, something else on Android — and the portal looks like three
+ * products. IBM Plex Sans Arabic was drawn to sit beside a Latin grotesque at
+ * the same weights, so English inside an Arabic sentence (a currency code, an
+ * MT5 login, "OXShare") stays in Geist and still matches.
+ *
+ * It is listed AFTER Geist in `globals.css`: the browser takes Latin from Geist
+ * and only the glyphs Geist lacks from here, so English pages are unchanged.
+ */
+const plexArabic = IBM_Plex_Sans_Arabic({
+  variable: '--font-arabic',
+  subsets: ['arabic'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+
+/** The tab title and description, in the visitor's language. */
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await serverLocale();
+  return {
+    title: translate(locale, 'meta.appTitle'),
+    description: translate(locale, 'meta.appDescription'),
+  };
+}
 
 /**
  * `async`, and it reads `headers()`, for ONE reason: the CSP nonce.
@@ -65,8 +88,16 @@ export default async function RootLayout({
    */
   const sessionHint = (await cookies()).has(SESSION_HINT_COOKIE);
 
+  /*
+   * The language, from the `oxshare-portal-locale` cookie — so `lang`, `dir`
+   * and every string are right in the HTML itself. Same reason as the session
+   * hint above: decided before the first byte rather than corrected a frame
+   * after it, which for Arabic was a page of English that then flipped.
+   */
+  const locale = await serverLocale();
+
   return (
-    <html lang={DEFAULT_LOCALE} dir={direction(DEFAULT_LOCALE)} suppressHydrationWarning>
+    <html lang={locale} dir={direction(locale)} suppressHydrationWarning>
       {/*
         THE ONE SCROLL CAP.
 
@@ -86,7 +117,7 @@ export default async function RootLayout({
         anything past this box is now clipped rather than reachable by scrolling.
       */}
       <body
-        className={`${geistSans.variable} ${geistMono.variable} h-dvh overflow-hidden antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${plexArabic.variable} h-dvh overflow-hidden antialiased`}
       >
         {/* `defaultTheme` is NOT passed. It used to be `"light"` here, which
             overrode the provider's own default via the `{...props}` spread — so
@@ -94,14 +125,15 @@ export default async function RootLayout({
             like it worked and changed nothing. The default is `"system"` and it
             lives in one place. */}
         <ThemeProvider storageKey="oxshare-portal-theme" nonce={nonce}>
-          <LocaleDirection />
-          <QueryProvider>
-            <UserProvider initialSessionHint={sessionHint}>{children}</UserProvider>
-          </QueryProvider>
-          {/* INSIDE ThemeProvider — it reads `resolvedTheme` — but outside
+          <LocaleProvider locale={locale}>
+            <QueryProvider>
+              <UserProvider initialSessionHint={sessionHint}>{children}</UserProvider>
+            </QueryProvider>
+            {/* INSIDE ThemeProvider — it reads `resolvedTheme` — but outside
               QueryProvider, which it does not use. It is not a provider and
               wraps nothing, so it takes no position in the tree beyond that. */}
-          <Toaster />
+            <Toaster />
+          </LocaleProvider>
         </ThemeProvider>
       </body>
     </html>

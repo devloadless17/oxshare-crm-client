@@ -1,4 +1,5 @@
 import { formatMoney } from '@/lib/money';
+import { ltr } from '@/lib/bidi';
 
 /**
  * A transaction's amount, signed and coloured by its direction.
@@ -51,8 +52,9 @@ export function SignedAmount({
         isDeposit ? 'text-success' : 'text-destructive'
       } ${className}`}
     >
-      {isDeposit ? '+' : '−'}
-      {formatMoney(amount, currency)}
+      {/* One isolated run, sign included: in Arabic a loose sign would land on
+          the far side of the figure. */}
+      {ltr((isDeposit ? '+' : '−') + formatMoney(amount, currency))}
     </span>
   );
 }

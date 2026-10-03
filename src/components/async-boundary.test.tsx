@@ -94,3 +94,34 @@ describe('AsyncBoundary error state', () => {
     expect(screen.getAllByText('Wallet unavailable.')).toHaveLength(1);
   });
 });
+
+/**
+ * The envelope's optional technical `detail` — shown small and left to right
+ * under the message when the API sends one, and nothing when it does not.
+ */
+describe('the error detail', () => {
+  const render = (data: Record<string, unknown>) =>
+    renderWithProviders(
+      <AsyncBoundary
+        status="error"
+        label="Loading"
+        endpoints={[]}
+        onRetry={vi.fn()}
+        error={{ response: { data } }}
+      >
+        <p>{'never rendered'}</p>
+      </AsyncBoundary>,
+    );
+
+  it('is shown beneath the message, isolated left to right', () => {
+    render({ message: 'Amount too large.', detail: 'max=5000.00 USD' });
+    const detail = screen.getByText('max=5000.00 USD');
+    expect(detail).toHaveAttribute('dir', 'ltr');
+  });
+
+  it('is absent when the API sent none (or a blank one)', () => {
+    render({ message: 'Amount too large.', detail: '  ' });
+    expect(screen.getByText('Amount too large.')).toBeInTheDocument();
+    expect(document.querySelector('[dir="ltr"]')).toBeNull();
+  });
+});

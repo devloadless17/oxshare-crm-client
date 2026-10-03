@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Check, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { t } from '@/lib/i18n';
+import { intlLocale, t } from '@/lib/i18n';
 
 /**
  * The partner area's design system, rebuilt.
@@ -328,11 +328,11 @@ export function CopyButton({
  */
 export function formatDate(value: string): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString(intlLocale());
 }
 
 /** The same, with the time — for a row that can appear twice in one day. */
 export function formatDateTime(value: string): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString(intlLocale());
 }

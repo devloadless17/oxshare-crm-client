@@ -10,7 +10,7 @@ import { useResource } from '@/hooks/use-resource';
 import { paymentsApi, type Transfer } from '@/lib/api/payments';
 import { SignedAmount } from '@/components/money/signed-amount';
 import { formatDealTime } from '@/lib/account-stats';
-import { t, type MessageKey } from '@/lib/i18n';
+import { localized, t, type MessageKey } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
 /**
@@ -158,9 +158,15 @@ function buildColumns(currency: string): Column<Transfer>[] {
       cell: (row) => (
         <span className="flex items-center gap-1.5 whitespace-nowrap">
           {row.direction === 'wallet_to_account' ? (
-            <ArrowDownLeft className="h-3.5 w-3.5 text-success" aria-hidden="true" />
+            <ArrowDownLeft
+              className="h-3.5 w-3.5 text-success rtl:-scale-x-100"
+              aria-hidden="true"
+            />
           ) : (
-            <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            <ArrowUpRight
+              className="h-3.5 w-3.5 text-muted-foreground rtl:-scale-x-100"
+              aria-hidden="true"
+            />
           )}
           {row.direction === 'wallet_to_account'
             ? t('accounts.directionDeposit')
@@ -228,6 +234,11 @@ function buildColumns(currency: string): Column<Transfer>[] {
         const state = STATES[row.state];
         return (
           <span
+            // The reason a failed transfer gives, one hover away — in the
+            // reader's language when the server has it (`failureReasonAr`).
+            title={
+              row.failureReason ? localized(row.failureReason, row.failureReasonAr) : undefined
+            }
             className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
               state?.className ?? 'bg-muted text-muted-foreground border-border'
             }`}

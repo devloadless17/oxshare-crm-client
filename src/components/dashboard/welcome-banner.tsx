@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { CalendarDays } from 'lucide-react';
-import { t } from '@/lib/i18n';
+import { intlLocale, t } from '@/lib/i18n';
 
 /**
  * The branded strip across the top of the dashboard: who you are, over the
@@ -32,7 +32,7 @@ import { t } from '@/lib/i18n';
  * empty `alt`.
  */
 export function WelcomeBanner({ firstName }: { firstName?: string }) {
-  const today = new Date().toLocaleDateString(undefined, {
+  const today = new Date().toLocaleDateString(intlLocale(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

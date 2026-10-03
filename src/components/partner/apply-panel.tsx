@@ -9,7 +9,7 @@ import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi } from '@/lib/api/partner';
-import { t } from '@/lib/i18n';
+import { localized, t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
 /**
@@ -48,7 +48,7 @@ export function ApplyPanel({
    * carries their programme — see `inheritedAgencyIdFor` on the API. Null means
    * they choose, which is any client not introduced by a partner.
    */
-  inherited: { id: string; name: string } | null;
+  inherited: { id: string; name: string; nameAr?: string | null } | null;
 }) {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -196,7 +196,9 @@ export function ApplyPanel({
             <div className="flex gap-3 rounded-xl border border-primary bg-primary/5 p-4">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
               <div className="min-w-0">
-                <p className="text-sm font-semibold">{inherited.name}</p>
+                <p className="text-sm font-semibold">
+                  {localized(inherited.name, inherited.nameAr)}
+                </p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   {t('partner.inheritedAgencyHint')}
                 </p>
@@ -241,15 +243,21 @@ export function ApplyPanel({
                     className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
                   />
                   <span className="min-w-0 space-y-1">
-                    <span className="block text-sm font-semibold">{agency.name}</span>
+                    <span className="block text-sm font-semibold">
+                      {localized(agency.name, agency.nameAr)}
+                    </span>
                     {agency.description && (
                       <span className="block text-xs leading-relaxed text-muted-foreground">
-                        {agency.description}
+                        {localized(agency.description, agency.descriptionAr)}
                       </span>
                     )}
                     {agency.products.length > 0 && (
                       <span className="block text-[11px] text-muted-foreground">
-                        {t('partner.agencySells', { products: agency.products.join(', ') })}
+                        {t('partner.agencySells', {
+                          products: agency.products
+                            .map((product, i) => localized(product, agency.productsAr?.[i]))
+                            .join(t('common.listSeparator')),
+                        })}
                       </span>
                     )}
                   </span>

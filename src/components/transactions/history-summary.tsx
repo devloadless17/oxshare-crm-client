@@ -3,7 +3,7 @@
 import Decimal from 'decimal.js';
 import { HAIRLINE_GRID, Stat } from '@/components/partner/partner-ui';
 import type { TransactionSummaryRow } from '@/lib/api/payments';
-import { formatMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { t } from '@/lib/i18n';
 import type { HistoryScope } from '@/components/transactions/movement-history';
 
@@ -52,7 +52,7 @@ export function SummaryTiles({
   return (
     <div className="space-y-3">
       {[...byCurrency.entries()].map(([currency, cells]) => {
-        const money = (value: Decimal) => formatMoney(value.toFixed(8), currency);
+        const money = (value: Decimal) => moneyText(value.toFixed(8), currency);
         const stats =
           scope === 'transfers'
             ? (() => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { withErrorDetail } from '@/components/error-detail';
 import * as React from 'react';
 import { MoneyScreen } from '@/components/money/money-screen';
 import { ArrowRight } from 'lucide-react';
@@ -29,7 +30,8 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { paymentsApi } from '@/lib/api/payments';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { walletApi, type Wallet } from '@/lib/api/wallet';
-import { compareMoney, formatMoney } from '@/lib/money';
+import { compareMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 import { useMoneyRefresh } from '@/hooks/use-money-refresh';
@@ -153,7 +155,8 @@ function TransferPageContent() {
  * against is the source's, and the pairing has to be settled before a figure
  * means anything.
  */
-const STEPS = [t('transfer.from'), t('transfer.to'), t('money.stepAmount')];
+// A function: `t()` at module load would freeze the server's first language.
+const steps = () => [t('transfer.from'), t('transfer.to'), t('money.stepAmount')];
 
 function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; wallets: Wallet[] }) {
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
@@ -275,7 +278,7 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
       await refreshMoney([[...keys.tradingAccounts.all()]]);
       setDone(true);
     } catch (err) {
-      setError(apiErrorMessage(err, t('transfer.failed')));
+      setError(withErrorDetail(err, apiErrorMessage(err, t('transfer.failed'))));
     } finally {
       setBusy(false);
     }
@@ -294,7 +297,7 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
   return (
     <form onSubmit={(event) => void submit(event)} className="flex min-h-0 flex-1 flex-col">
       <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <StepRail steps={STEPS} active={step - 1} />
+        <StepRail steps={steps()} active={step - 1} />
 
         {/*
           The one scrolling region. The footer below stays put, so the submit
@@ -376,7 +379,7 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
                       hint={
                         spendable
                           ? t('money.availableBalance', {
-                              amount: formatMoney(spendable, account.currency),
+                              amount: moneyText(spendable, account.currency),
                             })
                           : undefined
                       }
@@ -433,7 +436,7 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
                     */
                     value={
                       account && amount
-                        ? formatMoney(amount, account.currency)
+                        ? moneyText(amount, account.currency)
                         : t('accounts.unknownValue')
                     }
                     strong
@@ -463,7 +466,7 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
               onClick={() => setStep(2)}
             >
               {t('money.continue')}
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              <ArrowRight className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
             </Button>
           ) : step === 2 ? (
             <div className="flex gap-3">
@@ -483,7 +486,7 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
                 onClick={() => setStep(3)}
               >
                 {t('money.continue')}
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                <ArrowRight className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
               </Button>
             </div>
           ) : (

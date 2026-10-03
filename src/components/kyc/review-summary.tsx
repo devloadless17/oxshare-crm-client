@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { CheckCircle2, FileText, User } from 'lucide-react';
 import type { components } from '@/lib/api/types.gen';
 import { t } from '@/lib/i18n';
+import { answerText, docLabel, fieldLabel, stepTitle } from '@/lib/kyc-text';
 import { isBarePhonePrefix } from './custom-step';
 
 type KycStepConfig = components['schemas']['KycStepConfigDto'];
@@ -88,10 +89,10 @@ export function ReviewSummary({
                   href={`/kyc/step/${step.stepNumber}`}
                   className="font-semibold text-link underline-offset-2 hover:underline"
                 >
-                  {step.title}
+                  {stepTitle(step)}
                 </Link>
                 {' — '}
-                {owedLabels(state!).join(', ')}
+                {owedLabels(state!).join(t('common.listSeparator'))}
               </li>
             ))}
           </ul>
@@ -110,7 +111,7 @@ export function ReviewSummary({
               ) : (
                 <FileText className="h-4 w-4" aria-hidden="true" />
               )}
-              <h3 className="text-xs font-bold uppercase tracking-wider">{step.title}</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider">{stepTitle(step)}</h3>
             </div>
             <dl className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 md:grid-cols-3">
               {items.map((item) => (
@@ -143,7 +144,8 @@ function ItemValue({ item }: { item: Item }) {
     return item.missing ? (
       <span className="text-destructive">{t('kyc.missing')}</span>
     ) : (
-      <>{item.value || '—'}</>
+      // The client's own answer, in its own direction (a phone stays `+961…`).
+      <bdi>{item.value || '—'}</bdi>
     );
   }
   if (item.uploaded && !item.returned) {
@@ -191,7 +193,10 @@ function itemsOf(
   if (step.slug === 'selfie') {
     items.push({
       key: 'selfie',
-      label: step.fields.find((field) => field.name === 'selfie')?.label ?? t('kyc.selfiePhoto'),
+      label: (() => {
+        const selfie = step.fields.find((field) => field.name === 'selfie');
+        return selfie ? fieldLabel(selfie) : t('kyc.selfiePhoto');
+      })(),
       uploaded: Boolean(status?.selfie?.filePath),
       missing: missing.has('selfie'),
       returned: returned.has('selfie'),
@@ -228,7 +233,7 @@ function documentItems(
     return [
       {
         key: `${step.slug}:choice`,
-        label: step.title,
+        label: stepTitle(step),
         uploaded: Boolean(files[0]),
         missing: missing.has('docType') || missing.has(slots[0]),
         returned: slots.some((slot) => returned.has(slot)),
@@ -242,7 +247,7 @@ function documentItems(
     return [
       {
         key: slot,
-        label: parts.length > 1 ? `${field.label} · ${part.label}` : field.label,
+        label: parts.length > 1 ? `${fieldLabel(field)} · ${docLabel(part)}` : fieldLabel(field),
         uploaded: Boolean(files[index]),
         missing: missing.has(slot),
         returned: returned.has(slot) || returned.has(field.name),
@@ -260,7 +265,7 @@ function itemOf(
 ): Item {
   const base = {
     key: field.name,
-    label: field.label,
+    label: fieldLabel(field),
     missing: missing.has(field.name),
     returned: returned.has(field.name),
   };
@@ -284,6 +289,7 @@ function itemOf(
           : ''
       : field.type === 'phone' && isBarePhonePrefix(raw)
         ? ''
-        : raw;
+        : // A choice reads in the reader's language; the stored value is unchanged.
+          answerText(field, raw);
   return { ...base, value };
 }

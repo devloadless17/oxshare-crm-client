@@ -67,7 +67,7 @@ const DialogContent = React.forwardRef<
     >
       {children}
       {!hideClose && (
-        <DialogPrimitive.Close className="absolute right-4 top-4 cursor-pointer rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline">
+        <DialogPrimitive.Close className="absolute end-4 top-4 cursor-pointer rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-outline">
           <X className="h-4 w-4" aria-hidden="true" />
           <span className="sr-only">{t('common.close')}</span>
         </DialogPrimitive.Close>
@@ -78,7 +78,7 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('flex flex-col gap-1.5 text-left', className)} {...props} />;
+  return <div className={cn('flex flex-col gap-1.5 text-start', className)} {...props} />;
 }
 
 function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

@@ -1,4 +1,5 @@
 import Decimal from 'decimal.js';
+import { intlLocale } from '@/lib/i18n';
 
 /**
  * The derivations shared by the account panels, kept out of the JSX.
@@ -100,5 +101,7 @@ export function formatDealTime(value: string, fallback: string): string {
   const date = new Date(value);
   // Guarded: an unparseable timestamp from the API must render as "unknown"
   // rather than the literal string `Invalid Date` in a client's history.
-  return Number.isNaN(date.getTime()) ? fallback : date.toLocaleString(undefined, DEAL_TIME_FORMAT);
+  return Number.isNaN(date.getTime())
+    ? fallback
+    : date.toLocaleString(intlLocale(), DEAL_TIME_FORMAT);
 }

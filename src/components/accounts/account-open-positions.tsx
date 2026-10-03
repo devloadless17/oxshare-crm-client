@@ -7,8 +7,9 @@ import { DataTable, EmptyState, type Column } from '@/components/data-table';
 import { useResource } from '@/hooks/use-resource';
 import { tradingApi, type AccountPosition } from '@/lib/api/trading';
 import { formatDecimal, formatMoney } from '@/lib/money';
+import { ltr } from '@/lib/bidi';
 import { formatDealTime, moneySign } from '@/lib/account-stats';
-import { t } from '@/lib/i18n';
+import { intlLocale, t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
 /**
@@ -106,7 +107,7 @@ export function AccountOpenPositions({
           <h2 className="text-sm font-semibold">{t('accounts.openPositionsTitle')}</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {readAt
-              ? t('accounts.positionsReadAt', { time: readAt.toLocaleTimeString() })
+              ? t('accounts.positionsReadAt', { time: readAt.toLocaleTimeString(intlLocale()) })
               : t('accounts.positionsLive')}
           </p>
         </div>
@@ -147,7 +148,7 @@ export function AccountOpenPositions({
            * Closed trades are the opposite case and are paged by the SERVER:
            * they accumulate without bound and come from our own table.
            */
-          clientPagination={{ pageSize: 10 }}
+          clientPagination={{ pageSize: 10, noun: [t('table.row'), t('table.rows')] }}
         />
       </AsyncBoundary>
     </section>
@@ -283,7 +284,7 @@ function Signed({
         sign === 'positive' ? 'text-success' : sign === 'negative' ? 'text-destructive' : ''
       }`}
     >
-      {sign === 'positive' ? `+${formatted}` : formatted}
+      {ltr(sign === 'positive' ? `+${formatted}` : formatted)}
     </span>
   );
 }

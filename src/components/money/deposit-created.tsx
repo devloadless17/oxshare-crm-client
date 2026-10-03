@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { SummaryRow } from '@/components/money/money-shell';
 import { DepositWaiting } from '@/components/money/deposit-waiting';
 import type { DepositRequest, PaymentMethod } from '@/lib/api/deposits';
-import { formatMoney } from '@/lib/money';
-import { t } from '@/lib/i18n';
+import { moneyText } from '@/lib/bidi';
+import { localized, t } from '@/lib/i18n';
 
 /**
  * What a client sees once a deposit is filed.
@@ -54,7 +54,7 @@ export function DepositCreated({
       <>
         <div className="space-y-4 p-5 text-center sm:p-6">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <ExternalLink className="h-6 w-6" aria-hidden="true" />
+            <ExternalLink className="h-6 w-6 rtl:-scale-x-100" aria-hidden="true" />
           </span>
           <div>
             <h2 className="text-lg font-bold">{t('deposit.paymentLinkReady')}</h2>
@@ -66,10 +66,13 @@ export function DepositCreated({
           <dl className="mx-auto max-w-xs divide-y divide-border text-start">
             <SummaryRow
               label={t('deposit.amountLabel')}
-              value={formatMoney(deposit.amount, deposit.currency)}
+              value={moneyText(deposit.amount, deposit.currency)}
               strong
             />
-            <SummaryRow label={t('deposit.methodTitle')} value={method.name} />
+            <SummaryRow
+              label={t('deposit.methodTitle')}
+              value={localized(method.name, method.nameAr)}
+            />
             <SummaryRow label={t('deposit.referenceLabel')} value={deposit.reference} />
           </dl>
 
@@ -82,7 +85,7 @@ export function DepositCreated({
           <Button asChild size="lg" className="w-full">
             <a href={deposit.paymentUrl} rel="noopener noreferrer">
               {t('deposit.openPaymentPage')}
-              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              <ExternalLink className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
             </a>
           </Button>
           <p className="text-[11px] text-muted-foreground">{t('deposit.gatewayReturnNote')}</p>
@@ -137,7 +140,7 @@ export function DepositCreated({
         <dl className="divide-y divide-border">
           <SummaryRow
             label={t('deposit.amountLabel')}
-            value={formatMoney(deposit.amount, deposit.currency)}
+            value={moneyText(deposit.amount, deposit.currency)}
             strong
           />
         </dl>

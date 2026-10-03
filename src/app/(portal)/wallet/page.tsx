@@ -16,7 +16,7 @@ import { currenciesApi } from '@/lib/api/currencies';
 import { paymentsApi, type Transaction } from '@/lib/api/payments';
 import { apiErrorMessage } from '@/lib/api/errors';
 import { SignedAmount } from '@/components/money/signed-amount';
-import { t, type MessageKey } from '@/lib/i18n';
+import { intlLocale, localized, t, type MessageKey } from '@/lib/i18n';
 import { movementLabelKey } from '@/lib/movement-label';
 import { keys } from '@/lib/query-keys';
 
@@ -156,7 +156,10 @@ export default function WalletPage() {
    */
   const catalogue = currencies.data ?? [];
   const rank = new Map(catalogue.map((entry, index) => [entry.code, index]));
-  const nameOf = new Map(catalogue.map((entry) => [entry.code, entry.name]));
+  // The currency's name in the reader's language (`nameAr`, 0179).
+  const nameOf = new Map(
+    catalogue.map((entry) => [entry.code, localized(entry.name, entry.nameAr)]),
+  );
 
   const heldEntries: CarouselEntry[] = (wallets.data ?? [])
     .map((wallet) => ({
@@ -178,7 +181,7 @@ export default function WalletPage() {
    */
   const unopened: CarouselEntry[] = catalogue
     .filter((entry) => !byCurrency.has(entry.code))
-    .map((entry) => ({ code: entry.code, label: entry.name }));
+    .map((entry) => ({ code: entry.code, label: localized(entry.name, entry.nameAr) }));
 
   const held: CarouselEntry[] = [...heldEntries, ...unopened];
   const open = (currency: string) => openWallet.mutate(currency);
@@ -346,9 +349,9 @@ function ActivityRow({ tx }: { tx: Transaction }) {
         }`}
       >
         {isDeposit ? (
-          <ArrowDownLeft className="h-4 w-4" aria-hidden="true" />
+          <ArrowDownLeft className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
         ) : (
-          <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+          <ArrowUpRight className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
         )}
       </span>
       <div className="min-w-0 flex-1">
@@ -362,7 +365,7 @@ function ActivityRow({ tx }: { tx: Transaction }) {
         */}
         <p className="truncate text-sm font-medium">{t(movementLabelKey(tx))}</p>
         <p className="text-[11px] text-muted-foreground">
-          {new Date(tx.createdAt).toLocaleString()}
+          {new Date(tx.createdAt).toLocaleString(intlLocale())}
         </p>
       </div>
       <div className="text-end">

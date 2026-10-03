@@ -2,7 +2,7 @@
 
 import Decimal from 'decimal.js';
 import { useWithdrawalLimits } from '@/hooks/use-currency-scale';
-import { formatMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { t } from '@/lib/i18n';
 
 /**
@@ -34,12 +34,12 @@ export function WithdrawAmountHint({
           {problem}
         </span>
       )}
-      {t('withdraw.available', { amount: formatMoney(available, currency) })}
+      {t('withdraw.available', { amount: moneyText(available, currency) })}
       {limits && (
         <span className="block">
           {t('withdraw.limits', {
-            min: formatMoney(limits.min, currency),
-            max: formatMoney(limits.max, currency),
+            min: moneyText(limits.min, currency),
+            max: moneyText(limits.max, currency),
           })}
         </span>
       )}
@@ -69,13 +69,13 @@ export function withdrawalAmountProblem(
   }
   if (!value.isFinite() || !value.greaterThan(0)) return null;
   if (limits && value.lessThan(limits.min)) {
-    return t('withdraw.amountBelowMin', { min: formatMoney(limits.min, currency) });
+    return t('withdraw.amountBelowMin', { min: moneyText(limits.min, currency) });
   }
   if (limits && value.greaterThan(limits.max)) {
-    return t('withdraw.amountAboveMax', { max: formatMoney(limits.max, currency) });
+    return t('withdraw.amountAboveMax', { max: moneyText(limits.max, currency) });
   }
   if (value.greaterThan(available)) {
-    return t('withdraw.amountAboveAvailable', { available: formatMoney(available, currency) });
+    return t('withdraw.amountAboveAvailable', { available: moneyText(available, currency) });
   }
   return null;
 }

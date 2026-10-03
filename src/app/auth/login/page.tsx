@@ -246,7 +246,7 @@ function LoginForm() {
           <Label htmlFor="email">{t('auth.login.emailLabel')}</Label>
           <div className="relative">
             <Mail
-              className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+              className="pointer-events-none absolute start-3.5 top-3 h-4 w-4 text-muted-foreground"
               aria-hidden="true"
             />
             <Input
@@ -257,7 +257,7 @@ function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={t('auth.login.emailPlaceholder')}
-              className="h-11 pl-10"
+              className="h-11 ps-10"
             />
           </div>
         </div>
@@ -266,7 +266,7 @@ function LoginForm() {
           <Label htmlFor="password">{t('auth.login.password')}</Label>
           <div className="relative">
             <Lock
-              className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+              className="pointer-events-none absolute start-3.5 top-3 h-4 w-4 text-muted-foreground"
               aria-hidden="true"
             />
             <Input
@@ -277,7 +277,7 @@ function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t('auth.login.passwordPlaceholder')}
-              className="h-11 pl-10 pr-11"
+              className="h-11 ps-10 pe-11"
             />
             <button
               type="button"
@@ -285,7 +285,7 @@ function LoginForm() {
               // Labelled, because the icon alone tells a screen-reader user
               // nothing and this button changes whether a password is on screen.
               aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-              className="absolute right-3 top-3 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
+              className="absolute end-3 top-3 cursor-pointer rounded text-muted-foreground transition-colors hover:text-foreground focus-outline"
             >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" aria-hidden="true" />

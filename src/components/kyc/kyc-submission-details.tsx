@@ -15,7 +15,7 @@ import {
   type KycDocumentState,
   type KycStatusLike,
 } from '@/lib/kyc-documents';
-import { t, type MessageKey } from '@/lib/i18n';
+import { intlLocale, t, type MessageKey } from '@/lib/i18n';
 import { isProfileKey } from '@/lib/profile';
 import { keys } from '@/lib/query-keys';
 
@@ -155,7 +155,9 @@ export function KycSubmissionDetails({
                       : 'text-foreground'
                   }`}
                 >
-                  {item.value}
+                  {/* `<bdi>`: the client's own answer reads in its own direction — a
+                      phone number stays `+971…`, an Arabic address stays Arabic. */}
+                  <bdi>{item.value}</bdi>
                 </dd>
               </div>
             ))}
@@ -216,5 +218,5 @@ function formatDateTime(value: string | undefined): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? '—'
-    : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    : date.toLocaleString(intlLocale(), { dateStyle: 'medium', timeStyle: 'short' });
 }

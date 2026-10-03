@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { LineChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Dashboard } from '@/lib/api/trading';
-import { formatMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { t } from '@/lib/i18n';
 
 /**
@@ -147,7 +147,7 @@ export function AccountsPanel({ accounts }: { accounts: Dashboard['tradingAccoun
                   </span>
                 </div>
                 <p className="font-mono text-sm font-bold tabular-nums">
-                  {formatMoney(account.balance, account.currency)}
+                  {moneyText(account.balance, account.currency)}
                 </p>
               </li>
             ))}

@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { CopyButton, Pill, Surface, formatDate } from '@/components/partner/partner-ui';
 import { useHydrated } from '@/hooks/use-hydrated';
 import type { IbStatus } from '@/lib/api/partner';
-import { t } from '@/lib/i18n';
+import { localized, t } from '@/lib/i18n';
 
 /**
  * Who the partner is, and the two strings that earn them money.
@@ -82,7 +82,10 @@ export function PartnerHeader({ account }: { account: NonNullable<IbStatus['acco
             their clients may TRADE, and nothing else names it.
           */}
           {account.agencyName && (
-            <Fact label={t('partner.agencyLabel')} value={account.agencyName} />
+            <Fact
+              label={t('partner.agencyLabel')}
+              value={localized(account.agencyName, account.agencyNameAr)}
+            />
           )}
         </dl>
       </div>
@@ -108,7 +111,10 @@ export function PartnerHeader({ account }: { account: NonNullable<IbStatus['acco
             {t('partner.referralCodeLabel')}
           </p>
           <div className="mt-2 flex items-center justify-between gap-3">
-            <span className="truncate font-mono text-xl font-semibold tracking-[0.18em] sm:text-2xl">
+            <span
+              dir="ltr"
+              className="truncate font-mono text-xl font-semibold tracking-[0.18em] sm:text-2xl"
+            >
               {account.referralCode}
             </span>
             <CopyButton value={account.referralCode} label={t('partner.referralCodeLabel')} />

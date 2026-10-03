@@ -1,5 +1,6 @@
 import type { components } from './types.gen';
 import { apiClient } from './client';
+import type { Locale } from '../i18n';
 
 /**
  * The countries and nationalities a client profile accepts — the SERVER's lists.
@@ -20,5 +21,14 @@ export const profileApi = {
   async options(signal?: AbortSignal): Promise<ProfileOptions> {
     const { data } = await apiClient.get<ProfileOptions>('/profile/options', { signal });
     return data;
+  },
+
+  /**
+   * Remember the client's language on their account (`PUT /profile/locale`),
+   * so what the server writes without them — a KYC decision, a paid withdrawal —
+   * reaches them in it. The page itself never needs this: it reads the cookie.
+   */
+  async setLocale(locale: Locale): Promise<void> {
+    await apiClient.put('/profile/locale', { locale });
   },
 };

@@ -1,58 +1,122 @@
 import { messages, type MessageKey } from './messages';
+import { arMessages } from './messages.ar';
 import { readStoredLocale } from './locale-storage';
 
 /**
  * The translation seam — `docs/CLAUDE.md` "Designed for change", seam 4.
  *
- * TWIN FILE — an identical copy lives at the same path in `oxshare-crm-admin`.
- * Only `./messages.ts` differs between the two.
+ * NO LONGER A TWIN (Oct 2026). The admin app keeps its English-only copy; this
+ * one carries two catalogues and resolves the language per request, which the
+ * admin has no reason to do.
  *
- * There is one locale today. That is deliberate: the same instruction that asks
- * for strings to be externalised says "do not build the language switcher yet".
- * What matters now is that every string passes through ONE function, so adding
- * Arabic later is a new catalogue plus a locale resolver — not an edit to every
- * component in the app.
+ * ── How the language is chosen ────────────────────────────────────────────
+ *
+ * ONE source: the `oxshare-portal-locale` cookie (`locale-storage.ts`). A cookie
+ * rather than localStorage because the SERVER must render the right language
+ * from the first byte: the root layout reads it, sets `<html lang dir>`, and
+ * hands it to `<LocaleProvider>`. With localStorage the server could only render
+ * English and the client corrected it after hydration, which is a flash of
+ * English on every Arabic page and a hydration mismatch on every string.
+ *
+ * On the client the active locale is read from the cookie when this module is
+ * first evaluated — before React hydrates — so the client's first render matches
+ * the server's. Changing language writes the cookie and RELOADS the page
+ * (`switchLocale`), so nothing rendered or cached in the old language survives:
+ * module-level labels, React Query data holding server sentences, open toasts.
+ *
+ * `t()` stays a plain function, not a hook, because it is called from event
+ * handlers, toasts and helpers as well as render. `useTranslation()` returns it
+ * for components written in the hook shape.
  */
 
 export type Locale = 'en' | 'ar';
 
+/** Every locale the portal offers, in switcher order. */
+export const LOCALES: readonly Locale[] = ['en', 'ar'];
+
 /** Locales that read right-to-left. FSD §10 names Arabic specifically. */
 const RTL_LOCALES: ReadonlySet<Locale> = new Set<Locale>(['ar']);
 
-/** The language used when nothing is stored, and on the server. */
+/** The language used when nothing is stored. */
 export const DEFAULT_LOCALE: Locale = 'en';
 
+/** Each locale's name in its OWN language — a switcher lists "العربية", never "Arabic". */
+export const LOCALE_NAMES: Readonly<Record<Locale, string>> = { en: 'English', ar: 'العربية' };
+
 /**
- * The active locale.
- *
- * A FUNCTION rather than an exported constant, so call sites are written against
- * "ask for the locale" instead of "read the locale" — the difference between
- * adding a switcher later and rewriting every consumer.
- *
- * On the server this is always `DEFAULT_LOCALE`. It has to be: the server has no
- * access to the browser's stored preference, and rendering one language on the
- * server and another on the client is a hydration mismatch. `LocaleDirection`
- * resolves the stored value on the client and corrects `<html lang>`/`<html dir>`
- * before paint — the same shape next-themes uses for the theme class, and the
- * reason `<html>` already carries `suppressHydrationWarning`.
+ * `Record<MessageKey, string>` on the Arabic side is what makes a missing
+ * translation a COMPILE error: a key added to `messages.ts` without its Arabic
+ * twin does not build. `messages.ar.test.ts` adds what a type cannot see —
+ * every placeholder survives translation.
  */
+const CATALOGUES: Readonly<Record<Locale, Readonly<Record<MessageKey, string>>>> = {
+  en: messages,
+  ar: arMessages,
+};
+
+export function isLocale(value: unknown): value is Locale {
+  return typeof value === 'string' && (LOCALES as readonly string[]).includes(value);
+}
+
+/*
+ * The active locale. On the client: the cookie, read once at module load (see
+ * the header). On the server: whatever `<LocaleProvider>` set for the request
+ * being rendered — server code that renders OUTSIDE that provider (metadata,
+ * server components) must use `translate(locale, …)` with `serverLocale()`.
+ */
+let active: Locale = readStoredLocale() ?? DEFAULT_LOCALE;
+
+/** The active locale. */
 export function currentLocale(): Locale {
-  return readStoredLocale() ?? DEFAULT_LOCALE;
+  return active;
 }
 
 /**
- * Writing direction for a locale, for the `dir` attribute on `<html>`.
- *
- * RTL is not a translation problem, it is a layout problem: every `left-3`,
- * `pl-9`, `ml-auto` and `text-left` in the app has to become a logical property
- * (`start-3`, `ps-9`, `ms-auto`, `text-start`) before Arabic renders correctly.
- * That work is proportional to the number of components and cannot be deferred
- * into a translation pass. Exposing `dir` now means the sweep can be done and
- * VERIFIED incrementally — set the locale to 'ar' locally and the layout either
- * mirrors or it does not — instead of being discovered all at once at the end.
+ * Set the active locale. Called by `<LocaleProvider>` during render with the
+ * locale the server resolved from the cookie, so SSR and hydration agree.
+ * Never call it to SWITCH language — use `switchLocale`, which persists and
+ * reloads.
  */
+export function setActiveLocale(locale: Locale): void {
+  active = locale;
+}
+
+/** Writing direction for a locale, for the `dir` attribute on `<html>`. */
 export function direction(locale: Locale = currentLocale()): 'ltr' | 'rtl' {
   return RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
+}
+
+/**
+ * The BCP 47 tag handed to `Intl` and `toLocale*String` for dates and times.
+ *
+ * Arabic gets `-u-nu-latn`: Arabic month and day names with WESTERN digits.
+ * This is a money product; an account number, a balance or a date read in
+ * Eastern Arabic digits beside the same figure in Latin digits on a receipt,
+ * an MT5 terminal or a bank statement is a reconciliation problem, and Western
+ * digits are what Lebanese banks and brokers print.
+ *
+ * English returns `undefined` — the browser's own convention — which is what
+ * every English date in the portal has always used.
+ */
+export function intlLocale(locale: Locale = currentLocale()): string | undefined {
+  return locale === 'ar' ? 'ar-u-nu-latn' : undefined;
+}
+
+/**
+ * The broker's own text in the active language: the Arabic when the locale is
+ * Arabic and the operator wrote one, else the English.
+ *
+ * For content the ADMIN authors (KYC questions, options, step titles…), which
+ * arrives with both languages. A blank Arabic falls back to English rather than
+ * rendering an empty label — an untranslated question is still a question.
+ */
+export function localized(
+  en: string,
+  ar?: string | null,
+  locale: Locale = currentLocale(),
+): string {
+  if (locale === 'ar' && typeof ar === 'string' && ar.trim() !== '') return ar;
+  return en;
 }
 
 /** Values substituted into a message's `{placeholders}`. */
@@ -63,8 +127,21 @@ export function direction(locale: Locale = currentLocale()): 'ltr' | 'rtl' {
  */
 export type MessageVars = Record<string, string | number | undefined>;
 
+/** Intl.PluralRules order for a six-branch selector. */
+const SIX_FORMS: readonly Intl.LDMLPluralRule[] = ['zero', 'one', 'two', 'few', 'many', 'other'];
+
+const pluralRules = new Map<Locale, Intl.PluralRules>();
+function pluralCategory(locale: Locale, count: number): Intl.LDMLPluralRule {
+  let rules = pluralRules.get(locale);
+  if (!rules) {
+    rules = new Intl.PluralRules(locale);
+    pluralRules.set(locale, rules);
+  }
+  return rules.select(count);
+}
+
 /**
- * Look up a message and fill in its placeholders.
+ * A message in a GIVEN locale, placeholders filled.
  *
  * Keys are typed, so a mistyped key does not compile. Placeholders are
  * `{named}` rather than positional, because word order changes between
@@ -74,8 +151,8 @@ export type MessageVars = Record<string, string | number | undefined>;
  * seeing `{amount}` in the UI is an obvious bug, while "on hold: undefined" is
  * one someone screenshots and asks about.
  */
-export function t(key: MessageKey, vars?: MessageVars): string {
-  const template: string = messages[key];
+export function translate(locale: Locale, key: MessageKey, vars?: MessageVars): string {
+  const template: string = CATALOGUES[locale][key] ?? messages[key];
   if (!vars) return template;
 
   const filled = template.replace(/\{(\w+)\}/g, (whole, name: string) => {
@@ -89,27 +166,39 @@ export function t(key: MessageKey, vars?: MessageVars): string {
    * "network(s)" shorthand, which reads as a form letter in the one place an
    * operator is being told something is wrong.
    *
+   * SIX branches — `{count:zero|one|two|few|many|other}` — pick by the
+   * locale's CLDR plural rules. Arabic needs them: a counted noun is singular
+   * for 1, DUAL for 2, plural for 3–10 and singular again from 11, and a
+   * two-way selector gets most of those wrong.
+   *
    * Applied AFTER the plain fill, so a branch may itself say `{count}`
    * (`{count:The wallet|All {count} wallets}`). A var the caller did not supply
    * leaves the selector visible, for the same reason as a plain placeholder.
-   * Compared as text, not `Number()`: a count arrives as either type.
    */
-  return filled.replace(
-    /\{(\w+):([^|{}]*)\|([^{}]*)\}/g,
-    (whole, name: string, one: string, other: string) => {
-      const value = vars[name];
-      if (value === undefined) return whole;
-      return String(value) === '1' ? one : other;
-    },
-  );
+  return filled.replace(/\{(\w+):([^{}]*)\}/g, (whole, name: string, body: string) => {
+    const value = vars[name];
+    if (value === undefined) return whole;
+    const branches = body.split('|');
+    const [one = whole, other = whole] = branches;
+    if (branches.length === 2) return String(value) === '1' ? one : other;
+    if (branches.length === SIX_FORMS.length) {
+      const fallback = branches[5] ?? whole;
+      const count = Number(value);
+      if (!Number.isFinite(count)) return fallback;
+      return branches[SIX_FORMS.indexOf(pluralCategory(locale, count))] ?? fallback;
+    }
+    return whole;
+  });
+}
+
+/** A message in the ACTIVE locale. See `translate`. */
+export function t(key: MessageKey, vars?: MessageVars): string {
+  return translate(active, key, vars);
 }
 
 /**
- * Hook form, for components that will later need to re-render on a locale change.
- *
- * It returns `t` unchanged today. It exists so components are already written as
- * `const { t } = useTranslation()` — the shape every i18n library uses — which
- * means introducing one later does not touch the call sites.
+ * Hook form, for components written as `const { t } = useTranslation()`.
+ * Returns the same `t` — the locale cannot change without a reload.
  */
 export function useTranslation(): { t: typeof t; locale: Locale; dir: 'ltr' | 'rtl' } {
   const locale = currentLocale();
@@ -117,4 +206,4 @@ export function useTranslation(): { t: typeof t; locale: Locale; dir: 'ltr' | 'r
 }
 
 export { messages, type MessageKey };
-export { LOCALE_STORAGE_KEY, readStoredLocale, storeLocale } from './locale-storage';
+export { LOCALE_COOKIE, readStoredLocale, storeLocale } from './locale-storage';

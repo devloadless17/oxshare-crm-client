@@ -9,8 +9,8 @@ import {
   ShieldCheck,
   Wallet,
 } from 'lucide-react';
-import { t, type MessageKey } from '@/lib/i18n';
-import { formatMoney } from '@/lib/money';
+import { localized, t, type MessageKey } from '@/lib/i18n';
+import { moneyText } from '@/lib/bidi';
 import type { AppNotification } from '@/lib/api/notifications';
 import { keys, type PortalQueryKey } from '@/lib/query-keys';
 
@@ -74,8 +74,17 @@ const text = (value: unknown): string | undefined =>
 const reasonText = (value: unknown): string | undefined =>
   text(typeof value === 'string' ? value.trim().replace(/[.!?。]+$/u, '') : value);
 
+/**
+ * The reason in the reader's language: `params.reasonAr` is the configured
+ * reason's Arabic, resolved by the server on read (0179) — present only when
+ * the reviewer picked a catalogue reason that has one. A reviewer's own
+ * wording arrives in English only and is shown as written.
+ */
+const reasonOf = (params: AppNotification['params']): string | undefined =>
+  reasonText(localized(text(params.reason) ?? '', text(params.reasonAr)));
+
 const moneyVars = (params: AppNotification['params']) => ({
-  amount: formatMoney(str(params.amount), str(params.currency)),
+  amount: moneyText(str(params.amount), str(params.currency)),
 });
 /*
  * A payout SUMMARY: the amount and how many trades it covers.
@@ -86,12 +95,12 @@ const moneyVars = (params: AppNotification['params']) => ({
  * sentence rather than showing the placeholder.
  */
 const payoutVars = (params: AppNotification['params']) => ({
-  amount: formatMoney(str(params.amount), str(params.currency)),
+  amount: moneyText(str(params.amount), str(params.currency)),
   count: str(params.count) || '1',
 });
 const moneyReasonVars = (params: AppNotification['params']) => ({
-  amount: formatMoney(str(params.amount), str(params.currency)),
-  reason: reasonText(params.reason),
+  amount: moneyText(str(params.amount), str(params.currency)),
+  reason: reasonOf(params),
 });
 
 export const KIND_CONFIG: Record<string, KindConfig> = {
@@ -168,7 +177,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     titleKey: 'notifications.kindKycRejectedTitle',
     bodyKey: 'notifications.kindKycRejectedBody',
     noReasonBodyKey: 'notifications.kindKycRejectedBodyNoReason',
-    vars: (params) => ({ reason: reasonText(params.reason) }),
+    vars: (params) => ({ reason: reasonOf(params) }),
     href: '/kyc',
   },
   /*
@@ -183,7 +192,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     titleKey: 'kyc.reverifyTitle',
     bodyKey: 'notifications.kindKycReverificationBody',
     noReasonBodyKey: 'notifications.kindKycReverificationBodyNoReason',
-    vars: (params) => ({ reason: reasonText(params.reason) }),
+    vars: (params) => ({ reason: reasonOf(params) }),
     href: '/kyc',
   },
   'commission.confirmed': {
@@ -219,7 +228,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     titleKey: 'notifications.kindPartnerRejectedTitle',
     bodyKey: 'notifications.kindPartnerRejectedBody',
     noReasonBodyKey: 'notifications.kindPartnerRejectedBodyNoReason',
-    vars: (params) => ({ reason: reasonText(params.reason) }),
+    vars: (params) => ({ reason: reasonOf(params) }),
     href: '/partner',
   },
   'partner.suspended': {
@@ -271,7 +280,7 @@ export const KIND_CONFIG: Record<string, KindConfig> = {
     titleKey: 'notifications.kindTransferCompletedTitle',
     bodyKey: 'notifications.kindTransferCompletedBody',
     vars: (params) => ({
-      amount: formatMoney(str(params.amount), str(params.currency)),
+      amount: moneyText(str(params.amount), str(params.currency)),
       /*
        * The DIRECTION as a translated phrase, resolved here rather than
        * interpolating the backend's enum. `wallet_to_account` is a database

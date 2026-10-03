@@ -80,7 +80,7 @@ export function TextField({
       </label>
       <div className="relative">
         <Icon
-          className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-muted-foreground"
+          className="pointer-events-none absolute start-3.5 top-3 h-4 w-4 text-muted-foreground"
           aria-hidden="true"
         />
         <Input
@@ -91,7 +91,7 @@ export function TextField({
           onChange={(e) => onChange(field, e.target.value)}
           aria-invalid={Boolean(error) || invalid}
           aria-describedby={describedBy}
-          className={`h-11 pl-10 aria-invalid:border-destructive ${trailing ? 'pr-11' : ''}`}
+          className={`h-11 ps-10 aria-invalid:border-destructive ${trailing ? 'pe-11' : ''}`}
           {...input}
         />
         {trailing}

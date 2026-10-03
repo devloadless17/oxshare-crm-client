@@ -154,7 +154,7 @@ export function DepositProofField({
               disabled={disabled || preparing}
               onClick={() => capture.current?.click()}
             >
-              <Camera className="mr-2 h-4 w-4" aria-hidden />
+              <Camera className="me-2 h-4 w-4" aria-hidden />
               {t('deposit.proofTakePhoto')}
             </Button>
           )}
@@ -165,7 +165,7 @@ export function DepositProofField({
             disabled={disabled || preparing}
             onClick={() => pick.current?.click()}
           >
-            <Upload className="mr-2 h-4 w-4" aria-hidden />
+            <Upload className="me-2 h-4 w-4" aria-hidden />
             {/* On a phone the two sit side by side, so this one has to say what
                 it is NOT — the gallery, rather than the camera. On a desktop it
                 stands alone and says the plain thing. */}

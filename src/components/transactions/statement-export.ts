@@ -1,9 +1,9 @@
 import Decimal from 'decimal.js';
 import type { Statement } from '@/lib/api/wallet';
-import { formatMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { parseIso } from '@/lib/date-range';
 import { describeLine, shortReference, statementCsv } from '@/lib/statement';
-import { t } from '@/lib/i18n';
+import { currentLocale, direction, intlLocale, t } from '@/lib/i18n';
 
 /**
  * `2026-09-01` → the client's own short date, read as a LOCAL calendar day.
@@ -13,7 +13,7 @@ import { t } from '@/lib/i18n';
 export function formatDay(iso: string): string {
   const parts = parseIso(iso);
   if (!parts) return iso;
-  return new Date(parts.year, parts.month, parts.day).toLocaleDateString(undefined, {
+  return new Date(parts.year, parts.month, parts.day).toLocaleDateString(intlLocale(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -58,7 +58,10 @@ export function printStatement(
 ) {
   const win = window.open('', '_blank', 'width=900,height=1000');
   if (!win) return;
-  const money = (value: string) => escapeHtml(formatMoney(value, statement.currency));
+  const money = (value: string) => escapeHtml(moneyText(value, statement.currency));
+  // An id, an email or a reference is a left-to-right run inside the page's text.
+  const ltrRun = (value: string) => `<bdi dir="ltr">${escapeHtml(value)}</bdi>`;
+  const rtl = direction() === 'rtl';
   const row = (cells: string[], cls = '') =>
     `<tr class="${cls}">${cells.map((c, i) => `<td class="${i >= 3 ? 'num' : ''}">${c}</td>`).join('')}</tr>`;
 
@@ -67,9 +70,9 @@ export function printStatement(
       const amount = new Decimal(line.amount);
       const credit = !amount.isNegative();
       return row([
-        escapeHtml(new Date(line.createdAt).toLocaleString()),
+        escapeHtml(new Date(line.createdAt).toLocaleString(intlLocale())),
         escapeHtml(describeLine(line, walletName)),
-        escapeHtml(shortReference(line.referenceId)),
+        ltrRun(shortReference(line.referenceId)),
         credit ? money(amount.toFixed(8)) : '',
         credit ? '' : money(amount.abs().toFixed(8)),
         money(line.balanceAfter),
@@ -80,9 +83,9 @@ export function printStatement(
   const title = `${t('statement.title')} · ${walletName}`;
   const period = `${formatDay(statement.from)} – ${formatDay(statement.to)}`;
   win.document
-    .write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
+    .write(`<!doctype html><html lang="${currentLocale()}" dir="${direction()}"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
 <style>
-  *{box-sizing:border-box} body{font:12px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111;margin:32px}
+  *{box-sizing:border-box} body{font:12px/1.45 system-ui,-apple-system,Segoe UI,Roboto,'IBM Plex Sans Arabic','Noto Sans Arabic',Tahoma,sans-serif;color:#111;margin:32px}${rtl ? ' *{letter-spacing:normal!important}' : ''}
   h1{font-size:20px;margin:0 0 4px} .muted{color:#666} .head{display:flex;justify-content:space-between;gap:24px;margin-bottom:20px}
   .sum{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #ddd;border-radius:8px;margin:16px 0 20px}
   .sum div{padding:10px 12px;border-inline-start:1px solid #ddd} .sum div:first-child{border:0}
@@ -94,7 +97,7 @@ export function printStatement(
 </style></head><body>
 <div class="head"><div><h1>${escapeHtml(t('statement.title'))}</h1>
 <div class="muted">${escapeHtml(walletName)}</div></div>
-<div style="text-align:end"><b>${escapeHtml(client.name)}</b><div class="muted">${escapeHtml(client.email)}</div>
+<div style="text-align:end"><b>${escapeHtml(client.name)}</b><div class="muted">${ltrRun(client.email)}</div>
 <div class="muted">${escapeHtml(period)}</div></div></div>
 <div class="sum">
 <div>${escapeHtml(t('statement.openingBalance'))}<b>${money(statement.openingBalance)}</b></div>
@@ -106,7 +109,7 @@ export function printStatement(
 <tbody>${row([escapeHtml(formatDay(statement.from)), escapeHtml(t('statement.openingBalance')), '', '', '', money(statement.openingBalance)], 'bal')}
 ${lines || row(['', escapeHtml(t('statement.noMovements')), '', '', '', ''])}
 ${row([escapeHtml(formatDay(statement.to)), escapeHtml(t('statement.closingBalance')), '', '', '', money(statement.closingBalance)], 'bal')}</tbody></table>
-<footer>${escapeHtml(t('statement.generatedAt', { date: new Date(statement.generatedAt).toLocaleString() }))}</footer>
+<footer>${escapeHtml(t('statement.generatedAt', { date: new Date(statement.generatedAt).toLocaleString(intlLocale()) }))}</footer>
 </body></html>`);
   win.document.close();
   /*

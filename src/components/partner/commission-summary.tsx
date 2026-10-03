@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { CELL, SectionHeader, Surface } from '@/components/partner/partner-ui';
 import type { IbCommissionRow } from '@/lib/api/partner';
-import { formatMoney, isZeroMoney } from '@/lib/money';
+import { isZeroMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { summariseCommissions } from '@/lib/partner-earnings';
 import { t } from '@/lib/i18n';
 
@@ -70,7 +71,7 @@ export function CommissionSummary({
             <div className="grid gap-px bg-border sm:grid-cols-2">
               <Figure
                 label={t('partner.totalReleased')}
-                value={formatMoney(summary.released, summary.currency)}
+                value={moneyText(summary.released, summary.currency)}
                 hint={t('partner.totalReleasedHint')}
                 count={summary.counts.released}
               />
@@ -81,7 +82,7 @@ export function CommissionSummary({
               */}
               <Figure
                 label={t('partner.totalAwaiting')}
-                value={formatMoney(summary.awaiting, summary.currency)}
+                value={moneyText(summary.awaiting, summary.currency)}
                 hint={t('partner.totalAwaitingHint')}
                 count={summary.counts.awaiting}
                 tone="warning"
@@ -94,7 +95,7 @@ export function CommissionSummary({
               {summary.counts.reversed > 0 && (
                 <Figure
                   label={t('partner.totalReversed')}
-                  value={formatMoney(summary.reversed, summary.currency)}
+                  value={moneyText(summary.reversed, summary.currency)}
                   hint={t('partner.totalReversedHint')}
                   count={summary.counts.reversed}
                   tone="destructive"
@@ -115,11 +116,11 @@ export function CommissionSummary({
               <dl className="grid gap-px bg-border sm:grid-cols-2">
                 <Split
                   label={t('partner.sourceDirect')}
-                  value={formatMoney(summary.directReleased, summary.currency)}
+                  value={moneyText(summary.directReleased, summary.currency)}
                 />
                 <Split
                   label={t('partner.sourceNetwork')}
-                  value={formatMoney(summary.networkReleased, summary.currency)}
+                  value={moneyText(summary.networkReleased, summary.currency)}
                 />
               </dl>
             )}

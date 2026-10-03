@@ -1,5 +1,5 @@
-import { formatMoney } from '@/lib/money';
-import { t } from '@/lib/i18n';
+import { moneyText } from '@/lib/bidi';
+import { localized, t } from '@/lib/i18n';
 
 /*
  * WHICH WALLET A PAYOUT RAIL CAN PAY OUT OF (backend 0173) — the withdraw
@@ -29,16 +29,21 @@ export function walletFor<W extends { currency: string }>(
   return funded.find((w) => paysOut(method, w.currency))?.currency ?? current;
 }
 
+/** A payout method's name in the reader's language (`nameAr`, 0179). */
+export function methodName(method: { name: string; nameAr?: string | null }): string {
+  return localized(method.name, method.nameAr);
+}
+
 /** The line under a wallet tile: its balance, or why this rail cannot use it. */
 export function walletNote(
-  method: { name: string; currencies?: string[] | null } | undefined,
+  method: { name: string; nameAr?: string | null; currencies?: string[] | null } | undefined,
   available: string,
   currency: string,
 ): string {
   return paysOut(method, currency)
-    ? t('money.availableBalance', { amount: formatMoney(available, currency) })
+    ? t('money.availableBalance', { amount: moneyText(available, currency) })
     : t('withdraw.paysOutOnly', {
-        method: method?.name ?? '',
-        currencies: (method?.currencies ?? []).join(', '),
+        method: method ? methodName(method) : '',
+        currencies: (method?.currencies ?? []).join(t('common.listSeparator')),
       });
 }

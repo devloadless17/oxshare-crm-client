@@ -1,5 +1,6 @@
 'use client';
 
+import { withErrorDetail } from '@/components/error-detail';
 import * as React from 'react';
 import { MoneyScreen } from '@/components/money/money-screen';
 import { AlertCircle } from 'lucide-react';
@@ -27,8 +28,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { answeredDetails, missingDetail } from '@/components/money/deposit-details-fields';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
 import { walletApi, type Wallet } from '@/lib/api/wallet';
-import { formatMoney } from '@/lib/money';
-import { t } from '@/lib/i18n';
+import { moneyText } from '@/lib/bidi';
+import { localized, t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 import { useMoneyRefresh } from '@/hooks/use-money-refresh';
 
@@ -44,7 +45,7 @@ import { useMoneyRefresh } from '@/hooks/use-money-refresh';
  * movements (the credit into the wallet, then a transfer onward), which is worth
  * asking plainly rather than burying in a dropdown above the amount field.
  *
- * There is no fourth step for the outcome — see `STEPS`.
+ * There is no fourth step for the outcome — see `steps`.
  *
  * ## Two flows behind it, and this screen names NEITHER
  *
@@ -147,7 +148,12 @@ export default function DepositPage() {
  * not a fourth thing the client has to do, and marking it as one makes a
  * finished request look unfinished. /withdraw and /transfer draw the same line.
  */
-const STEPS = [t('deposit.stepMethod'), t('deposit.stepDestination'), t('deposit.stepAmountShort')];
+// A function: `t()` at module load would freeze the server's first language.
+const steps = () => [
+  t('deposit.stepMethod'),
+  t('deposit.stepDestination'),
+  t('deposit.stepAmountShort'),
+];
 
 /**
  * How long to wait before deciding the redirect did not happen.
@@ -270,7 +276,7 @@ function DepositFlow({
   const problem =
     amountIssue ??
     (missing
-      ? t('deposit.detailRequired', { label: missing.label })
+      ? t('deposit.detailRequired', { label: localized(missing.label, missing.labelAr) })
       : missingProof
         ? t('deposit.proofRequired')
         : null);
@@ -375,7 +381,7 @@ function DepositFlow({
       if (Object.keys(refused).some((id) => !selected.proofFields.some((f) => f.id === id))) {
         void queryClient.invalidateQueries({ queryKey: keys.paymentMethods.deposit() });
       }
-      setError(apiErrorMessage(err, t('deposit.failed')));
+      setError(withErrorDetail(err, apiErrorMessage(err, t('deposit.failed'))));
     } finally {
       // `finally` runs on the redirect path's `return` too, so it is guarded:
       // re-enabling the form while the page is unloading is the double-submit
@@ -387,7 +393,7 @@ function DepositFlow({
   return (
     <form onSubmit={(event) => void submit(event)} className="flex min-h-0 flex-1 flex-col">
       <MoneySheet className="flex min-h-0 flex-1 flex-col">
-        <StepRail steps={STEPS} active={step - 1} />
+        <StepRail steps={steps()} active={step - 1} />
 
         {/*
           THE one scrolling region. The rail above and the footer below stay put,
@@ -421,7 +427,7 @@ function DepositFlow({
                       setDetails({});
                       setDetailErrors({});
                     }}
-                    title={method.name}
+                    title={localized(method.name, method.nameAr)}
                     logoUrl={method.logoUrl}
                     disabled={busy}
                     /*
@@ -540,7 +546,7 @@ function DepositFlow({
                     selected?.requiresProof
                     ? t('deposit.submitRequest')
                     : selected && amount && !problem
-                      ? t('deposit.pay', { amount: formatMoney(amount, selected.currency) })
+                      ? t('deposit.pay', { amount: moneyText(amount, selected.currency) })
                       : t('deposit.payNow')}
               </Button>
             </div>

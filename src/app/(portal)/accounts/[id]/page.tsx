@@ -9,7 +9,7 @@ import { useResource } from '@/hooks/use-resource';
 import { useLiveAccount } from '@/hooks/use-live-account';
 import { useUser } from '@/context/UserContext';
 import { tradingApi, type TradingAccount } from '@/lib/api/trading';
-import { t, type MessageKey } from '@/lib/i18n';
+import { localized, t, type MessageKey } from '@/lib/i18n';
 import { AccountLivePanel } from '@/components/accounts/account-live-panel';
 import { AccountOpenPositions } from '@/components/accounts/account-open-positions';
 import { AccountPositions } from '@/components/accounts/account-positions';
@@ -95,7 +95,7 @@ export default function AccountDetailPage() {
       <div>
         <Button asChild variant="ghost" size="sm" className="-ms-2">
           <Link href="/accounts">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
             {t('accounts.detailBack')}
           </Link>
         </Button>
@@ -286,7 +286,7 @@ function AccountDetail({ account }: { account: TradingAccount }) {
               sentence of facts, and a missing one should shorten it, not
               punctuate a gap.
             */}
-            {account.product ? ` · ${account.product}` : ''}
+            {account.product ? ` · ${localized(account.product, account.productAr)}` : ''}
           </p>
         </div>
 

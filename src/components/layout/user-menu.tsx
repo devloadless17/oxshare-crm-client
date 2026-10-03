@@ -125,7 +125,7 @@ export function UserMenu({
         }}
       >
         <DropdownMenuTrigger
-          className={`flex items-center text-left transition-colors focus-outline cursor-pointer ${
+          className={`flex items-center text-start transition-colors focus-outline cursor-pointer ${
             variant === 'header'
               ? 'h-9 w-9 shrink-0 items-center justify-center rounded-full p-1 hover:bg-muted data-[state=open]:bg-muted'
               : `w-full gap-3 rounded-lg bg-muted p-2.5 hover:bg-accent ${collapsed ? 'justify-center p-2' : ''}`
@@ -218,7 +218,7 @@ export function UserMenu({
             }}
             className="text-destructive focus:bg-destructive/10 focus:text-destructive"
           >
-            <LogOut />
+            <LogOut className="rtl:-scale-x-100" />
             <span>{t('nav.logout')}</span>
           </DropdownMenuItem>
 

@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/render';
+import { setActiveLocale } from '@/lib/i18n';
 import { StepField } from './step-field';
 
 /**
@@ -58,5 +59,89 @@ describe('the selfie step holds more than the selfie', () => {
     );
     expect(screen.getByLabelText(/anything to add/i).tagName).toBe('INPUT');
     expect(screen.queryByRole('button', { name: /camera|selfie/i })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * ARABIC IS SHOWN, THE ENGLISH OPTION IS SUBMITTED (0179). `optionsAr` is keyed
+ * by the English value: the reader sees and picks the Arabic, and the answer
+ * saved is the English the server validates and the reviewer reads.
+ */
+describe('in Arabic', () => {
+  beforeEach(() => setActiveLocale('ar'));
+  afterEach(() => setActiveLocale('en'));
+
+  const country = {
+    id: 'f-country',
+    name: 'country',
+    label: 'Country of residence',
+    labelAr: 'بلد الإقامة',
+    type: 'select' as const,
+    required: true,
+    options: ['Lebanon', 'United Arab Emirates'],
+    optionsAr: { Lebanon: 'لبنان', 'United Arab Emirates': 'الإمارات العربية المتحدة' },
+  };
+
+  it('labels the question and lists the choices in Arabic, sorted by the Arabic', async () => {
+    renderWithProviders(
+      <StepField {...base} field={country} slug="personal" val="" onChange={vi.fn()} />,
+    );
+    await userEvent.setup().click(screen.getByRole('combobox', { name: /بلد الإقامة/ }));
+    const shown = (await screen.findAllByRole('option')).map((o) => o.textContent);
+    expect(shown).toEqual(['الإمارات العربية المتحدة', 'لبنان']);
+  });
+
+  it('answers with the ENGLISH value of the Arabic choice', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(
+      <StepField {...base} field={country} slug="personal" val="" onChange={onChange} />,
+    );
+    await user.click(screen.getByRole('combobox', { name: /بلد الإقامة/ }));
+    await user.click(await screen.findByRole('option', { name: 'لبنان' }));
+    expect(onChange).toHaveBeenCalledWith('country', 'Lebanon');
+  });
+
+  it('shows a saved English answer as its Arabic', () => {
+    renderWithProviders(
+      <StepField {...base} field={country} slug="personal" val="Lebanon" onChange={vi.fn()} />,
+    );
+    expect(screen.getByRole('combobox', { name: /بلد الإقامة/ })).toHaveTextContent('لبنان');
+  });
+
+  it('ticks Arabic checkbox choices and saves the English ones', async () => {
+    const onChange = vi.fn();
+    const funds = {
+      id: 'f-funds',
+      name: 'funds',
+      label: 'Source of funds',
+      labelAr: 'مصدر الأموال',
+      type: 'checkbox' as const,
+      required: true,
+      options: ['Salary', 'Savings'],
+      optionsAr: { Salary: 'الراتب', Savings: 'المدخرات' },
+    };
+    renderWithProviders(
+      <StepField {...base} field={funds} slug="address" val="Savings" onChange={onChange} />,
+    );
+    expect(screen.getByRole('group', { name: /مصدر الأموال/ })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'المدخرات' })).toBeChecked();
+    await userEvent.setup().click(screen.getByRole('checkbox', { name: 'الراتب' }));
+    expect(onChange).toHaveBeenCalledWith('funds', 'Salary, Savings');
+  });
+
+  it('falls back to the English where no Arabic was written', () => {
+    const note = {
+      id: 'f-note',
+      name: 'note',
+      label: 'Anything to add?',
+      labelAr: '  ',
+      type: 'text' as const,
+      required: false,
+    };
+    renderWithProviders(
+      <StepField {...base} field={note} slug="address" val="" onChange={vi.fn()} />,
+    );
+    expect(screen.getByLabelText(/anything to add/i)).toBeInTheDocument();
   });
 });

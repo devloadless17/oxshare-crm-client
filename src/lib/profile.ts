@@ -1,4 +1,6 @@
 import { parsePhoneNumberFromString } from 'libphonenumber-js/min';
+import { intlLocale, t } from '@/lib/i18n';
+import { ltr } from '@/lib/bidi';
 
 /**
  * The client's PROFILE, as the portal shows it (backend migration 0139).
@@ -27,12 +29,18 @@ export function isProfileKey(key: string): boolean {
 }
 
 const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
-const LONG_DATE = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-  timeZone: 'UTC',
-});
+/*
+ * Built per call, in the ACTIVE language: a module-level formatter is made once
+ * per server process and would print every later request's dates in whichever
+ * language came first. English keeps `en-GB` ("15 June 1990").
+ */
+const longDate = () =>
+  new Intl.DateTimeFormat(intlLocale() ?? 'en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 
 /**
  * "15 June 1990" from "1990-06-15".
@@ -45,14 +53,18 @@ export function formatDateOfBirth(value?: string | null): string | undefined {
   const match = ISO_DAY.exec(value ?? '');
   if (!match) return value?.trim() || undefined;
   const [, year = '', month = '', day = ''] = match;
-  return LONG_DATE.format(new Date(Date.UTC(+year, +month - 1, +day)));
+  return longDate().format(new Date(Date.UTC(+year, +month - 1, +day)));
 }
 
-/** A stored number (E.164, `+96170123456`) grouped the way it is read: `+961 70 123 456`. */
+/**
+ * A stored number (E.164, `+96170123456`) grouped the way it is read: `+961 70 123 456`.
+ * Isolated left to right (`ltr`): in Arabic, bidi would otherwise print the
+ * groups in reverse order.
+ */
 export function formatPhone(value?: string | null): string | undefined {
   const text = value?.trim();
   if (!text) return undefined;
-  return parsePhoneNumberFromString(text)?.formatInternational() ?? text;
+  return ltr(parsePhoneNumberFromString(text)?.formatInternational() ?? text);
 }
 
 /** The address as one line — street, city, state, postal code — leaving out what is absent. */
@@ -65,6 +77,6 @@ export function addressLine(parts: {
   const line = [parts.address, parts.city, parts.stateProvince, parts.postalCode]
     .map((part) => part?.trim())
     .filter(Boolean)
-    .join(', ');
+    .join(t('common.listSeparator'));
   return line || undefined;
 }

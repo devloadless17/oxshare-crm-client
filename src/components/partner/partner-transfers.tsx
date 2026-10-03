@@ -11,7 +11,7 @@ import {
 } from '@/components/partner/partner-ui';
 import { useResource } from '@/hooks/use-resource';
 import { partnerApi, type IbWalletTransfer } from '@/lib/api/partner';
-import { formatMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
@@ -59,7 +59,11 @@ import { keys } from '@/lib/query-keys';
  * Ten rows a page, matching the frame's height — see `TABLE_PAGE_SIZE`, and the
  * commission table's own note on why the two must agree.
  */
-const PAGING = { noun: ['transfer', 'transfers'] as [string, string], pageSize: TABLE_PAGE_SIZE };
+const paging = () => ({
+  // Resolved per render: the noun lands inside a translated sentence.
+  noun: [t('partner.nounTransfer'), t('partner.nounTransfers')] as [string, string],
+  pageSize: TABLE_PAGE_SIZE,
+});
 
 export function PartnerTransfers() {
   const query = useResource<IbWalletTransfer[]>(keys.partner.walletTransfers(), (signal) =>
@@ -83,7 +87,7 @@ export function PartnerTransfers() {
        * against their own memory of the move.
        */
       header: t('partner.colAmount'),
-      cell: (row) => formatMoney(row.amount, row.currency),
+      cell: (row) => moneyText(row.amount, row.currency),
       align: 'right',
       cellClassName: 'tabular font-semibold',
       sortable: true,
@@ -105,7 +109,7 @@ export function PartnerTransfers() {
        */
       header: t('partner.colFromWallet'),
       cell: (row) => (
-        <span className="font-mono text-xs text-muted-foreground">
+        <span dir="ltr" className="font-mono text-xs text-muted-foreground">
           {row.fromWalletNumber ?? '—'}
         </span>
       ),
@@ -113,7 +117,9 @@ export function PartnerTransfers() {
     {
       header: t('partner.colToWallet'),
       cell: (row) => (
-        <span className="font-mono text-xs text-muted-foreground">{row.toWalletNumber ?? '—'}</span>
+        <span dir="ltr" className="font-mono text-xs text-muted-foreground">
+          {row.toWalletNumber ?? '—'}
+        </span>
       ),
     },
     {
@@ -162,7 +168,7 @@ export function PartnerTransfers() {
                 /* clientPagination, not `pagination`: the endpoint returns an
                    array rather than a page, so the table does the slicing —
                    same as the commission table on the tab beside it. */
-                clientPagination={PAGING}
+                clientPagination={paging()}
               />
             </div>
             {/*

@@ -13,7 +13,7 @@ import {
 } from '@/components/partner/partner-ui';
 import { useResource } from '@/hooks/use-resource';
 import { partnerApi, type IbCommissionRow } from '@/lib/api/partner';
-import { formatMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
@@ -56,7 +56,11 @@ import { keys } from '@/lib/query-keys';
  * that overflowed the frame would scroll inside it, and the page already
  * scrolls; a page shorter than it would leave the pager floating in white space.
  */
-const PAGING = { noun: ['entry', 'entries'] as [string, string], pageSize: TABLE_PAGE_SIZE };
+const paging = () => ({
+  // Resolved per render: the noun lands inside a translated sentence.
+  noun: [t('partner.nounEntry'), t('partner.nounEntries')] as [string, string],
+  pageSize: TABLE_PAGE_SIZE,
+});
 
 /**
  * What produced a commission, in the partner's words.
@@ -107,7 +111,7 @@ export function PartnerCommissions() {
     },
     {
       header: t('partner.colAmount'),
-      cell: (row) => formatMoney(row.amount, row.currency),
+      cell: (row) => moneyText(row.amount, row.currency),
       align: 'right',
       cellClassName: 'tabular font-semibold',
       sortable: true,
@@ -122,7 +126,7 @@ export function PartnerCommissions() {
        * commission saw only the answer.
        */
       header: t('partner.colBase'),
-      cell: (row) => formatMoney(row.baseAmount, row.currency),
+      cell: (row) => moneyText(row.baseAmount, row.currency),
       align: 'right',
       cellClassName: 'tabular text-muted-foreground',
     },
@@ -182,7 +186,7 @@ export function PartnerCommissions() {
             rows={rows}
             rowKey={(row) => row.id}
             dimmed={query.isFetching}
-            clientPagination={PAGING}
+            clientPagination={paging()}
             fill
             empty={
               <EmptyState

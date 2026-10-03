@@ -13,7 +13,29 @@
  * rather than the design system or `t()`: whatever broke may be the stylesheet,
  * the theme provider or the i18n module, and a fallback that depends on the
  * thing that failed is not a fallback.
+ *
+ * The same reasoning keeps its two languages HERE rather than in the catalogue:
+ * the cookie is read directly (`oxshare-portal-locale`, see
+ * lib/i18n/locale-storage), and an Arabic reader gets Arabic, right to left.
  */
+const COPY = {
+  en: {
+    title: 'Something went wrong',
+    body: 'The OxShare portal could not load. Your account and balances are unaffected.',
+    retry: 'Try again',
+  },
+  ar: {
+    title: 'حدث خطأ ما',
+    body: 'تعذّر تحميل بوابة OXShare. حسابك وأرصدتك لم تتأثر.',
+    retry: 'حاول مرة أخرى',
+  },
+} as const;
+
+function cookieLocale(): 'en' | 'ar' {
+  if (typeof document === 'undefined') return 'en';
+  return /(?:^|;\s*)oxshare-portal-locale=ar(?:;|$)/.test(document.cookie) ? 'ar' : 'en';
+}
+
 export default function GlobalError({
   error,
   reset,
@@ -21,8 +43,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const locale = cookieLocale();
+  const copy = COPY[locale];
   return (
-    <html lang="en">
+    <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <body
         style={{
           minHeight: '100vh',
@@ -36,12 +60,10 @@ export default function GlobalError({
           fontFamily: 'system-ui, sans-serif',
         }}
       >
-        <h1 style={{ fontSize: '1.125rem', fontWeight: 700 }}>Something went wrong</h1>
-        <p style={{ maxWidth: '28rem', fontSize: '0.875rem', opacity: 0.75 }}>
-          The OxShare portal could not load. Your account and balances are unaffected.
-        </p>
+        <h1 style={{ fontSize: '1.125rem', fontWeight: 700 }}>{copy.title}</h1>
+        <p style={{ maxWidth: '28rem', fontSize: '0.875rem', opacity: 0.75 }}>{copy.body}</p>
         {error.digest && (
-          <p style={{ fontFamily: 'monospace', fontSize: '0.6875rem', opacity: 0.6 }}>
+          <p dir="ltr" style={{ fontFamily: 'monospace', fontSize: '0.6875rem', opacity: 0.6 }}>
             {error.digest}
           </p>
         )}
@@ -59,7 +81,7 @@ export default function GlobalError({
             color: 'inherit',
           }}
         >
-          Try again
+          {copy.retry}
         </button>
       </body>
     </html>

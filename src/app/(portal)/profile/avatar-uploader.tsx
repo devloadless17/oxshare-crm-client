@@ -122,7 +122,7 @@ export function AvatarUploader({
         */}
         <label
           title={avatarUrl ? t('profile.photoChange') : t('profile.photoUpload')}
-          className={`absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background ring-2 ring-card transition-opacity focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--ring)] ${
+          className={`absolute -end-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background ring-2 ring-card transition-opacity focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--ring)] ${
             busy ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:opacity-90'
           }`}
         >

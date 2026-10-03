@@ -9,7 +9,7 @@ import { ApprovedPanel } from '@/components/partner/partner-workspace';
 import { useResource } from '@/hooks/use-resource';
 import { Button } from '@/components/ui/button';
 import { partnerApi, type IbStatus } from '@/lib/api/partner';
-import { t } from '@/lib/i18n';
+import { intlLocale, localized, t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 
 export default function PartnerPage() {
@@ -43,14 +43,22 @@ function PartnerState({ status, onChanged }: { status: IbStatus; onChanged: () =
     return (
       <PendingPanel
         submittedAt={application.submittedAt}
-        agencyName={application.agencyName ?? null}
+        agencyName={
+          application.agencyName
+            ? localized(application.agencyName, application.agencyNameAr)
+            : null
+        }
       />
     );
 
   if (application?.status === 'rejected') {
     return (
       <RejectedPanel
-        reason={application.rejectionReason}
+        reason={
+          application.rejectionReason
+            ? localized(application.rejectionReason, application.rejectionReasonAr)
+            : null
+        }
         onReapply={onChanged}
         inherited={status.inheritedAgency ?? null}
         /*
@@ -135,7 +143,7 @@ function RejectedPanel({
         body={reapplyClosedReason ?? t('partner.rejectedReapply')}
       >
         {reason && (
-          <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-left">
+          <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-start">
             <p className="text-xs font-semibold text-muted-foreground">
               {t('partner.rejectedReasonLabel')}
             </p>
@@ -232,5 +240,5 @@ function StatusPanel({
 
 function formatDate(value: string): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString(intlLocale());
 }

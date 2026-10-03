@@ -61,7 +61,8 @@ import { t } from '@/lib/i18n';
  */
 const ICON = 'h-4 w-4';
 
-const TABS: TabDefinition[] = [
+// A function: `t()` at module load would freeze the server's first language.
+const tabs = (): TabDefinition[] => [
   { value: 'overview', label: t('partner.tabOverview'), icon: <LayoutGrid className={ICON} /> },
   { value: 'clients', label: t('partner.tabClients'), icon: <Users className={ICON} /> },
   { value: 'network', label: t('partner.tabNetwork'), icon: <Network className={ICON} /> },
@@ -97,7 +98,7 @@ export function PartnerTabs({
 
   return (
     <div className="flex flex-col">
-      <Tabs tabs={TABS} value={tab} onValueChange={setTab} idPrefix="partner" />
+      <Tabs tabs={tabs()} value={tab} onValueChange={setTab} idPrefix="partner" />
 
       <TabPanel value="overview" activeValue={tab} idPrefix="partner" className={PANEL}>
         {/* The overview's list panels show the newest few and hand the reader on

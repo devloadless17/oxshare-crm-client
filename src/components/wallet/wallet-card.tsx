@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { Check, Copy, Eye, EyeOff, Wallet as WalletIcon } from 'lucide-react';
 import type { Wallet as WalletRecord } from '@/lib/api/wallet';
-import { formatMoney, isZeroMoney } from '@/lib/money';
+import { isZeroMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 
@@ -159,7 +160,7 @@ export function WalletCard({
             */}
             <div className="flex items-center gap-2">
               <p className="text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
-                {hidden ? MASK : formatMoney(wallet.available, currency)}
+                {hidden ? MASK : moneyText(wallet.available, currency)}
               </p>
               <button
                 type="button"
@@ -191,8 +192,8 @@ export function WalletCard({
                 {hidden
                   ? t('wallet.onHold', { amount: MASK, total: MASK })
                   : t('wallet.onHold', {
-                      amount: formatMoney(wallet.onHold, currency),
-                      total: formatMoney(wallet.balance, currency),
+                      amount: moneyText(wallet.onHold, currency),
+                      total: moneyText(wallet.balance, currency),
                     })}
               </p>
             )}
@@ -293,7 +294,7 @@ function WalletIdentifier({ id }: { id: string }) {
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className="font-mono text-xs tracking-wider" title={id}>
+      <span dir="ltr" className="font-mono text-xs tracking-wider" title={id}>
         {shortenId(id)}
       </span>
       <span className="sr-only">{id}</span>

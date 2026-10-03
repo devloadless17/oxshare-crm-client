@@ -5,6 +5,7 @@ import { AlertCircle, KeyRound, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { handEmailOver } from '@/lib/email-handoff';
 import { t } from '@/lib/i18n';
+import { ltr } from '@/lib/bidi';
 
 /** The id sign-up moves the keyboard to when the panel opens. */
 export const EMAIL_TAKEN_ACTION_ID = 'email-taken-reset';
@@ -48,7 +49,7 @@ export function EmailTakenNotice({
         <div className="space-y-1">
           <p className="text-sm font-bold text-destructive">{t('auth.register.emailTakenTitle')}</p>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            {t('auth.register.emailTakenBody', { email })}
+            {t('auth.register.emailTakenBody', { email: ltr(email) })}
           </p>
         </div>
       </div>
@@ -65,7 +66,7 @@ export function EmailTakenNotice({
         </Button>
         <Button asChild size="sm" variant="outline" className="sm:flex-1">
           <Link href={signInHref} onClick={() => handEmailOver(email)}>
-            <LogIn className="h-4 w-4" aria-hidden="true" />
+            <LogIn className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
             {t('auth.register.signInInstead')}
           </Link>
         </Button>

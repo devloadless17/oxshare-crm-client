@@ -4,7 +4,7 @@ import * as React from 'react';
 import type { PaymentMethod } from '@/lib/api/deposits';
 import { Input } from '@/components/ui/input';
 import { PhoneInput } from '@/components/ui/phone-input';
-import { t } from '@/lib/i18n';
+import { localized, t } from '@/lib/i18n';
 import { isBarePhonePrefix } from '@/components/kyc/custom-step';
 
 export type ProofFieldQuestion = PaymentMethod['proofFields'][number];
@@ -42,6 +42,9 @@ export function DepositDetailsFields({
         const id = `${baseId}-${field.id}`;
         const error = errors?.[field.id];
         const set = (value: string) => onChange({ ...values, [field.id]: value });
+        // Shown in the reader's language; the answer stays keyed by `field.id`.
+        const label = localized(field.label, field.labelAr);
+        const hint = field.hint ? localized(field.hint, field.hintAr) : undefined;
         return (
           <div key={field.id} className="space-y-1">
             {/*
@@ -53,7 +56,7 @@ export function DepositDetailsFields({
               htmlFor={field.type === 'phone' ? undefined : id}
               className="text-xs font-medium text-foreground"
             >
-              {field.label}
+              {label}
               {!field.required && (
                 <span className="ms-1 font-normal text-muted-foreground">
                   {t('deposit.detailOptional')}
@@ -65,7 +68,7 @@ export function DepositDetailsFields({
                 value={values[field.id] ?? ''}
                 onChange={set}
                 disabled={disabled}
-                aria-label={field.label}
+                aria-label={label}
               />
             ) : (
               <Input
@@ -79,9 +82,7 @@ export function DepositDetailsFields({
                 className="h-9 font-mono text-sm"
               />
             )}
-            {field.hint && !error && (
-              <p className="text-[11px] text-muted-foreground">{field.hint}</p>
-            )}
+            {hint && !error && <p className="text-[11px] text-muted-foreground">{hint}</p>}
             {error && (
               <p role="alert" className="text-[11px] text-destructive">
                 {error}

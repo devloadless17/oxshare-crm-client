@@ -4,6 +4,7 @@ import { DocumentUploader } from './document-uploader';
 import { documentChoiceKey, uploadFieldFor } from './doc-type';
 import type { components } from '@/lib/api/types.gen';
 import { t } from '@/lib/i18n';
+import { docLabel, fieldHint, fieldLabel, stepDescription, stepTitle } from '@/lib/kyc-text';
 import { Info } from 'lucide-react';
 import { StepField } from './step-field';
 import { ALL_COUNTRIES, COUNTRY_CODE_BY_NAME } from '@/lib/countries-data';
@@ -89,7 +90,9 @@ export function DynamicStepRenderer({
 }: DynamicStepRendererProps) {
   if (!currentStepConfig) return null;
 
-  const { slug, title, description, fields } = currentStepConfig;
+  const { slug, fields } = currentStepConfig;
+  const title = stepTitle(currentStepConfig);
+  const description = stepDescription(currentStepConfig);
 
   /*
    * THE STEP'S DOCUMENT FIELDS ARE THE CHOICES.
@@ -153,10 +156,11 @@ export function DynamicStepRenderer({
     storedHasFiles &&
     storedValue !== chosenField.document.value
       ? {
-          stored:
-            documentFields.find((f) => f.document?.value === storedValue)?.label ??
-            t('kyc.documentSwitchStoredFallback'),
-          chosen: chosenField.label,
+          stored: (() => {
+            const stored = documentFields.find((f) => f.document?.value === storedValue);
+            return stored ? fieldLabel(stored) : t('kyc.documentSwitchStoredFallback');
+          })(),
+          chosen: fieldLabel(chosenField),
         }
       : null;
 
@@ -265,7 +269,7 @@ export function DynamicStepRenderer({
                         : 'border-border bg-card/40 text-muted-foreground hover:bg-accent hover:text-foreground'
                   }`}
                 >
-                  <span className="text-xs">{field.label}</span>
+                  <span className="text-xs">{fieldLabel(field)}</span>
                   <span className="mt-0.5 text-[10px] opacity-70">
                     {isReturned
                       ? t('kyc.documentReturned')
@@ -326,11 +330,11 @@ export function DynamicStepRenderer({
               <DocumentUploader
                 key={`${chosenField!.name}:${part.key}`}
                 field={apiField}
-                label={part.label}
+                label={docLabel(part)}
                 hint={
                   returned
                     ? t('kyc.documentReturnedHint')
-                    : (part.hint ?? (part.required ? undefined : t('kyc.optionalUpload')))
+                    : (fieldHint(part) ?? (part.required ? undefined : t('kyc.optionalUpload')))
                 }
                 uploaded={Boolean(uploadsState[apiField])}
                 isErrored={returned}

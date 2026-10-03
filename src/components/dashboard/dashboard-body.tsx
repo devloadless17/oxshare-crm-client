@@ -16,9 +16,9 @@ import { AccountsPanel, Empty, Panel, StatTile } from '@/components/dashboard/da
 import { useResource } from '@/hooks/use-resource';
 import { useUser } from '@/context/UserContext';
 import { dashboardApi, type Dashboard } from '@/lib/api/trading';
-import { formatMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { SignedAmount } from '@/components/money/signed-amount';
-import { t, type MessageKey } from '@/lib/i18n';
+import { intlLocale, t, type MessageKey } from '@/lib/i18n';
 import { movementLabelKey } from '@/lib/movement-label';
 import { keys } from '@/lib/query-keys';
 
@@ -216,9 +216,9 @@ function TransactionRow({ tx }: { tx: Dashboard['recentTransactions'][number] })
         }`}
       >
         {isDeposit ? (
-          <ArrowDownLeft className="h-4 w-4" aria-hidden="true" />
+          <ArrowDownLeft className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
         ) : (
-          <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+          <ArrowUpRight className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
         )}
       </span>
       <div className="min-w-0 flex-1">
@@ -232,7 +232,7 @@ function TransactionRow({ tx }: { tx: Dashboard['recentTransactions'][number] })
         */}
         <p className="truncate text-sm font-medium">{t(movementLabelKey(tx))}</p>
         <p className="text-[11px] text-muted-foreground">
-          {new Date(tx.createdAt).toLocaleString()}
+          {new Date(tx.createdAt).toLocaleString(intlLocale())}
         </p>
       </div>
       <div className="text-end">
@@ -311,5 +311,5 @@ function largestBalance(wallets: Dashboard['wallets']): string {
   }, null);
 
   if (!best) return '—';
-  return formatMoney(best.available, best.currency);
+  return moneyText(best.available, best.currency);
 }

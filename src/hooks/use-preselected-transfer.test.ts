@@ -35,6 +35,7 @@ function account(over: Partial<TradingAccount> = {}): TradingAccount {
     name: 'My Standard',
     mt5Group: 'real\\Standard-USD',
     product: 'Standard',
+    productAr: null,
     environment: 'live',
     currency: 'USD',
     balance: '1250.00000000',

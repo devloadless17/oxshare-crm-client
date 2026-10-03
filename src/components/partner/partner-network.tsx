@@ -23,7 +23,11 @@ import { t } from '@/lib/i18n';
  * above them: the row explains why a branch of the book has gone quiet. Removing
  * it would make that look like clients leaving.
  */
-const PAGING = { noun: ['partner', 'partners'] as [string, string], pageSize: TABLE_PAGE_SIZE };
+const paging = () => ({
+  // Resolved per render: the noun lands inside a translated sentence.
+  noun: [t('partner.nounPartner'), t('partner.nounPartners')] as [string, string],
+  pageSize: TABLE_PAGE_SIZE,
+});
 
 export function PartnerNetwork({ subPartners }: { subPartners: IbSubPartner[] }) {
   const columns: Column<IbSubPartner>[] = [
@@ -60,7 +64,7 @@ export function PartnerNetwork({ subPartners }: { subPartners: IbSubPartner[] })
         columns={columns}
         rows={subPartners}
         rowKey={(row) => String(row.userId)}
-        clientPagination={PAGING}
+        clientPagination={paging()}
         fill
         empty={<EmptyState icon={Network} message={t('partner.subPartnersEmpty')} />}
       />

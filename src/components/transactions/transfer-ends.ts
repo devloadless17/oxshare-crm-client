@@ -1,11 +1,13 @@
 'use client';
 
+import { walletName as nameOfWallet } from '@/lib/wallet-name';
 import * as React from 'react';
 import { useResource } from '@/hooks/use-resource';
 import { walletApi } from '@/lib/api/wallet';
 import { tradingApi } from '@/lib/api/trading';
 import type { Transaction } from '@/lib/api/payments';
 import { t } from '@/lib/i18n';
+import { ltr } from '@/lib/bidi';
 import { keys } from '@/lib/query-keys';
 
 export interface TransferEnds {
@@ -46,8 +48,10 @@ export function useTransferEnds(enabled = true): (tx: Transaction) => TransferEn
       if (tx.kind !== 'transfer' && tx.kind !== 'commission_transfer') return null;
 
       const wallet = (wallets.data ?? []).find((w) => w.id === tx.walletId);
-      const walletName =
-        wallet?.name?.trim() || t('transfer.walletFallback', { currency: tx.currency });
+      // Composed in the reader's language — `WalletDto.name` is the database's English.
+      const walletName = wallet
+        ? nameOfWallet(wallet)
+        : t('transfer.walletFallback', { currency: tx.currency });
 
       if (tx.kind === 'commission_transfer') {
         return { from: t('transfer.commissionWallet'), to: walletName };
@@ -57,7 +61,7 @@ export function useTransferEnds(enabled = true): (tx: Transaction) => TransferEn
       const accountName = account
         ? [
             account.name?.trim() || t('transfer.tradingAccount'),
-            account.login ? `#${account.login}` : null,
+            account.login ? ltr(`#${account.login}`) : null,
           ]
             .filter(Boolean)
             .join(' · ')

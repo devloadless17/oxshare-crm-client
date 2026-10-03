@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeftRight, ArrowRight, ChartCandlestick, Clock, Wallet } from 'lucide-react';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { BrandLogo } from '@/components/brand-logo';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/ui/loader';
 import { useUser } from '@/context/UserContext';
@@ -66,7 +67,10 @@ function Onboarding() {
   // later" is a real choice, and one a client has to scroll to find reads as
   // no choice (e2e/confirm-email-screen.spec.ts, 29 Sep 2026).
   return (
-    <main className="flex h-dvh overflow-y-auto bg-background">
+    <main className="relative flex h-dvh overflow-y-auto bg-background">
+      <div className="absolute end-4 top-4 sm:end-6 sm:top-5">
+        <LanguageSwitcher />
+      </div>
       {/*
         Sized so BOTH answers sit above the fold on a 1280×720 laptop and a
         common phone — measured, not guessed: the first cut put "Verify now"
@@ -127,7 +131,7 @@ function Onboarding() {
             <Button asChild size="lg" className="w-full">
               <Link href="/kyc">
                 {t('onboarding.verifyNow')}
-                <ArrowRight aria-hidden="true" />
+                <ArrowRight className="rtl:-scale-x-100" aria-hidden="true" />
               </Link>
             </Button>
             {/* `replace`: a client who chose "later" pressing Back should leave

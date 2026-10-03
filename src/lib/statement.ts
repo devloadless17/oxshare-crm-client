@@ -7,7 +7,7 @@
  */
 import Decimal from 'decimal.js';
 import { toIso, todayIso, type IsoDate } from '@/lib/date-range';
-import { t } from '@/lib/i18n';
+import { localized, t } from '@/lib/i18n';
 import type { StatementLine } from '@/lib/api/wallet';
 
 export type StatementPeriod =
@@ -72,7 +72,9 @@ export function periodRange(
  */
 export function describeLine(line: StatementLine, walletName?: string): string {
   const credit = !new Decimal(line.amount).isNegative();
-  const withMethod = (label: string) => (line.methodName ? `${label} · ${line.methodName}` : label);
+  // The rail's name in the reader's language (`methodNameAr`, 0179).
+  const withMethod = (label: string) =>
+    line.methodName ? `${label} · ${localized(line.methodName, line.methodNameAr)}` : label;
   /*
    * A transfer names BOTH ends — this wallet and the exact account — because
    * "Transfer to trading account" cannot tell a client with two accounts
@@ -161,14 +163,15 @@ export function statementCsv(
   },
   walletName?: string,
 ): string {
+  // Headings in the client's language; the data columns stay machine-readable.
   const header = [
-    'Date',
-    'Description',
-    'Reference',
-    'Money in',
-    'Money out',
-    'Balance',
-    'Currency',
+    t('transactions.colDate'),
+    t('statement.colDescription'),
+    t('statement.colReference'),
+    t('statement.moneyIn'),
+    t('statement.moneyOut'),
+    t('statement.colBalance'),
+    t('transactions.colCurrency'),
   ];
   const rows: string[] = [header.map(csvCell).join(',')];
   rows.push(

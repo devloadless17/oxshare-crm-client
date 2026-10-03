@@ -3,7 +3,7 @@
 import { Info } from 'lucide-react';
 import { HAIRLINE_GRID, Stat } from '@/components/partner/partner-ui';
 import type { IbOverview } from '@/lib/api/partner';
-import { formatMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { t } from '@/lib/i18n';
 
 /**
@@ -84,13 +84,13 @@ export function PartnerSummary({ data }: { data: IbOverview }) {
       <div className={`${HAIRLINE_GRID} sm:grid-cols-2 xl:grid-cols-4`}>
         <Stat
           label={t('partner.earningsLifetime')}
-          value={formatMoney(earnings.lifetime, earnings.currency)}
+          value={moneyText(earnings.lifetime, earnings.currency)}
           hint={earnings.engineLive ? t('partner.earningsLiveNote') : undefined}
           large
         />
         <Stat
           label={t('partner.earningsRecent')}
-          value={formatMoney(earnings.last30Days, earnings.currency)}
+          value={moneyText(earnings.last30Days, earnings.currency)}
         />
         <Stat
           label={t('partner.clientsHeading')}
@@ -115,7 +115,7 @@ export function PartnerSummary({ data }: { data: IbOverview }) {
         <Notice>
           {t('partner.earningsCurrencyScope', {
             currency: earnings.currency,
-            others: uncounted.join(', '),
+            others: uncounted.join(t('common.listSeparator')),
           })}
         </Notice>
       )}

@@ -21,6 +21,7 @@
  */
 
 import { t } from '@/lib/i18n';
+import { answerText, docLabel, fieldLabel, stepTitle } from '@/lib/kyc-text';
 import type { KycStatus } from '@/lib/kyc-form-access';
 
 /** The document's own state, derived from the submission's. */
@@ -51,18 +52,23 @@ export interface KycDocumentRow {
 interface FieldLike {
   name: string;
   label: string;
+  labelAr?: string | null;
   type?: string;
+  options?: string[] | null;
+  optionsAr?: Record<string, string> | null;
   document?: {
     value: string;
     label: string;
+    labelAr?: string | null;
     category?: string;
-    parts: { key: string; label: string }[];
+    parts: { key: string; label: string; labelAr?: string | null }[];
   };
 }
 
 interface StepLike {
   slug: string;
   title?: string;
+  titleAr?: string | null;
   fields: FieldLike[];
 }
 
@@ -87,6 +93,13 @@ export interface KycStatusLike {
 const CANONICAL_SLUGS = new Set(['personal', 'document', 'selfie', 'address']);
 
 /** `utility_bill` / `dateOfBirth` → `Utility bill` / `Date of birth`, for a key the config no longer names. */
+/** A document part's label in the reader's language, or `undefined` when there is no such part. */
+function partLabel(
+  part: { label: string; labelAr?: string | null } | undefined,
+): string | undefined {
+  return part ? docLabel(part) : undefined;
+}
+
 function humanise(value: string): string {
   const spaced = value
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -135,7 +148,11 @@ export function kycDocumentsOf(
   const idType = status.document?.docType;
   const idFields = fieldsFor(steps, 'identity', idType);
   const idDoc = idFields[0]?.document;
-  const idLabel = idFields[0]?.label ?? (idType ? humanise(idType) : t('kyc.idDocument'));
+  const idLabel = idFields[0]
+    ? fieldLabel(idFields[0])
+    : idType
+      ? humanise(idType)
+      : t('kyc.idDocument');
   const idNames = idFields.map((f) => f.name);
   const idHasBack = !!status.document?.backFilePath;
   rows.push(
@@ -144,14 +161,14 @@ export function kycDocumentsOf(
       filePath: status.document?.frontFilePath,
       type: idLabel,
       // A one-page document has no "front" worth naming.
-      part: idHasBack ? (idDoc?.parts[0]?.label ?? t('kyc.docs.front')) : undefined,
+      part: idHasBack ? (partLabel(idDoc?.parts[0]) ?? t('kyc.docs.front')) : undefined,
       fieldKeys: ['doc_front', ...idNames],
     },
     {
       key: 'doc_back',
       filePath: status.document?.backFilePath,
       type: idLabel,
-      part: idDoc?.parts[1]?.label ?? t('kyc.docs.back'),
+      part: partLabel(idDoc?.parts[1]) ?? t('kyc.docs.back'),
       fieldKeys: ['doc_back', ...idNames],
     },
   );
@@ -171,8 +188,11 @@ export function kycDocumentsOf(
   const addrType = status.addressProof?.docType;
   const addrFields = fieldsFor(steps, 'address', addrType);
   const addrDoc = addrFields[0]?.document;
-  const addrLabel =
-    addrFields[0]?.label ?? (addrType ? humanise(addrType) : t('kyc.proofOfAddress'));
+  const addrLabel = addrFields[0]
+    ? fieldLabel(addrFields[0])
+    : addrType
+      ? humanise(addrType)
+      : t('kyc.proofOfAddress');
   const addrNames = addrFields.map((f) => f.name);
   const addrHasPage2 = !!status.addressProof?.page2FilePath;
   rows.push(
@@ -180,14 +200,16 @@ export function kycDocumentsOf(
       key: 'address_proof',
       filePath: status.addressProof?.filePath,
       type: addrLabel,
-      part: addrHasPage2 ? (addrDoc?.parts[0]?.label ?? t('kyc.docs.page', { n: 1 })) : undefined,
+      part: addrHasPage2
+        ? (partLabel(addrDoc?.parts[0]) ?? t('kyc.docs.page', { n: 1 }))
+        : undefined,
       fieldKeys: ['address_proof', ...addrNames],
     },
     {
       key: 'address_proof_2',
       filePath: status.addressProof?.page2FilePath,
       type: addrLabel,
-      part: addrDoc?.parts[1]?.label ?? t('kyc.docs.page', { n: 2 }),
+      part: partLabel(addrDoc?.parts[1]) ?? t('kyc.docs.page', { n: 2 }),
       fieldKeys: ['address_proof_2', ...addrNames],
     },
   );
@@ -202,8 +224,8 @@ export function kycDocumentsOf(
       rows.push({
         key: `${slug}:${name}`,
         filePath: value.filePath,
-        type: field?.label ?? unconfiguredLabel(name),
-        part: step?.title,
+        type: field ? fieldLabel(field) : unconfiguredLabel(name),
+        part: step?.title ? stepTitle(step) : undefined,
         fieldKeys: [name],
       });
     }
@@ -272,7 +294,9 @@ export function personalDetailsOf(
   for (const field of configured) {
     seen.add(field.name);
     const value = text(personalInfo[field.name]).trim();
-    if (value) out.push({ key: field.name, label: field.label, value });
+    // The label and a choice's answer read in the reader's language.
+    if (value)
+      out.push({ key: field.name, label: fieldLabel(field), value: answerText(field, value) });
   }
   for (const [key, raw] of Object.entries(personalInfo)) {
     if (seen.has(key) || elsewhere.has(key) || key.startsWith('__')) continue;
@@ -306,7 +330,8 @@ export function rejectedFieldLabels(
       return row!.part ? `${row!.type} · ${row!.part}` : row!.type;
     }
     if (matched.length > 1) return matched[0]!.type;
-    return fields.find((f) => f.name === id)?.label ?? unconfiguredLabel(id);
+    const field = fields.find((f) => f.name === id);
+    return field ? fieldLabel(field) : unconfiguredLabel(id);
   });
   return [...new Set(labels)];
 }

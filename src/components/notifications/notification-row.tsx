@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Bell } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import type { AppNotification } from '@/lib/api/notifications';
-import { currentLocale, t } from '@/lib/i18n';
+import { intlLocale, t } from '@/lib/i18n';
 import { relativeTime } from '@/lib/relative-time';
 import { bodyText, resolveKind } from '@/components/layout/notification-kinds';
 import { useMinuteTick } from '@/hooks/use-minute-tick';
@@ -45,7 +45,7 @@ export function NotificationRow({ item }: { item: AppNotification }) {
           </span>
           <time
             dateTime={item.createdAt}
-            title={new Date(item.createdAt).toLocaleString(currentLocale())}
+            title={new Date(item.createdAt).toLocaleString(intlLocale())}
             className="shrink-0 text-[10px] text-muted-foreground"
           >
             {relativeTime(item.createdAt)}

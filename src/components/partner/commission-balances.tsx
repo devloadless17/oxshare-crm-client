@@ -1,5 +1,6 @@
 'use client';
 
+import { walletName } from '@/lib/wallet-name';
 import * as React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Coins } from 'lucide-react';
@@ -19,7 +20,8 @@ import { apiErrorMessage } from '@/lib/api/errors';
 import { partnerApi } from '@/lib/api/partner';
 import { useResource } from '@/hooks/use-resource';
 import { keys } from '@/lib/query-keys';
-import { compareMoney, formatMoney, isZeroMoney } from '@/lib/money';
+import { compareMoney, isZeroMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
 import { t } from '@/lib/i18n';
 
 /**
@@ -178,7 +180,7 @@ function BalanceCell({ wallet, sole }: { wallet: Wallet; sole: boolean }) {
             here to move earnings out.
           */}
           <p className="truncate text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
-            {wallet.name}
+            {walletName(wallet)}
           </p>
           {/* The CODE, so two balances are never told apart by their symbol
               alone — several currencies share '$'. */}
@@ -191,7 +193,7 @@ function BalanceCell({ wallet, sole }: { wallet: Wallet; sole: boolean }) {
           refresh does not shift the digits sideways.
         */}
         <p className="mt-1.5 text-2xl font-semibold tracking-tight break-all tabular-nums">
-          {formatMoney(wallet.available, wallet.currency)}
+          {moneyText(wallet.available, wallet.currency)}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           {t('partner.balanceOpened', { date: formatDate(wallet.createdAt) })}

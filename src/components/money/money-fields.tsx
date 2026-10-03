@@ -4,7 +4,8 @@ import * as React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { formatMoney } from '@/lib/money';
+import { moneyText } from '@/lib/bidi';
+import { ErrorDetail, errorDetailFor } from '@/components/error-detail';
 
 /**
  * The fields inside the money sheet — amount, presets, refusal, summary row.
@@ -142,7 +143,7 @@ export function AmountPresets({
           disabled={disabled}
           className="focus-outline rounded-lg border border-border px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary hover:bg-primary/5 disabled:opacity-50"
         >
-          {formatMoney(amount, currency)}
+          {moneyText(amount, currency)}
         </button>
       ))}
     </div>
@@ -164,6 +165,8 @@ export function FormError({ message }: { message: string | null }) {
       className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs leading-relaxed text-destructive"
     >
       {message}
+      {/* The API's technical detail, when the message came with one (`withErrorDetail`). */}
+      <ErrorDetail detail={errorDetailFor(message)} />
     </p>
   );
 }

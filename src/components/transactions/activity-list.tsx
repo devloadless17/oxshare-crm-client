@@ -20,7 +20,7 @@ import { MethodCell, StateBadge } from '@/components/transactions/transaction-ce
 import { useTransferEnds } from '@/components/transactions/transfer-ends';
 import { paymentsApi, type Transaction, type TransactionQuery } from '@/lib/api/payments';
 import { SignedAmount } from '@/components/money/signed-amount';
-import { t } from '@/lib/i18n';
+import { intlLocale, t } from '@/lib/i18n';
 import { movementLabelKey } from '@/lib/movement-label';
 import { keys } from '@/lib/query-keys';
 
@@ -194,8 +194,8 @@ export function ActivityList() {
         const at = new Date(tx.createdAt);
         return (
           <span className="text-muted-foreground">
-            <span className="block md:inline">{at.toLocaleDateString()}</span>{' '}
-            <span className="block md:inline">{at.toLocaleTimeString()}</span>
+            <span className="block md:inline">{at.toLocaleDateString(intlLocale())}</span>{' '}
+            <span className="block md:inline">{at.toLocaleTimeString(intlLocale())}</span>
           </span>
         );
       },

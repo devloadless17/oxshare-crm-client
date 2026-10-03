@@ -232,7 +232,7 @@ function ConfirmEmail() {
           onClick={leave}
           className="inline-flex cursor-pointer items-center gap-1.5 rounded-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-outline"
         >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
           {t('auth.confirm.back')}
         </button>
       }
