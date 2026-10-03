@@ -93,9 +93,23 @@ describe('localized — operator text with an optional Arabic twin', () => {
   });
 
   it('falls back to English when the Arabic is missing or blank — never an empty label', () => {
-    expect(localized('Passport', undefined, 'ar')).toBe('Passport');
-    expect(localized('Passport', null, 'ar')).toBe('Passport');
-    expect(localized('Passport', '   ', 'ar')).toBe('Passport');
+    // On an Arabic page the English comes back ISOLATED (FSI … PDI), so bidi lays
+    // it out as English: bare, "Created by the walkthrough." printed with its full
+    // stop at the wrong end (Arabic end-to-end test, 3 Oct 2026).
+    const isolated = 'FSIPassportPDI'.replace('FSI', '⁨').replace('PDI', '⁩');
+    expect(localized('Passport', undefined, 'ar')).toBe(isolated);
+    expect(localized('Passport', null, 'ar')).toBe(isolated);
+    expect(localized('Passport', '   ', 'ar')).toBe(isolated);
+  });
+
+  it('isolates only real English: an empty value, a number or Arabic comes back as is', () => {
+    expect(localized('', null, 'ar')).toBe('');
+    expect(localized('2026', null, 'ar')).toBe('2026');
+    expect(localized('جواز السفر', null, 'ar')).toBe('جواز السفر');
+    // English pages are byte-for-byte what they were.
+    expect(localized('Created by the walkthrough.', null, 'en')).toBe(
+      'Created by the walkthrough.',
+    );
   });
 });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { ErrorDetail, errorDetailFor, withErrorDetail } from '@/components/error-detail';
+import { withErrorDetail } from '@/components/error-detail';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { useResource } from '@/hooks/use-resource';
 import { withReviewStep } from './review-step';
 import { chosenDocumentValue, savedDocumentChoices, storedDocValuesOf } from './doc-type';
 import { firstOwed, owedMessage } from './owed-message';
+import { StepAlert } from './step-alert';
 import {
   effectiveUploads,
   flagsSettledByUpload,
@@ -388,15 +389,7 @@ export function KycStepForm() {
         fieldErrors={fieldErrors}
       />
 
-      {error && (
-        <div
-          role="alert"
-          className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs font-semibold text-destructive animate-in fade-in-0"
-        >
-          {error}
-          <ErrorDetail detail={errorDetailFor(error)} />
-        </div>
-      )}
+      {error && <StepAlert message={error} />}
 
       {/*
         BACK / CONTINUE, AT THE BOTTOM OF THE PAGE on every step (owner, 26 Sep

@@ -10,6 +10,9 @@ import {
   type ProofFieldQuestion,
 } from './deposit-details-fields';
 
+/** Operator text that fell back to English, as an Arabic page shows it: isolated (FSI … PDI). */
+const iso = (text: string) => `\u2068${text}\u2069`;
+
 const { post } = vi.hoisted(() => ({ post: vi.fn() }));
 vi.mock('@/lib/api/client', () => ({
   apiClient: { post },
@@ -104,7 +107,7 @@ describe('the details in Arabic', () => {
     expect(screen.getByText('رمز التحويل')).toBeInTheDocument();
     expect(screen.getByText('على إيصال OMT')).toBeInTheDocument();
     // No Arabic written for the phone question: its English, never a blank.
-    expect(screen.getByText('Phone number you sent from')).toBeInTheDocument();
+    expect(screen.getByText(iso('Phone number you sent from'))).toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText(/رمز التحويل/), 'Z');
     expect(onChange).toHaveBeenLastCalledWith({ f_code000001: 'Z' });

@@ -178,6 +178,18 @@ export function PhoneInput({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  /*
+   * The list opens BELOW the field, and the field often sits at the bottom of a
+   * screen that scrolls inside its own box (the withdrawal form, above its
+   * sticky Back / Withdraw bar): the list then opened under the bar and only its
+   * search box showed (end-to-end test, 3 Oct 2026). Bring it into view.
+   */
+  const popoverRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    // `?.`: jsdom has no scrollIntoView.
+    if (open) popoverRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [open]);
+
   const handleSelectCountry = (country: CountryItem) => {
     setSelectedCountry(country);
     setOpen(false);
@@ -277,6 +289,7 @@ export function PhoneInput({
       {/* Searchable Dropdown Popover */}
       {open && (
         <div
+          ref={popoverRef}
           dir={direction()}
           className="absolute top-11 left-0 z-50 w-72 rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl p-2 animate-in fade-in-0 zoom-in-95 duration-150"
         >

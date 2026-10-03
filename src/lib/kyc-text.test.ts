@@ -12,6 +12,9 @@ import {
   stepTitle,
 } from './kyc-text';
 
+/** Operator text that fell back to English, as an Arabic page shows it: isolated (FSI … PDI). */
+const iso = (text: string) => `\u2068${text}\u2069`;
+
 /**
  * The KYC configuration's words in the reader's language (0179). Every rule:
  * Arabic when reading Arabic AND it is not blank, else the English — and an
@@ -46,11 +49,11 @@ describe('in Arabic', () => {
 
   it('shows the Arabic, and the English where none (or a blank) was written', () => {
     expect(fieldLabel(country)).toBe('البلد');
-    expect(fieldLabel({ label: 'Notes', labelAr: '   ' })).toBe('Notes');
+    expect(fieldLabel({ label: 'Notes', labelAr: '   ' })).toBe(iso('Notes'));
     expect(fieldHint({ hint: 'As on your ID', hintAr: 'كما في هويتك' })).toBe('كما في هويتك');
     expect(fieldHint({ hint: undefined, hintAr: undefined })).toBeUndefined();
     expect(stepTitle({ title: 'Personal', titleAr: 'شخصي' })).toBe('شخصي');
-    expect(stepDescription({ description: 'About you' })).toBe('About you');
+    expect(stepDescription({ description: 'About you' })).toBe(iso('About you'));
     expect(stepDescription({})).toBeUndefined();
     expect(docLabel({ label: 'Passport', labelAr: 'جواز السفر' })).toBe('جواز السفر');
   });
@@ -59,12 +62,12 @@ describe('in Arabic', () => {
     const document = { label: 'Passport', labelAr: 'جواز السفر' };
     expect(fieldLabel({ label: 'Passport', document })).toBe('جواز السفر');
     // A broker's own wording is not the catalogue's — never mislabel it.
-    expect(fieldLabel({ label: 'Travel document', document })).toBe('Travel document');
+    expect(fieldLabel({ label: 'Travel document', document })).toBe(iso('Travel document'));
   });
 
   it('maps a stored English answer to its Arabic without changing it', () => {
     expect(optionLabel(country, 'Lebanon')).toBe('لبنان');
-    expect(optionLabel(country, 'Atlantis')).toBe('Atlantis');
+    expect(optionLabel(country, 'Atlantis')).toBe(iso('Atlantis'));
     expect(answerText({ type: 'select', ...country }, 'Lebanon')).toBe('لبنان');
     expect(answerText({ type: 'text' }, 'Beirut')).toBe('Beirut');
     const funds = {

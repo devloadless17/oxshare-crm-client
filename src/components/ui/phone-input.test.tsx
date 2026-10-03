@@ -12,6 +12,16 @@ import { PhoneInput } from './phone-input';
  * value once, at mount, and the saved answer reached the form a moment later.
  */
 describe('PhoneInput', () => {
+  it('brings the country list into view when it opens (3 Oct 2026)', async () => {
+    // At the bottom of a scrolling form it opened under the sticky action bar.
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    render(<PhoneInput aria-label="Phone" value="" onChange={vi.fn()} defaultCountryCode="+961" />);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: /\+961/ }));
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+  });
+
   it('reads a WHOLE international number pasted into the box — country and all', async () => {
     // Stripped to digits behind the chosen code, `+961 70 123 456` became
     // `+961 96170123456` and every save was refused (admin e2e, 29 Sep 2026).

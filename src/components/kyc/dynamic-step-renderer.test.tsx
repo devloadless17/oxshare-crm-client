@@ -5,6 +5,9 @@ import { setActiveLocale } from '@/lib/i18n';
 import { documentChoiceKey } from './doc-type';
 import { DynamicStepRenderer } from './dynamic-step-renderer';
 
+/** Operator text that fell back to English, as an Arabic page shows it: isolated (FSI … PDI). */
+const iso = (text: string) => `\u2068${text}\u2069`;
+
 type KycStepConfig = components['schemas']['KycStepConfigDto'];
 
 /**
@@ -150,6 +153,6 @@ describe('in Arabic', () => {
         onUpload={vi.fn()}
       />,
     );
-    expect(screen.getByRole('heading', { name: 'Identity Document' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: iso('Identity Document') })).toBeInTheDocument();
   });
 });

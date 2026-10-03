@@ -246,9 +246,14 @@ export function ApplyPanel({
                     <span className="block text-sm font-semibold">
                       {localized(agency.name, agency.nameAr)}
                     </span>
-                    {agency.description && (
+                    {/*
+                      Judged on what is SHOWN, not on the English: an operator
+                      may write only the Arabic description, and an Arabic
+                      reader was shown nothing (Arabic end-to-end test, 3 Oct 2026).
+                    */}
+                    {localized(agency.description ?? '', agency.descriptionAr) !== '' && (
                       <span className="block text-xs leading-relaxed text-muted-foreground">
-                        {localized(agency.description, agency.descriptionAr)}
+                        {localized(agency.description ?? '', agency.descriptionAr)}
                       </span>
                     )}
                     {agency.products.length > 0 && (

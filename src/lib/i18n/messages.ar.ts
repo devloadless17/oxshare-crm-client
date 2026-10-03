@@ -758,7 +758,7 @@ export const arMessages: Record<MessageKey, string> = {
   'kyc.reviewDescription': 'تأكد من جميع البيانات وأرسل طلبك لمراجعة فريق الامتثال.',
   'kyc.statusLoadFailed': 'تعذّر تحميل حالة التحقق.',
   'kyc.uploadTooLarge':
-    'حجم هذا الملف {size} MB، والحد الأقصى {limit} MB — يرجى تحميل صورة أو نسخة ممسوحة أصغر حجماً.',
+    'حجم هذا الملف \u2066{size} MB\u2069، والحد الأقصى \u2066{limit} MB\u2069 — يرجى تحميل صورة أو نسخة ممسوحة أصغر حجماً.',
   'kyc.uploadFailed': 'فشل التحميل. يرجى المحاولة مرة أخرى.',
   'kyc.selfieFailed': 'تعذّر تحميل صورتك الشخصية. يرجى التقاطها مرة أخرى.',
   'kyc.selfieRetake': 'إعادة الالتقاط',
@@ -843,7 +843,7 @@ export const arMessages: Record<MessageKey, string> = {
   'kyc.documentSwitchNotice':
     'سبق أن أرسلت {stored}. تحميل {chosen} سيحلّ محلّه — نحتفظ بمستند واحد فقط.',
   'kyc.documentSwitchStoredFallback': 'مستندك الآخر',
-  'kyc.uploadFormats': 'PNG، JPG، PDF · الحد الأقصى {limit} MB',
+  'kyc.uploadFormats': 'PNG، JPG، PDF · الحد الأقصى \u2066{limit} MB\u2069',
   'kyc.dropHint': 'التقط صورة للمستند، أو اختر ملفاً موجوداً لديك',
   'kyc.takePhoto': 'التقاط صورة',
   'kyc.chooseFile': 'اختيار ملف',
@@ -1283,7 +1283,7 @@ export const arMessages: Record<MessageKey, string> = {
     'افتح صفحة الدفع في علامة تبويب جديدة وأرسل المبلغ الظاهر فيها. تتحدّث هذه الصفحة تلقائياً عند وصول دفعتك.',
   'deposit.waitingNetwork': 'أرسل {asset} فقط. أي عملة أخرى، أو USDT على شبكة مختلفة، ستضيع.',
   'deposit.waitingPar':
-    'تُضاف إلى محفظة {currency} القيمة التي تصل فعلياً، بسعر 1 USDT = 1 {currency}.',
+    'تُضاف إلى محفظة {currency} القيمة التي تصل فعلياً، بسعر \u20661 USDT = 1 {currency}\u2069.',
   'deposit.waitingExpiresIn': 'تُغلق صفحة الدفع خلال {time}.',
   'deposit.waitingExpired':
     'أُغلقت صفحة الدفع. إن كنت قد أرسلت الدفعة فستُضاف إلى رصيدك فور تأكيد مزوّد الدفع لها؛ وإلا فابدأ إيداعاً جديداً.',

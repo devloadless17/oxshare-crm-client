@@ -102,6 +102,10 @@ export function intlLocale(locale: Locale = currentLocale()): string | undefined
   return locale === 'ar' ? 'ar-u-nu-latn' : undefined;
 }
 
+/** First-strong isolate / pop: the run takes its direction from its own first letter. */
+const FSI = '\u2068';
+const PDI = '\u2069';
+
 /**
  * The broker's own text in the active language: the Arabic when the locale is
  * Arabic and the operator wrote one, else the English.
@@ -109,14 +113,24 @@ export function intlLocale(locale: Locale = currentLocale()): string | undefined
  * For content the ADMIN authors (KYC questions, options, step titles…), which
  * arrives with both languages. A blank Arabic falls back to English rather than
  * rendering an empty label — an untranslated question is still a question.
+ *
+ * That English fallback, shown on an ARABIC page, comes back wrapped in
+ * FIRST-STRONG ISOLATE … POP DIRECTIONAL ISOLATE (U+2068 … U+2069) so it is laid
+ * out as the English it is. Bare, the bidi algorithm reads it inside the
+ * right-to-left line around it: "Created by the walkthrough." printed as
+ * ".Created by the walkthrough" on the Arabic partner screen (found in the
+ * Arabic end-to-end test, 3 Oct 2026). Isolate characters are invisible and work
+ * anywhere a string goes — a label, an option, a `title`. The result is for
+ * DISPLAY only, which is all this function was ever for; never compare or send it.
  */
 export function localized(
   en: string,
   ar?: string | null,
   locale: Locale = currentLocale(),
 ): string {
-  if (locale === 'ar' && typeof ar === 'string' && ar.trim() !== '') return ar;
-  return en;
+  if (locale !== 'ar') return en;
+  if (typeof ar === 'string' && ar.trim() !== '') return ar;
+  return /[A-Za-z]/.test(en) && !/[\u0600-\u06FF]/.test(en) ? FSI + en + PDI : en;
 }
 
 /** Values substituted into a message's `{placeholders}`. */
