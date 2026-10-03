@@ -6,6 +6,7 @@ import { MoneyScreen } from '@/components/money/money-screen';
 import { ArrowRight } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { Button } from '@/components/ui/button';
+import { isPositiveAmount } from '@/components/money/withdraw-amount-hint';
 import {
   AmountField,
   AmountPresets,
@@ -24,6 +25,7 @@ import {
 } from '@/components/money/transfer-states';
 import { TileGroups } from '@/components/money/tile-groups';
 import { useResource } from '@/hooks/use-resource';
+import { firstUnready } from '@/lib/resource-status';
 import { usePreselectedTransfer } from '@/hooks/use-preselected-transfer';
 import { newIdempotencyKey } from '@/lib/api/client';
 import { apiErrorMessage } from '@/lib/api/errors';
@@ -95,6 +97,12 @@ function TransferPageContent() {
     tradingApi.getTransferableAccounts(signal),
   );
   const wallets = useResource(keys.wallets.all(), (signal) => walletApi.getWallets(signal));
+  /*
+   * The wallets gate the flow too. Ungated, a failed `GET /wallet` rendered the
+   * source step with no wallet in it and nothing saying why (and the
+   * `?account=` preselection, which needs the wallet, silently did nothing).
+   */
+  const ready = firstUnready(accounts, wallets);
 
   /*
    * No page heading.
@@ -121,12 +129,19 @@ function TransferPageContent() {
       {/* Back link, New / History tabs and the history live in MoneyScreen. */}
 
       <AsyncBoundary
-        status={accounts.status}
+        status={ready.status}
         label={t('transfer.loading')}
-        endpoints={['GET /trading/accounts/transferable', 'POST /payments/transfers']}
-        onRetry={() => accounts.refetch()}
-        errorMessage={t('transfer.loadFailed')}
-        error={accounts.error}
+        endpoints={[
+          'GET /trading/accounts/transferable',
+          'GET /wallet',
+          'POST /payments/transfers',
+        ]}
+        onRetry={() => {
+          void accounts.refetch();
+          void wallets.refetch();
+        }}
+        errorMessage={ready === accounts ? t('transfer.loadFailed') : t('money.balancesFailed')}
+        error={ready.error}
         fill
       >
         <TransferFlow accounts={accounts.data ?? []} wallets={wallets.data ?? []} />
@@ -257,6 +272,9 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!account || !source) return;
+    // Not a number at all is said under the field and never sent: the server's
+    // validator would answer in its own words. Limits and decimals stay its call.
+    if (!isPositiveAmount(amount)) return;
 
     setBusy(true);
     setError(null);
@@ -377,11 +395,13 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
                        */
                       max={spendable ? { amount: spendable, label: t('money.useMax') } : undefined}
                       hint={
-                        spendable
-                          ? t('money.availableBalance', {
-                              amount: moneyText(spendable, account.currency),
-                            })
-                          : undefined
+                        amount.trim() && !isPositiveAmount(amount)
+                          ? t('withdraw.amountInvalid')
+                          : spendable
+                            ? t('money.availableBalance', {
+                                amount: moneyText(spendable, account.currency),
+                              })
+                            : undefined
                       }
                     />
                     {presets.length > 0 && (

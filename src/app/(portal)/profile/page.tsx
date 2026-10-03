@@ -4,21 +4,18 @@ import Link from 'next/link';
 import * as React from 'react';
 import { BadgeCheck } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
-import api from '@/lib/api';
-import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { KycSubmissionDetails } from '@/components/kyc/kyc-submission-details';
 import { currentLocale, intlLocale, localized, t } from '@/lib/i18n';
 import { profileApi } from '@/lib/api/profile';
 import { keys } from '@/lib/query-keys';
+import { kycStatusQuery } from '@/lib/api/kyc';
 import { addressLine, formatDateOfBirth, formatPhone } from '@/lib/profile';
 import { AvatarUploader } from './avatar-uploader';
 import { ChangePasswordForm } from './change-password-form';
 import { SessionsList } from './sessions-list';
 import { VerificationStatus } from './verification-status';
-
-type KycStatusDto = components['schemas']['KycStatusDto'];
 
 /**
  * The client's own account.
@@ -66,10 +63,7 @@ export default function ProfilePage() {
   const [sessionsEpoch, setSessionsEpoch] = React.useState(0);
   // The same key the KYC screens and the sidebar badge read, so this is
   // usually a cache hit rather than a request.
-  const kycQuery = useResource(
-    keys.kyc.status(),
-    async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
-  );
+  const kycQuery = useResource(kycStatusQuery.queryKey, kycStatusQuery.queryFn);
 
   /*
    * The country and nationality are stored in ENGLISH (the canonical value);

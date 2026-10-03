@@ -6,16 +6,11 @@ import { PageLoader } from '@/components/ui/loader';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { useKycAccess } from '@/hooks/use-kyc-access';
 import { useResource } from '@/hooks/use-resource';
-import api from '@/lib/api';
-import type { components } from '@/lib/api/types.gen';
 import type { KycStatus } from '@/lib/kyc-form-access';
 import { withReviewStep } from '@/components/kyc/review-step';
 import { resumeStepNumber } from '@/components/kyc/resume-step';
 import { t } from '@/lib/i18n';
-import { keys } from '@/lib/query-keys';
-
-type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
-type KycStatusDto = components['schemas']['KycStatusDto'];
+import { kycConfigQuery, kycStatusQuery } from '@/lib/api/kyc';
 
 /**
  * `/kyc` is a signpost, not a screen — it decides where the client belongs and
@@ -48,16 +43,12 @@ export default function KycPage() {
   const unfinished = !isLoading && (resolved === 'not_started' || resolved === 'in_progress');
 
   // Same keys as the wizard, so these are the requests it would make anyway.
-  const config = useResource(
-    keys.kyc.config(),
-    async (signal) => (await api.get<KycStepConfigDto[]>('/kyc/config', { signal })).data,
-    { enabled: unfinished },
-  );
-  const detail = useResource(
-    keys.kyc.status(),
-    async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
-    { enabled: unfinished },
-  );
+  const config = useResource(kycConfigQuery.queryKey, kycConfigQuery.queryFn, {
+    enabled: unfinished,
+  });
+  const detail = useResource(kycStatusQuery.queryKey, kycStatusQuery.queryFn, {
+    enabled: unfinished,
+  });
 
   useEffect(() => {
     if (isLoading) return;

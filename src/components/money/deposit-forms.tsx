@@ -84,13 +84,19 @@ function bounds(method: PaymentMethod): { min: Decimal | null; max: Decimal | nu
 export function amountProblem(method: PaymentMethod, amount: string): string | null {
   if (!amount.trim()) return null;
 
+  /*
+   * Not a number, or negative, is said HERE. Leaving it to the server meant it
+   * was never said: the form shows one problem at a time and another one (an
+   * empty detail, a missing receipt) blocked the submit first, so typing "abc"
+   * read "Phone is required" (found live, 3 Oct 2026).
+   */
   let value: Decimal;
   try {
-    value = new Decimal(amount);
+    value = new Decimal(amount.trim());
   } catch {
-    return null; // Let the server phrase "that is not a number".
+    return t('deposit.amountInvalid');
   }
-  if (!value.isFinite() || !value.isPositive()) return null;
+  if (!value.isFinite() || value.isNegative()) return t('deposit.amountInvalid');
 
   /*
    * MORE PRECISION THAN THE RAIL CAN TAKE — checked here, first.
