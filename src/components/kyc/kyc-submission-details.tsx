@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { Eye, FileText, User } from 'lucide-react';
-import api from '@/lib/api';
 import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
 import { DataTable, type Column } from '@/components/data-table';
@@ -17,10 +16,9 @@ import {
 } from '@/lib/kyc-documents';
 import { intlLocale, t, type MessageKey } from '@/lib/i18n';
 import { isProfileKey } from '@/lib/profile';
-import { keys } from '@/lib/query-keys';
+import { kycConfigQuery } from '@/lib/api/kyc';
 
 type KycStatusDto = components['schemas']['KycStatusDto'];
-type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
 
 /**
  * What the client submitted for verification: their details and every document,
@@ -60,10 +58,7 @@ export function KycSubmissionDetails({
    */
   hideProfile?: boolean;
 }) {
-  const configQuery = useResource(
-    keys.kyc.config(),
-    async (signal) => (await api.get<KycStepConfigDto[]>('/kyc/config', { signal })).data,
-  );
+  const configQuery = useResource(kycConfigQuery.queryKey, kycConfigQuery.queryFn);
   const steps = useMemo(() => configQuery.data ?? [], [configQuery.data]);
 
   const statusLike = status as KycStatusLike;

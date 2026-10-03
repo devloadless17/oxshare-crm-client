@@ -299,6 +299,7 @@ export const messages = {
   'auth.register.postalCodeHint': 'Leave blank if your address has none.',
   'auth.register.optional': '(optional)',
   'auth.register.required': 'This field is required.',
+  'auth.register.phoneIncomplete': 'Enter your full number after the country code.',
   'auth.register.emailInvalid': 'Enter a valid email address.',
   'auth.register.fixHighlighted': 'Please correct the highlighted fields.',
   'auth.register.listLoading': 'Loading…',
@@ -419,7 +420,9 @@ export const messages = {
   'auth.reset.confirmPassword': 'Confirm Password',
   'auth.reset.submitting': 'Resetting Password…',
   'auth.reset.submitCta': 'Update Password',
-  'auth.reset.missingToken': 'Password reset token is missing.',
+  'auth.reset.missingToken':
+    'This reset link is incomplete. Request a new one and use the link in that email.',
+  'auth.reset.requestNewLink': 'Request a new link',
   'auth.reset.failed': 'Password reset failed.',
 
   'auth.verify.heading': 'Email Verification',
@@ -624,6 +627,7 @@ export const messages = {
   'withdraw.limits': 'Between {min} and {max} per withdrawal',
   // Said under the amount BEFORE submitting — the server still refuses the same.
   'withdraw.amountBelowMin': 'The minimum withdrawal is {min}.',
+  'withdraw.amountInvalid': 'Enter the amount as a number above zero, for example 100.00.',
   'withdraw.amountAboveMax': 'The maximum withdrawal is {max}.',
   'withdraw.amountAboveAvailable': 'You have {available} available to withdraw.',
   /*
@@ -1051,6 +1055,8 @@ export const messages = {
    */
   'accounts.liveFiguresNote': 'Live from MetaTrader 5',
   'accounts.liveFiguresReadAt': 'Live from MetaTrader 5 · read at {time}',
+  'accounts.liveFiguresStale':
+    'Could not reach MetaTrader 5 just now · these figures were read at {time}',
   'accounts.equityLabel': 'Equity',
   'accounts.equityHint': 'Balance plus credit plus open profit — what you can act on.',
   'accounts.floatingLabel': 'Floating P/L',
@@ -1695,6 +1701,7 @@ export const messages = {
   'partner.applyFootnote': 'We review every request and email you the decision.',
   'partner.submit': 'Request to become a partner',
   'partner.submitting': 'Submitting…',
+  'partner.agenciesFailed': 'The programmes you can apply for could not be loaded.',
   'partner.submitFailed': 'Your application could not be submitted. Please try again.',
 
   // Awaiting a decision.
@@ -2147,6 +2154,7 @@ export const messages = {
   'money.stepDone': 'Done',
   'money.useMax': 'Use max',
   'money.back': 'Back',
+  'money.balancesFailed': 'Could not load your balances.',
   'money.continue': 'Continue',
   'money.availableBalance': 'Available: {amount}',
 
@@ -2234,6 +2242,7 @@ export const messages = {
   'deposit.toAccountHint': 'Funded automatically once the payment clears.',
   'deposit.amountRange': 'Between {min} and {max}',
   'deposit.amountBelowMin': 'The minimum deposit is {min}.',
+  'deposit.amountInvalid': 'Enter the amount as a number, for example 100.00.',
   // Names the rail rather than the currency: "USD takes 2 decimal places" reads
   // as a fact about money, which invites arguing with it. "Whish Money takes
   // USD to 2 decimal places" is a fact about the rail the client just chose.

@@ -2,12 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@/context/UserContext';
-import { apiClient } from '@/lib/api/client';
-import type { components } from '@/lib/api/types.gen';
 import { isKycApproved, isKycPending, isKycRejected } from '@/lib/kyc-access';
-import { keys } from '@/lib/query-keys';
-
-type KycStatusDto = components['schemas']['KycStatusDto'];
+import { kycStatusQuery } from '@/lib/api/kyc';
 
 /**
  * "May this client move money, and if not, why not?"
@@ -64,8 +60,8 @@ export function useKycAccess() {
    * shape, and narrowing happens per consumer instead of per writer.
    */
   const { data, isPending } = useQuery({
-    queryKey: keys.kyc.status(),
-    queryFn: async () => (await apiClient.get<KycStatusDto | null>('/kyc/status')).data ?? null,
+    queryKey: kycStatusQuery.queryKey,
+    queryFn: ({ signal }) => kycStatusQuery.queryFn(signal),
     select: (dto) => ({
       status: dto?.status ?? 'not_started',
       reverification: Boolean(dto?.reverificationRequestedAt),

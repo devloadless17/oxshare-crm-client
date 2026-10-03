@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 /**
  * The sign-up form's model — two steps, one payload (25 Sep 2026).
  *
@@ -101,6 +102,27 @@ export function stepOf(field: string): 1 | 2 {
 export function hasNationalNumber(phone: string): boolean {
   const national = phone.trim().replace(/^\+\d{1,4}/, '');
   return national.replace(/\D/g, '').length >= 4;
+}
+
+/** Some digits typed after the dial code — too few to be a number, but not nothing. */
+export function hasSomeNationalDigits(phone: string): boolean {
+  return (
+    phone
+      .trim()
+      .replace(/^\+\d{1,4}/, '')
+      .replace(/\D/g, '').length > 0
+  );
+}
+
+/**
+ * What to say under a required field left empty. A phone with SOME digits is
+ * short, not empty: "required" told a client who typed "12" that they had typed
+ * nothing (found live, 3 Oct 2026).
+ */
+export function missingMessage(field: RegisterField, values: RegisterValues): string {
+  return field === 'phone' && hasSomeNationalDigits(values.phone)
+    ? t('auth.register.phoneIncomplete')
+    : t('auth.register.required');
 }
 
 /** The required fields left empty. A phone that is only a dial code is empty. */

@@ -4,16 +4,6 @@ import * as React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Check, Wallet2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { assetUrl } from '@/lib/asset-url';
 import { cn } from '@/lib/utils';
 import { t } from '@/lib/i18n';
@@ -338,86 +328,6 @@ export function MoneySection({
       ) : null}
       {children}
     </section>
-  );
-}
-
-export interface DestinationOption {
-  value: string;
-  label: string;
-  /** A balance, or anything worth showing on the right of the row. */
-  hint?: string;
-}
-
-export interface DestinationGroup {
-  label: string;
-  options: DestinationOption[];
-}
-
-/**
- * Where money is going, as a SELECT rather than a list of radio cards.
- *
- * ## Why a select
- *
- * A client can hold several wallets and many trading accounts. Radio cards are
- * pleasant for three options and unusable for thirty — the amount field ends up
- * below two screens of cards, and the thing being chosen scrolls out of view
- * while choosing it. A select collapses to one row whatever the count.
- *
- * GROUPED, because "my wallet" and "a trading account" are different kinds of
- * destination and a flat list of thirty entries makes the client read every one
- * to find out which is which.
- *
- * Radix underneath, so keyboard navigation, type-ahead and the focus ring come
- * from the same component the rest of the app uses.
- */
-export function DestinationSelect({
-  value,
-  onChange,
-  groups,
-  label,
-  disabled,
-  placeholder,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  groups: DestinationGroup[];
-  label: string;
-  disabled?: boolean;
-  placeholder?: string;
-}) {
-  const id = React.useId();
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger id={id} className="h-10 w-full">
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {groups
-            /* A group with nothing in it renders no heading. An empty
-               "Trading accounts" label reads as a loading failure. */
-            .filter((group) => group.options.length > 0)
-            .map((group) => (
-              <SelectGroup key={group.label}>
-                <SelectLabel>{group.label}</SelectLabel>
-                {group.options.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <span className="flex w-full items-center justify-between gap-4">
-                      <span className="truncate">{option.label}</span>
-                      {option.hint && (
-                        <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
-                          {option.hint}
-                        </span>
-                      )}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            ))}
-        </SelectContent>
-      </Select>
-    </div>
   );
 }
 

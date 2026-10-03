@@ -54,13 +54,29 @@ function ResetPasswordForm() {
       <div className="space-y-6">
         <div className="space-y-5">
           {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span>{error}</span>
             </div>
           )}
 
-          {success ? (
+          {!token ? (
+            /*
+             * A link without its token cannot reset anything, and that is known
+             * on arrival. The form used to be offered anyway, so the client
+             * chose and confirmed a password before being told it never could.
+             */
+            <div role="alert" className="space-y-4 py-2 text-center">
+              <AlertCircle className="mx-auto h-10 w-10 text-destructive" aria-hidden="true" />
+              <p className="text-sm text-foreground">{t('auth.reset.missingToken')}</p>
+              <Button asChild size="lg" className="w-full">
+                <Link href="/auth/forgot-password">{t('auth.reset.requestNewLink')}</Link>
+              </Button>
+            </div>
+          ) : success ? (
             <div className="py-4 text-center space-y-4">
               <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
               <h2 className="text-base font-bold text-success">{t('auth.reset.successTitle')}</h2>

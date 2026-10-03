@@ -28,6 +28,7 @@ import { savedAnswersFor } from '@/components/kyc/saved-answers';
 import { DynamicStepRenderer } from '@/components/kyc/dynamic-step-renderer';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
+import { kycConfigQuery, kycStatusQuery } from '@/lib/api/kyc';
 
 /**
  * Aliased from the generated schema, so the field-by-field reads below are checked
@@ -35,7 +36,6 @@ import { keys } from '@/lib/query-keys';
  * `data?.personalInfo` and `data.document.docType` an unchecked access on `any` —
  * 30 of this repo's lint warnings came from this one pair of calls.
  */
-type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
 type KycStatusDto = components['schemas']['KycStatusDto'];
 
 export function KycStepForm() {
@@ -100,14 +100,8 @@ export function KycStepForm() {
    * and without the status we lose prefill and, worse, the rejection notice on
    * a returned KYC. A failure renders an error with a retry, never an empty form.
    */
-  const configQuery = useResource(
-    keys.kyc.config(),
-    async (signal) => (await api.get<KycStepConfigDto[]>('/kyc/config', { signal })).data,
-  );
-  const statusQuery = useResource(
-    keys.kyc.status(),
-    async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
-  );
+  const configQuery = useResource(kycConfigQuery.queryKey, kycConfigQuery.queryFn);
+  const statusQuery = useResource(kycStatusQuery.queryKey, kycStatusQuery.queryFn);
 
   const fetchingInitialData = configQuery.status === 'loading' || statusQuery.status === 'loading';
   const loadError =
@@ -275,9 +269,9 @@ export function KycStepForm() {
       await api.post<{ message?: string }>('/kyc/submit');
     } catch (e: unknown) {
       if (!isNetworkError(e)) throw e;
-      const now = await api
-        .get<KycStatusDto | null>('/kyc/status')
-        .then((r) => r.data?.status)
+      const now = await kycStatusQuery
+        .queryFn()
+        .then((dto) => dto?.status)
         .catch(() => undefined);
       if (now !== 'submitted' && now !== 'under_review') throw e;
     }
