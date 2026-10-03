@@ -5,6 +5,9 @@ import { setActiveLocale } from '@/lib/i18n';
 import { TransactionDetails } from './transaction-details';
 import type { Transaction } from '@/lib/api/payments';
 
+/** Operator text that fell back to English, as an Arabic page shows it: isolated (FSI … PDI). */
+const iso = (text: string) => `\u2068${text}\u2069`;
+
 /*
  * A transfer's ends are NAMED from the client's own wallets and accounts, so
  * the two lists are stubbed with one of each.
@@ -206,14 +209,24 @@ describe('TransactionDetails in Arabic', () => {
     expect(screen.getByText('رمز التحويل')).toBeInTheDocument();
     expect(screen.getByText('ZX-9981')).toBeInTheDocument();
     // Untranslated question: its English, never a blank label.
-    expect(screen.getByText('Sender phone')).toBeInTheDocument();
+    expect(screen.getByText(iso('Sender phone'))).toBeInTheDocument();
+  });
+
+  it('keeps the destination phone left to right (3 Oct 2026)', () => {
+    // Bare in an Arabic line, "+961 70123456" printed as "70123456 961+".
+    renderWithProviders(
+      <TransactionDetails tx={{ ...base, destination: '+961 70123456' }} onClose={vi.fn()} />,
+    );
+    const shown = screen.getByText('+961 70123456');
+    expect(shown.tagName).toBe('BDI');
+    expect(shown).toHaveAttribute('dir', 'ltr');
   });
 
   it("keeps a reviewer's own English reason when there is no Arabic", () => {
     renderWithProviders(
       <TransactionDetails tx={{ ...base, rejectionReason: 'Call us first.' }} onClose={vi.fn()} />,
     );
-    expect(screen.getByText('Call us first.')).toBeInTheDocument();
+    expect(screen.getByText(iso('Call us first.'))).toBeInTheDocument();
   });
 
   it('names the wallet end of a transfer in Arabic', async () => {

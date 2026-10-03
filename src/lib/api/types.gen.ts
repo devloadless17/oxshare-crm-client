@@ -2111,7 +2111,7 @@ export interface paths {
         };
         /**
          * The signed-in client's trading accounts, live first then demo
-         * @description The whole list, unpaginated — a client holds a handful of accounts rather than a growing log. Balances are decimal STRINGS (§6.1) and are the CRM-held figure, not MT5 equity: there is no bridge, so equity, margin and open positions are deliberately absent rather than fabricated.
+         * @description The whole list, unpaginated — a client holds a handful of accounts rather than a growing log. Balances are decimal STRINGS (§6.1) and are the CRM mirror of MT5, kept by the bridge's push and sweep. Equity, margin and open positions are LIVE figures and are read from the bridge per account (`accounts/:id/live`, `accounts/:id/positions`), never stored.
          */
         get: operations["TradingController_myAccounts"];
         put?: never;
@@ -2192,6 +2192,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/trading/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The signed-in client's positions — open by default
+         * @description IMPORTANT: this returns an EMPTY LIST for everyone today, and that is a real answer rather than a stub. Nothing writes to `positions` because there is no MT5 bridge, so the table exists and the query is genuine — "no open positions" is something the database said.
+         *
+         *     The table is created ahead of the feed deliberately: a screen rendering a hardcoded empty state is indistinguishable from one whose query found nothing, and that confusion has already told a client holding three live accounts that they had none.
+         *
+         *     Prices and volumes are decimal STRINGS (§6.1). `profit` is the REALISED result and is null while a position is open — floating P/L is deliberately absent, because it changes on every tick and a stored copy is stale the moment it is written.
+         */
+        get: operations["TradingController_myPositions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/trading/accounts/self-service": {
         parameters: {
             query?: never;
@@ -2224,30 +2248,6 @@ export interface paths {
          * @description Narrows what the transfer screen OFFERS. It does not become the check: `TransfersService` still refuses a demo, suspended or closed destination, because a second opinion about the same question is a second thing to drift.
          */
         get: operations["TradingController_myTransferableAccounts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/trading/positions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * The signed-in client's positions — open by default
-         * @description IMPORTANT: this returns an EMPTY LIST for everyone today, and that is a real answer rather than a stub. Nothing writes to `positions` because there is no MT5 bridge, so the table exists and the query is genuine — "no open positions" is something the database said.
-         *
-         *     The table is created ahead of the feed deliberately: a screen rendering a hardcoded empty state is indistinguishable from one whose query found nothing, and that confusion has already told a client holding three live accounts that they had none.
-         *
-         *     Prices and volumes are decimal STRINGS (§6.1). `profit` is the REALISED result and is null while a position is open — floating P/L is deliberately absent, because it changes on every tick and a stored copy is stale the moment it is written.
-         */
-        get: operations["TradingController_myPositions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2432,7 +2432,7 @@ export interface paths {
         };
         /**
          * Every client trading account, with its owner (balances are strings)
-         * @description `balance` is CRM-owned until the MT5 bridge lands and crosses this boundary as a STRING. `login` is NULL until MT5 issues one, and is a string rather than a number because leading zeros are significant to the bridge.
+         * @description `balance` is the CRM mirror of MT5 (kept by the bridge) and crosses this boundary as a STRING. `login` is NULL until MT5 issues one, and is a string rather than a number because leading zeros are significant to the bridge.
          */
         get: operations["AdminHoldingsController_listTradingAccounts"];
         put?: never;
@@ -3329,6 +3329,97 @@ export interface paths {
         post: operations["AdminAuthController_uploadAvatar"];
         /** Remove your profile photo */
         delete: operations["AdminAuthController_removeAvatar"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/auth/google/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the admin sign-in screen offers "Sign in with Google" */
+        get: operations["AdminGoogleAuthController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/auth/google/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Begin Google sign-in (browser navigation; 302 to Google)
+         * @description Sets a signed, httpOnly flow cookie (state, nonce, PKCE verifier) and redirects to Google's authorization endpoint. `next` must be a relative console path; anything else lands on /dashboard. `invite` (the emailed invite token) is kept in the cookie only.
+         */
+        get: operations["AdminGoogleAuthController_start"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/auth/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Google redirects here (browser navigation; 302 back to the console)
+         * @description Verifies state against the signed flow cookie, exchanges the code with the PKCE verifier, verifies the ID token and starts an admin session. Every failure redirects to the console with `?google_error=<code>` — never Google text, never the address.
+         */
+        get: operations["AdminGoogleAuthController_callback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/auth/me/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Unlink your own Google account */
+        delete: operations["AdminGoogleAuthController_unlinkOwn"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{id}/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Unlink another administrator's Google account (admins.reset) */
+        delete: operations["AdminGoogleAuthController_unlinkFor"];
         options?: never;
         head?: never;
         patch?: never;
@@ -7282,6 +7373,44 @@ export interface components {
              */
             amount: string;
         };
+        PositionDto: {
+            id: string;
+            /** @description The trading account this was traded on. */
+            tradingAccountId: string;
+            /** @description The account's MT5 login, for display beside the trade. Null until assigned. */
+            login: string | null;
+            /** @description The broker's own identifier for this trade. */
+            ticket: string;
+            /** @example EURUSD */
+            symbol: string;
+            /** @enum {string} */
+            side: "buy" | "sell";
+            /**
+             * @description Lots, as a decimal string. Never a float — 0.01 is a valid size.
+             * @example 0.1000
+             */
+            volume: string;
+            /** @example 1.0854300000 */
+            openPrice: string;
+            /** @description Null while the position is open — it does not exist yet. */
+            closePrice: string | null;
+            stopLoss: string | null;
+            takeProfit: string | null;
+            /**
+             * @description REALISED result, signed, written only at close (§6.1 decimal string). Null while open — this is deliberately NOT floating P/L.
+             * @example 125.40000000
+             */
+            profit: string | null;
+            swap: string | null;
+            commission: string | null;
+            currency: string;
+            /** @enum {string} */
+            status: "open" | "closed";
+            /** Format: date-time */
+            openedAt: string;
+            /** Format: date-time */
+            closedAt: string | null;
+        };
         SelfServiceAccountTypeDto: {
             /**
              * @description The MT5 group the account opens in.
@@ -7365,7 +7494,7 @@ export interface components {
             /** @description The account's own currency, which need not match the wallet's. */
             currency: string;
             /**
-             * @description Decimal string (§6.1). The CRM-held balance — see the DTO note: this is what a transfer credits, and it becomes an MT5 mirror when the bridge lands. Not equity.
+             * @description Decimal string (§6.1). The CRM mirror of the MT5 balance, kept by the bridge — see the DTO note. Not equity.
              * @example 1250.00000000
              */
             balance: string;
@@ -7375,44 +7504,6 @@ export interface components {
             status: "active" | "suspended" | "closed";
             /** Format: date-time */
             createdAt: string;
-        };
-        PositionDto: {
-            id: string;
-            /** @description The trading account this was traded on. */
-            tradingAccountId: string;
-            /** @description The account's MT5 login, for display beside the trade. Null until assigned. */
-            login: string | null;
-            /** @description The broker's own identifier for this trade. */
-            ticket: string;
-            /** @example EURUSD */
-            symbol: string;
-            /** @enum {string} */
-            side: "buy" | "sell";
-            /**
-             * @description Lots, as a decimal string. Never a float — 0.01 is a valid size.
-             * @example 0.1000
-             */
-            volume: string;
-            /** @example 1.0854300000 */
-            openPrice: string;
-            /** @description Null while the position is open — it does not exist yet. */
-            closePrice: string | null;
-            stopLoss: string | null;
-            takeProfit: string | null;
-            /**
-             * @description REALISED result, signed, written only at close (§6.1 decimal string). Null while open — this is deliberately NOT floating P/L.
-             * @example 125.40000000
-             */
-            profit: string | null;
-            swap: string | null;
-            commission: string | null;
-            currency: string;
-            /** @enum {string} */
-            status: "open" | "closed";
-            /** Format: date-time */
-            openedAt: string;
-            /** Format: date-time */
-            closedAt: string | null;
         };
         AccountSnapshotDto: {
             /**
@@ -8484,6 +8575,10 @@ export interface components {
             avatarUrl?: string | null;
             /** Format: date-time */
             passwordChangedAt?: string | null;
+            /** @example ada@bbcorp.trade */
+            googleEmail: string | null;
+            /** Format: date-time */
+            googleLinkedAt: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -8597,6 +8692,10 @@ export interface components {
              * @example /uploads/avatars/6f1c...c2.png
              */
             avatarUrl?: string | null;
+        };
+        GoogleSignInStatusDto: {
+            /** @description True when GOOGLE_OAUTH_CLIENT_ID and _SECRET are both configured. */
+            enabled: boolean;
         };
         ClientTagDto: {
             id: string;
@@ -10289,7 +10388,7 @@ export interface components {
             /** @example USD */
             currency: string;
             /**
-             * @description Monetary value — ALWAYS a string. CRM-owned until the MT5 bridge lands, at which point it becomes a mirror of MT5 or is removed (see the schema comment).
+             * @description Monetary value — ALWAYS a string. The CRM mirror of the MT5 balance, kept by the bridge's push and sweep (see the schema comment).
              * @example 1000.00000000
              */
             balance: string;
@@ -13547,6 +13646,28 @@ export interface operations {
             };
         };
     };
+    TradingController_myPositions: {
+        parameters: {
+            query?: {
+                status?: "open" | "closed";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PositionDto"][];
+                };
+            };
+        };
+    };
     TradingController_selfService: {
         parameters: {
             query?: never;
@@ -13581,28 +13702,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TradingAccountDto"][];
-                };
-            };
-        };
-    };
-    TradingController_myPositions: {
-        parameters: {
-            query?: {
-                status?: "open" | "closed";
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PositionDto"][];
                 };
             };
         };
@@ -14998,6 +15097,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminAvatarResponseDto"];
+                };
+            };
+        };
+    };
+    AdminGoogleAuthController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleSignInStatusDto"];
+                };
+            };
+        };
+    };
+    AdminGoogleAuthController_start: {
+        parameters: {
+            query?: {
+                invite?: string;
+                next?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to Google, or back to the console when disabled. */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminGoogleAuthController_callback: {
+        parameters: {
+            query?: {
+                error?: string;
+                state?: string;
+                code?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to the console. */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminGoogleAuthController_unlinkOwn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    AdminGoogleAuthController_unlinkFor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
                 };
             };
         };

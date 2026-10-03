@@ -45,11 +45,23 @@ describe('the Arabic catalogue', () => {
     expect(untranslated).toEqual([]);
   });
 
+  it('isolates a number and its Latin unit, so bidi cannot swap them (3 Oct 2026)', () => {
+    // "{limit} MB" rendered "MB 10" in the Arabic KYC upload box: in right-to-left
+    // text a number and the Latin word after it are two runs, laid out in reverse.
+    // Such a pair must sit inside LRI … PDI (U+2066 … U+2069), as `ltr()` does.
+    const outsideIsolates = (value: string) => value.replace(/\u2066[^\u2069]*\u2069/g, '');
+    const split = keys.filter((key) =>
+      /(\{\w+\}|\d) [A-Z]{2,}/.test(outsideIsolates(arMessages[key])),
+    );
+    expect(split).toEqual([]);
+    expect(arMessages['kyc.uploadFormats']).toContain('\u2066{limit} MB\u2069');
+  });
+
   it('every value contains Arabic script unless it is a brand or a pure template', () => {
     const latinOnly = keys.filter((key) => {
       const value = arMessages[key];
       const withoutPlaceholders = value.replace(/\{[^{}]*\}/g, '');
-      return /[A-Za-z]{4,}/.test(withoutPlaceholders) && !/[؀-ۿ]/.test(value);
+      return /[A-Za-z]{4,}/.test(withoutPlaceholders) && !/[\u0600-\u06FF]/.test(value);
     });
     // Anything here must be a name that stays Latin in Arabic UIs.
     for (const key of latinOnly) {

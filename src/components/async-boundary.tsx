@@ -225,10 +225,12 @@ export function AsyncBoundary({
           The id the API already logged with this failure. Rendered small and
           selectable rather than hidden behind a "details" toggle: its whole
           purpose is to be copied into a support message, and a user who has to
-          find it first mostly will not.
+          find it first mostly will not. Not `font-mono` (3 Oct 2026): the
+          mono face has no Arabic, so the portal's "المرجع:" fell back to a
+          monospaced font with its letters pulled apart.
         */}
         {requestId && (
-          <p className="text-[11px] font-mono text-muted-foreground/70 select-all">
+          <p className="text-[11px] text-muted-foreground/70 tabular-nums select-all">
             {t('common.errorReference', { id: ltr(requestId) })}
           </p>
         )}

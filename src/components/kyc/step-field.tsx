@@ -90,6 +90,17 @@ export function StepField({
   // What the reader sees, in their language (`lib/kyc-text`). Values stay English.
   const label = fieldLabel(field);
   const hint = fieldHint(field);
+  /*
+   * The broker's hint under a control that has no placeholder to carry it —
+   * phone, date, dropdown, checkboxes, camera. It was shown only on text
+   * inputs (as the placeholder), so a hint written for any other type never
+   * reached the client, in either language.
+   */
+  const hintLine = hint ? (
+    <p id={`${field.id}-hint`} className="text-[11px] leading-snug text-muted-foreground">
+      {hint}
+    </p>
+  ) : null;
 
   // Live camera — the canonical selfie, or a `camera` field anywhere else.
   if (isCanonicalSelfie || field.type === 'camera') {
@@ -109,7 +120,14 @@ export function StepField({
      */
     const uploadField = isCanonicalSelfie ? 'selfie' : field.name;
     return (
-      <div key={field.id} className="md:col-span-2">
+      <div key={field.id} className="md:col-span-2 space-y-1.5">
+        {/* The canonical selfie step titles itself; a broker's camera question did not. */}
+        {!isCanonicalSelfie && (
+          <p className="text-sm font-medium">
+            {label} {field.required && <span className="text-destructive">*</span>}
+          </p>
+        )}
+        {!isCanonicalSelfie && hintLine}
         <SelfieCamera
           onUpload={onUpload}
           field={uploadField}
@@ -181,6 +199,7 @@ export function StepField({
             {...(dialCode ? { defaultCountryCode: dialCode } : {})}
           />
         </div>
+        {hintLine}
       </div>
     );
   }
@@ -215,6 +234,7 @@ export function StepField({
             requireAdult={field.name === 'dateOfBirth'}
           />
         </div>
+        {hintLine}
       </div>
     );
   }
@@ -299,6 +319,7 @@ export function StepField({
             </SelectContent>
           </Select>
         </div>
+        {hintLine}
       </div>
     );
   }
@@ -346,6 +367,7 @@ export function StepField({
             </label>
           ))}
         </div>
+        {hintLine}
       </fieldset>
     );
   }
@@ -353,17 +375,20 @@ export function StepField({
   // Checkbox Component
   if (field.type === 'checkbox') {
     return (
-      <div key={field.id} className="flex items-center gap-2 md:col-span-2 pt-2">
-        <input
-          type="checkbox"
-          id={field.id}
-          checked={val === 'true'}
-          onChange={(e) => onChange(field.name, e.target.checked ? 'true' : 'false')}
-          className="rounded border-input accent-primary focus:ring-ring h-4 w-4"
-        />
-        <Label htmlFor={field.id} className="text-xs cursor-pointer">
-          {label} {field.required && <span className="text-destructive">*</span>}
-        </Label>
+      <div key={field.id} className="md:col-span-2 space-y-1 pt-2">
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id={field.id}
+            checked={val === 'true'}
+            onChange={(e) => onChange(field.name, e.target.checked ? 'true' : 'false')}
+            className="rounded border-input accent-primary focus:ring-ring h-4 w-4"
+          />
+          <Label htmlFor={field.id} className="text-xs cursor-pointer">
+            {label} {field.required && <span className="text-destructive">*</span>}
+          </Label>
+        </div>
+        {hintLine}
       </div>
     );
   }

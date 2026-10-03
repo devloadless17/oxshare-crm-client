@@ -1,6 +1,6 @@
 'use client';
 
-import { ErrorDetail, errorDetailFor, withErrorDetail } from '@/components/error-detail';
+import { withErrorDetail } from '@/components/error-detail';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { useResource } from '@/hooks/use-resource';
 import { withReviewStep } from './review-step';
 import { chosenDocumentValue, savedDocumentChoices, storedDocValuesOf } from './doc-type';
 import { firstOwed, owedMessage } from './owed-message';
+import { StepAlert } from './step-alert';
 import {
   effectiveUploads,
   flagsSettledByUpload,
@@ -28,6 +29,7 @@ import { savedAnswersFor } from '@/components/kyc/saved-answers';
 import { DynamicStepRenderer } from '@/components/kyc/dynamic-step-renderer';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
+import { kycConfigQuery, kycStatusQuery } from '@/lib/api/kyc';
 
 /**
  * Aliased from the generated schema, so the field-by-field reads below are checked
@@ -35,7 +37,6 @@ import { keys } from '@/lib/query-keys';
  * `data?.personalInfo` and `data.document.docType` an unchecked access on `any` —
  * 30 of this repo's lint warnings came from this one pair of calls.
  */
-type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
 type KycStatusDto = components['schemas']['KycStatusDto'];
 
 export function KycStepForm() {
@@ -100,14 +101,8 @@ export function KycStepForm() {
    * and without the status we lose prefill and, worse, the rejection notice on
    * a returned KYC. A failure renders an error with a retry, never an empty form.
    */
-  const configQuery = useResource(
-    keys.kyc.config(),
-    async (signal) => (await api.get<KycStepConfigDto[]>('/kyc/config', { signal })).data,
-  );
-  const statusQuery = useResource(
-    keys.kyc.status(),
-    async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
-  );
+  const configQuery = useResource(kycConfigQuery.queryKey, kycConfigQuery.queryFn);
+  const statusQuery = useResource(kycStatusQuery.queryKey, kycStatusQuery.queryFn);
 
   const fetchingInitialData = configQuery.status === 'loading' || statusQuery.status === 'loading';
   const loadError =
@@ -275,9 +270,9 @@ export function KycStepForm() {
       await api.post<{ message?: string }>('/kyc/submit');
     } catch (e: unknown) {
       if (!isNetworkError(e)) throw e;
-      const now = await api
-        .get<KycStatusDto | null>('/kyc/status')
-        .then((r) => r.data?.status)
+      const now = await kycStatusQuery
+        .queryFn()
+        .then((dto) => dto?.status)
         .catch(() => undefined);
       if (now !== 'submitted' && now !== 'under_review') throw e;
     }
@@ -388,15 +383,7 @@ export function KycStepForm() {
         fieldErrors={fieldErrors}
       />
 
-      {error && (
-        <div
-          role="alert"
-          className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs font-semibold text-destructive animate-in fade-in-0"
-        >
-          {error}
-          <ErrorDetail detail={errorDetailFor(error)} />
-        </div>
-      )}
+      {error && <StepAlert message={error} />}
 
       {/*
         BACK / CONTINUE, AT THE BOTTOM OF THE PAGE on every step (owner, 26 Sep

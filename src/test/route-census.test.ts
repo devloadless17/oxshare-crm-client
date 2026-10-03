@@ -73,7 +73,6 @@ const UNTESTED = new Set([
   'src/app/auth/reset-password/page.tsx',
   'src/app/(portal)/dashboard/page.tsx',
   'src/app/(portal)/deposit/[outcome]/page.tsx',
-  'src/app/(portal)/deposit/page.tsx',
   'src/app/kyc/page.tsx',
   'src/app/kyc/step/[step]/page.tsx',
   'src/app/kyc/submitted/page.tsx',

@@ -184,8 +184,16 @@ export function Stat({
         {label}
       </p>
       <p
-        className={`mt-2 font-semibold tracking-tight break-all tabular-nums ${
-          large ? 'text-3xl' : 'text-2xl'
+        // `overflow-wrap: anywhere`, not `break-all`: a figure that does not fit
+        // wraps at its space first ("20,000,000.00 / LBP") and is cut inside a
+        // token only when the token itself is wider than the cell. `break-all`
+        // cut "20,000,0 / 00.00 LB / P" on a phone (end-to-end test, 3 Oct 2026).
+        className={`mt-2 font-semibold tracking-tight [overflow-wrap:anywhere] tabular-nums ${
+          // Scaled to the viewport on a phone, so a 13-digit balance fits its tile
+          // instead of breaking inside the number; full size from `sm` up.
+          large
+            ? 'text-[clamp(1.125rem,5.6vw,1.875rem)] sm:text-3xl'
+            : 'text-[clamp(1rem,4.8vw,1.5rem)] sm:text-2xl'
         }`}
       >
         {value}

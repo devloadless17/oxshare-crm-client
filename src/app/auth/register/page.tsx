@@ -20,6 +20,7 @@ import {
   requiredDetailFields,
   firstErrorField,
   missingFields,
+  missingMessage,
   registerPayload,
   stepOf,
   type RegisterField,
@@ -247,7 +248,7 @@ function RegisterForm() {
     const options = queryClient.getQueryData<ProfileOptions>(keys.profileOptions.all());
     const missing = missingFields(values, requiredDetailFields(options));
     if (missing.length > 0) {
-      showErrors(Object.fromEntries(missing.map((f) => [f, t('auth.register.required')])));
+      showErrors(Object.fromEntries(missing.map((f) => [f, missingMessage(f, values)])));
       return;
     }
 
@@ -334,8 +335,11 @@ function RegisterForm() {
           )}
 
           {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span>{error}</span>
             </div>
           )}

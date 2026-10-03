@@ -145,3 +145,37 @@ describe('in Arabic', () => {
     expect(screen.getByLabelText(/anything to add/i)).toBeInTheDocument();
   });
 });
+
+describe('a hint reaches the client on every input type', () => {
+  it.each(['date', 'phone', 'select', 'checkbox'] as const)('shows the hint on a %s', (type) => {
+    const field = {
+      id: `f-${type}`,
+      name: `q_${type}`,
+      label: 'Question',
+      hint: 'As printed on your contract',
+      type,
+      required: false,
+      ...(type === 'select' ? { options: ['A', 'B'] } : {}),
+    };
+    renderWithProviders(
+      <StepField {...base} field={field} slug="address" val="" onChange={vi.fn()} />,
+    );
+    expect(screen.getByText('As printed on your contract')).toBeInTheDocument();
+  });
+
+  it("titles a broker's own camera question with its label and hint", () => {
+    const field = {
+      id: 'f-cam',
+      name: 'q_cam',
+      label: 'Photo of your card',
+      hint: 'Hold it next to your face',
+      type: 'camera' as const,
+      required: true,
+    };
+    renderWithProviders(
+      <StepField {...base} field={field} slug="address" val="" onChange={vi.fn()} />,
+    );
+    expect(screen.getByText('Photo of your card')).toBeInTheDocument();
+    expect(screen.getByText('Hold it next to your face')).toBeInTheDocument();
+  });
+});

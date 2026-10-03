@@ -3,6 +3,9 @@ import { KIND_CONFIG, queryKeysFor, resyncKeysOnReconnect } from './notification
 import { keys, REGISTERED_ROOTS } from '@/lib/query-keys';
 import { setActiveLocale } from '@/lib/i18n';
 
+/** Operator text that fell back to English, as an Arabic page shows it: isolated (FSI … PDI). */
+const iso = (text: string) => `\u2068${text}\u2069`;
+
 /**
  * The test that would have caught the bug the owner reported: "when I fund a
  * wallet the result doesn't appear until I refresh."
@@ -168,7 +171,7 @@ describe('the reason in the reader’s language', () => {
   it("the reviewer's own English when there is no Arabic", () => {
     setActiveLocale('ar');
     expect(KIND_CONFIG['kyc.rejected']?.vars?.({ reason: 'Blurry photo' })).toEqual({
-      reason: 'Blurry photo',
+      reason: iso('Blurry photo'),
     });
   });
 

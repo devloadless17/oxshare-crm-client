@@ -168,7 +168,9 @@ export function TransactionDetails({
                 </>
               )}
               {tx.destination && (
-                <Row label={t('transactions.detailDestination')} value={tx.destination} />
+                // A phone, an IBAN or a wallet address: it reads left to right in
+                // Arabic too, or "+961 70123456" prints as "70123456 961+".
+                <Row label={t('transactions.detailDestination')} value={tx.destination} ltr />
               )}
               {tx.providerRef && (
                 <Row label={t('transactions.detailReference')} value={tx.providerRef} mono />
@@ -193,13 +195,24 @@ export function TransactionDetails({
   );
 }
 
-function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Row({
+  label,
+  value,
+  mono,
+  ltr,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  /** Isolated left to right, in the ordinary font. `mono` implies it. */
+  ltr?: boolean;
+}) {
   return (
     <div className="flex items-start justify-between gap-4">
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className={`text-end text-xs text-foreground ${mono ? 'font-mono break-all' : ''}`}>
         {/* An id reads left to right; isolated so the cell keeps its alignment. */}
-        {mono ? <Ltr>{value}</Ltr> : value}
+        {mono || ltr ? <Ltr>{value}</Ltr> : value}
       </dd>
     </div>
   );

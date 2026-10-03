@@ -6,6 +6,9 @@ import type { SelfServiceAvailability } from '@/lib/api/trading';
 import { setActiveLocale, translate } from '@/lib/i18n';
 import { OpenAccountDialog } from './open-account-dialog';
 
+/** Operator text that fell back to English, as an Arabic page shows it: isolated (FSI … PDI). */
+const iso = (text: string) => `\u2068${text}\u2069`;
+
 /**
  * Opening a live account.
  *
@@ -134,7 +137,7 @@ describe('in Arabic', () => {
     await user.click(
       await screen.findByRole('combobox', { name: translate('ar', 'accounts.fieldProduct') }),
     );
-    expect(await screen.findByRole('option', { name: 'Premium' })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: iso('Premium') })).toBeInTheDocument();
   });
 });
 

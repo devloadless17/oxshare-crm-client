@@ -205,6 +205,7 @@ export const arMessages: Record<MessageKey, string> = {
   'auth.register.postalCodeHint': 'اتركه فارغاً إذا لم يكن لعنوانك رمز بريدي.',
   'auth.register.optional': '(اختياري)',
   'auth.register.required': 'هذا الحقل مطلوب.',
+  'auth.register.phoneIncomplete': 'أدخل رقمك كاملاً بعد رمز الدولة.',
   'auth.register.emailInvalid': 'أدخل بريداً إلكترونياً صالحاً.',
   'auth.register.fixHighlighted': 'يُرجى تصحيح الحقول المميّزة.',
   'auth.register.listLoading': 'جارٍ التحميل…',
@@ -298,7 +299,9 @@ export const arMessages: Record<MessageKey, string> = {
   'auth.reset.confirmPassword': 'تأكيد كلمة المرور',
   'auth.reset.submitting': 'جارٍ إعادة تعيين كلمة المرور…',
   'auth.reset.submitCta': 'تحديث كلمة المرور',
-  'auth.reset.missingToken': 'رمز إعادة تعيين كلمة المرور مفقود.',
+  'auth.reset.missingToken':
+    'رابط إعادة التعيين هذا غير مكتمل. اطلب رابطاً جديداً واستخدم الرابط الوارد في تلك الرسالة.',
+  'auth.reset.requestNewLink': 'اطلب رابطاً جديداً',
   'auth.reset.failed': 'فشلت إعادة تعيين كلمة المرور.',
   'auth.verify.heading': 'التحقق من البريد الإلكتروني',
   'auth.verify.tagline': 'التحقق الآمن من حساب OXShare',
@@ -409,6 +412,7 @@ export const arMessages: Record<MessageKey, string> = {
   'withdraw.available': 'المتاح: {amount}',
   'withdraw.limits': 'من {min} إلى {max} لكل عملية سحب',
   'withdraw.amountBelowMin': 'الحد الأدنى للسحب هو {min}.',
+  'withdraw.amountInvalid': 'أدخل المبلغ رقماً أكبر من الصفر، مثل 100.00.',
   'withdraw.amountAboveMax': 'الحد الأقصى للسحب هو {max}.',
   'withdraw.amountAboveAvailable': 'المبلغ المتاح لك للسحب هو {available}.',
   'withdraw.recipient': 'المستفيد',
@@ -628,6 +632,7 @@ export const arMessages: Record<MessageKey, string> = {
   'accounts.liveFiguresTitle': 'مباشرةً من MetaTrader 5',
   'accounts.liveFiguresNote': 'مباشرةً من MetaTrader 5',
   'accounts.liveFiguresReadAt': 'مباشرةً من MetaTrader 5 · آخر قراءة في {time}',
+  'accounts.liveFiguresStale': 'تعذّر الوصول إلى MetaTrader 5 الآن · قُرئت هذه الأرقام في {time}',
   'accounts.equityLabel': 'حقوق الملكية',
   'accounts.equityHint': 'الرصيد مضافاً إليه الائتمان والربح المفتوح — وهو ما يمكنك التصرف به.',
   'accounts.floatingLabel': 'الربح/الخسارة العائمة',
@@ -758,7 +763,7 @@ export const arMessages: Record<MessageKey, string> = {
   'kyc.reviewDescription': 'تأكد من جميع البيانات وأرسل طلبك لمراجعة فريق الامتثال.',
   'kyc.statusLoadFailed': 'تعذّر تحميل حالة التحقق.',
   'kyc.uploadTooLarge':
-    'حجم هذا الملف {size} MB، والحد الأقصى {limit} MB — يرجى تحميل صورة أو نسخة ممسوحة أصغر حجماً.',
+    'حجم هذا الملف \u2066{size} MB\u2069، والحد الأقصى \u2066{limit} MB\u2069 — يرجى تحميل صورة أو نسخة ممسوحة أصغر حجماً.',
   'kyc.uploadFailed': 'فشل التحميل. يرجى المحاولة مرة أخرى.',
   'kyc.selfieFailed': 'تعذّر تحميل صورتك الشخصية. يرجى التقاطها مرة أخرى.',
   'kyc.selfieRetake': 'إعادة الالتقاط',
@@ -843,7 +848,7 @@ export const arMessages: Record<MessageKey, string> = {
   'kyc.documentSwitchNotice':
     'سبق أن أرسلت {stored}. تحميل {chosen} سيحلّ محلّه — نحتفظ بمستند واحد فقط.',
   'kyc.documentSwitchStoredFallback': 'مستندك الآخر',
-  'kyc.uploadFormats': 'PNG، JPG، PDF · الحد الأقصى {limit} MB',
+  'kyc.uploadFormats': 'PNG، JPG، PDF · الحد الأقصى \u2066{limit} MB\u2069',
   'kyc.dropHint': 'التقط صورة للمستند، أو اختر ملفاً موجوداً لديك',
   'kyc.takePhoto': 'التقاط صورة',
   'kyc.chooseFile': 'اختيار ملف',
@@ -1031,6 +1036,7 @@ export const arMessages: Record<MessageKey, string> = {
   'partner.submit': 'طلب الانضمام كشريك',
   'partner.submitting': 'جارٍ الإرسال…',
   'partner.submitFailed': 'تعذّر إرسال طلبك. يُرجى المحاولة مرة أخرى.',
+  'partner.agenciesFailed': 'تعذّر تحميل البرامج التي يمكنك التقديم عليها.',
   'partner.pendingHeading': 'طلبك قيد المراجعة',
   'partner.pendingBody':
     'سنراسلك عبر البريد الإلكتروني فور اتخاذ القرار. لا يلزمك فعل أي شيء آخر حالياً.',
@@ -1273,6 +1279,7 @@ export const arMessages: Record<MessageKey, string> = {
   'money.stepDone': 'تم',
   'money.useMax': 'استخدام الحد الأقصى',
   'money.back': 'رجوع',
+  'money.balancesFailed': 'تعذّر تحميل أرصدتك.',
   'money.continue': 'متابعة',
   'money.availableBalance': 'المتاح: {amount}',
   'deposit.payNow': 'المتابعة إلى الدفع',
@@ -1283,7 +1290,7 @@ export const arMessages: Record<MessageKey, string> = {
     'افتح صفحة الدفع في علامة تبويب جديدة وأرسل المبلغ الظاهر فيها. تتحدّث هذه الصفحة تلقائياً عند وصول دفعتك.',
   'deposit.waitingNetwork': 'أرسل {asset} فقط. أي عملة أخرى، أو USDT على شبكة مختلفة، ستضيع.',
   'deposit.waitingPar':
-    'تُضاف إلى محفظة {currency} القيمة التي تصل فعلياً، بسعر 1 USDT = 1 {currency}.',
+    'تُضاف إلى محفظة {currency} القيمة التي تصل فعلياً، بسعر \u20661 USDT = 1 {currency}\u2069.',
   'deposit.waitingExpiresIn': 'تُغلق صفحة الدفع خلال {time}.',
   'deposit.waitingExpired':
     'أُغلقت صفحة الدفع. إن كنت قد أرسلت الدفعة فستُضاف إلى رصيدك فور تأكيد مزوّد الدفع لها؛ وإلا فابدأ إيداعاً جديداً.',
@@ -1326,6 +1333,7 @@ export const arMessages: Record<MessageKey, string> = {
   'deposit.toAccountHint': 'يُموَّل تلقائياً فور تسوية الدفعة.',
   'deposit.amountRange': 'بين {min} و{max}',
   'deposit.amountBelowMin': 'الحد الأدنى للإيداع هو {min}.',
+  'deposit.amountInvalid': 'أدخل المبلغ رقماً، مثل 100.00.',
   'deposit.amountTooPrecise':
     'مع {method}، تُقبل مبالغ {currency} بحد أقصى {places} من المنازل العشرية. استخدم {suggestion} بدلاً من ذلك.',
   'deposit.amountAboveMax': 'الحد الأقصى للإيداع هو {max}.',

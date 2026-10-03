@@ -3,20 +3,15 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Clock, XCircle } from 'lucide-react';
-import api from '@/lib/api';
-import type { components } from '@/lib/api/types.gen';
 import { useResource } from '@/hooks/use-resource';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { clearKycDraft } from '@/lib/kyc-draft';
 import { localized, t } from '@/lib/i18n';
-import { keys } from '@/lib/query-keys';
+import { kycConfigQuery, kycStatusQuery } from '@/lib/api/kyc';
 import { KycSubmissionDetails } from './kyc-submission-details';
 import { rejectedFieldLabels } from '@/lib/kyc-documents';
 import { withReviewStep } from './review-step';
 import { resumeStepNumber } from './resume-step';
-
-type KycStatusDto = components['schemas']['KycStatusDto'];
-type KycStepConfigDto = components['schemas']['KycStepConfigDto'];
 
 export function KycOutcome() {
   /*
@@ -41,10 +36,7 @@ export function KycOutcome() {
    * succeeded. On a compliance screen, "we don't know" and "submitted" are not
    * the same thing.
    */
-  const statusQuery = useResource(
-    keys.kyc.status(),
-    async (signal) => (await api.get<KycStatusDto | null>('/kyc/status', { signal })).data ?? null,
-  );
+  const statusQuery = useResource(kycStatusQuery.queryKey, kycStatusQuery.queryFn);
 
   /*
    * No `?? 'submitted'` default. A 200 with a null body is the documented
@@ -63,10 +55,7 @@ export function KycOutcome() {
   );
   // Labels only — the same cached config the details table reads, and a failure
   // leaves the chips on humanised ids rather than blocking the screen.
-  const configQuery = useResource(
-    keys.kyc.config(),
-    async (signal) => (await api.get<KycStepConfigDto[]>('/kyc/config', { signal })).data,
-  );
+  const configQuery = useResource(kycConfigQuery.queryKey, kycConfigQuery.queryFn);
   const rejectedFields = rejectedFieldLabels(
     statusQuery.data?.rejectedFields ?? [],
     statusQuery.data,
