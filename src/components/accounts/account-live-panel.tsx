@@ -63,11 +63,22 @@ export function AccountLivePanel({ snapshot }: { snapshot: Resource<AccountSnaps
           fact the fetch already knows. `0` means nothing has landed yet, so the
           undated note stands in until the first read.
         */}
-        <p className="text-xs text-muted-foreground">
-          {readAt
-            ? t('accounts.liveFiguresReadAt', { time: readAt.toLocaleTimeString() })
-            : t('accounts.liveFiguresNote')}
-        </p>
+        {/*
+          A refresh that FAILED over figures already on screen says so: with the
+          trading server unreachable for two minutes this kept reading "Live from
+          MetaTrader 5 · read at …" over the old numbers (found live, 3 Oct 2026).
+        */}
+        {snapshot.refreshFailed && readAt ? (
+          <p role="status" className="text-xs font-medium text-warning">
+            {t('accounts.liveFiguresStale', { time: readAt.toLocaleTimeString() })}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {readAt
+              ? t('accounts.liveFiguresReadAt', { time: readAt.toLocaleTimeString() })
+              : t('accounts.liveFiguresNote')}
+          </p>
+        )}
       </header>
 
       <div className="mt-4">

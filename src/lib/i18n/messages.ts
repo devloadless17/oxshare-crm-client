@@ -1047,6 +1047,8 @@ export const messages = {
    */
   'accounts.liveFiguresNote': 'Live from MetaTrader 5',
   'accounts.liveFiguresReadAt': 'Live from MetaTrader 5 · read at {time}',
+  'accounts.liveFiguresStale':
+    'Could not reach MetaTrader 5 just now · these figures were read at {time}',
   'accounts.equityLabel': 'Equity',
   'accounts.equityHint': 'Balance plus credit plus open profit — what you can act on.',
   'accounts.floatingLabel': 'Floating P/L',
