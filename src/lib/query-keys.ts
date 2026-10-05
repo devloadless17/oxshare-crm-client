@@ -180,6 +180,13 @@ export const keys = {
     feed: (view: 'new' | 'earlier') => ['notifications', 'list', view] as const,
     unreadCount: () => ['notifications', 'unread-count'] as const,
   },
+
+  /** The assistant widget (backend 0187): availability and allowance, and the chat list. */
+  assistant: {
+    all: () => ['assistant'] as const,
+    config: () => ['assistant', 'config'] as const,
+    conversations: () => ['assistant', 'conversations'] as const,
+  },
 } as const;
 
 type KeyFactory = (...args: never[]) => readonly unknown[];

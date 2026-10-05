@@ -109,22 +109,37 @@ const AUTH_ENDPOINT_PATTERN =
  * header triggers a CORS preflight the API refuses.
  */
 apiClient.interceptors.request.use((config) => {
-  config.headers['X-Request-Id'] = newCorrelationId();
-  /*
-   * The language the API answers in — its error messages and every sentence it
-   * composes (backend `common/i18n/locale.ts`). Our own header rather than
-   * `Accept-Language`, which the browser fills in by itself.
-   */
-  config.headers[LOCALE_HEADER] = currentLocale();
-
-  if (STATE_CHANGING.test(config.method ?? 'get')) {
-    const csrf = currentCsrfToken();
-    if (csrf) config.headers[CSRF_HEADER] = csrf;
+  for (const [name, value] of Object.entries(apiRequestHeaders(config.method ?? 'get'))) {
+    config.headers[name] = value;
   }
   return config;
 });
 
 const STATE_CHANGING = /^(post|put|patch|delete)$/i;
+
+/**
+ * Every request's own headers: set by the interceptor above, and by the one
+ * kind of call that cannot go through axios, a STREAMED response (the
+ * assistant's answer), which needs `fetch` and a body reader. One definition,
+ * so the two cannot drift: a streamed call without it carried no anti-forgery
+ * token and was refused, or no locale and answered in English.
+ */
+export function apiRequestHeaders(method: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    'X-Request-Id': newCorrelationId(),
+    /*
+     * The language the API answers in — its error messages and every sentence it
+     * composes (backend `common/i18n/locale.ts`). Our own header rather than
+     * `Accept-Language`, which the browser fills in by itself.
+     */
+    [LOCALE_HEADER]: currentLocale(),
+  };
+  if (STATE_CHANGING.test(method)) {
+    const csrf = currentCsrfToken();
+    if (csrf) headers[CSRF_HEADER] = csrf;
+  }
+  return headers;
+}
 export const LOCALE_HEADER = 'X-OxShare-Locale';
 export const CSRF_HEADER = 'X-OxShare-CSRF';
 
@@ -670,6 +685,11 @@ function endDeadSession(): void {
   // discards them. Same reasoning in UserContext.logout.
 
   window.location.href = loginPathFor(window.location.pathname, window.location.search);
+}
+
+/** `endDeadSession`, for a caller outside axios whose refresh came back `dead` (the assistant's stream). */
+export function endPortalSession(): void {
+  endDeadSession();
 }
 
 /**
