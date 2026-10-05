@@ -93,6 +93,13 @@ const nextConfig: NextConfig = {
    */
   poweredByHeader: false,
   /*
+   * Self-hosted builds set NEXT_OUTPUT=standalone (see the Dockerfile). The build
+   * then emits `.next/standalone`: a server.js plus only the node_modules it
+   * traces, so the production image carries no dev dependencies. Unset, as on
+   * Vercel and in `npm run dev`, nothing changes.
+   */
+  ...(process.env.NEXT_OUTPUT === 'standalone' ? { output: 'standalone' as const } : {}),
+  /*
    * Development only (nothing renders it in production). Off, because Next draws
    * it in the bottom-left corner, where the assistant's button sits in Arabic.
    * Next still shows compile and runtime errors.
