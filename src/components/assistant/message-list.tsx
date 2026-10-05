@@ -1,11 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { AlertCircle, ArrowDown, Sparkles } from 'lucide-react';
+import { AlertCircle, ArrowDown, Globe, Sparkles } from 'lucide-react';
 import type { FeedbackReason } from '@/lib/api/assistant';
+import { withoutInlineCitations } from '@/lib/assistant/citations';
 import { t } from '@/lib/i18n';
 import { AssistantMarkdown } from './assistant-markdown';
 import { MessageActions } from './message-actions';
+import { MessageSources } from './message-sources';
 import type { ChatMessage } from './use-assistant-chat';
 
 /** Within this many pixels of the bottom, new text keeps the view pinned to it. */
@@ -36,6 +38,19 @@ function Thinking() {
           style={{ animationDelay: `${i * 150}ms` }}
         />
       ))}
+    </span>
+  );
+}
+
+/** Before the first word: the model is reading the latest prices and news, which takes a few seconds. */
+function Searching() {
+  return (
+    <span
+      role="status"
+      className="inline-flex items-center gap-1.5 py-1 text-sm text-muted-foreground"
+    >
+      <Globe aria-hidden className="h-3.5 w-3.5 animate-pulse motion-reduce:animate-none" />
+      {t('assistant.searching')}
     </span>
   );
 }
@@ -160,10 +175,18 @@ export function MessageList({
                 <div className="min-w-0 flex-1 pt-0.5">
                   <span className="sr-only select-none">{t('assistant.name')}</span>
                   {message.status === 'streaming' && !message.content ? (
-                    <Thinking />
+                    message.searching ? (
+                      <Searching />
+                    ) : (
+                      <Thinking />
+                    )
                   ) : (
-                    <AssistantMarkdown text={message.content} onNavigate={onNavigate} />
+                    <AssistantMarkdown
+                      text={withoutInlineCitations(message.content)}
+                      onNavigate={onNavigate}
+                    />
                   )}
+                  {message.sources.length > 0 && <MessageSources sources={message.sources} />}
                   <StatusNote
                     message={message}
                     onRetry={index === lastIndex && !streaming ? onRetry : undefined}
