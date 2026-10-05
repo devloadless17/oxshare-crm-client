@@ -30,6 +30,9 @@ import tseslint from 'typescript-eslint';
  * indefinite.
  */
 const I18N_ENFORCED = [
+  'src/components/assistant/*.tsx',
+  'src/components/layout/external-links-section.tsx',
+  'src/components/layout/kyc-alert.tsx',
   'src/components/layout/portal-layout.tsx',
   'src/app/auth/login/page.tsx',
   'src/app/auth/register/page.tsx',

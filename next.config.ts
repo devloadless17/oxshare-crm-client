@@ -92,6 +92,12 @@ const nextConfig: NextConfig = {
    * else, which is the whole argument for doing it.
    */
   poweredByHeader: false,
+  /*
+   * Development only (nothing renders it in production). Off, because Next draws
+   * it in the bottom-left corner, where the assistant's button sits in Arabic.
+   * Next still shows compile and runtime errors.
+   */
+  devIndicators: false,
   // Three sibling repos each have a lockfile; pin the root so Next doesn't guess
   // which one is the workspace. The admin app already does this.
   turbopack: { root: __dirname },

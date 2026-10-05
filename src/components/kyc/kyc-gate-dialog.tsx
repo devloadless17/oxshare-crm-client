@@ -51,6 +51,7 @@ export function KycGateDialog({
   rejected = false,
   reverification = false,
   emailUnverified = false,
+  feature = 'money',
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -70,7 +71,10 @@ export function KycGateDialog({
    * a form the API refuses for a different reason than the one on screen.
    */
   emailUnverified?: boolean;
+  /** What the client reached for: the copy names it, so the AI Assistant's gate does not talk about deposits. */
+  feature?: 'money' | 'assistant';
 }) {
+  const assistant = feature === 'assistant';
   const state = emailUnverified
     ? 'email'
     : pending
@@ -96,7 +100,7 @@ export function KycGateDialog({
       Icon: Clock,
       tone: 'bg-info/10 text-info',
       title: t('kycGate.reviewTitle'),
-      body: t('kycGate.reviewBody'),
+      body: t(assistant ? 'kycGate.assistantReviewBody' : 'kycGate.reviewBody'),
       cta: t('kycGate.statusCta'),
       href: '/kyc',
     },
@@ -112,7 +116,7 @@ export function KycGateDialog({
       Icon: ShieldAlert,
       tone: 'bg-warning/10 text-warning',
       title: t('kyc.reverifyTitle'),
-      body: t('kycGate.reverifyBody'),
+      body: t(assistant ? 'kycGate.assistantReverifyBody' : 'kycGate.reverifyBody'),
       cta: t('kycGate.reverifyCta'),
       href: '/kyc',
     },
@@ -120,7 +124,7 @@ export function KycGateDialog({
       Icon: ShieldCheck,
       tone: 'bg-warning/10 text-warning',
       title: t('kycGate.title'),
-      body: t('kycGate.body'),
+      body: t(assistant ? 'kycGate.assistantBody' : 'kycGate.body'),
       cta: t('kycGate.verifyCta'),
       href: '/kyc',
     },

@@ -59,6 +59,13 @@ export function Toaster() {
        */
       dir={direction()}
       position={direction() === 'rtl' ? 'bottom-left' : 'bottom-right'}
+      /*
+       * Sonner's own distances (24px, 16px on phones), plus the room the
+       * assistant's button takes in the same corner while it is shown
+       * (`--assistant-room`, set by `AssistantProvider`; 0 everywhere else).
+       */
+      offset={{ bottom: 'calc(24px + var(--assistant-room, 0px))' }}
+      mobileOffset={{ bottom: 'calc(16px + var(--assistant-room, 0px))' }}
       // Success green / error red without a per-call className. For a client
       // glancing over, the colour is read before the words.
       richColors

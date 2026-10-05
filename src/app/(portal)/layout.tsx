@@ -1,3 +1,4 @@
+import { AssistantProvider } from '@/components/assistant/assistant-provider';
 import { PortalLayout } from '@/components/layout/portal-layout';
 
 /**
@@ -20,5 +21,16 @@ import { PortalLayout } from '@/components/layout/portal-layout';
  * `/kyc/step/*` has none), which a group that always draws one cannot do.
  */
 export default function PortalGroupLayout({ children }: { children: React.ReactNode }) {
-  return <PortalLayout>{children}</PortalLayout>;
+  return (
+    /*
+     * The assistant (backend 0187) owns its state HERE, around the one
+     * persistent frame: an answer keeps streaming as the client moves between
+     * sections, and the frame's two triggers (the sidebar's foot, the phone
+     * header) read the same state. It asks for nothing until a client is
+     * signed in.
+     */
+    <AssistantProvider>
+      <PortalLayout>{children}</PortalLayout>
+    </AssistantProvider>
+  );
 }
