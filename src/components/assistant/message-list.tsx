@@ -4,7 +4,8 @@ import * as React from 'react';
 import { AlertCircle, ArrowDown, Globe, Sparkles } from 'lucide-react';
 import type { FeedbackReason } from '@/lib/api/assistant';
 import { withoutInlineCitations } from '@/lib/assistant/citations';
-import { t } from '@/lib/i18n';
+import { answerDirection } from '@/lib/assistant/direction';
+import { currentLocale, t } from '@/lib/i18n';
 import { AssistantMarkdown } from './assistant-markdown';
 import { MessageActions } from './message-actions';
 import { MessageSources } from './message-sources';
@@ -183,6 +184,10 @@ export function MessageList({
                   ) : (
                     <AssistantMarkdown
                       text={withoutInlineCitations(message.content)}
+                      dir={answerDirection(
+                        messages[index - 1]?.role === 'user' ? messages[index - 1]!.content : '',
+                        currentLocale(),
+                      )}
                       onNavigate={onNavigate}
                     />
                   )}

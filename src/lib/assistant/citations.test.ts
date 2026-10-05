@@ -25,6 +25,9 @@ describe('web citations', () => {
 
   it('names a source by its site', () => {
     expect(sourceHost('https://www.reuters.com/markets/gold')).toBe('reuters.com');
+    expect(sourceHost('https://sa.marketscreener.com/x')).toBe('marketscreener.com');
+    expect(sourceHost('https://finance.yahoo.com/x')).toBe('yahoo.com');
+    expect(sourceHost('https://www.lse.co.uk/news')).toBe('lse.co.uk');
     expect(sourceHost('not a url')).toBe('not a url');
   });
 });
