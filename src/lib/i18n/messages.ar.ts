@@ -1037,6 +1037,7 @@ export const arMessages: Record<MessageKey, string> = {
   'partner.chooseAgencyHint':
     'يحدد البرنامج الذي تُعيَّن ضمنه أنواع الحسابات التي يمكن لعملائك فتحها. اختر البرنامج الذي تريد التقديم عليه — وسيراجعه أحد المسؤولين.',
   'partner.agencySells': 'الحسابات: {products}',
+  'partner.selectAgencyPlaceholder': 'اختر برنامجاً من القائمة',
   'partner.applyFootnote': 'نراجع كل طلب ونرسل إليك القرار عبر البريد الإلكتروني.',
   'partner.submit': 'طلب الانضمام كشريك',
   'partner.submitting': 'جارٍ الإرسال…',

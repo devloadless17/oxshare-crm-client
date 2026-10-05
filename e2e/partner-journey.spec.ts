@@ -113,12 +113,12 @@ async function applyThroughInheritedPanel(page: Page): Promise<void> {
 
   /*
    * The inherited programme reads as CHOSEN — named, marked selected, with
-   * nothing to fill in — and no agency radio list is offered: the choice is
+   * nothing to fill in — and no agency picker is offered: the choice is
    * not theirs, and a picker that must be ignored is worse than none.
    */
   await expect(page.getByText('E2E Agency', { exact: true })).toBeVisible();
   await expect(page.getByText(/selected for you automatically/i)).toBeVisible();
-  await expect(page.getByRole('radio')).toHaveCount(0);
+  await expect(page.getByRole('combobox')).toHaveCount(0);
 
   const [response] = await Promise.all([
     page.waitForResponse((res) => isApi(res, '/ib/apply', 'POST')),
