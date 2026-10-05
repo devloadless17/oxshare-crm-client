@@ -15,33 +15,17 @@ import { allowedPortalLink } from '@/lib/assistant/links';
  */
 const STATIC_COMPONENTS: Components = {
   img: () => null,
-  p: ({ children }) => (
-    <p dir="auto" className="my-2 first:mt-0 last:mb-0">
-      {children}
-    </p>
-  ),
-  ul: ({ children }) => (
-    <ul dir="auto" className="my-2 list-disc space-y-1 ps-5">
-      {children}
-    </ul>
-  ),
-  ol: ({ children }) => (
-    <ol dir="auto" className="my-2 list-decimal space-y-1 ps-5">
-      {children}
-    </ol>
-  ),
-  li: ({ children }) => (
-    <li dir="auto" className="ps-0.5">
-      {children}
-    </li>
-  ),
+  p: ({ children }) => <p className="my-2 first:mt-0 last:mb-0">{children}</p>,
+  ul: ({ children }) => <ul className="my-2 list-disc space-y-1 ps-5">{children}</ul>,
+  ol: ({ children }) => <ol className="my-2 list-decimal space-y-1 ps-5">{children}</ol>,
+  li: ({ children }) => <li className="ps-0.5">{children}</li>,
   h1: ({ children }) => <p className="mt-3 mb-1 font-semibold">{children}</p>,
   h2: ({ children }) => <p className="mt-3 mb-1 font-semibold">{children}</p>,
   h3: ({ children }) => <p className="mt-3 mb-1 font-semibold">{children}</p>,
   h4: ({ children }) => <p className="mt-2 mb-1 font-semibold">{children}</p>,
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
   blockquote: ({ children }) => (
-    <blockquote dir="auto" className="my-2 border-s-2 border-border ps-3 text-muted-foreground">
+    <blockquote className="my-2 border-s-2 border-border ps-3 text-muted-foreground">
       {children}
     </blockquote>
   ),
@@ -70,17 +54,12 @@ const STATIC_COMPONENTS: Components = {
     </div>
   ),
   th: ({ children }) => (
-    <th
-      dir="auto"
-      className="border-b border-border bg-muted px-2.5 py-1.5 text-start font-semibold"
-    >
+    <th className="border-b border-border bg-muted px-2.5 py-1.5 text-start font-semibold">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td dir="auto" className="border-b border-border px-2.5 py-1.5 align-top last:border-b-0">
-      {children}
-    </td>
+    <td className="border-b border-border px-2.5 py-1.5 align-top last:border-b-0">{children}</td>
   ),
 };
 
@@ -97,14 +76,18 @@ const REMARK_PLUGINS = [remarkGfm];
  *   (`allowedPortalLink`), as a button that navigates in place. Anything else,
  *   external sites included, becomes plain text.
  *
- * Every block carries `dir="auto"`, so an Arabic paragraph reads right to left
- * and an English one left to right in the same answer. Code is always LTR.
+ * The whole answer takes ONE direction (`dir`, from the question's language:
+ * `answerDirection`), so an Arabic line that starts with "Stop Loss:" still
+ * reads right to left beside the others. Code is always LTR.
  */
 export const AssistantMarkdown = React.memo(function AssistantMarkdown({
   text,
+  dir,
   onNavigate,
 }: {
   text: string;
+  /** The answer's direction, decided from the language of its question. */
+  dir: 'rtl' | 'ltr';
   /** Called when a portal link is followed (the phone panel closes to reveal the page). */
   onNavigate?: () => void;
 }) {
@@ -130,7 +113,7 @@ export const AssistantMarkdown = React.memo(function AssistantMarkdown({
   );
 
   return (
-    <div className="text-sm leading-relaxed break-words">
+    <div dir={dir} className="text-sm leading-relaxed break-words">
       <ReactMarkdown remarkPlugins={REMARK_PLUGINS} skipHtml components={components}>
         {text}
       </ReactMarkdown>

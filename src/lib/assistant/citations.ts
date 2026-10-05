@@ -26,11 +26,21 @@ export function withoutInlineCitations(text: string): string {
     .replace(CITATION_IN_PROGRESS, '');
 }
 
-/** The site a source is on, for its chip: `www.reuters.com/…` → `reuters.com`. */
+/**
+ * The site a source is on, for its chip: `www.reuters.com/…` → `reuters.com`.
+ * A regional or section subdomain names the same site (`uk.marketscreener.com`,
+ * `finance.yahoo.com`), so one chip stands for it. A two-part country suffix
+ * keeps its owner (`lse.co.uk`, `abc.net.au`).
+ */
 export function sourceHost(url: string): string {
+  let host: string;
   try {
-    return new URL(url).hostname.replace(/^www\./, '');
+    host = new URL(url).hostname.toLowerCase();
   } catch {
     return url;
   }
+  const labels = host.split('.');
+  const suffixIsTwoPart =
+    labels.length >= 3 && (labels.at(-2)?.length ?? 0) <= 3 && (labels.at(-1)?.length ?? 0) === 2;
+  return labels.slice(suffixIsTwoPart ? -3 : -2).join('.');
 }
