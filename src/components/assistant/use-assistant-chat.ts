@@ -8,6 +8,7 @@ import {
   assistantApi,
   newRequestId,
   type AnswerEvent,
+  type AssistantSource,
   type AssistantThread,
   type FeedbackReason,
 } from '@/lib/api/assistant';
@@ -23,6 +24,10 @@ export interface ChatMessage {
   content: string;
   status: ChatStatus;
   followups: string[];
+  /** Web pages the answer cited, shown under it. */
+  sources: AssistantSource[];
+  /** True while the model searches the web and nothing is written yet. */
+  searching?: boolean;
   feedback: 1 | -1 | null;
   /** Why it failed: `TIMEOUT`, `UPSTREAM`… */
   errorCode?: string;
@@ -49,6 +54,7 @@ function placeholder(requestId?: string): ChatMessage {
     content: '',
     status: 'streaming',
     followups: [],
+    sources: [],
     feedback: null,
     ...(requestId ? { requestId } : {}),
   };
@@ -103,7 +109,7 @@ export function useAssistantChat(options: { onAnswerSettled?: () => void } = {})
     const text = pendingRef.current;
     if (!text) return;
     pendingRef.current = '';
-    patchAnswer((m) => ({ ...m, content: m.content + text }));
+    patchAnswer((m) => ({ ...m, content: m.content + text, searching: false }));
   }, [patchAnswer]);
 
   const onEvent = React.useCallback(
@@ -122,6 +128,12 @@ export function useAssistantChat(options: { onAnswerSettled?: () => void } = {})
           viewingRef.current = event.conversationId;
           break;
         }
+        case 'status':
+          patchAnswer((m) => (m.content ? m : { ...m, searching: true }));
+          break;
+        case 'sources':
+          patchAnswer((m) => ({ ...m, sources: event.items }));
+          break;
         case 'delta':
           pendingRef.current += event.text;
           frameRef.current ??= requestAnimationFrame(flush);
@@ -165,6 +177,7 @@ export function useAssistantChat(options: { onAnswerSettled?: () => void } = {})
           status: m.status === 'streaming' && triesLeft <= 0 ? 'interrupted' : m.status,
           // The suggestions of the answer the chat ended on, as when it was written.
           followups: index === lastIndex && m.role === 'assistant' ? m.followups : [],
+          sources: m.sources,
           feedback: m.feedback,
         })),
       );
@@ -316,6 +329,7 @@ export function useAssistantChat(options: { onAnswerSettled?: () => void } = {})
         content: text,
         status: 'complete',
         followups: [],
+        sources: [],
         feedback: null,
       };
       const answer = placeholder(newRequestId());

@@ -15,12 +15,16 @@ import { AssistantAvatar } from './message-list';
  * question. Their wording lives in the message catalogues (`assistant.q.*`).
  */
 
-/** When the page has nothing more specific: the four things clients ask most. */
+/**
+ * When the page has nothing more specific: the market questions clients ask
+ * most (from the owner's recording, 5 Oct 2026). Each is answered from live
+ * prices and news.
+ */
 const GENERAL: MessageKey[] = [
-  'assistant.q.start1',
-  'assistant.q.start2',
-  'assistant.q.basics1',
-  'assistant.q.mt51',
+  'assistant.q.market1',
+  'assistant.q.market2',
+  'assistant.q.market3',
+  'assistant.q.market4',
 ];
 
 /**

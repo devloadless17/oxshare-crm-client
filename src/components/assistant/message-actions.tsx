@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Check, Copy, RefreshCw, ThumbsDown, ThumbsUp } from 'lucide-react';
 import type { FeedbackReason } from '@/lib/api/assistant';
+import { withoutInlineCitations } from '@/lib/assistant/citations';
 import { t, type MessageKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from './use-assistant-chat';
@@ -61,7 +62,8 @@ export function MessageActions({
   const local = message.id.startsWith('local-');
 
   const copy = () => {
-    void navigator.clipboard?.writeText(message.content).then(() => {
+    // What the client sees, without the inline citations the model wrote.
+    void navigator.clipboard?.writeText(withoutInlineCitations(message.content)).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });

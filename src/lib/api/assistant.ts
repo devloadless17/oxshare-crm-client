@@ -7,6 +7,7 @@ export type AssistantConfig = components['schemas']['AssistantConfigDto'];
 export type AssistantConversation = components['schemas']['AssistantConversationDto'];
 export type AssistantMessage = components['schemas']['AssistantMessageDto'];
 export type AssistantThread = components['schemas']['AssistantThreadDto'];
+export type AssistantSource = components['schemas']['AssistantSourceDto'];
 export type FeedbackReason = 'wrong' | 'not_helpful' | 'off_topic' | 'other';
 
 /**
@@ -16,7 +17,11 @@ export type FeedbackReason = 'wrong' | 'not_helpful' | 'off_topic' | 'other';
  */
 export type AnswerEvent =
   | { type: 'meta'; conversationId: string; messageId: string; created: boolean }
+  /** Nothing to show yet because the model is searching the web. */
+  | { type: 'status'; stage: 'searching' }
   | { type: 'delta'; text: string }
+  /** The pages the answer cited, once, before `done`. */
+  | { type: 'sources'; items: AssistantSource[] }
   | { type: 'followups'; questions: string[] }
   | { type: 'done'; messageId: string; finish: string; remainingToday: number }
   | { type: 'error'; code: string };
@@ -246,6 +251,14 @@ async function requestError(response: Response): Promise<AssistantRequestError> 
   return new AssistantRequestError(response.status, code, message);
 }
 
+/** A cited page, kept only as an http(s) link with a title: it becomes a link the client clicks. */
+function toSource(value: unknown): AssistantSource[] {
+  if (!value || typeof value !== 'object') return [];
+  const { title, url } = value as { title?: unknown; url?: unknown };
+  if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return [];
+  return [{ title: typeof title === 'string' ? title : url, url }];
+}
+
 function toEvent(name: string, raw: string): AnswerEvent | null {
   let data: Record<string, unknown>;
   try {
@@ -261,8 +274,14 @@ function toEvent(name: string, raw: string): AnswerEvent | null {
         messageId: String(data['messageId']),
         created: data['created'] === true,
       };
+    case 'status':
+      return data['stage'] === 'searching' ? { type: 'status', stage: 'searching' } : null;
     case 'delta':
       return typeof data['text'] === 'string' ? { type: 'delta', text: data['text'] } : null;
+    case 'sources':
+      return Array.isArray(data['items'])
+        ? { type: 'sources', items: data['items'].flatMap(toSource) }
+        : null;
     case 'followups':
       return Array.isArray(data['questions'])
         ? {
