@@ -1704,6 +1704,7 @@ export const messages = {
   'partner.chooseAgencyHint':
     'Which programme you are appointed under decides the account types your clients can open. Pick the one you want to apply for — an administrator reviews it.',
   'partner.agencySells': 'Accounts: {products}',
+  'partner.selectAgencyPlaceholder': 'Select a programme',
   'partner.applyFootnote': 'We review every request and email you the decision.',
   'partner.submit': 'Request to become a partner',
   'partner.submitting': 'Submitting…',

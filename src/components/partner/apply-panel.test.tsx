@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/render';
 import { setActiveLocale } from '@/lib/i18n';
 import type { Agency } from '@/lib/api/partner';
@@ -38,6 +39,18 @@ const agency = (over: Partial<Agency>): Agency => ({
 
 afterEach(() => setActiveLocale('en'));
 
+/**
+ * Programmes are chosen from a picker; the chosen one's details are drawn in the
+ * card beneath it (5 Oct 2026), which is where the description rule now shows.
+ */
+async function choose(name: string) {
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('combobox'));
+  await user.click(await screen.findByRole('option', { name: new RegExp(name) }));
+  // The card, not the closed field echoing the name.
+  return within(screen.getByText(name, { selector: 'p' }).closest('div') as HTMLElement);
+}
+
 describe('ApplyPanel agency descriptions', () => {
   it('shows an Arabic-only description to an Arabic reader', async () => {
     setActiveLocale('ar');
@@ -45,20 +58,21 @@ describe('ApplyPanel agency descriptions', () => {
       agency({ nameAr: 'الوكالة الذهبية', description: null, descriptionAr: 'وصف الوكالة' }),
     ]);
     renderWithProviders(<ApplyPanel onApplied={vi.fn()} inherited={null} />);
-    expect(await screen.findByText('الوكالة الذهبية')).toBeInTheDocument();
-    expect(screen.getByText('وصف الوكالة')).toBeInTheDocument();
+    const card = await choose('الوكالة الذهبية');
+    expect(card.getByText('وصف الوكالة')).toBeInTheDocument();
   });
 
   it('shows no empty description line in English when only the Arabic exists', async () => {
     agencies.mockResolvedValue([agency({ description: null, descriptionAr: 'وصف الوكالة' })]);
     renderWithProviders(<ApplyPanel onApplied={vi.fn()} inherited={null} />);
-    expect(await screen.findByText('Gold Agency')).toBeInTheDocument();
+    await choose('Gold Agency');
     expect(screen.queryByText('وصف الوكالة')).not.toBeInTheDocument();
   });
 
   it('shows the English description in English', async () => {
     agencies.mockResolvedValue([agency({ description: 'Gold tier', descriptionAr: 'ذهبي' })]);
     renderWithProviders(<ApplyPanel onApplied={vi.fn()} inherited={null} />);
-    expect(await screen.findByText('Gold tier')).toBeInTheDocument();
+    const card = await choose('Gold Agency');
+    expect(card.getByText('Gold tier')).toBeInTheDocument();
   });
 });

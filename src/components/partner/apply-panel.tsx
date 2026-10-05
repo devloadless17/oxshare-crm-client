@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { CheckCircle2, Handshake } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AgencyPicker, agencyProducts } from '@/components/partner/agency-picker';
 import { KycGateDialog } from '@/components/kyc/kyc-gate-dialog';
 import { useKycAccess } from '@/hooks/use-kyc-access';
 import { useResource } from '@/hooks/use-resource';
@@ -81,6 +82,7 @@ export function ApplyPanel({
    * client than a validation error about a field they were never shown.
    */
   const options = inherited ? [] : (agencies.data ?? []);
+  const selected = options.find((agency) => agency.id === agencyId);
   /*
    * Never "nothing to apply for" when a programme is inherited: the catalogue
    * is not consulted in that case, so an empty list means it was never asked
@@ -170,21 +172,27 @@ export function ApplyPanel({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-8">
-        <h3 className="text-sm font-semibold">{t('partner.pitchHeading')}</h3>
-        <ol className="mt-4 space-y-3">
-          {[t('partner.pitchOne'), t('partner.pitchTwo'), t('partner.pitchThree')].map(
-            (line, index) => (
-              <li key={line} className="flex gap-3 text-sm">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-                  {index + 1}
-                </span>
-                <span className="leading-relaxed text-muted-foreground">{line}</span>
-              </li>
-            ),
-          )}
-        </ol>
-
         {/*
+          One reading column, centred under the centred header. Full width, the
+          programme field and the button ran 1,200px across a desktop panel —
+          a field that wide reads as a banner, not as something to fill in.
+        */}
+        <div className="mx-auto w-full max-w-2xl">
+          <h3 className="text-sm font-semibold">{t('partner.pitchHeading')}</h3>
+          <ol className="mt-4 space-y-3">
+            {[t('partner.pitchOne'), t('partner.pitchTwo'), t('partner.pitchThree')].map(
+              (line, index) => (
+                <li key={line} className="flex gap-3 text-sm">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
+                    {index + 1}
+                  </span>
+                  <span className="leading-relaxed text-muted-foreground">{line}</span>
+                </li>
+              ),
+            )}
+          </ol>
+
+          {/*
           INHERITED: a statement, not a control.
 
           A client introduced by an existing partner sells beneath them and
@@ -193,161 +201,153 @@ export function ApplyPanel({
           for something that is simply how a downline works, and a client who
           is shown nothing at all is left wondering what they will be selling.
         */}
-        {inherited && (
-          <div className="mt-8 space-y-3">
-            <h3 className="text-sm font-semibold">{t('partner.inheritedAgency')}</h3>
-            {/*
+          {inherited && (
+            <div className="mt-8 space-y-3">
+              <h3 className="text-sm font-semibold">{t('partner.inheritedAgency')}</h3>
+              {/*
               Drawn as an option ALREADY CHOSEN — the same look a picked radio
               card gets below — rather than as a grey note. "Selected for you"
               is the message, and the muted box read as something being wrong
               or disabled next to a submit button.
             */}
-            <div className="flex gap-3 rounded-xl border border-primary bg-primary/5 p-4">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">
-                  {localized(inherited.name, inherited.nameAr)}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  {t('partner.inheritedAgencyHint')}
-                </p>
+              <div className="flex gap-3 rounded-xl border border-primary bg-primary/5 p-4">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">
+                    {localized(inherited.name, inherited.nameAr)}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {t('partner.inheritedAgencyHint')}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {options.length > 0 && (
-          <div className="mt-8 space-y-3">
-            <h3 className="text-sm font-semibold">{t('partner.chooseAgency')}</h3>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {t('partner.chooseAgencyHint')}
-            </p>
+          {options.length > 0 && (
+            <div className="mt-8 space-y-3">
+              <h3 className="text-sm font-semibold">{t('partner.chooseAgency')}</h3>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {t('partner.chooseAgencyHint')}
+              </p>
 
-            {/*
-              RADIOS, not a dropdown. Each option carries a description and the
-              products it lets the partner sell, which is the whole basis for
-              choosing — a select collapses that to a name and makes the client
-              pick between two words.
+              {/*
+              A SEARCHABLE PICKER, then the chosen programme's details. It was a
+              stack of radio cards, one per programme with its description and
+              products, which read well at three and buried the submit button at
+              twenty; a plain select then failed at a hundred (see the picker).
+              The details are still the basis for choosing, so they are not
+              dropped: the selected programme is drawn below the picker in the
+              same "chosen" card the inherited programme uses.
             */}
-            <fieldset className="space-y-2">
-              <legend className="sr-only">{t('partner.chooseAgency')}</legend>
-              {options.map((agency) => (
-                <label
-                  key={agency.id}
-                  className={`flex cursor-pointer gap-3 rounded-xl border p-4 transition-colors ${
-                    agencyId === agency.id
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:bg-muted/40'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="agency"
-                    value={agency.id}
-                    checked={agencyId === agency.id}
-                    onChange={() => {
-                      setAgencyId(agency.id);
-                      setError(null);
-                    }}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+              <AgencyPicker
+                agencies={options}
+                value={agencyId}
+                onChange={(id) => {
+                  setAgencyId(id);
+                  setError(null);
+                }}
+              />
+
+              {selected && (
+                <div className="flex gap-3 rounded-xl border border-primary bg-primary/5 p-4">
+                  <CheckCircle2
+                    className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                    aria-hidden="true"
                   />
-                  <span className="min-w-0 space-y-1">
-                    <span className="block text-sm font-semibold">
-                      {localized(agency.name, agency.nameAr)}
-                    </span>
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-sm font-semibold">
+                      {localized(selected.name, selected.nameAr)}
+                    </p>
                     {/*
-                      Judged on what is SHOWN, not on the English: an operator
-                      may write only the Arabic description, and an Arabic
-                      reader was shown nothing (Arabic end-to-end test, 3 Oct 2026).
-                    */}
-                    {localized(agency.description ?? '', agency.descriptionAr) !== '' && (
-                      <span className="block text-xs leading-relaxed text-muted-foreground">
-                        {localized(agency.description ?? '', agency.descriptionAr)}
-                      </span>
+                    Judged on what is SHOWN, not on the English: an operator
+                    may write only the Arabic description, and an Arabic
+                    reader was shown nothing (Arabic end-to-end test, 3 Oct 2026).
+                  */}
+                    {localized(selected.description ?? '', selected.descriptionAr) !== '' && (
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {localized(selected.description ?? '', selected.descriptionAr)}
+                      </p>
                     )}
-                    {agency.products.length > 0 && (
-                      <span className="block text-[11px] text-muted-foreground">
-                        {t('partner.agencySells', {
-                          products: agency.products
-                            .map((product, i) => localized(product, agency.productsAr?.[i]))
-                            .join(t('common.listSeparator')),
-                        })}
-                      </span>
+                    {agencyProducts(selected) && (
+                      <p className="text-[11px] text-muted-foreground">
+                        {agencyProducts(selected)}
+                      </p>
                     )}
-                  </span>
-                </label>
-              ))}
-            </fieldset>
-          </div>
-        )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
-        {error && (
-          <p
-            role="alert"
-            className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
-          >
-            {error}
-          </p>
-        )}
-
-        {agenciesFailed && (
-          <div
-            role="alert"
-            className="mt-8 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
-          >
-            <span>{t('partner.agenciesFailed')}</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void agencies.refetch()}
+          {error && (
+            <p
+              role="alert"
+              className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
             >
-              {t('common.retry')}
-            </Button>
-          </div>
-        )}
+              {error}
+            </p>
+          )}
 
-        {noneOffered && (
-          /*
+          {agenciesFailed && (
+            <div
+              role="alert"
+              className="mt-8 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
+            >
+              <span>{t('partner.agenciesFailed')}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void agencies.refetch()}
+              >
+                {t('common.retry')}
+              </Button>
+            </div>
+          )}
+
+          {noneOffered && (
+            /*
              An operator has configured no agencies, so there is nothing to
              apply for. Named as what it is — the alternative is a live button
              whose only outcome is a validation error about a field the client
              was never shown.
           */
-          <p
-            role="note"
-            className="mt-8 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs leading-relaxed text-foreground"
-          >
-            {t('partner.noAgenciesOffered')}
-          </p>
-        )}
+            <p
+              role="note"
+              className="mt-8 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs leading-relaxed text-foreground"
+            >
+              {t('partner.noAgenciesOffered')}
+            </p>
+          )}
 
-        <div className="mt-8 space-y-3">
-          <Button
-            type="button"
-            size="lg"
-            className="w-full"
-            loading={submitting}
-            /*
-             * Disabled until a programme is picked, and while the list is still
-             * in flight — submitting in that window would send no agency, which
-             * the API refuses. `!agencyId` is unconditional rather than gated on
-             * the list being non-empty: there is no valid application without
-             * one.
-             *
-             * Neither clause applies when the programme is INHERITED. There is
-             * nothing to pick and nothing in flight — the list is never
-             * requested — so gating on either would leave the button dead for
-             * exactly the applicants who have the least to do.
-             */
-            disabled={!inherited && (agencies.status === 'loading' || !agencyId)}
-            onClick={() => void submit()}
-          >
-            {submitting ? t('partner.submitting') : t('partner.submit')}
-          </Button>
-          <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-            {t('partner.applyFootnote')}
-          </p>
+          <div className="mt-8 space-y-3">
+            <Button
+              type="button"
+              size="lg"
+              className="w-full"
+              loading={submitting}
+              /*
+               * Disabled until a programme is picked, and while the list is still
+               * in flight — submitting in that window would send no agency, which
+               * the API refuses. `!agencyId` is unconditional rather than gated on
+               * the list being non-empty: there is no valid application without
+               * one.
+               *
+               * Neither clause applies when the programme is INHERITED. There is
+               * nothing to pick and nothing in flight — the list is never
+               * requested — so gating on either would leave the button dead for
+               * exactly the applicants who have the least to do.
+               */
+              disabled={!inherited && (agencies.status === 'loading' || !agencyId)}
+              onClick={() => void submit()}
+            >
+              {submitting ? t('partner.submitting') : t('partner.submit')}
+            </Button>
+            <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+              {t('partner.applyFootnote')}
+            </p>
+          </div>
         </div>
       </div>
 
