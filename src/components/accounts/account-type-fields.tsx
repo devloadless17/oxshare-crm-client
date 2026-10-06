@@ -22,7 +22,8 @@ import { t } from '@/lib/i18n';
  * PRODUCT FIRST (owner, 29 Sep 2026): a client chooses what they are opening,
  * and the currency follows from it — chosen for them from the currencies that
  * product is offered in (the first, in the broker's order), still changeable
- * when there are several. Demo asks no product, so it shows the currency alone.
+ * when there are several. Demo asks for the product too since backend 0201,
+ * when any number of demo products may exist.
  *
  * Presentational on purpose: the lists and the derivation live with the caller,
  * which is the component that has to send the resolved group.
@@ -35,7 +36,7 @@ export function AccountTypeFields({
   currencies,
   currency,
   onCurrency,
-  isDemo,
+  isUnavailable = () => false,
 }: {
   /** The products offered, in the broker's own order. */
   products: string[];
@@ -47,12 +48,15 @@ export function AccountTypeFields({
   currencies: string[];
   currency: string;
   onCurrency: (next: string) => void;
-  /** Demo asks no product — it takes the first offered in the currency. */
-  isDemo: boolean;
+  /**
+   * A product the client may not open now — at its cap (backend 0201). Shown,
+   * labelled by `productLabel`, and not choosable.
+   */
+  isUnavailable?: (name: string) => boolean;
 }) {
   return (
     <>
-      {!isDemo && products.length > 0 && (
+      {products.length > 0 && (
         <div className="space-y-1.5">
           <Label htmlFor="account-product" className="text-xs">
             {t('accounts.fieldProduct')}
@@ -63,7 +67,7 @@ export function AccountTypeFields({
             </SelectTrigger>
             <SelectContent>
               {products.map((name) => (
-                <SelectItem key={name} value={name}>
+                <SelectItem key={name} value={name} disabled={isUnavailable(name)}>
                   {productLabel(name)}
                 </SelectItem>
               ))}

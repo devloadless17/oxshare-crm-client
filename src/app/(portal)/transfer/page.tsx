@@ -18,6 +18,7 @@ import {
   SummaryRow,
 } from '@/components/money/money-shell';
 import { presetsWithin } from '@/components/money/amount-presets';
+import { belowMinimum, transferAmountHint } from '@/components/money/transfer-amount-hint';
 import {
   TransferDestinations,
   TransferSubmitted,
@@ -240,6 +241,9 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
       ? source.account.balance
       : undefined;
 
+  // The account's product minimum per transfer IN (backend 0201).
+  const minimum = toAccount ? (account?.minDeposit ?? null) : null;
+
   if (accounts.length === 0) {
     return <TransferUnavailable />;
   }
@@ -274,7 +278,7 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
     if (!account || !source) return;
     // Not a number at all is said under the field and never sent: the server's
     // validator would answer in its own words. Limits and decimals stay its call.
-    if (!isPositiveAmount(amount)) return;
+    if (!isPositiveAmount(amount) || belowMinimum(amount, minimum)) return;
 
     setBusy(true);
     setError(null);
@@ -394,15 +398,12 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
                        * a control that misrepresents the account.
                        */
                       max={spendable ? { amount: spendable, label: t('money.useMax') } : undefined}
-                      hint={
-                        amount.trim() && !isPositiveAmount(amount)
-                          ? t('withdraw.amountInvalid')
-                          : spendable
-                            ? t('money.availableBalance', {
-                                amount: moneyText(spendable, account.currency),
-                              })
-                            : undefined
-                      }
+                      hint={transferAmountHint({
+                        amount,
+                        spendable,
+                        minimum,
+                        currency: account.currency,
+                      })}
                     />
                     {presets.length > 0 && (
                       <AmountPresets

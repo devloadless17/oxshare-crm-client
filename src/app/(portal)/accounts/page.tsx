@@ -246,7 +246,7 @@ function EnvironmentPanel({
         <p className="text-sm font-semibold">{emptyTitle}</p>
         <p className="max-w-sm text-xs text-muted-foreground">{emptyBody}</p>
         <div className="pt-1">
-          <OpenAccountButton environment={environment} held={accounts.length} explainWhenClosed />
+          <OpenAccountButton environment={environment} explainWhenClosed />
         </div>
       </div>
     );
@@ -262,7 +262,7 @@ function EnvironmentPanel({
         stops being read at all.
       */}
       <div className="flex justify-end">
-        <OpenAccountButton environment={environment} held={accounts.length} variant="outline" />
+        <OpenAccountButton environment={environment} variant="outline" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

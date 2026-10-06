@@ -817,6 +817,9 @@ export const messages = {
   'transfer.submit': 'Transfer funds',
   'transfer.submitting': 'Transferring…',
   'transfer.failed': 'Could not complete the transfer. Please try again.',
+  // The account's product minimum (backend 0201), on every transfer into it.
+  'transfer.minimumInto': 'Minimum per transfer into this account: {amount}',
+  'transfer.belowMinimum': 'The minimum transfer into this account is {amount}.',
   'transfer.confirmTitle': 'Confirm the transfer',
   'transfer.from': 'From',
   'transfer.to': 'To',
@@ -940,7 +943,13 @@ export const messages = {
 
   // Shown INSTEAD of the create button once the client is at the limit — the
   // reason, in the place the control was, rather than a control that refuses.
-  'accounts.capReached': 'You have reached the maximum of {max} accounts of this kind.',
+  'accounts.capReached':
+    'You hold the most accounts allowed of every type offered here. Contact support if you need another.',
+  // Backend 0201: each product caps how many accounts one client may hold.
+  'accounts.productAtCap': '{product} — limit reached ({max})',
+  // The product group's minimum deposit: every transfer in must reach it.
+  'accounts.minDepositHint':
+    'Minimum deposit: {amount}. Every transfer into this account must be at least this much.',
 
   'accounts.fieldName': 'Account name',
   // The placeholder does the hint's job by example. 'accounts.nameHint' said the
