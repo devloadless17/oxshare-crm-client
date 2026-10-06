@@ -53,26 +53,15 @@ import { keys } from '@/lib/query-keys';
  */
 export function OpenAccountButton({
   environment,
-  held,
   explainWhenClosed = false,
   variant = 'default',
 }: {
   environment: TradingEnvironment;
-  /**
-   * How many accounts of this environment the client already has.
-   *
-   * Passed in rather than fetched: the page is already rendering them, so
-   * comparing against the cap costs nothing and needs no second request.
-   */
-  held: number;
-  /**
-   * Every name this client has already used, across BOTH environments.
-   *
-   * The rule is per CLIENT — `trading_accounts_user_name_uq` is on
-   * (user_id, lower(name)) with no environment in it — so this deliberately is
-   * not the tab's own list. Passed in for the same reason `held` is: the page
-   * is already rendering these accounts, so there is no second request to
-   * disagree with the first.
+  /*
+   * `held` was here — the count the page rendered, compared with one cap per
+   * environment. The cap is each PRODUCT's now (backend 0201) and the offer
+   * carries what the client holds under each, counted by the server with the
+   * rule it refuses on (closed accounts excluded), so nothing is counted here.
    */
   /**
    * Say WHY when this environment is switched off, instead of rendering
@@ -169,16 +158,15 @@ export function OpenAccountButton({
    * At the cap, the button is REPLACED by the reason rather than removed or
    * disabled.
    *
-   * Removed, a client who opened five demo accounts finds the control gone and
-   * assumes a bug. Disabled, they hover a dead button looking for a tooltip.
-   * One line naming the limit answers the question they are about to ask
-   * support, and it is the same limit the API enforces.
+   * Removed, a client at the limit finds the control gone and assumes a bug.
+   * Disabled, they hover a dead button looking for a tooltip. One line answers
+   * the question they are about to ask support. The cap is per PRODUCT (backend
+   * 0201), so the door is shut only when EVERY product offered here is full —
+   * otherwise the dialog offers the others and marks the full ones.
    */
-  const cap = environment === 'live' ? options.maxLiveAccounts : options.maxDemoAccounts;
-  if (held >= cap) {
-    return (
-      <p className="text-xs text-muted-foreground">{t('accounts.capReached', { max: cap })}</p>
-    );
+  const types = environment === 'live' ? options.liveTypes : options.demoTypes;
+  if (types.every((type) => type.heldAccounts >= type.maxAccounts)) {
+    return <p className="text-xs text-muted-foreground">{t('accounts.capReached')}</p>;
   }
 
   return (

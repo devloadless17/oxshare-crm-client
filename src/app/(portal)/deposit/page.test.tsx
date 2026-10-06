@@ -53,6 +53,7 @@ const method = (key: string, name: string): PaymentMethod => ({
   sortOrder: 0,
   requiresProof: true,
   proofFields: [],
+  payToFields: [],
 });
 
 const usd = {

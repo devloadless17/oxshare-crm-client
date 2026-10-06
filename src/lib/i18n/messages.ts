@@ -302,6 +302,8 @@ export const messages = {
   'auth.register.phoneIncomplete': 'Enter your full number after the country code.',
   'auth.register.emailInvalid': 'Enter a valid email address.',
   'auth.register.fixHighlighted': 'Please correct the highlighted fields.',
+  'auth.register.phoneTaken':
+    'This phone number is already used by another OxShare account. Use a different number, or sign in to the account that has it.',
   'auth.register.listLoading': 'Loading…',
   // Never an empty list: that would read as "there is nothing to choose".
   'auth.register.listFailed':
@@ -717,6 +719,14 @@ export const messages = {
   'deposit.proofTooLarge': 'That file is {size}MB. The limit is {limit}MB.',
   'deposit.proofFailed': 'Could not read that file. Please try another.',
   'deposit.detailOptional': '(optional)',
+  // Where an offline method asks the client to send the money (backend 0199).
+  'deposit.payToTitle': 'Send your payment to',
+  'deposit.payToHint': 'Pay using these details, then complete the form below.',
+  'deposit.copy': 'Copy',
+  'deposit.copied': 'Copied',
+  'deposit.copyValue': 'Copy {label}',
+  'deposit.copiedValue': '{label} copied',
+  'deposit.copyFailed': 'Could not copy. Select the text and copy it manually.',
   'deposit.detailRequired': '{label} is required.',
   'deposit.proofRequired': 'Please attach your transfer receipt.',
   'transactions.detailReceipt': 'Your receipt',
@@ -807,6 +817,9 @@ export const messages = {
   'transfer.submit': 'Transfer funds',
   'transfer.submitting': 'Transferring…',
   'transfer.failed': 'Could not complete the transfer. Please try again.',
+  // The account's product minimum (backend 0201), on every transfer into it.
+  'transfer.minimumInto': 'Minimum per transfer into this account: {amount}',
+  'transfer.belowMinimum': 'The minimum transfer into this account is {amount}.',
   'transfer.confirmTitle': 'Confirm the transfer',
   'transfer.from': 'From',
   'transfer.to': 'To',
@@ -930,7 +943,13 @@ export const messages = {
 
   // Shown INSTEAD of the create button once the client is at the limit — the
   // reason, in the place the control was, rather than a control that refuses.
-  'accounts.capReached': 'You have reached the maximum of {max} accounts of this kind.',
+  'accounts.capReached':
+    'You hold the most accounts allowed of every type offered here. Contact support if you need another.',
+  // Backend 0201: each product caps how many accounts one client may hold.
+  'accounts.productAtCap': '{product} — limit reached ({max})',
+  // The product group's minimum deposit: every transfer in must reach it.
+  'accounts.minDepositHint':
+    'Minimum deposit: {amount}. Every transfer into this account must be at least this much.',
 
   'accounts.fieldName': 'Account name',
   // The placeholder does the hint's job by example. 'accounts.nameHint' said the
@@ -2005,6 +2024,12 @@ export const messages = {
   'transactions.filterFrom': 'From',
   'transactions.filterTo': 'To',
   'transactions.filterApply': 'Apply',
+  'transactions.presetLast7': 'Last 7 days',
+  'transactions.presetLast30': 'Last 30 days',
+  'transactions.presetThisMonth': 'This month',
+  'transactions.presetLastMonth': 'Last month',
+  'transactions.presetLast3Months': 'Last 3 months',
+  'transactions.presetThisYear': 'This year',
   'transactions.filterClear': 'Clear filters',
   'transactions.filterClearDates': 'Clear dates',
   'transactions.dateAnyTime': 'Any time',

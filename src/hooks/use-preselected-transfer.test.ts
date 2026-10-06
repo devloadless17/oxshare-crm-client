@@ -42,6 +42,7 @@ function account(over: Partial<TradingAccount> = {}): TradingAccount {
     leverage: 500,
     status: 'active',
     createdAt: '2026-08-01T00:00:00.000Z',
+    minDeposit: null,
     ...over,
   };
 }

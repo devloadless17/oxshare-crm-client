@@ -1,5 +1,6 @@
 'use client';
 
+import { ACQUISITION_PARAM, acquisitionCodeFor } from '@/lib/acquisition';
 import * as React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { normaliseReferralCode } from '@/lib/referral-code';
@@ -93,7 +94,14 @@ function RegisterForm() {
    * referral code, it was sent as that, the API resolved nothing, and the
    * registration completed with no partner attached and nobody told.
    */
-  const referralCode = normaliseReferralCode(useSearchParams().get('ref'));
+  const searchParams = useSearchParams();
+  const referralCode = normaliseReferralCode(searchParams.get('ref'));
+  /*
+   * An administrator's sign-up link (`/join/<code>`, backend 0195): the URL's
+   * `?a=` or the code remembered from an earlier visit. Never shown — it only
+   * decides whose book the client lands in, and the API ignores a dead one.
+   */
+  const acquisitionCode = acquisitionCodeFor(searchParams.get(ACQUISITION_PARAM));
   /*
    * ONE expression for every route out of this page, because the bug was a
    * route that did not use it. Built once and handed to both the mark and the
@@ -258,7 +266,7 @@ function RegisterForm() {
       // Blank optional fields and an absent `?ref=` are OMITTED, not sent
       // empty: absence means "not given", and an empty string is a value the
       // API would have to interpret.
-      await api.auth.register(registerPayload(values, referralCode));
+      await api.auth.register(registerPayload(values, referralCode, acquisitionCode));
 
       setRegistered(true);
       /*
@@ -286,6 +294,10 @@ function RegisterForm() {
        * refusal about no field in particular becomes the banner.
        */
       const errors = apiFieldErrors(err) as FieldErrors;
+      // One client per phone (backend 0194) — in the reader's own language.
+      if (apiErrorCode(err) === 'PHONE_ALREADY_REGISTERED') {
+        errors.phone = t('auth.register.phoneTaken');
+      }
       if (firstErrorField(errors)) {
         showErrors(errors);
         setError(t('auth.register.fixHighlighted'));

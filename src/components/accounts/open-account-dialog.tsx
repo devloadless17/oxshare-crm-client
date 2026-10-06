@@ -90,26 +90,43 @@ export function OpenAccountDialog({
     () => [...new Set(types.map((type) => type.product))].filter(Boolean),
     [types],
   );
-  const [product, setProduct] = React.useState(products[0] ?? '');
+  /*
+   * A product the client already holds the most of (backend 0201). Counted by
+   * the SERVER under the rule it refuses on, so the form never offers what the
+   * API would refuse: such a product is shown, marked, and not choosable.
+   */
+  const capOf = React.useCallback(
+    (name: string) => {
+      const type = types.find((candidate) => candidate.product === name);
+      return type && type.heldAccounts >= type.maxAccounts ? type.maxAccounts : null;
+    },
+    [types],
+  );
+  // The first product the client may still open, in the broker's order.
+  const [product, setProduct] = React.useState(
+    products.find((name) => capOf(name) === null) ?? products[0] ?? '',
+  );
   /*
    * What the reader sees for each product: its Arabic when reading Arabic and
    * one is served. The English name stays the select's VALUE — it is what the
    * pair resolves on, and nothing displayed is ever sent.
    */
   const productLabel = React.useCallback(
-    (name: string) => localized(name, types.find((type) => type.product === name)?.productAr),
-    [types],
+    (name: string) => {
+      const label = localized(name, types.find((type) => type.product === name)?.productAr);
+      const cap = capOf(name);
+      return cap === null ? label : t('accounts.productAtCap', { product: label, max: cap });
+    },
+    [types, capOf],
   );
 
-  /** The currencies a product is offered in — demo, which asks no product: all of them. */
+  /** The currencies a product is offered in. */
   const currenciesFor = React.useCallback(
     (chosen: string) =>
       [
-        ...new Set(
-          types.filter((type) => isDemo || type.product === chosen).map((type) => type.currency),
-        ),
+        ...new Set(types.filter((type) => type.product === chosen).map((type) => type.currency)),
       ].filter(Boolean),
-    [types, isDemo],
+    [types],
   );
   const currencies = React.useMemo(() => currenciesFor(product), [currenciesFor, product]);
   // Chosen FOR the client: the first currency the product is offered in.
@@ -134,13 +151,11 @@ export function OpenAccountDialog({
    * no longer matches what the form shows, which is the class of bug the
    * transfer screen's derived destination list exists to avoid.
    *
-   * DEMO does not ask for a product, so it takes the first group offered in the
-   * chosen currency. With one product that is the only group; with several it is
-   * the broker's preferred one, by the ordering above.
+   * DEMO asks for the product too since backend 0201: any number of demo
+   * products may exist, so "the first demo group in the currency" no longer
+   * names the one the client meant.
    */
-  const chosenType = isDemo
-    ? types.find((type) => type.currency === currency)
-    : types.find((type) => type.product === product && type.currency === currency);
+  const chosenType = types.find((type) => type.product === product && type.currency === currency);
   const group = chosenType?.group ?? '';
   /*
    * Sent WITH the group. One MT5 group may back several products (backend
@@ -246,8 +261,8 @@ export function OpenAccountDialog({
         {/*
           ONE FIELD PER ROW (owner, 29 Sep 2026), in the order a client answers:
           the product, the currency it is held in (filled in from the product),
-          then the leverage. Demo asks no product. There is no name field: the
-          server names the account after the client.
+          then the leverage. Demo asks for the product too (backend 0201). There
+          is no name field: the server names the account after the client.
         */}
         <form
           className="grid gap-4"
@@ -288,8 +303,22 @@ export function OpenAccountDialog({
               setCurrency(next);
               setError(null);
             }}
-            isDemo={isDemo}
+            isUnavailable={(name) => capOf(name) !== null}
           />
+
+          {/*
+            The product's minimum deposit in this currency (backend 0201): every
+            transfer into the account must reach it, so the client hears it
+            BEFORE opening rather than at their first transfer. Live only — a
+            demo account is never funded from the wallet.
+          */}
+          {!isDemo && chosenType?.minDeposit && (
+            <p className="-mt-2 text-[11px] text-muted-foreground">
+              {t('accounts.minDepositHint', {
+                amount: moneyText(chosenType.minDeposit, chosenType.currency),
+              })}
+            </p>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="account-leverage" className="text-xs">
@@ -377,7 +406,12 @@ export function OpenAccountDialog({
               `disabled` is the two reasons that are NOT loading — Button ORs
               them.
             */}
-            <Button type="submit" size="sm" loading={create.isPending}>
+            <Button
+              type="submit"
+              size="sm"
+              loading={create.isPending}
+              disabled={capOf(product) !== null}
+            >
               {create.isPending ? t('accounts.opening') : t('accounts.openConfirm')}
             </Button>
           </div>

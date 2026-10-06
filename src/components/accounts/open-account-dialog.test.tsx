@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/render';
-import type { SelfServiceAvailability } from '@/lib/api/trading';
+import type { AccountType, SelfServiceAvailability } from '@/lib/api/trading';
 import { setActiveLocale, translate } from '@/lib/i18n';
 import { OpenAccountDialog } from './open-account-dialog';
 
@@ -29,18 +29,23 @@ vi.mock('@/lib/api/trading', async (importOriginal) => {
   return { ...actual, tradingApi: { ...actual.tradingApi, openAccount } };
 });
 
+/** One offered type; the 0201 fields default to "open, no minimum". */
+function offer(
+  over: Pick<AccountType, 'group' | 'currency' | 'product' | 'productId'> & Partial<AccountType>,
+): AccountType {
+  return { productAr: null, maxAccounts: 5, heldAccounts: 0, minDeposit: null, ...over };
+}
+
 const OPTIONS: SelfServiceAvailability = {
   live: true,
   demo: false,
   // Two products selling the SAME group.
   liveTypes: [
-    { group: 'real\\Shared', currency: 'USD', product: 'Standard', productId: 'p-standard' },
-    { group: 'real\\Shared', currency: 'USD', product: 'Premium', productId: 'p-premium' },
+    offer({ group: 'real\\Shared', currency: 'USD', product: 'Standard', productId: 'p-standard' }),
+    offer({ group: 'real\\Shared', currency: 'USD', product: 'Premium', productId: 'p-premium' }),
   ],
   demoTypes: [],
   leverages: [100],
-  maxLiveAccounts: 5,
-  maxDemoAccounts: 5,
   maxDemoDeposit: '10000',
 };
 
@@ -163,9 +168,19 @@ describe('product first, currency from it', () => {
   const MIXED: SelfServiceAvailability = {
     ...OPTIONS,
     liveTypes: [
-      { group: 'real\StdUsd', currency: 'USD', product: 'Standard', productId: 'p-standard' },
-      { group: 'real\StdEur', currency: 'EUR', product: 'Standard', productId: 'p-standard' },
-      { group: 'real\ProEur', currency: 'EUR', product: 'Pro', productId: 'p-pro' },
+      offer({
+        group: 'real\StdUsd',
+        currency: 'USD',
+        product: 'Standard',
+        productId: 'p-standard',
+      }),
+      offer({
+        group: 'real\StdEur',
+        currency: 'EUR',
+        product: 'Standard',
+        productId: 'p-standard',
+      }),
+      offer({ group: 'real\ProEur', currency: 'EUR', product: 'Pro', productId: 'p-pro' }),
     ],
   };
 
@@ -193,5 +208,70 @@ describe('product first, currency from it', () => {
         expect.objectContaining({ group: 'real\ProEur', productId: 'p-pro' }),
       ),
     );
+  });
+});
+
+/*
+ * Backend 0201: any number of DEMO products, so demo asks for the product too;
+ * and each product caps how many accounts one client may hold under it.
+ */
+describe('the product caps and many demo products', () => {
+  it('asks a demo account for its product and sends the one chosen', async () => {
+    const user = userEvent.setup();
+    const demo: SelfServiceAvailability = {
+      ...OPTIONS,
+      demo: true,
+      demoTypes: [
+        offer({ group: 'demo\\A', currency: 'USD', product: 'Practice', productId: 'p-a' }),
+        offer({ group: 'demo\\B', currency: 'USD', product: 'Contest', productId: 'p-b' }),
+      ],
+    };
+    renderWithProviders(<OpenAccountDialog environment="demo" options={demo} onClose={vi.fn()} />);
+
+    await user.click(await screen.findByRole('combobox', { name: /product/i }));
+    await user.click(await screen.findByRole('option', { name: 'Contest' }));
+    await user.click(screen.getByRole('button', { name: /open account/i }));
+
+    await waitFor(() =>
+      expect(openAccount).toHaveBeenCalledWith(
+        expect.objectContaining({ group: 'demo\\B', productId: 'p-b' }),
+      ),
+    );
+  });
+
+  it('marks a product at its cap, starts on one still open, and states its minimum', async () => {
+    const user = userEvent.setup();
+    const capped: SelfServiceAvailability = {
+      ...OPTIONS,
+      liveTypes: [
+        offer({
+          group: 'real\\Std',
+          currency: 'USD',
+          product: 'Standard',
+          productId: 'p-standard',
+          maxAccounts: 2,
+          heldAccounts: 2,
+        }),
+        offer({
+          group: 'real\\Pro',
+          currency: 'USD',
+          product: 'Pro',
+          productId: 'p-pro',
+          minDeposit: '100.00000000',
+        }),
+      ],
+    };
+    renderWithProviders(
+      <OpenAccountDialog environment="live" options={capped} onClose={vi.fn()} />,
+    );
+
+    const product = await screen.findByRole('combobox', { name: /product/i });
+    expect(product).toHaveTextContent('Pro');
+    expect(screen.getByText(/minimum deposit: \$100\.00/i)).toBeInTheDocument();
+
+    await user.click(product);
+    expect(
+      await screen.findByRole('option', { name: /standard — limit reached \(2\)/i }),
+    ).toHaveAttribute('aria-disabled', 'true');
   });
 });

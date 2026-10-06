@@ -131,69 +131,24 @@ export type Dashboard = components['schemas']['DashboardDto'];
 export type DashboardStats = components['schemas']['DashboardStatsDto'];
 
 /**
- * One account type the broker sells online.
+ * One account type the broker sells online: a product in one currency.
  *
- * HAND-DECLARED, and marked as such: `GET /trading/accounts/self-service`
- * carries no `@ApiOkResponse`, so it generates no schema and there is nothing
- * to alias (API-CONTRACTS Part C). That means backend drift on this shape
- * reaches the portal as a runtime `undefined` rather than a compile error —
- * worth fixing with a DTO on the API side, and worth knowing until then.
+ * Aliased to the generated schema since the endpoint declared one (backend,
+ * 3 Oct 2026) — it was hand-declared before, so backend drift reached the
+ * portal as a runtime `undefined` instead of a compile error.
+ *
+ * Since backend 0201 each type carries its PRODUCT's cap (`maxAccounts`), how
+ * many this client already holds under it (`heldAccounts`, counted by the
+ * server with the rule it refuses on), and its group's `minDeposit` — the least
+ * every transfer into such an account must be, in its currency (null = none).
  */
-export interface AccountType {
-  /** The MT5 group path. Sent back on create and validated server-side. */
-  group: string;
-  /** Read live from MT5. Empty when the server could not be asked. */
-  currency: string;
-  /**
-   * The product this group belongs to, by name.
-   *
-   * What the open-account form actually asks about: the client chooses a
-   * product and a currency, and the pair resolves to exactly one group —
-   * `trading_product_groups` is unique on (product, environment, currency).
-   */
-  product: string;
-  /**
-   * The same product's name in Arabic, for display only — `product` stays the
-   * value compared and resolved. Optional: an API without it (or an
-   * untranslated product) shows `product`.
-   */
-  productAr?: string | null;
-  /**
-   * The product's id — sent back on create.
-   *
-   * One MT5 group may back several products since backend 0142, so the group
-   * alone no longer says which product the client picked; the product decides
-   * what the account's trades pay. Optional only so a response from an older
-   * API still parses.
-   */
-  productId?: string;
-}
+export type AccountType = components['schemas']['SelfServiceAccountTypeDto'];
 
-/** What a client may open themselves, and on what terms. */
-export interface SelfServiceAvailability {
-  live: boolean;
-  demo: boolean;
-  liveTypes: AccountType[];
-  demoTypes: AccountType[];
-  /** The leverage ladder. A fixed list, not a free number — see the API. */
-  leverages: number[];
-  /*
-   * The caps, so the page can stop offering a button the API would refuse.
-   * Compared against the accounts it is already rendering — no extra request.
-   */
-  maxLiveAccounts: number;
-  maxDemoAccounts: number;
-  /**
-   * The largest demo starting balance, as a decimal string.
-   *
-   * It arrives from the API rather than being a constant here. It WAS a
-   * constant, duplicated between this app and the server, which meant the
-   * figure the client was shown and the figure enforced could differ by a
-   * deploy — and the client would find out by having their number silently
-   * reduced.
-   */
-  maxDemoDeposit: string;
-}
+/**
+ * What a client may open themselves, and on what terms. The two caps per
+ * environment that were here are per product now (on each `AccountType`).
+ */
+export type SelfServiceAvailability = components['schemas']['SelfServiceOfferDto'];
 
 /**
  * A freshly opened account. NO PASSWORDS, deliberately.

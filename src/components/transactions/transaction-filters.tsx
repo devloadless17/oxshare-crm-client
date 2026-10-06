@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { Transaction, TransactionQuery } from '@/lib/api/payments';
-import { EMPTY_RANGE, type DateRange } from '@/lib/date-range';
+import { EMPTY_RANGE, dayStartInstant, type DateRange } from '@/lib/date-range';
 import { t, type MessageKey } from '@/lib/i18n';
 import { NativeDateRange } from '@/components/transactions/mobile-sheets';
 
@@ -120,13 +120,14 @@ export function toQuery(filters: Filters): TransactionQuery {
     state: filters.state === 'all' ? undefined : filters.state,
     currency: filters.currency === 'all' ? undefined : filters.currency,
     /*
-     * The range is already `YYYY-MM-DD` — `lib/date-range.ts` keeps it that way
-     * precisely so it can cross a wire without a timezone conversion. Never
-     * `toISOString().split('T')[0]` here: that converts to UTC first and returns
-     * tomorrow for eastern zones in the evening.
+     * The range is held as local `YYYY-MM-DD` days and sent as the CLIENT's own
+     * day boundaries — instants with their offset, `to` the start of the day
+     * after (exclusive). Sent as bare dates the server would read UTC days, and
+     * a deposit at 01:00 Beirut time would fall on the wrong day. Never
+     * `toISOString().split('T')[0]`: that converts to UTC first.
      */
-    from: filters.range.from ?? undefined,
-    to: filters.range.to ?? undefined,
+    from: filters.range.from ? dayStartInstant(filters.range.from) : undefined,
+    to: filters.range.to ? dayStartInstant(filters.range.to, true) : undefined,
   };
 }
 

@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { apiErrorMessage, apiFieldErrors } from '@/lib/api/errors';
+import { apiErrorCode, apiErrorMessage, apiFieldErrors } from '@/lib/api/errors';
 import { forgetEdits, forgetSaved, readPersonalDraft, rememberEdit } from '@/lib/kyc-draft';
 import { useResource } from '@/hooks/use-resource';
 import { withReviewStep } from './review-step';
@@ -340,7 +340,12 @@ export function KycStepForm() {
       else await submit();
     } catch (e: unknown) {
       setError(withErrorDetail(e, kycErrorMessage(e)));
-      setFieldErrors(apiFieldErrors(e));
+      const fields = apiFieldErrors(e);
+      // One client per phone (backend 0194) — in the reader's own language.
+      if (apiErrorCode(e) === 'PHONE_ALREADY_REGISTERED') {
+        fields.phone = t('auth.register.phoneTaken');
+      }
+      setFieldErrors(fields);
     } finally {
       setLoading(false);
     }

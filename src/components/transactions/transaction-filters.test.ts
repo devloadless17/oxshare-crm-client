@@ -59,24 +59,27 @@ describe('toQuery', () => {
   });
 
   /*
-   * The range crosses the wire as the `YYYY-MM-DD` strings `date-range.ts`
-   * already holds — never re-derived through a Date.
+   * The range crosses the wire as the client's OWN day boundaries — local
+   * midnight with its offset, built from the `YYYY-MM-DD` parts `date-range.ts`
+   * holds (backend `common/date-range.ts` reads bare dates as UTC days).
    *
    * `toISOString().split('T')[0]` is the trap: it converts to UTC first, so an
    * evening selection in an eastern zone would be sent as tomorrow and the
    * client's newest transaction would fall outside their own filter.
    */
-  it('sends the date range as the literal YYYY-MM-DD strings', () => {
+  it('sends the CLIENT’s own day boundaries, the end exclusive (the day after)', () => {
     const query = toQuery({ ...base, range: { from: '2026-08-01', to: '2026-08-31' } });
 
-    expect(query.from).toBe('2026-08-01');
-    expect(query.to).toBe('2026-08-31');
+    // Local midnight with its offset — never a UTC conversion of the date.
+    expect(query.from).toMatch(/^2026-08-01T00:00:00[+-]\d{2}:\d{2}$/);
+    // The whole of the 31st is inside: the bound is the start of 1 September.
+    expect(query.to).toMatch(/^2026-09-01T00:00:00[+-]\d{2}:\d{2}$/);
   });
 
   it('omits an unset half of the range rather than sending null', () => {
     const query = toQuery({ ...base, range: { from: '2026-08-01', to: null } });
 
-    expect(query.from).toBe('2026-08-01');
+    expect(query.from).toMatch(/^2026-08-01T00:00:00/);
     expect(query.to).toBeUndefined();
   });
 });
