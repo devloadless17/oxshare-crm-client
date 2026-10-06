@@ -17,22 +17,34 @@ import {
  *
  * A malformed code is dropped, never echoed back: the visitor still reaches
  * sign-up, just without a link.
+ *
+ * ⚠️ The redirect is RELATIVE, on purpose. In production this runs in a
+ * container behind Caddy, where a route handler's `request.url` is the
+ * container's bind address — `https://0.0.0.0:3000` — not the portal's. Built
+ * from it, every sign-up link sent visitors to an address that does not exist
+ * (reported from production, 6 Oct 2026); localhost hid it, because there the
+ * two are the same. A relative `Location` is resolved by the browser against the
+ * address the visitor actually used, whatever the proxy in front.
  */
 export function GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   return params.then(({ code: raw }) => {
     const code = normaliseAcquisitionCode(decodeURIComponent(raw));
-    const target = new URL('/auth/register', request.url);
+    const query = new URLSearchParams();
     const ref = request.nextUrl.searchParams.get('ref');
-    if (ref) target.searchParams.set('ref', ref);
-    if (code) target.searchParams.set(ACQUISITION_PARAM, code);
+    if (ref) query.set('ref', ref);
+    if (code) query.set(ACQUISITION_PARAM, code);
+    const target = query.size > 0 ? `/auth/register?${query.toString()}` : '/auth/register';
 
-    const response = NextResponse.redirect(target);
+    const response = new NextResponse(null, { status: 307, headers: { Location: target } });
     if (code) {
       response.cookies.set(ACQUISITION_COOKIE, code, {
         path: '/',
         maxAge: ACQUISITION_MAX_AGE_SECONDS,
         sameSite: 'lax',
-        secure: request.nextUrl.protocol === 'https:',
+        // Behind the proxy the request reaches us as plain http; Caddy says how it arrived.
+        secure:
+          request.headers.get('x-forwarded-proto') === 'https' ||
+          request.nextUrl.protocol === 'https:',
       });
     }
     return response;
