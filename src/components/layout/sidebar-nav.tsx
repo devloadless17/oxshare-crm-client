@@ -1,5 +1,6 @@
 'use client';
 
+import { startNavigationProgress } from './navigation-progress';
 import * as React from 'react';
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
@@ -112,7 +113,8 @@ export function useNavSelection(items: NavItem[], pathname: string | null, colla
   const selectedGroup = collapsed ? activeGroup : (here.open ?? activeGroup);
   const toggle = (href: string) => setPosition({ ...here, open: openGroup === href ? null : href });
   /** A click in the menu is taking the client to `href` — even the page on screen. */
-  const navigate = (href: string) =>
+  const navigate = (href: string) => {
+    startNavigationProgress(href);
     setPosition({
       path: here.path,
       heading: href,
@@ -121,6 +123,7 @@ export function useNavSelection(items: NavItem[], pathname: string | null, colla
           ? [...(here.overtaken ?? []), here.heading]
           : here.overtaken,
     });
+  };
   return { page, openGroup, selectedGroup, toggle, navigate };
 }
 
