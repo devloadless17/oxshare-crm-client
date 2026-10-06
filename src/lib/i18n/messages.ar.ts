@@ -431,6 +431,7 @@ export const arMessages: Record<MessageKey, string> = {
   'withdraw.needDestination': 'أدخل الجهة التي يجب إرسال الأموال إليها.',
   'withdraw.failed': 'تعذّر إرسال طلب السحب.',
   'withdraw.method': 'السحب عبر',
+  'withdraw.payToTitle': 'تفاصيل هذه الطريقة',
   'withdraw.stepDetails': 'التفاصيل',
   'withdraw.stepMethod': 'الطريقة',
   'withdraw.stepWallet': 'أي محفظة؟',

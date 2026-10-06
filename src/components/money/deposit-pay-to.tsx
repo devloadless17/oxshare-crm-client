@@ -19,6 +19,29 @@ export type PayToDetail = PaymentMethod['payToFields'][number];
  * button, because the next thing the client does is paste it into OMT or Whish.
  */
 export function DepositPayTo({ fields }: { fields: PayToDetail[] }) {
+  return (
+    <PayToDetails fields={fields} title={t('deposit.payToTitle')} hint={t('deposit.payToHint')} />
+  );
+}
+
+/** The card on the withdraw form, for the rail the client picked. */
+export function WithdrawPayTo({ fields }: { fields?: readonly PayToDetail[] }) {
+  return <PayToDetails fields={fields ?? []} title={t('withdraw.payToTitle')} />;
+}
+
+/**
+ * The same card for any method: a withdrawal rail shows its details too (backend
+ * 0202) — where to collect cash, a reference to quote — under its own title.
+ */
+export function PayToDetails({
+  fields,
+  title,
+  hint,
+}: {
+  fields: readonly PayToDetail[];
+  title: string;
+  hint?: string;
+}) {
   const titleId = React.useId();
   if (fields.length === 0) return null;
 
@@ -29,9 +52,9 @@ export function DepositPayTo({ fields }: { fields: PayToDetail[] }) {
     >
       <div className="space-y-0.5">
         <h3 id={titleId} className="text-xs font-semibold text-foreground">
-          {t('deposit.payToTitle')}
+          {title}
         </h3>
-        <p className="text-[11px] text-muted-foreground">{t('deposit.payToHint')}</p>
+        {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
       </div>
       <ul className="space-y-2">
         {fields.map((field) => (

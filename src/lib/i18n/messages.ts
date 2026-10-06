@@ -665,6 +665,8 @@ export const messages = {
   'withdraw.needDestination': 'Enter where the funds should be sent.',
   'withdraw.failed': 'Could not submit your withdrawal request.',
   'withdraw.method': 'Withdraw with',
+  // What the chosen rail tells the client (backend 0202).
+  'withdraw.payToTitle': 'Details for this method',
   /*
    * Two steps: the RAIL, then the amount and whatever that rail needs.
    *

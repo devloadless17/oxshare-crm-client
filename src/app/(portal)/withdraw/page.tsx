@@ -35,6 +35,7 @@ import { presetsWithin } from '@/components/money/amount-presets';
 import { t } from '@/lib/i18n';
 import { keys } from '@/lib/query-keys';
 import { useMoneyRefresh } from '@/hooks/use-money-refresh';
+import { WithdrawPayTo } from '@/components/money/deposit-pay-to';
 
 /**
  * Request a withdrawal — CORE-07.
@@ -496,6 +497,8 @@ function WithdrawForm({
                   logoUrl={method.logoUrl}
                 />
               ))}
+              {/* What the chosen rail tells the client — where to collect cash (0202). */}
+              <WithdrawPayTo fields={selectedMethod?.payToFields} />
             </div>
           </MoneySection>
 
