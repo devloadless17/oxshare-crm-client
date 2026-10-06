@@ -260,3 +260,49 @@ export function initialMonth(
   // fallback exists to satisfy the type rather than to handle a real case.
   return { year: anchor?.year ?? new Date().getFullYear(), month: anchor?.month ?? 0 };
 }
+
+/**
+ * The start of a LOCAL day as an instant with its offset
+ * (`2026-10-06T00:00:00+03:00`) — what the API compares, so "the 6th" means the
+ * client's 6th, not the server's. `nextDay` gives the start of the day AFTER,
+ * the exclusive end of a range ending on `iso` (backend `common/date-range.ts`).
+ */
+export function dayStartInstant(iso: IsoDate, nextDay = false): string | undefined {
+  const parts = parseIso(iso);
+  if (!parts) return undefined;
+  const date = new Date(parts.year, parts.month, parts.day + (nextDay ? 1 : 0));
+  const offset = -date.getTimezoneOffset();
+  const sign = offset >= 0 ? '+' : '-';
+  const abs = Math.abs(offset);
+  const hh = String(Math.floor(abs / 60)).padStart(2, '0');
+  const mm = String(abs % 60).padStart(2, '0');
+  const day = toIso(date.getFullYear(), date.getMonth(), date.getDate());
+  return `${day}T00:00:00${sign}${hh}:${mm}`;
+}
+
+/** The quick periods the picker offers — the admin console's vocabulary. */
+export const RANGE_PRESETS = ['7d', '30d', 'thisMonth', 'lastMonth', '3m', 'thisYear'] as const;
+export type RangePreset = (typeof RANGE_PRESETS)[number];
+
+/** A preset as an inclusive local `[from, to]`, ending today. */
+export function presetRange(preset: RangePreset, now: Date = new Date()): DateRange {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const d = now.getDate();
+  const iso = (date: Date) => toIso(date.getFullYear(), date.getMonth(), date.getDate());
+  const today = todayIso(now);
+  switch (preset) {
+    case '7d':
+      return { from: iso(new Date(y, m, d - 6)), to: today };
+    case '30d':
+      return { from: iso(new Date(y, m, d - 29)), to: today };
+    case 'thisMonth':
+      return { from: iso(new Date(y, m, 1)), to: today };
+    case 'lastMonth':
+      return { from: iso(new Date(y, m - 1, 1)), to: iso(new Date(y, m, 0)) };
+    case '3m':
+      return { from: iso(new Date(y, m - 3, d)), to: today };
+    case 'thisYear':
+      return { from: iso(new Date(y, 0, 1)), to: today };
+  }
+}

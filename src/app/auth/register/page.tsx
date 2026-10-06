@@ -286,6 +286,10 @@ function RegisterForm() {
        * refusal about no field in particular becomes the banner.
        */
       const errors = apiFieldErrors(err) as FieldErrors;
+      // One client per phone (backend 0194) — in the reader's own language.
+      if (apiErrorCode(err) === 'PHONE_ALREADY_REGISTERED') {
+        errors.phone = t('auth.register.phoneTaken');
+      }
       if (firstErrorField(errors)) {
         showErrors(errors);
         setError(t('auth.register.fixHighlighted'));

@@ -302,6 +302,8 @@ export const messages = {
   'auth.register.phoneIncomplete': 'Enter your full number after the country code.',
   'auth.register.emailInvalid': 'Enter a valid email address.',
   'auth.register.fixHighlighted': 'Please correct the highlighted fields.',
+  'auth.register.phoneTaken':
+    'This phone number is already used by another OxShare account. Use a different number, or sign in to the account that has it.',
   'auth.register.listLoading': 'Loading…',
   // Never an empty list: that would read as "there is nothing to choose".
   'auth.register.listFailed':
@@ -2005,6 +2007,12 @@ export const messages = {
   'transactions.filterFrom': 'From',
   'transactions.filterTo': 'To',
   'transactions.filterApply': 'Apply',
+  'transactions.presetLast7': 'Last 7 days',
+  'transactions.presetLast30': 'Last 30 days',
+  'transactions.presetThisMonth': 'This month',
+  'transactions.presetLastMonth': 'Last month',
+  'transactions.presetLast3Months': 'Last 3 months',
+  'transactions.presetThisYear': 'This year',
   'transactions.filterClear': 'Clear filters',
   'transactions.filterClearDates': 'Clear dates',
   'transactions.dateAnyTime': 'Any time',

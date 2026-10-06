@@ -5,6 +5,7 @@ import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-r
 import { Button } from './button';
 import { cn } from '@/lib/utils';
 import { intlLocale, t } from '@/lib/i18n';
+import { DateRangePresets } from './date-range-presets';
 import {
   applyDayClick,
   buildMonth,
@@ -305,6 +306,8 @@ export function DateRangePicker({
              */
             className="absolute end-0 z-50 mt-2 w-max max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-4 shadow-lg max-sm:fixed max-sm:inset-x-4 max-sm:top-16 max-sm:mt-0 max-sm:w-auto max-sm:max-w-none max-sm:shadow-2xl"
           >
+            <DateRangePresets onPick={commit} />
+
             <div className="flex items-center justify-between px-1 pb-3">
               <button
                 type="button"
