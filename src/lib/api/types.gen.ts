@@ -3752,6 +3752,23 @@ export interface paths {
         patch: operations["SignupLinksController_rename"];
         trace?: never;
     };
+    "/v1/admin/signup-links/{adminId}/random": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Give a sign-up link a random word made by the server (the old word stops working) */
+        post: operations["SignupLinksController_randomize"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/kyc": {
         parameters: {
             query?: never;
@@ -16408,6 +16425,27 @@ export interface operations {
                 "application/json": components["schemas"]["RenameSignupLinkDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignupLinkUrlDto"];
+                };
+            };
+        };
+    };
+    SignupLinksController_randomize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                adminId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
