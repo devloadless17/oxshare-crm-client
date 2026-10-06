@@ -7,7 +7,8 @@ import {
 } from '@/lib/acquisition';
 
 /**
- * `/join/<code>` — an administrator's sign-up link (backend 0195).
+ * `/join/<word>` — an administrator's sign-up link (backend 0198): one each, a
+ * readable word like `omar-farah`.
  *
  * Remembers the code (30 days, last click wins) and sends the visitor to the
  * sign-up form with it in the URL as well, so it works even where cookies are

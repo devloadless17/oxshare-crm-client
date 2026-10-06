@@ -351,10 +351,28 @@ export const SIGN_UP_DETAILS = {
   dateOfBirth: '1991-03-09',
   nationality: 'Lebanese',
   country: 'Lebanon',
-  /** As typed, grouped; stored as `+96170123456`. */
-  nationalNumber: '70 123 456',
   city: 'Beirut',
 } as const;
+
+/**
+ * A phone no other client holds — one client per phone since backend 0194, so
+ * every sign-up a run makes needs its own number (a fixed one is refused with
+ * PHONE_ALREADY_REGISTERED from the second run on). A valid Lebanese mobile,
+ * `71 xxx xxx`, varied by the clock and a counter.
+ */
+let phoneSeq = 0;
+export function freshPhone(): { national: string; e164: string } {
+  phoneSeq += 1;
+  const n = String((Date.now() + phoneSeq * 7919) % 1_000_000).padStart(6, '0');
+  return { national: `71 ${n.slice(0, 3)} ${n.slice(3)}`, e164: `+96171${n}` };
+}
+
+let lastPhone: { national: string; e164: string } | undefined;
+/** The phone the last `fillRegisterForm` typed — what the KYC form must open with. */
+export function lastSignUpPhone(): { national: string; e164: string } {
+  if (!lastPhone) throw new Error('no sign-up form was filled in this worker');
+  return lastPhone;
+}
 
 /**
  * What `POST /auth/register` requires besides the account and the names since
@@ -366,8 +384,11 @@ export const API_SIGN_UP_DETAILS = {
   dateOfBirth: SIGN_UP_DETAILS.dateOfBirth,
   nationality: SIGN_UP_DETAILS.nationality,
   country: SIGN_UP_DETAILS.country,
-  phone: '+96170123456',
-} as const;
+  /** A GETTER: each spread copies a fresh number (one client per phone, 0194). */
+  get phone(): string {
+    return freshPhone().e164;
+  },
+};
 
 /**
  * Fill BOTH steps of the sign-up form: the account, Continue, then the
@@ -386,7 +407,8 @@ export async function fillRegisterForm(
   // Choosing the country starts the phone in its dial code, so the number is
   // typed after it — the order a person fills the form in.
   await pickOption(page, /country of residence/i, SIGN_UP_DETAILS.country);
-  await page.getByLabel('Phone number').fill(SIGN_UP_DETAILS.nationalNumber);
+  lastPhone = freshPhone();
+  await page.getByLabel('Phone number').fill(lastPhone.national);
   await page.getByLabel(/^city/i).fill(SIGN_UP_DETAILS.city);
 }
 

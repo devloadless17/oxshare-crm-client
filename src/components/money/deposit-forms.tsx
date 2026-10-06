@@ -1,6 +1,7 @@
 'use client';
 
 import { DepositDetailsFields } from '@/components/money/deposit-details-fields';
+import { DepositPayTo } from '@/components/money/deposit-pay-to';
 import Decimal from 'decimal.js';
 import { TileGroups, type TileGroup } from '@/components/money/tile-groups';
 import { AmountField, AmountPresets, MoneySection } from '@/components/money/money-shell';
@@ -316,6 +317,12 @@ export function DepositForm({
             disabled={disabled}
           />
         )}
+        {/*
+          WHERE to send it (backend 0199), right under how much: the broker's own
+          details, read-only, for a method paid outside the platform. The server
+          sends none for any other method, so this needs no flag of its own.
+        */}
+        <DepositPayTo fields={method.payToFields} />
         {/*
           The receipt sits with the AMOUNT because the two are one statement:
           "I sent this much, and here is the proof". It appears from the method's
