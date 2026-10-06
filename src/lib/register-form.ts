@@ -151,6 +151,7 @@ export function firstErrorField(errors: Partial<Record<string, string>>): string
 export function registerPayload(
   values: RegisterValues,
   referralCode: string | undefined,
+  acquisitionCode?: string,
 ): RegisterDto {
   const given = (field: RegisterField): string | undefined => {
     const value = values[field].trim();
@@ -169,5 +170,7 @@ export function registerPayload(
     address: given('address'),
     postalCode: given('postalCode'),
     referralCode: referralCode || undefined,
+    // An administrator's sign-up link (backend 0195) — see lib/acquisition.ts.
+    acquisitionCode: acquisitionCode || undefined,
   };
 }
