@@ -588,7 +588,7 @@ export const arMessages: Record<MessageKey, string> = {
   'accounts.nameTaken': 'لديك بالفعل حساب بهذا الاسم.',
   'accounts.fieldStartingBalance': 'الرصيد الابتدائي',
   'accounts.startingBalanceHint':
-    'أموال للتدريب، حتى {max}. اختر مبلغاً قريباً مما ستتداول به فعلاً — فالتدريب لا يكون مفيداً إلا إذا كانت أحجام الصفقات واقعية.',
+    'أموال للتدريب. اختر مبلغاً قريباً مما ستتداول به فعلاً — فالتدريب لا يكون مفيداً إلا إذا كانت أحجام الصفقات واقعية.',
   'accounts.colBalance': 'الرصيد',
   'accounts.liveEmpty': 'لا توجد حسابات حقيقية بعد',
   'accounts.liveEmptyBody': 'الحساب الحقيقي يتداول بأموال حقيقية. افتح حساباً، ثم موّله من محفظتك.',
@@ -1276,7 +1276,6 @@ export const arMessages: Record<MessageKey, string> = {
   'accounts.topUpBody':
     'يزيد هذا رصيدك التجريبي لتتمكن من مواصلة التدرّب. إنه ليس مالاً حقيقياً ولا يمكن سحبه.',
   'accounts.topUpAmountLabel': 'المبلغ',
-  'accounts.topUpCeilingHint': 'حتى {max} {currency} في المرة الواحدة.',
   'accounts.topUpSubmit': 'إضافة إلى الرصيد',
   'accounts.topUpSubmitting': 'جارٍ الإضافة…',
   'accounts.topUpDoneTitle': 'تمت إضافة الرصيد التدريبي',
