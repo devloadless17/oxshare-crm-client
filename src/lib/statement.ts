@@ -95,6 +95,7 @@ export function describeLine(line: StatementLine, walletName?: string): string {
       if (line.provider === 'manual_admin') return t('statement.lineManualCredit');
       return withMethod(credit ? t('statement.lineDeposit') : t('statement.lineDepositReversed'));
     case 'withdrawal':
+      if (line.provider === 'manual_admin' && !credit) return t('statement.lineManualDebit');
       return withMethod(
         credit ? t('statement.lineWithdrawalRefund') : t('statement.lineWithdrawal'),
       );

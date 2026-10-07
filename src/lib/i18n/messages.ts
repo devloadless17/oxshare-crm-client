@@ -2052,6 +2052,7 @@ export const messages = {
   // raw `manual_admin` provider string — that is an internal identifier and has
   // no business on somebody's statement.
   'transactions.manualCredit': 'Added by our team',
+  'transactions.manualDebit': 'Withdrawn by our team',
 
   // The sort SELECT is gone (`sortNewest`, `sortOldest`, `sortAmountDesc`,
   // `sortAmountAsc`, `sortLabel`). Ordering is a table-header click now, so the
@@ -2386,6 +2387,7 @@ export const messages = {
   'statement.lineDeposit': 'Deposit',
   'statement.lineDepositReversed': 'Deposit reversed',
   'statement.lineManualCredit': 'Added by our team',
+  'statement.lineManualDebit': 'Withdrawn by our team',
   'statement.lineWithdrawal': 'Withdrawal',
   'statement.lineWithdrawalRefund': 'Withdrawal refunded',
   'statement.lineToAccount': 'Transfer to trading account{login}',
