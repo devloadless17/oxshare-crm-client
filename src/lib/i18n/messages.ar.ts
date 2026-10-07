@@ -975,7 +975,7 @@ export const arMessages: Record<MessageKey, string> = {
   'notifications.kindCommissionConfirmedTitle': 'تمت إضافة العمولة',
   'notifications.kindRebateCreditedTitle': 'تمت إضافة العمولة المستردة',
   'notifications.kindRebateCreditedBody':
-    'أُضيف {amount} إلى محفظتك من {count:{count} صفقة|صفقة واحدة|صفقتين|{count} صفقات|{count} صفقة|{count} صفقة}.',
+    'أُضيفت عمولة مستردة بقيمة {amount} إلى محفظة العمولات من {count:{count} صفقة|صفقة واحدة|صفقتين|{count} صفقات|{count} صفقة|{count} صفقة}.',
   'notifications.kindCommissionConfirmedBody':
     'أُضيفت عمولة بقيمة {amount} إلى محفظتك من {count:{count} صفقة|صفقة واحدة|صفقتين|{count} صفقات|{count} صفقة|{count} صفقة}.',
   'notifications.kindPartnerApprovedTitle': 'تمت الموافقة على طلب الشراكة',

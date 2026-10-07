@@ -1595,10 +1595,10 @@ export const messages = {
   'notifications.kindKycReverificationBodyNoReason':
     'We need an update to your verification. Deposits and withdrawals are paused until it is reviewed.',
   'notifications.kindCommissionConfirmedTitle': 'Commission credited',
-  // The client's side of the same trade. "Rebate" rather than "commission",
-  // because the money is theirs coming back rather than something they earned —
-  // and the two arrive from the same event, so a shared word would make them
-  // indistinguishable in the bell.
+  // The partner's rebate (backend 0209, 7 Oct 2026): the rebate is partner money
+  // now, split like commission and paid to the commission wallet. Its own word
+  // because the two arrive from the same trades, and a shared one would make
+  // them indistinguishable in the bell.
   'notifications.kindRebateCreditedTitle': 'Rebate credited',
   // ── ONE MESSAGE PER RUN, NOT PER TRADE ──────────────────────────────────
   // These were written per accrual, so a client closing a thousand positions
@@ -1606,7 +1606,7 @@ export const messages = {
   // is what makes that legible — "$148.08 across 188 trades" is a sentence
   // somebody can act on; the same total with no count reads as one payment.
   'notifications.kindRebateCreditedBody':
-    '{amount} was added to your wallet from {count} {count:trade|trades}.',
+    'A rebate of {amount} was credited to your commission wallet from {count} {count:trade|trades}.',
   'notifications.kindCommissionConfirmedBody':
     'Commission of {amount} was credited to your wallet from {count} {count:trade|trades}.',
   'notifications.kindPartnerApprovedTitle': 'Partner application approved',
