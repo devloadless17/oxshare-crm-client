@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient } from '@tanstack/react-query';
 import { renderWithProviders } from '@/test/render';
 import { NotificationsSheet } from './notifications-sheet';
 
@@ -110,5 +111,24 @@ describe('an arrival', () => {
 
     await waitFor(() => expect(chime).toHaveBeenCalledTimes(1));
     expect(toast).not.toHaveBeenCalled();
+  });
+});
+
+describe('a balance change (backend 0204, 7 Oct 2026)', () => {
+  it('refreshes the trading accounts and the dashboard, and announces nothing', async () => {
+    const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries');
+    renderWithProviders(<NotificationsSheet />);
+    await waitFor(() => expect(realtime.handlers['account.balance']).toBeDefined());
+    invalidate.mockClear();
+
+    realtime.handlers['account.balance']?.({ accountId: 'acc-1' });
+
+    const refreshed = invalidate.mock.calls.map(([filters]) => JSON.stringify(filters?.queryKey));
+    expect(refreshed).toContain(JSON.stringify(['trading-accounts']));
+    expect(refreshed).toContain(JSON.stringify(['dashboard']));
+    // A balance moving is not a notification: no toast, no chime.
+    expect(toast).not.toHaveBeenCalled();
+    expect(chime).not.toHaveBeenCalled();
+    invalidate.mockRestore();
   });
 });

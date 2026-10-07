@@ -93,7 +93,14 @@ export function MethodCell({
   if (tx.methodName) return <span>{localized(tx.methodName, tx.methodNameAr)}</span>;
 
   if (tx.provider === MANUAL_ADMIN_PROVIDER) {
-    return <span className="text-muted-foreground italic">{t('transactions.manualCredit')}</span>;
+    // Both ways since 7 Oct 2026: the team can take money out by hand, too.
+    return (
+      <span className="text-muted-foreground italic">
+        {tx.direction === 'withdrawal'
+          ? t('transactions.manualDebit')
+          : t('transactions.manualCredit')}
+      </span>
+    );
   }
 
   return (

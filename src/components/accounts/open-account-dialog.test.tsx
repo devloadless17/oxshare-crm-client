@@ -46,7 +46,6 @@ const OPTIONS: SelfServiceAvailability = {
   ],
   demoTypes: [],
   leverages: [100],
-  maxDemoDeposit: '10000',
 };
 
 function renderDialog() {

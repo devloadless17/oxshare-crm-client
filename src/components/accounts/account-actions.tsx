@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftRight, KeyRound, MailCheck, MoreHorizontal, Pencil, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -122,23 +122,6 @@ export function AccountActions({ account }: { account: TradingAccount }) {
   const [topUpAmount, setTopUpAmount] = React.useState('');
   const [topUpError, setTopUpError] = React.useState<string | null>(null);
   const [toppedUp, setToppedUp] = React.useState<string | null>(null);
-
-  /*
-   * The ceiling, fetched only once the dialog is OPEN.
-   *
-   * It is the operator's setting, so hardcoding it in the portal would let the
-   * number a client is told and the number enforced differ by a deploy — the
-   * mistake `maxDemoDeposit` was added to the self-service payload to end.
-   *
-   * `enabled` keeps it off the page's critical path: an account nobody is
-   * topping up should not pay for this request.
-   */
-  const availability = useQuery({
-    queryKey: keys.tradingAccounts.selfService(),
-    queryFn: ({ signal }) => tradingApi.getSelfServiceAvailability(signal),
-    enabled: toppingUp,
-    staleTime: 5 * 60_000,
-  });
 
   const openTopUp = () => {
     setTopUpAmount('');
@@ -302,19 +285,6 @@ export function AccountActions({ account }: { account: TradingAccount }) {
                 setTopUpError(null);
               }}
             />
-            {/*
-              The ceiling, once it has loaded. Absent rather than guessed while
-              the request is in flight: a placeholder figure that later changes
-              is worse than no figure, because the client reads the first one.
-            */}
-            {availability.data && (
-              <p className="text-[11px] text-muted-foreground">
-                {t('accounts.topUpCeilingHint', {
-                  max: formatCeiling(availability.data.maxDemoDeposit),
-                  currency: account.currency,
-                })}
-              </p>
-            )}
             {topUpError && (
               <p role="alert" className="text-xs text-destructive">
                 {topUpError}
@@ -417,18 +387,4 @@ export function AccountActions({ account }: { account: TradingAccount }) {
       )}
     </>
   );
-}
-
-/**
- * Thousands separators on the ceiling, whole units only.
- *
- * The same helper `open-account-dialog` uses on the same number, deliberately
- * duplicated rather than shared: it is two lines of presentation, and a
- * `lib/money` export for it would invite use on figures that are actually
- * money, where §6.1 says a decimal string must not be reformatted for display
- * without going through the real formatter.
- */
-function formatCeiling(amount: string): string {
-  const whole = amount.split('.')[0] ?? amount;
-  return whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }

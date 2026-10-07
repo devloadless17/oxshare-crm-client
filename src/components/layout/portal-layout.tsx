@@ -36,6 +36,8 @@ import { NotificationsSheet } from './notifications-sheet';
 import { ExternalLinksSection } from './external-links-section';
 import { KycAlert } from './kyc-alert';
 import { t } from '@/lib/i18n';
+import { usePrefetchRoutes } from '@/lib/use-prefetch-routes';
+import { NavigationProgress } from './navigation-progress';
 import { keys } from '@/lib/query-keys';
 import { kycStatusQuery } from '@/lib/api/kyc';
 
@@ -137,6 +139,14 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
 
   const navItems = visibleNavItems(kycStatus, user?.verificationLevel, partnerHidden);
   const selection = useNavSelection(navItems, pathname, rail);
+  // Every page the menu offers, prefetched in full (see the hook). A group's own
+  // `href` is only its identity, never a page, so only its children count.
+  const menuHrefs = React.useMemo(
+    () =>
+      navItems.flatMap((item) => (item.children ? item.children.map((c) => c.href) : [item.href])),
+    [navItems],
+  );
+  usePrefetchRoutes(menuHrefs);
   // A click on any page in the menu — even the one on screen — selects that page.
   const go = (href: string) => {
     selection.navigate(href);
@@ -169,6 +179,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background text-foreground">
+      <NavigationProgress label={t('common.loading')} />
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs lg:hidden"

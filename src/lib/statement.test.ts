@@ -74,6 +74,14 @@ describe('describeLine', () => {
     expect(describeLine(line({ provider: 'manual_admin' }))).toBe('Added by our team');
   });
 
+  it('says who took a manual withdrawal out', () => {
+    expect(
+      describeLine(
+        line({ entryType: 'withdrawal', provider: 'manual_admin', amount: '-40.00000000' }),
+      ),
+    ).toBe('Withdrawn by our team');
+  });
+
   it('names both ends of a transfer — this wallet and the exact account', () => {
     expect(
       describeLine(

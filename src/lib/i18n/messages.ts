@@ -965,7 +965,7 @@ export const messages = {
   'accounts.nameTaken': 'You already have an account with this name.',
   'accounts.fieldStartingBalance': 'Starting balance',
   'accounts.startingBalanceHint':
-    'Practice money, up to {max}. Choose an amount close to what you would really trade — the practice is only useful if the position sizes are.',
+    'Practice money. Choose an amount close to what you would really trade — the practice is only useful if the position sizes are.',
   'accounts.colBalance': 'Balance',
 
   // Per-tab, so each says what is missing rather than "no accounts" twice.
@@ -2052,6 +2052,7 @@ export const messages = {
   // raw `manual_admin` provider string — that is an internal identifier and has
   // no business on somebody's statement.
   'transactions.manualCredit': 'Added by our team',
+  'transactions.manualDebit': 'Withdrawn by our team',
 
   // The sort SELECT is gone (`sortNewest`, `sortOldest`, `sortAmountDesc`,
   // `sortAmountAsc`, `sortLabel`). Ordering is a table-header click now, so the
@@ -2137,7 +2138,6 @@ export const messages = {
     'This tops up your demo balance so you can keep practising. It is not real money and cannot ' +
     'be withdrawn.',
   'accounts.topUpAmountLabel': 'Amount',
-  'accounts.topUpCeilingHint': 'Up to {max} {currency} at a time.',
   'accounts.topUpSubmit': 'Add to balance',
   'accounts.topUpSubmitting': 'Adding…',
   'accounts.topUpDoneTitle': 'Practice money added',
@@ -2386,6 +2386,7 @@ export const messages = {
   'statement.lineDeposit': 'Deposit',
   'statement.lineDepositReversed': 'Deposit reversed',
   'statement.lineManualCredit': 'Added by our team',
+  'statement.lineManualDebit': 'Withdrawn by our team',
   'statement.lineWithdrawal': 'Withdrawal',
   'statement.lineWithdrawalRefund': 'Withdrawal refunded',
   'statement.lineToAccount': 'Transfer to trading account{login}',

@@ -363,7 +363,7 @@ export function OpenAccountDialog({
                 }}
               />
               <p className="text-[11px] text-muted-foreground">
-                {t('accounts.startingBalanceHint', { max: formatCeiling(options.maxDemoDeposit) })}
+                {t('accounts.startingBalanceHint')}
               </p>
             </div>
           )}
@@ -428,19 +428,6 @@ export function OpenAccountDialog({
  * answer: `test\API\0-cl` reduced to `0-cl`, which tells a client nothing. The
  * form asks for the currency and product the group stood in for, and derives it.
  */
-
-/**
- * `'1000000.00000000'` → `'1,000,000'`, for the hint text.
- *
- * `Intl.NumberFormat` is out on money paths because it takes a number. This
- * groups the integer part with string surgery and drops the fractional part
- * entirely — a ceiling stated to eight decimal places is noise, and this value
- * is never arithmetic, only prose.
- */
-function formatCeiling(amount: string): string {
-  const whole = amount.split('.')[0] ?? amount;
-  return whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
 
 function Fact({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (

@@ -62,13 +62,14 @@ export default function AccountsPage() {
    * on. Without a poll the list showed whatever it fetched on mount until the
    * client navigated away and back.
    *
-   * Thirty seconds, and it is CHEAP: `GET /trading/accounts` is one indexed
-   * read of `trading_accounts` in our own database. It does NOT cross to MT5 —
-   * the live figures are the account detail page, on demand, behind a throttle.
-   * So this tracks the mirror closely without adding a single call to the
-   * bridge's serialised MT5 session.
+   * Thirty seconds, and it is cheap: `GET /trading/accounts` reads our own
+   * mirror, crossing to MT5 only for an account whose mirror is over 20s old
+   * (at most five, inside a 2.5s budget).
    *
-   * The remaining delay is the mirror's own, not this screen's.
+   * Since 7 Oct 2026 this poll is the FALLBACK. A balance change arrives as an
+   * `account.balance` socket event (backend 0204) the moment the mirror moves —
+   * and the bridge's change feed moves it within seconds of a closed trade —
+   * which refreshes this list at once. The poll covers a socket that is down.
    */
   const accounts = useResource(
     keys.tradingAccounts.all(),

@@ -205,6 +205,19 @@ export function NotificationsSheet() {
       'notification.changed': () => {
         void queryClient.invalidateQueries({ queryKey: LIST_KEY });
       },
+      /*
+       * A balance moved on one of this client's trading accounts (backend
+       * 0204, 7 Oct 2026) — a trade closed, a transfer settled. The bridge
+       * finds a closed trade within seconds now, and this is what puts it on
+       * the screen they are looking at: the accounts list, the transfer form
+       * that offers the amount, the dashboard. The payload names only the
+       * account; the figures are re-read through the authenticated endpoint,
+       * which by now already holds the fresh one.
+       */
+      'account.balance': () => {
+        void queryClient.invalidateQueries({ queryKey: keys.tradingAccounts.all() });
+        void queryClient.invalidateQueries({ queryKey: keys.dashboard.all() });
+      },
     },
     verified,
   );
