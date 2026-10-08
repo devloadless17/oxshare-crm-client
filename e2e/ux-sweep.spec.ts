@@ -314,12 +314,13 @@ test.describe('Arabic reads right-to-left, and still fits', () => {
   const RTL_PAGES = ['/dashboard', '/wallet', '/profile', '/auth/login'];
 
   for (const path of RTL_PAGES) {
-    test(`${path} in Arabic`, async ({ page }) => {
-      // Set before the app boots, so the first paint is already RTL rather than
-      // flipping after hydration.
-      await page.addInitScript(() => {
-        window.localStorage.setItem('oxshare-portal-locale', 'ar');
-      });
+    test(`${path} in Arabic`, async ({ page, baseURL }) => {
+      // The language is a COOKIE the server renders from (lib/i18n/locale-storage.ts),
+      // so the first paint is already RTL. Seeding localStorage, as this once did,
+      // no longer flips anything.
+      await page
+        .context()
+        .addCookies([{ name: 'oxshare-portal-locale', value: 'ar', url: baseURL! }]);
       await page.goto(path);
       await page.waitForLoadState('networkidle');
 

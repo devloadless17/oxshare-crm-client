@@ -12,6 +12,7 @@ import {
   type Response,
   type Route,
 } from '@playwright/test';
+import { completeAuthenticatorApi, hasSavedKey, resetAuthenticator } from './authenticator';
 
 /**
  * ── Where things are ────────────────────────────────────────────────────────
@@ -186,7 +187,7 @@ export async function adminApiSession(
   dispose: () => Promise<void>;
 }> {
   const request = await apiRequest.newContext();
-  for (;;) {
+  for (let enrolled = false; ;) {
     const login = await request.post(`${API_NODE_BASE}/admin/auth/login`, {
       headers: { Origin: ADMIN_ORIGIN },
       data: credentials,
@@ -200,6 +201,27 @@ export async function adminApiSession(
     if (!login.ok()) {
       throw new Error(`admin API sign-in as ${credentials.email} answered ${login.status()}`);
     }
+    /*
+     * Every administrator signs in with an authenticator code since backend 0191,
+     * and so does this suite (e2e/authenticator.ts). Enrolled by the admin suite,
+     * with no key here: clear the TEST account's authenticator and enrol afresh.
+     */
+    const challenge = (await login.json()) as {
+      step?: 'totp' | 'totp_setup';
+      challengeToken?: string;
+    };
+    if (challenge.step === 'totp' && !hasSavedKey(credentials.email) && !enrolled) {
+      resetAuthenticator(credentials.email);
+      enrolled = true;
+      continue;
+    }
+    await completeAuthenticatorApi(
+      request,
+      API_NODE_BASE,
+      ADMIN_ORIGIN,
+      credentials.email,
+      challenge,
+    );
     break;
   }
   const csrf =
@@ -681,7 +703,8 @@ export async function answerBrokersQuestions(page: Page): Promise<void> {
       // Answered only TICKED — "true", or one of its choices.
       else if (field.type === 'checkbox') answers[field.name] = field.options?.[0] ?? 'true';
       else if (field.type === 'date') answers[field.name] = '1990-01-01';
-      else if (field.type === 'phone') answers[field.name] = '+96170000011';
+      // One client per phone since backend 0194: a fixed number is taken from the second run on.
+      else if (field.type === 'phone') answers[field.name] = freshPhone().e164;
       else answers[field.name] = 'Endtoend answer';
     }
     if (Object.keys(answers).length === 0) continue;

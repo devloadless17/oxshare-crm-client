@@ -6,6 +6,7 @@ import {
   apiFromPage,
   APP_ORIGIN,
   csrfOf,
+  freshPhone,
   kycStepPath,
   linkIn,
   newClient,
@@ -146,7 +147,8 @@ test('a returned passport must be replaced, and the wizard resumes where the cli
       page.getByText(/phone number is incomplete\. enter the full number/i).first(),
     ).toBeVisible();
 
-    await phone.fill('70 123 456');
+    // One client per phone (backend 0194): a fixed number is taken by the last run.
+    await phone.fill(freshPhone().national);
     await next.click();
     await expect(page).toHaveURL(/\/kyc\/step\/2$/, { timeout: 20_000 });
   });
@@ -298,7 +300,7 @@ test('choosing another document answers a returned page, on both document steps'
         country: 'Lebanon',
         address: '12 Hamra Street',
         city: 'Beirut',
-        phone: '+961 70 123 456',
+        phone: freshPhone().e164,
       },
     });
     expect(saved.status, JSON.stringify(saved.body)).toBeLessThan(300);
