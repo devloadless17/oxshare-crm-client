@@ -97,7 +97,14 @@ export default async function RootLayout({
   const locale = await serverLocale();
 
   return (
-    <html lang={locale} dir={direction(locale)} suppressHydrationWarning>
+    <html
+      lang={locale}
+      dir={direction(locale)}
+      // globals.css scrolls the page smoothly; Next 16 keeps a page change instant
+      // only when asked to (docs: upgrading to 16, "Scroll Behavior Override").
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       {/*
         THE ONE SCROLL CAP.
 

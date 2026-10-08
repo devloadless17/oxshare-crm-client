@@ -15,6 +15,12 @@ import { PageLoader } from '@/components/ui/loader';
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
+  /*
+   * A client STAFF created arrives here from their welcome email (backend 0211):
+   * the same reset, greeting them as new rather than speaking of a reset they
+   * never asked for.
+   */
+  const welcome = searchParams.get('welcome') === '1';
 
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
@@ -50,7 +56,10 @@ function ResetPasswordForm() {
   };
 
   return (
-    <AuthShell heading={t('auth.reset.heading')} subheading={t('auth.reset.tagline')}>
+    <AuthShell
+      heading={welcome ? t('auth.welcome.heading') : t('auth.reset.heading')}
+      subheading={welcome ? t('auth.welcome.tagline') : t('auth.reset.tagline')}
+    >
       <div className="space-y-6">
         <div className="space-y-5">
           {error && (
@@ -79,8 +88,12 @@ function ResetPasswordForm() {
           ) : success ? (
             <div className="py-4 text-center space-y-4">
               <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
-              <h2 className="text-base font-bold text-success">{t('auth.reset.successTitle')}</h2>
-              <p className="text-xs text-muted-foreground">{t('auth.reset.successBody')}</p>
+              <h2 className="text-base font-bold text-success">
+                {welcome ? t('auth.welcome.successTitle') : t('auth.reset.successTitle')}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {welcome ? t('auth.welcome.successBody') : t('auth.reset.successBody')}
+              </p>
               <Button asChild size="lg" className="w-full">
                 <Link href="/auth/login">{t('auth.reset.signInCta')}</Link>
               </Button>
@@ -140,7 +153,11 @@ function ResetPasswordForm() {
               </div>
 
               <Button type="submit" loading={isLoading} size="lg" className="w-full">
-                {isLoading ? t('auth.reset.submitting') : t('auth.reset.submitCta')}
+                {isLoading
+                  ? t('auth.reset.submitting')
+                  : welcome
+                    ? t('auth.welcome.submitCta')
+                    : t('auth.reset.submitCta')}
               </Button>
             </form>
           )}

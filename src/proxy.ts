@@ -6,6 +6,8 @@ import { DEFAULT_SIGNED_IN_PATH, LOGIN_PATH, RETURN_TO_PARAM, safeReturnTo } fro
 // shared with lib/api/client.ts. Never a `/auth` prefix — see the file.
 import { AUTH_ONLY_PATHS, matches } from '@/lib/public-paths';
 import { SESSION_HINT_COOKIE } from '@/lib/session-hint';
+import { languageFromLink } from '@/lib/i18n/link-locale';
+import { LOCALE_COOKIE, LOCALE_MAX_AGE_SECONDS } from '@/lib/i18n/locale-storage';
 
 /**
  * Route handling for the whole portal, in one file.
@@ -136,6 +138,9 @@ export function decideRoute(pathname: string, hasSessionHint: boolean, search = 
 }
 
 export function proxy(request: NextRequest) {
+  const fromLink = languageFromLink(request.nextUrl.pathname, request.nextUrl.search);
+  if (fromLink) return withCsp(request, rememberLanguage(request, fromLink));
+
   /*
    * NOT the session. A non-sensitive marker this app writes on its OWN host
    * whenever `/auth/me` says "signed in" — see lib/session-hint.ts, which
@@ -153,6 +158,35 @@ export function proxy(request: NextRequest) {
   return decision.allow
     ? withCsp(request)
     : withCsp(request, NextResponse.redirect(new URL(decision.redirectTo, request.url)));
+}
+
+/**
+ * An emailed link's language (`?lang=`, lib/i18n/link-locale.ts): remembered
+ * exactly as the language switch remembers it, then the same address without
+ * the parameter — so the page renders in that language from its first paint,
+ * and the address the client keeps is clean.
+ *
+ * Absolute here, unlike `app/join/[code]/route.ts`: Next turns a proxy redirect
+ * to the request's own host into a relative `Location` itself, and refuses a
+ * relative one (`server/web/adapter.js`).
+ */
+function rememberLanguage(
+  request: NextRequest,
+  link: NonNullable<ReturnType<typeof languageFromLink>>,
+): NextResponse {
+  const response = NextResponse.redirect(new URL(link.target, request.url), 307);
+  if (link.locale) {
+    response.cookies.set(LOCALE_COOKIE, link.locale, {
+      path: '/',
+      maxAge: LOCALE_MAX_AGE_SECONDS,
+      sameSite: 'lax',
+      // Behind the proxy the request reaches us as plain http; Caddy says how it arrived.
+      secure:
+        request.headers.get('x-forwarded-proto') === 'https' ||
+        request.nextUrl.protocol === 'https:',
+    });
+  }
+  return response;
 }
 
 /**

@@ -23,7 +23,7 @@ export const LOCALE_COOKIE = 'oxshare-portal-locale';
 const LEGACY_STORAGE_KEY = 'oxshare-portal-locale';
 
 /** One year: a display preference should outlive any session. */
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+export const LOCALE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 const SUPPORTED: readonly Locale[] = ['en', 'ar'];
 
@@ -68,7 +68,7 @@ export function storeLocale(locale: Locale): void {
   if (typeof window === 'undefined') return;
   try {
     const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = `${LOCALE_COOKIE}=${locale}; Path=/; Max-Age=${MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
+    document.cookie = `${LOCALE_COOKIE}=${locale}; Path=/; Max-Age=${LOCALE_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
   } catch {
     // A preference that cannot be saved is not worth breaking the page over.
   }
