@@ -413,6 +413,12 @@ export const messages = {
   'auth.forgot.submitCta': 'Send Password Reset Link',
   'auth.forgot.failed': 'Failed to request password reset.',
 
+  // A staff-created client's welcome link (backend 0211): the reset, greeting them as new.
+  'auth.welcome.heading': 'Welcome to OxShare',
+  'auth.welcome.tagline': 'Choose a password for your new account',
+  'auth.welcome.successTitle': 'Your password is set!',
+  'auth.welcome.successBody': 'Your account is ready. You can now sign in.',
+  'auth.welcome.submitCta': 'Set my password',
   'auth.reset.heading': 'Set New Password',
   'auth.reset.tagline': 'Enter a new secure password for your account',
   'auth.reset.successTitle': 'Password Reset Successful!',

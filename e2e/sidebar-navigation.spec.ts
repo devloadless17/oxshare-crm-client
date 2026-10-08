@@ -154,10 +154,12 @@ test.describe('the portal sidebar at a desk', () => {
     await expect(nav(page).locator('[aria-current="page"]')).toHaveText('Statement');
   });
 
-  test('mirrors the whole shell for Arabic', async ({ page }) => {
+  test('mirrors the whole shell for Arabic', async ({ page, baseURL }) => {
+    // The language is a cookie the server renders from (lib/i18n/locale-storage.ts).
+    const arabic = { name: 'oxshare-portal-locale', value: 'ar', url: baseURL! };
     await page.goto('/dashboard');
     try {
-      await page.evaluate(() => window.localStorage.setItem('oxshare-portal-locale', 'ar'));
+      await page.context().addCookies([arabic]);
       await page.reload();
       await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 
@@ -167,7 +169,7 @@ test.describe('the portal sidebar at a desk', () => {
       expect(Math.round((box?.x ?? 0) + (box?.width ?? 0))).toBe(width);
     } finally {
       // Never leave the shared session's browser speaking Arabic.
-      await page.evaluate(() => window.localStorage.removeItem('oxshare-portal-locale'));
+      await page.context().addCookies([{ ...arabic, value: 'en' }]);
     }
   });
 });

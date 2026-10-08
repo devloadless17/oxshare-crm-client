@@ -6,6 +6,7 @@ import {
   apiFromPage,
   APP_ORIGIN,
   csrfOf,
+  freshPhone,
   linkIn,
   newClient,
   register,
@@ -97,7 +98,8 @@ test('a client is verified end to end: submit → reject with reason → resubmi
         firstName: 'Kaya',
         lastName: 'Lifecycle',
         dateOfBirth: '1990-01-01',
-        phone: '+96170000009',
+        // One client per phone (backend 0194): a fixed number is taken by the last run.
+        phone: freshPhone().e164,
         nationality: 'Lebanese',
         country: 'Lebanon',
         // Required to verify since 26 Sep 2026 (the platform's identity core).
