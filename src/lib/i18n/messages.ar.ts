@@ -526,8 +526,6 @@ export const arMessages: Record<MessageKey, string> = {
   'transfer.submit': 'تحويل الأموال',
   'transfer.submitting': 'جارٍ التحويل…',
   'transfer.failed': 'تعذّر إتمام التحويل. يُرجى المحاولة مرة أخرى.',
-  'transfer.minimumInto': 'الحد الأدنى لكل تحويل إلى هذا الحساب: {amount}',
-  'transfer.belowMinimum': 'الحد الأدنى للتحويل إلى هذا الحساب هو {amount}.',
   'transfer.confirmTitle': 'تأكيد التحويل',
   'transfer.from': 'من',
   'transfer.to': 'إلى',
@@ -587,7 +585,7 @@ export const arMessages: Record<MessageKey, string> = {
     'لديك الحد الأقصى المسموح به من كل أنواع الحسابات المتاحة هنا. تواصل مع الدعم إذا احتجت إلى حساب آخر.',
   'accounts.productAtCap': '{product} — بلغت الحد الأقصى ({max})',
   'accounts.minDepositHint':
-    'الحد الأدنى للإيداع: {amount}. يجب ألا يقل أي تحويل إلى هذا الحساب عن هذا المبلغ.',
+    'الحد الأدنى للإيداع: {amount}. يجب أن يتوفر هذا المبلغ في محفظتك لفتح الحساب.',
   'accounts.fieldName': 'اسم الحساب',
   'accounts.namePlaceholder': 'تداول متأرجح',
   'accounts.nameTaken': 'لديك بالفعل حساب بهذا الاسم.',

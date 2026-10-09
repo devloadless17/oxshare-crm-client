@@ -18,7 +18,7 @@ import {
   SummaryRow,
 } from '@/components/money/money-shell';
 import { presetsWithin } from '@/components/money/amount-presets';
-import { belowMinimum, transferAmountHint } from '@/components/money/transfer-amount-hint';
+import { transferAmountHint } from '@/components/money/transfer-amount-hint';
 import {
   TransferDestinations,
   TransferSubmitted,
@@ -241,9 +241,6 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
       ? source.account.balance
       : undefined;
 
-  // The account's product minimum per transfer IN (backend 0201).
-  const minimum = toAccount ? (account?.minDeposit ?? null) : null;
-
   if (accounts.length === 0) {
     return <TransferUnavailable />;
   }
@@ -278,7 +275,7 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
     if (!account || !source) return;
     // Not a number at all is said under the field and never sent: the server's
     // validator would answer in its own words. Limits and decimals stay its call.
-    if (!isPositiveAmount(amount) || belowMinimum(amount, minimum)) return;
+    if (!isPositiveAmount(amount)) return;
 
     setBusy(true);
     setError(null);
@@ -401,7 +398,6 @@ function TransferFlow({ accounts, wallets }: { accounts: TradingAccount[]; walle
                       hint={transferAmountHint({
                         amount,
                         spendable,
-                        minimum,
                         currency: account.currency,
                       })}
                     />
