@@ -113,7 +113,7 @@ export function Pagination({
                   onValueChange={(val) => {
                     // Not money: a page size from this component's own fixed list.
                     // See the note in cursor-pagination.tsx.
-                     
+
                     const newSize = Number(val);
                     /*
                      * ONE call, and the RESET IS THE HANDLER'S JOB.
