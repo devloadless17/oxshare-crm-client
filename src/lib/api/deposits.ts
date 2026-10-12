@@ -169,7 +169,8 @@ export const depositsApi = {
   /**
    * READ-ONLY: what this deposit is now, from our own records. The waiting card
    * polls this — never `settle`, which asks the provider on every call and
-   * would spend its request budget (3pay: 60 a minute, for everybody).
+   * would spend its request budget (3pay: a hundred reads in fifteen minutes,
+   * for everybody).
    */
   async status(reference: string, signal?: AbortSignal): Promise<DepositState> {
     const { data } = await apiClient.get<DepositState>(
