@@ -80,7 +80,9 @@ export function KycStepForm() {
   const [seeded, setSeeded] = useState(false);
 
   // What the client types is remembered until the server holds it (`kyc-draft.ts`).
-  const set = (k: string, v: string) => {
+  // Stable across renders, so the memoised fields (`StepField`) other than the
+  // one being typed in do not re-render on every keystroke.
+  const set = useCallback((k: string, v: string) => {
     setFormData((p) => ({ ...p, [k]: v }));
     rememberEdit(k, v);
     // An edit answers the server's sentence about that field.
@@ -89,7 +91,7 @@ export function KycStepForm() {
       const { [k]: _answered, ...rest } = p;
       return rest;
     });
-  };
+  }, []);
 
   /*
    * Two queries, then one effect that syncs their result into form state.

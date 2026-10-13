@@ -82,8 +82,8 @@ describe('which buttons each device is offered', () => {
       <DepositProofField file={null} onChange={() => {}} maxBytes={10 * 1024 * 1024} />,
     );
 
-    expect(screen.queryByRole('button', { name: /take photo/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /choose file/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/take photo/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/choose file/i)).toBeInTheDocument();
   });
 
   it('offers the camera on a touch device, beside the gallery', () => {
@@ -92,9 +92,9 @@ describe('which buttons each device is offered', () => {
       <DepositProofField file={null} onChange={() => {}} maxBytes={10 * 1024 * 1024} />,
     );
 
-    expect(screen.getByRole('button', { name: /take photo/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/take photo/i)).toBeInTheDocument();
     // "Choose a photo" rather than "Choose file": beside a camera button it has
     // to say what it is NOT.
-    expect(screen.getByRole('button', { name: /choose a photo/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/choose a photo/i)).toBeInTheDocument();
   });
 });
