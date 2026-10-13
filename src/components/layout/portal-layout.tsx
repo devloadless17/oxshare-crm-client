@@ -21,7 +21,6 @@ import {
   X,
 } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
-import { usePartnerAccess } from '@/hooks/use-partner-access';
 import { useQuery } from '@tanstack/react-query';
 import { externalLinksApi } from '@/lib/api/external-links';
 import { RequireAuth } from '@/components/auth/require-auth';
@@ -67,19 +66,11 @@ export const NAV_ITEMS: NavItem[] = [
 export function visibleNavItems(
   kycStatus: string | undefined,
   verificationLevel: number | undefined,
-  /**
-   * From `usePartnerAccess().hidden` — true only for a client the ladder can
-   * never hold (`chain_full`, no account, no application). Their Partner entry
-   * is a door that cannot open, so it is REMOVED rather than badged: a visible
-   * item that always ends in "you cannot" is navigation to a refusal.
-   * `RequireAuth` bounces the typed URL for the same client, so hiding the
-   * link does not strand anyone somewhere they could otherwise go.
-   */
-  partnerHidden = false,
 ): NavItem[] {
   const kycDone = (verificationLevel ?? 0) >= 1 || kycStatus === 'approved';
-  const items = partnerHidden ? NAV_ITEMS.filter((item) => item.href !== '/partner') : NAV_ITEMS;
-  return kycDone ? items : [...items, { label: 'nav.kyc', href: '/kyc', icon: ShieldCheck }];
+  return kycDone
+    ? NAV_ITEMS
+    : [...NAV_ITEMS, { label: 'nav.kyc', href: '/kyc', icon: ShieldCheck }];
 }
 
 export function kycNavBadge(
@@ -126,18 +117,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
     retry: false,
   });
 
-  /*
-   * Whether the Partner entry is drawn at all — hidden for a client whose
-   * introducer is on the deepest enabled level (`chain_full`): the ladder has
-   * no rung for them, so the page is a door that can never open. Shares the
-   * partner page's own `/ib/status` query key, so this costs no extra request
-   * on the screen that needs the answer most — and while the answer is in
-   * flight the entry stays, because hiding on an unanswered question is the
-   * mistake `RequireAuth` documents twice.
-   */
-  const { hidden: partnerHidden } = usePartnerAccess();
-
-  const navItems = visibleNavItems(kycStatus, user?.verificationLevel, partnerHidden);
+  const navItems = visibleNavItems(kycStatus, user?.verificationLevel);
   const selection = useNavSelection(navItems, pathname, rail);
   // Every page the menu offers, prefetched in full (see the hook). A group's own
   // `href` is only its identity, never a page, so only its children count.

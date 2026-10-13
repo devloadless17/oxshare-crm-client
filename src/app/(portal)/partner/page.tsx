@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Network, ShieldCheck, Clock, XCircle } from 'lucide-react';
+import { ShieldCheck, Clock, XCircle } from 'lucide-react';
 import { AsyncBoundary } from '@/components/async-boundary';
 import { ApplyPanel } from '@/components/partner/apply-panel';
 import { ApprovedPanel } from '@/components/partner/partner-workspace';
@@ -60,35 +60,13 @@ function PartnerState({ status, onChanged }: { status: IbStatus; onChanged: () =
             : null
         }
         onReapply={onChanged}
-        inherited={status.inheritedAgency ?? null}
-        /*
-         * `chain_full` closes re-application permanently: the ladder has no
-         * rung beneath this client's introducer, and `POST /ib/apply` refuses
-         * them. The rejection stays readable — hiding a delivered decision
-         * reads as the product losing it, which is why `partnerPageHidden`
-         * keeps this page for anyone with an application — but the "apply
-         * again" invitation is replaced with the API's own sentence rather
-         * than leading to a form whose submission is already refused.
-         */
-        reapplyClosedReason={
-          status.ineligibleCode === 'chain_full' ? status.ineligibleReason : null
-        }
       />
     );
   }
 
-  if (!status.eligible)
-    return <IneligiblePanel reason={status.ineligibleReason} code={status.ineligibleCode} />;
+  if (!status.eligible) return <IneligiblePanel reason={status.ineligibleReason} />;
 
-  /*
-   * The inherited programme travels with the panel.
-   *
-   * A client introduced by an existing partner does not choose — they sell
-   * beneath their introducer and carry that introducer's programme. The API
-   * decides this (and ignores any agency such an applicant sends); the panel
-   * only needs to know whether to draw a picker or a statement.
-   */
-  return <ApplyPanel onApplied={onChanged} inherited={status.inheritedAgency ?? null} />;
+  return <ApplyPanel onApplied={onChanged} />;
 }
 
 function PendingPanel({
@@ -113,26 +91,10 @@ function PendingPanel({
   );
 }
 
-function RejectedPanel({
-  reason,
-  onReapply,
-  inherited,
-  reapplyClosedReason,
-}: {
-  reason: string | null;
-  onReapply: () => void;
-  /** Carried through to the form — a re-application inherits exactly as a first one does. */
-  inherited: IbStatus['inheritedAgency'];
-  /**
-   * The API's sentence when re-applying is permanently closed (`chain_full`),
-   * null when the door is open. It REPLACES the "you can apply again" body —
-   * both sentences beside each other is a screen contradicting itself.
-   */
-  reapplyClosedReason: string | null;
-}) {
+function RejectedPanel({ reason, onReapply }: { reason: string | null; onReapply: () => void }) {
   const [reapplying, setReapplying] = React.useState(false);
 
-  if (reapplying) return <ApplyPanel onApplied={onReapply} inherited={inherited} />;
+  if (reapplying) return <ApplyPanel onApplied={onReapply} />;
 
   return (
     <div className="space-y-4">
@@ -140,7 +102,7 @@ function RejectedPanel({
         icon={XCircle}
         tone="destructive"
         heading={t('partner.rejectedHeading')}
-        body={reapplyClosedReason ?? t('partner.rejectedReapply')}
+        body={t('partner.rejectedReapply')}
       >
         {reason && (
           <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-start">
@@ -152,44 +114,30 @@ function RejectedPanel({
         )}
       </StatusPanel>
 
-      {!reapplyClosedReason && (
-        <div className="flex justify-center">
-          <Button type="button" onClick={() => setReapplying(true)}>
-            {t('partner.reapply')}
-          </Button>
-        </div>
-      )}
+      <div className="flex justify-center">
+        <Button type="button" onClick={() => setReapplying(true)}>
+          {t('partner.reapply')}
+        </Button>
+      </div>
     </div>
   );
 }
 
-function IneligiblePanel({
-  reason,
-  code,
-}: {
-  reason: string | null;
-  code: IbStatus['ineligibleCode'];
-}) {
-  // `chain_full` has nothing to verify and nowhere to be sent: the ladder has no
-  // rung left beneath the partner who introduced them. Offering "Verify now"
-  // there is an instruction the client cannot follow. The body stays the API's
-  // own sentence in both cases — a second copy here would drift from it.
-  const chainFull = code === 'chain_full';
-
+function IneligiblePanel({ reason }: { reason: string | null }) {
+  // The one gate is verification (13 Oct 2026), so the way forward is always
+  // the KYC wizard. The body stays the API's own sentence.
   return (
     <StatusPanel
-      icon={chainFull ? Network : ShieldCheck}
+      icon={ShieldCheck}
       tone="muted"
-      heading={chainFull ? t('partner.ineligibleChainFullHeading') : t('partner.ineligibleHeading')}
+      heading={t('partner.ineligibleHeading')}
       body={reason ?? ''}
     >
-      {!chainFull && (
-        <div className="mt-5 flex justify-center">
-          <Button asChild>
-            <Link href="/kyc">{t('partner.verifyNow')}</Link>
-          </Button>
-        </div>
-      )}
+      <div className="mt-5 flex justify-center">
+        <Button asChild>
+          <Link href="/kyc">{t('partner.verifyNow')}</Link>
+        </Button>
+      </div>
     </StatusPanel>
   );
 }
