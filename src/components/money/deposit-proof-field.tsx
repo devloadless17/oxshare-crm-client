@@ -27,6 +27,13 @@ import { Button } from '@/components/ui/button';
  * otherwise carries the client's coordinates into the admin console, and a
  * sideways receipt is a rejected deposit.
  */
+/** A file-picker label styled as a button; a label cannot be disabled, so it is greyed out. */
+function pickerClass(locked: boolean): string {
+  return `h-10 flex-1 cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--ring)] ${
+    locked ? 'pointer-events-none opacity-50' : ''
+  }`;
+}
+
 export function DepositProofField({
   file,
   onChange,
@@ -39,8 +46,6 @@ export function DepositProofField({
   /** Mirrors the server's own ceiling, so the refusal arrives before the upload. */
   maxBytes: number;
 }) {
-  const pick = React.useRef<HTMLInputElement>(null);
-  const capture = React.useRef<HTMLInputElement>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
   const [problem, setProblem] = React.useState<string | null>(null);
   const [preparing, setPreparing] = React.useState(false);
@@ -92,6 +97,13 @@ export function DepositProofField({
     [preview],
   );
 
+  const locked = Boolean(disabled || preparing);
+  // Reset, so picking the SAME file again still fires a change event.
+  const onPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    void choose(e.target.files?.[0]);
+    e.target.value = '';
+  };
+
   const clear = () => {
     onChange(null);
     setPreview(null);
@@ -102,30 +114,6 @@ export function DepositProofField({
     <div className="space-y-2">
       <p className="text-sm font-medium text-foreground">{t('deposit.proofTitle')}</p>
       <p className="text-xs text-muted-foreground">{t('deposit.proofBody')}</p>
-
-      <input
-        ref={pick}
-        type="file"
-        accept="image/*,.pdf"
-        data-testid="deposit-proof-input"
-        className="hidden"
-        // Reset, so picking the SAME file again still fires a change event.
-        onChange={(e) => {
-          void choose(e.target.files?.[0]);
-          e.target.value = '';
-        }}
-      />
-      <input
-        ref={capture}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={(e) => {
-          void choose(e.target.files?.[0]);
-          e.target.value = '';
-        }}
-      />
 
       {file ? (
         <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
@@ -146,30 +134,44 @@ export function DepositProofField({
         </div>
       ) : (
         <div className="flex gap-2">
+          {/*
+            Labels wrapping their own visually-hidden inputs, so the tap opens
+            the picker natively. A button calling `.click()` on a hidden input
+            does nothing in some phone browsers (in-app browsers, some
+            WebViews) — the KYC upload tile had the same fault.
+          */}
           {canCapture && (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 flex-1"
-              disabled={disabled || preparing}
-              onClick={() => capture.current?.click()}
-            >
-              <Camera className="me-2 h-4 w-4" aria-hidden />
-              {t('deposit.proofTakePhoto')}
+            <Button asChild variant="outline" className={pickerClass(locked)}>
+              <label aria-disabled={locked || undefined}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="sr-only"
+                  disabled={locked}
+                  onChange={onPicked}
+                />
+                <Camera className="me-2 h-4 w-4" aria-hidden />
+                {t('deposit.proofTakePhoto')}
+              </label>
             </Button>
           )}
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10 flex-1"
-            disabled={disabled || preparing}
-            onClick={() => pick.current?.click()}
-          >
-            <Upload className="me-2 h-4 w-4" aria-hidden />
-            {/* On a phone the two sit side by side, so this one has to say what
-                it is NOT — the gallery, rather than the camera. On a desktop it
-                stands alone and says the plain thing. */}
-            {canCapture ? t('deposit.proofChooseExisting') : t('deposit.proofChooseFile')}
+          <Button asChild variant="outline" className={pickerClass(locked)}>
+            <label aria-disabled={locked || undefined}>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                data-testid="deposit-proof-input"
+                className="sr-only"
+                disabled={locked}
+                onChange={onPicked}
+              />
+              <Upload className="me-2 h-4 w-4" aria-hidden />
+              {/* On a phone the two sit side by side, so this one has to say what
+                  it is NOT — the gallery, rather than the camera. On a desktop it
+                  stands alone and says the plain thing. */}
+              {canCapture ? t('deposit.proofChooseExisting') : t('deposit.proofChooseFile')}
+            </label>
           </Button>
         </div>
       )}

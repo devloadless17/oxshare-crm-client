@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -52,7 +53,39 @@ function assertExhaustive(_type: 'text' | `doc:${string}`): void {
   // Intentionally empty: the guarantee is in the signature, not the body.
 }
 
-export function StepField({
+/*
+ * MEMOISED: typing in one field re-renders that field only.
+ *
+ * Every keystroke updates the step's form state, and every field used to
+ * re-render with it. Personal details carries three country lists (nationality,
+ * residence, the phone's dial code) of ~250 options each, and Radix renders a
+ * closed Select's options too, so a keystroke in "Address" re-rendered ~750
+ * options: about 0.4 s per key on a mid-range phone, and 25 characters took
+ * 9 s to type (measured on the production build, 13 Oct 2026).
+ *
+ * `uploadsState` is rebuilt on every render of the form, so it is compared by
+ * its entries; everything else by identity. The language cannot change without
+ * a reload, so `t()` reading a global is safe behind a memo.
+ */
+export const StepField = React.memo(StepFieldView, (before, after) => {
+  for (const key of Object.keys({ ...before, ...after }) as (keyof StepFieldProps)[]) {
+    if (key === 'uploadsState') {
+      if (!sameFlags(before.uploadsState, after.uploadsState)) return false;
+    } else if (before[key] !== after[key]) {
+      return false;
+    }
+  }
+  return true;
+});
+
+function sameFlags(a: Record<string, boolean>, b: Record<string, boolean>): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((k) => a[k] === b[k]);
+}
+
+type StepFieldProps = React.ComponentProps<typeof StepFieldView>;
+
+function StepFieldView({
   field,
   slug,
   val,

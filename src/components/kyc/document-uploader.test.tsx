@@ -30,14 +30,14 @@ describe('DocumentUploader — replacing an uploaded document', () => {
     renderWithProviders(<DocumentUploader {...props} />);
 
     // Before the click there is no way to choose a file — that was the bug.
-    expect(screen.queryByRole('button', { name: /choose file/i })).toBeNull();
+    expect(screen.queryByLabelText(/choose file/i)).toBeNull();
 
     await user.click(screen.getByRole('button', { name: /replace/i }));
 
     // The drop zone is back and a new file can be chosen. Asserted on "Choose
     // file", which is present on every device — the camera button belongs to
     // touch devices only and has its own tests below.
-    expect(screen.getByRole('button', { name: /choose file/i })).toBeTruthy();
+    expect(screen.getByLabelText(/choose file/i)).toBeTruthy();
   });
 
   it('leaves the uploaded confirmation behind after Replace', async () => {
@@ -88,15 +88,26 @@ describe('DocumentUploader — the camera button follows the device', () => {
     pointerIs(true);
     renderWithProviders(<DocumentUploader {...props} />);
 
-    expect(screen.getByRole('button', { name: /take photo/i })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /choose file/i })).toBeTruthy();
+    expect(screen.getByLabelText(/take photo/i)).toBeTruthy();
+    expect(screen.getByLabelText(/choose file/i)).toBeTruthy();
+    // Native file inputs inside their labels, so a tap opens the picker without
+    // a scripted click (which some phone browsers ignore). Only the camera one
+    // carries `capture`.
+    const camera = screen.getByLabelText(/take photo/i);
+    const gallery = screen.getByLabelText(/choose file/i);
+    expect(camera).toHaveAttribute('type', 'file');
+    expect(camera).toHaveAttribute('capture');
+    expect(camera.closest('label')).not.toBeNull();
+    expect(gallery).toHaveAttribute('type', 'file');
+    expect(gallery).not.toHaveAttribute('capture');
+    expect(gallery.closest('label')).not.toBeNull();
   });
 
   it('offers ONE route on a desktop, because the second would do the same thing', () => {
     pointerIs(false);
     renderWithProviders(<DocumentUploader {...props} />);
 
-    expect(screen.queryByRole('button', { name: /take photo/i })).toBeNull();
-    expect(screen.getByRole('button', { name: /choose file/i })).toBeTruthy();
+    expect(screen.queryByLabelText(/take photo/i)).toBeNull();
+    expect(screen.getByLabelText(/choose file/i)).toBeTruthy();
   });
 });

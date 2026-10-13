@@ -59,6 +59,13 @@ export interface DocumentUploaderProps {
  */
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
+/**
+ * A file-picker label styled as a button. The input inside is visually hidden
+ * but focusable, so the focus ring follows it onto the label.
+ */
+const PICKER_LABEL =
+  'cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--ring)]';
+
 function tooLargeMessage(file: File): string {
   return t('kyc.uploadTooLarge', {
     size: (file.size / (1024 * 1024)).toFixed(1),
@@ -149,8 +156,6 @@ export function DocumentUploader({
   const [preparing, setPreparing] = React.useState(false);
   /** The normalised image is below the readable floor. A warning, not a block. */
   const [tooSmall, setTooSmall] = React.useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const canCapture = useCanCapture();
 
   React.useEffect(() => {
@@ -256,8 +261,24 @@ export function DocumentUploader({
     retake();
     setReplacing(true);
   }, [retake]);
-  const openFilePicker = () => fileInputRef.current?.click();
-  const openCamera = () => cameraInputRef.current?.click();
+  /*
+   * The picker opens NATIVELY: each button is a <label> wrapping its own
+   * visually-hidden file input, so the tap itself activates the input.
+   *
+   * It used to be a <button> calling `.click()` on a `display:none` input.
+   * Desktop and most phone browsers allow that, but some phone browsers do not
+   * — in-app browsers (a link opened inside WhatsApp, Instagram or Facebook)
+   * and some WebViews ignore a scripted click on a hidden file input, and
+   * employees on phones reported that "Take photo" and "Choose file" did
+   * nothing. The profile photo uploader has always used the label pattern.
+   */
+  const onPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) void choose(f);
+    // Reset, so choosing the SAME file twice still fires onChange —
+    // otherwise "retake, pick the same photo" silently does nothing.
+    e.target.value = '';
+  };
 
   return (
     <div
@@ -293,33 +314,6 @@ export function DocumentUploader({
               : 'border-border bg-card/40'
       } ${className || ''}`}
     >
-      {/* Two inputs, because `capture` makes an input camera-only. */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={accept}
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) void choose(f);
-          // Reset, so choosing the SAME file twice still fires onChange —
-          // otherwise "retake, pick the same photo" silently does nothing.
-          e.target.value = '';
-        }}
-      />
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture={capture}
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) void choose(f);
-          e.target.value = '';
-        }}
-      />
-
       {preparing ? (
         <div className="flex flex-col items-center gap-3 py-2">
           <Spinner size="lg" className="text-link" />
@@ -468,20 +462,28 @@ export function DocumentUploader({
               the second button would open the identical dialog — one button
               there, and it is the one that describes what actually happens. */}
           <div className="flex flex-wrap items-center justify-center gap-2">
+            {/* Two inputs, because `capture` makes an input camera-only. */}
             {canCapture && (
-              <Button type="button" size="sm" onClick={openCamera}>
-                <Camera className="h-4 w-4" />
-                {t('kyc.takePhoto')}
+              <Button asChild size="sm">
+                <label className={PICKER_LABEL}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture={capture}
+                    className="sr-only"
+                    onChange={onPicked}
+                  />
+                  <Camera className="h-4 w-4" aria-hidden="true" />
+                  {t('kyc.takePhoto')}
+                </label>
               </Button>
             )}
-            <Button
-              type="button"
-              variant={canCapture ? 'outline' : 'default'}
-              size="sm"
-              onClick={openFilePicker}
-            >
-              <FolderOpen className="h-4 w-4" />
-              {t('kyc.chooseFile')}
+            <Button asChild variant={canCapture ? 'outline' : 'default'} size="sm">
+              <label className={PICKER_LABEL}>
+                <input type="file" accept={accept} className="sr-only" onChange={onPicked} />
+                <FolderOpen className="h-4 w-4" aria-hidden="true" />
+                {t('kyc.chooseFile')}
+              </label>
             </Button>
           </div>
 
