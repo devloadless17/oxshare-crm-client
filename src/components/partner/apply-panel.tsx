@@ -37,35 +37,12 @@ import { keys } from '@/lib/query-keys';
  * field blank. The API refuses that now, so an empty list means there is
  * nothing to apply for and the panel says so.
  */
-export function ApplyPanel({
-  onApplied,
-  inherited,
-}: {
-  onApplied: () => void;
-  /**
-   * The programme this applicant INHERITS, when the choice is not theirs.
-   *
-   * A client introduced by an existing partner sells beneath that partner and
-   * carries their programme — see `inheritedAgencyIdFor` on the API. Null means
-   * they choose, which is any client not introduced by a partner.
-   */
-  inherited: { id: string; name: string; nameAr?: string | null } | null;
-}) {
+export function ApplyPanel({ onApplied }: { onApplied: () => void }) {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [agencyId, setAgencyId] = React.useState('');
 
-  /*
-   * Not fetched at all when the programme is inherited.
-   *
-   * The list exists to be CHOSEN FROM, and there is no choice here — asking for
-   * it would spend a request on options that must not be offered, and a
-   * deployment whose agencies are all closed would then show "nothing to apply
-   * for" to somebody whose introducer's programme is waiting for them.
-   */
-  const agencies = useResource(keys.partner.agencies(), (signal) => partnerApi.agencies(signal), {
-    enabled: inherited === null,
-  });
+  const agencies = useResource(keys.partner.agencies(), (signal) => partnerApi.agencies(signal));
 
   /*
    * A programme is now REQUIRED, not required-when-there-happens-to-be-one.
@@ -81,19 +58,14 @@ export function ApplyPanel({
    * operator's missing configuration, and naming it is more useful to the
    * client than a validation error about a field they were never shown.
    */
-  const options = inherited ? [] : (agencies.data ?? []);
+  const options = agencies.data ?? [];
   const selected = options.find((agency) => agency.id === agencyId);
-  /*
-   * Never "nothing to apply for" when a programme is inherited: the catalogue
-   * is not consulted in that case, so an empty list means it was never asked
-   * for rather than that nothing is open.
-   */
-  const noneOffered = !inherited && agencies.status === 'ready' && options.length === 0;
+  const noneOffered = agencies.status === 'ready' && options.length === 0;
   /*
    * The programmes could not be read. Without this the panel showed no options,
    * no "none offered" note and a disabled button — a dead end that said nothing.
    */
-  const agenciesFailed = !inherited && agencies.status !== 'ready' && agencies.status !== 'loading';
+  const agenciesFailed = agencies.status !== 'ready' && agencies.status !== 'loading';
 
   /*
    * ── The gate in front of the button ────────────────────────────────────────
@@ -130,17 +102,9 @@ export function ApplyPanel({
     setSubmitting(true);
     setError(null);
     try {
-      /*
-       * The inherited id is NOT sent, and that is deliberate rather than an
-       * omission: the API resolves it from the introducer and ignores whatever
-       * arrives in this field for such an applicant. Sending our copy would
-       * invite the two to disagree — a stale page proposing a programme the
-       * introducer has since moved off — and the API would silently win.
-       *
-       * When the choice IS the client's, the button cannot be reached without
-       * a selection, so this is never the empty shape.
-       */
-      await partnerApi.apply(inherited ? {} : { agencyId });
+      // Every applicant chooses (13 Oct 2026): the button cannot be reached
+      // without a selection, so this is never the empty shape.
+      await partnerApi.apply({ agencyId });
       /*
        * Refetch rather than assume the shape of success. The next render is
        * driven by what the server says — which is the difference between this
@@ -192,38 +156,6 @@ export function ApplyPanel({
             )}
           </ol>
 
-          {/*
-          INHERITED: a statement, not a control.
-
-          A client introduced by an existing partner sells beneath them and
-          carries their programme, so there is nothing to pick. Naming it is
-          the point — "a programme has been chosen for you" reads as an error
-          for something that is simply how a downline works, and a client who
-          is shown nothing at all is left wondering what they will be selling.
-        */}
-          {inherited && (
-            <div className="mt-8 space-y-3">
-              <h3 className="text-sm font-semibold">{t('partner.inheritedAgency')}</h3>
-              {/*
-              Drawn as an option ALREADY CHOSEN — the same look a picked radio
-              card gets below — rather than as a grey note. "Selected for you"
-              is the message, and the muted box read as something being wrong
-              or disabled next to a submit button.
-            */}
-              <div className="flex gap-3 rounded-xl border border-primary bg-primary/5 p-4">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold">
-                    {localized(inherited.name, inherited.nameAr)}
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {t('partner.inheritedAgencyHint')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {options.length > 0 && (
             <div className="mt-8 space-y-3">
               <h3 className="text-sm font-semibold">{t('partner.chooseAgency')}</h3>
@@ -237,8 +169,8 @@ export function ApplyPanel({
               products, which read well at three and buried the submit button at
               twenty; a plain select then failed at a hundred (see the picker).
               The details are still the basis for choosing, so they are not
-              dropped: the selected programme is drawn below the picker in the
-              same "chosen" card the inherited programme uses.
+              dropped: the selected programme is drawn below the picker as a
+              "chosen" card.
             */}
               <AgencyPicker
                 agencies={options}
@@ -339,7 +271,7 @@ export function ApplyPanel({
                * requested — so gating on either would leave the button dead for
                * exactly the applicants who have the least to do.
                */
-              disabled={!inherited && (agencies.status === 'loading' || !agencyId)}
+              disabled={agencies.status === 'loading' || !agencyId}
               onClick={() => void submit()}
             >
               {submitting ? t('partner.submitting') : t('partner.submit')}

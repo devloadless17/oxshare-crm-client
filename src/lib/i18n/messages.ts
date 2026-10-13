@@ -1712,16 +1712,6 @@ export const messages = {
   'partner.agencyLabel': 'Your agency',
   'partner.pendingSubmittedFor': 'Applied for {agency} on {date}',
   'partner.chooseAgency': 'Choose a programme',
-  /*
-   * Shown INSTEAD of the picker to an applicant introduced by an existing
-   * partner. It states the programme rather than asking, and says why: a client
-   * shown a fixed value with no explanation reads it as a control that is
-   * broken, and one shown nothing at all cannot tell what they will be selling.
-   */
-  'partner.inheritedAgency': 'Your programme',
-  'partner.inheritedAgencyHint':
-    'Selected for you automatically: you were introduced by a partner, so you join their ' +
-    'programme and sell the same products. Nothing to fill in here.',
   // Not a validation error: an operator has configured nothing to apply for,
   // and naming that is more useful than a message about an unshown field.
   'partner.noAgenciesOffered':
@@ -1809,10 +1799,6 @@ export const messages = {
   // Not eligible yet.
   'partner.ineligibleHeading': 'Verify your identity first',
   'partner.verifyNow': 'Verify my identity',
-  // The other ineligibility: the ladder has no rung left beneath the partner who
-  // introduced them. A heading only — the sentence under it is the API's, so
-  // there is no second copy of the explanation here to drift from it.
-  'partner.ineligibleChainFullHeading': 'The programme is full beneath your introducer',
 
   'partner.loadFailed': 'Could not load your partner status.',
   'partner.loading': 'Loading your partner status…',

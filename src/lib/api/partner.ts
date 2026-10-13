@@ -91,15 +91,9 @@ export interface TransferCommissionInput {
 
 export interface ApplyToPartnerInput {
   /**
-   * Which agency is being applied for.
-   *
-   * OMITTED when the applicant was introduced by an existing partner: they sell
-   * beneath that partner and inherit their programme, so the API resolves it
-   * from the introducer and ignores anything sent here. `IbStatus.inheritedAgency`
-   * is how the form knows which case it is in.
-   *
-   * Otherwise the form makes it a required choice — "which programme" is the
-   * question a direct applicant is best placed to answer and a reviewer is not.
+   * Which agency is being applied for. Every applicant chooses (13 Oct 2026):
+   * a new partner is a main partner, whoever introduced them, so there is no
+   * introducer's programme to inherit.
    */
   agencyId?: string;
   motivation?: string;

@@ -57,21 +57,21 @@ describe('ApplyPanel agency descriptions', () => {
     agencies.mockResolvedValue([
       agency({ nameAr: 'الوكالة الذهبية', description: null, descriptionAr: 'وصف الوكالة' }),
     ]);
-    renderWithProviders(<ApplyPanel onApplied={vi.fn()} inherited={null} />);
+    renderWithProviders(<ApplyPanel onApplied={vi.fn()} />);
     const card = await choose('الوكالة الذهبية');
     expect(card.getByText('وصف الوكالة')).toBeInTheDocument();
   });
 
   it('shows no empty description line in English when only the Arabic exists', async () => {
     agencies.mockResolvedValue([agency({ description: null, descriptionAr: 'وصف الوكالة' })]);
-    renderWithProviders(<ApplyPanel onApplied={vi.fn()} inherited={null} />);
+    renderWithProviders(<ApplyPanel onApplied={vi.fn()} />);
     await choose('Gold Agency');
     expect(screen.queryByText('وصف الوكالة')).not.toBeInTheDocument();
   });
 
   it('shows the English description in English', async () => {
     agencies.mockResolvedValue([agency({ description: 'Gold tier', descriptionAr: 'ذهبي' })]);
-    renderWithProviders(<ApplyPanel onApplied={vi.fn()} inherited={null} />);
+    renderWithProviders(<ApplyPanel onApplied={vi.fn()} />);
     const card = await choose('Gold Agency');
     expect(card.getByText('Gold tier')).toBeInTheDocument();
   });

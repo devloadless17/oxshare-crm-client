@@ -1,40 +1,24 @@
 import { expect, test, type Page } from '@playwright/test';
-import {
-  adminApiSession,
-  apiFromPage,
-  isApi,
-  requirePrecondition,
-  signIn,
-  waitForMail,
-  linkIn,
-  APP_ORIGIN,
-  VERIFICATION_SUBJECT,
-  fillRegisterForm,
-} from './helpers';
+import { adminApiSession, isApi, requirePrecondition, signIn } from './helpers';
 
 /**
- * The partner programme, end to end — the one journey the suite did not cover,
- * and the one where every defect this feature shipped lived in a seam:
+ * The partner programme, end to end — the journey where every defect this
+ * feature shipped lived in a seam:
  *
- *  - the two-level ceiling (`chain_full`) is explained by GET /ib/status,
- *    enforced by POST /ib/apply, hides the sidebar entry, and bounces the
- *    typed URL — four surfaces that must agree;
- *  - an INTRODUCED applicant does not choose a programme: the panel shows the
- *    inherited agency as already selected and submits NO agencyId (the DTO
- *    once refused that exact shape with "agencyId must be a UUID");
- *  - approval nests the new partner beneath their introducer (the console
- *    once rooted every partner at level 1 via a `?? null` in the controller).
+ *  - an applicant introduced by a partner CHOOSES their programme like anyone
+ *    else, because every new partner is a main partner (13 Oct 2026);
+ *  - approval with no parent named makes them a MAIN partner (level 1), never
+ *    a sub-partner of their introducer. Level 2 is an administrator's act.
  *
- * Fixtures are seeded (see seed.ts): a two-rung chain `e2e-partner-l1@` /
- * `e2e-partner-l2@`, an applicant the admin always REJECTS so the apply flow
- * repeats forever, and `e2e-partner-fresh@` — approved once to prove the
- * nesting live, asserted as standing state on every run after.
+ * Fixtures are seeded (see seed.ts): `e2e-partner-l1@` (the introducer), an
+ * applicant the admin always REJECTS so the apply flow repeats forever, and
+ * `e2e-partner-main@` — approved once to prove the outcome live, asserted as
+ * standing state on every run after.
  */
 
 const APPLICANT = { email: 'e2e-partner-applicant@oxshare.com', password: 'client123' };
-const FRESH = { email: 'e2e-partner-fresh@oxshare.com', password: 'client123' };
-const L1_EMAIL = 'e2e-partner-l1@oxshare.com';
-const DEEPEST_RUNG_CODE = 'E2EPARTL2';
+const MAIN = { email: 'e2e-partner-main@oxshare.com', password: 'client123' };
+const AGENCY = 'E2E Agency';
 
 // Every test here drives its own identity, never the shared cached session.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -88,8 +72,8 @@ async function rejectPendingApplication(
   }
 }
 
-/** Drive the apply panel: inherited card asserted, then submit. */
-async function applyThroughInheritedPanel(page: Page): Promise<void> {
+/** Drive the apply panel: choose the programme, then submit. */
+async function applyChoosingProgramme(page: Page): Promise<void> {
   /*
    * SETTLE FIRST. `/ib/status` decides which of five panels this screen is,
    * and clicking while that request is still in flight hits a button on a
@@ -107,131 +91,23 @@ async function applyThroughInheritedPanel(page: Page): Promise<void> {
   if (await reapply.isVisible().catch(() => false)) {
     await reapply.click();
   }
-  await expect(page.getByRole('button', { name: /request to become a partner/i })).toBeVisible({
-    timeout: 15_000,
-  });
+  const submit = page.getByRole('button', { name: /request to become a partner/i });
+  await expect(submit).toBeVisible({ timeout: 15_000 });
 
-  /*
-   * The inherited programme reads as CHOSEN — named, marked selected, with
-   * nothing to fill in — and no agency picker is offered: the choice is
-   * not theirs, and a picker that must be ignored is worse than none.
-   */
-  await expect(page.getByText('E2E Agency', { exact: true })).toBeVisible();
-  await expect(page.getByText(/selected for you automatically/i)).toBeVisible();
-  await expect(page.getByRole('combobox')).toHaveCount(0);
+  // Introduced or not, the applicant picks: nothing is chosen for them.
+  await expect(submit).toBeDisabled();
+  await page.getByRole('combobox').click();
+  await page.getByRole('option', { name: new RegExp(AGENCY) }).click();
 
   const [response] = await Promise.all([
     page.waitForResponse((res) => isApi(res, '/ib/apply', 'POST')),
-    page.getByRole('button', { name: /request to become a partner/i }).click(),
+    submit.click(),
   ]);
-  /*
-   * THE regression this journey exists to hold shut: an introduced applicant
-   * submits no agencyId (the API derives it from the introducer), and the
-   * request pipe once refused that shape with "agencyId must be a UUID"
-   * before the rule that welcomes them could run.
-   */
-  expect(response.status(), 'the inherited (empty) apply shape must be accepted').toBeLessThan(300);
+  expect(response.status(), `apply answered ${response.status()}`).toBeLessThan(300);
   await expect(page.getByText(/application is in review|we will email you/i).first()).toBeVisible();
 }
 
-test('a client under the deepest rung is locked out of the programme everywhere', async ({
-  page,
-}) => {
-  test.setTimeout(180_000);
-
-  /*
-   * A FRESH registration under the level-2 partner's code, exactly as a real
-   * introduction happens — the referral link. Unique per run, so re-runs
-   * never collide with an identity that exists.
-   */
-  const client = {
-    email: `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}@oxshare-e2e-partner.test`,
-    password: 'e2e-password-123',
-  };
-
-  await page.goto(`/auth/register?ref=${DEEPEST_RUNG_CODE}`);
-  // The form acknowledges the introduction before anything is typed.
-  await expect(page.getByText(DEEPEST_RUNG_CODE)).toBeVisible();
-  await fillRegisterForm(page, { ...client, firstName: 'Chain', lastName: 'Full' });
-  const [registered] = await Promise.all([
-    page.waitForResponse((res) => isApi(res, '/auth/register', 'POST')),
-    page.getByRole('button', { name: /complete registration|create account/i }).click(),
-  ]);
-  requirePrecondition(
-    registered.status() === 429,
-    'registration is rate limited (10/hour per IP) — not the thing under test',
-  );
-  expect(registered.ok(), `registration answered ${registered.status()}`).toBe(true);
-
-  // The address is proven the way a person proves it: through the mailbox.
-  const mail = await waitForMail(client.email, {
-    subject: VERIFICATION_SUBJECT,
-    timeoutMs: 20_000,
-  });
-
-  /*
-   * WAIT FOR THE VERIFICATION TO LAND, not just for the page to render.
-   *
-   * `/auth/verify-email` performs the POST in a `useEffect`, so `goto` resolves
-   * as soon as the document loads — BEFORE the request that actually verifies
-   * the address. Signing in immediately afterwards raced it, and login answered
-   * 403 EMAIL_NOT_VERIFIED, which is the API being exactly right: an unverified
-   * address may not hold a session.
-   *
-   * The failure therefore read as "login is broken for introduced clients" when
-   * nothing was broken at all, which is why the response is awaited and
-   * asserted here rather than left to surface three steps later as somebody
-   * else's status code. A verification that genuinely fails now says so, on the
-   * line that did it.
-   */
-  const verifying = page.waitForResponse((res) => isApi(res, '/auth/verify-email', 'POST'), {
-    timeout: 20_000,
-  });
-  await page.goto(linkIn(mail, APP_ORIGIN));
-  const verified = await verifying;
-  expect(
-    verified.ok(),
-    `verify-email answered ${verified.status()} — the address is not verified, so the ` +
-      'sign-in below would fail with 403 EMAIL_NOT_VERIFIED for a reason that is not login',
-  ).toBe(true);
-
-  /*
-   * SIGN IN, unconditionally. `POST /auth/register` sets no auth cookies —
-   * it creates the account and sends the verification mail, nothing more — so
-   * the browser is still anonymous here however the redirect looks. Probing
-   * `page.url()` after a goto was the wrong question: the URL reads
-   * /dashboard for the moment before the client-side guard bounces it, so the
-   * fallback never fired and every later call answered 401.
-   */
-  await signIn(page, client);
-
-  /*
-   * The EXPLANATION: chain_full, and chain_full FIRST — this client has not
-   * even started KYC, and "verify your identity" would send them through the
-   * whole wizard to reach a door that stays shut.
-   */
-  const status = await apiFromPage(page, 'GET', '/ib/status');
-  expect(status.status).toBe(200);
-  expect((status.body as { eligible: boolean }).eligible).toBe(false);
-  expect((status.body as { ineligibleCode: string }).ineligibleCode).toBe('chain_full');
-
-  // The sidebar does not offer the door…
-  await page.goto('/dashboard');
-  await expect(page.getByRole('link', { name: /partner programme/i })).toHaveCount(0);
-
-  // …the typed URL bounces…
-  await page.goto('/partner');
-  await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
-
-  // …and the API refuses regardless of what the browser shows.
-  const refused = await apiFromPage(page, 'POST', '/ib/apply', {});
-  expect(refused.status).toBe(400);
-  expect(String((refused.body as { message?: unknown })?.message)).toMatch(/deepest level/i);
-});
-
-test('an introduced applicant applies without choosing, and the panel says so', async ({
-  page,
-}) => {
+test('an introduced applicant chooses their programme and applies', async ({ page }) => {
   test.setTimeout(180_000);
 
   // Start clean: a crashed earlier run may have left an application pending.
@@ -241,7 +117,7 @@ test('an introduced applicant applies without choosing, and the panel says so', 
 
     await signIn(page, APPLICANT);
     await page.goto('/partner');
-    await applyThroughInheritedPanel(page);
+    await applyChoosingProgramme(page);
 
     // The reviewer turns it down — which is the CLEANUP, not the assertion:
     // rejected → "Apply again" is what makes this journey repeatable forever.
@@ -254,14 +130,15 @@ test('an introduced applicant applies without choosing, and the panel says so', 
   }
 });
 
-test('approval nests the recruited partner one rung beneath their introducer', async ({ page }) => {
+test('approval makes an introduced applicant a main partner, not their introducer’s sub-partner', async ({
+  page,
+}) => {
   test.setTimeout(180_000);
 
   const admin = await adminApiSession();
   try {
-    const freshId = await clientIdOf(admin, FRESH.email);
-    const l1Id = await clientIdOf(admin, L1_EMAIL);
-    requirePrecondition(!freshId || !l1Id, 'partner fixtures are not seeded — restart the API');
+    const mainId = await clientIdOf(admin, MAIN.email);
+    requirePrecondition(!mainId, 'partner fixtures are not seeded — restart the API');
 
     /*
      * "Is this client already a partner?" answered by CONTENT, not status.
@@ -270,7 +147,7 @@ test('approval nests the recruited partner one rung beneath their introducer', a
      * status ran the standing-outcome path against nothing and died on
      * `.json()` of an empty string.
      */
-    const detail = await admin.get(`/admin/ib/partners/${freshId}`);
+    const detail = await admin.get(`/admin/ib/partners/${mainId}`);
     const detailBody = (await detail.text()).trim();
     if (!detailBody) {
       /*
@@ -278,38 +155,33 @@ test('approval nests the recruited partner one rung beneath their introducer', a
        * is deliberately irreversible (there is no demote operation), so every
        * run after this one asserts the standing outcome below instead.
        */
-      await rejectPendingApplication(admin, FRESH.email);
-      await signIn(page, FRESH);
+      await rejectPendingApplication(admin, MAIN.email);
+      await signIn(page, MAIN);
       await page.goto('/partner');
-      await applyThroughInheritedPanel(page);
+      await applyChoosingProgramme(page);
 
-      const [submitted] = await pendingApplicationIds(admin, FRESH.email);
+      const [submitted] = await pendingApplicationIds(admin, MAIN.email);
       expect(submitted, 'the submitted application is not in the admin queue').toBeTruthy();
 
-      /*
-       * The reviewer sends NO body — no parent named, no agency named — which
-       * is exactly the console's ordinary approval, and exactly the shape
-       * that was once coalesced into "root them at level 1".
-       */
+      // The console's ordinary approval: no parent named.
       const approved = await admin.patch(`/admin/ib/applications/${submitted}/approve`, {});
       expect(approved.ok(), `approve answered ${approved.status()}`).toBe(true);
-      const account = (await approved.json()) as { level: number; parentIbUserId: string | null };
-      expect(account.level).toBe(2);
-      expect(account.parentIbUserId).toBe(l1Id);
+      const account = (await approved.json()) as { level: number; parentIbUserId: number | null };
+      expect(account.level).toBe(1);
+      expect(account.parentIbUserId).toBeNull();
 
       // The new partner's screen is the workspace now, referral code and all.
       await page.reload();
       await expect(page.getByText(/referral/i).first()).toBeVisible({ timeout: 15_000 });
     } else {
-      // The standing outcome, re-asserted on every later run: still level 2,
-      // still beneath the introducer — never re-rooted, never re-priced.
+      // The standing outcome, re-asserted on every later run.
       expect(detail.ok(), `partner detail answered ${detail.status()}`).toBe(true);
       const body = JSON.parse(detailBody) as {
         level: number;
         parent: { userId: number } | null;
       };
-      expect(body.level).toBe(2);
-      expect(body.parent?.userId).toBe(l1Id);
+      expect(body.level).toBe(1);
+      expect(body.parent).toBeNull();
     }
   } finally {
     await admin.dispose();

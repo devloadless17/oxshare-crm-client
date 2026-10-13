@@ -1048,9 +1048,6 @@ export const arMessages: Record<MessageKey, string> = {
   'partner.agencyLabel': 'وكالتك',
   'partner.pendingSubmittedFor': 'تم التقديم على {agency} بتاريخ {date}',
   'partner.chooseAgency': 'اختر برنامجاً',
-  'partner.inheritedAgency': 'برنامجك',
-  'partner.inheritedAgencyHint':
-    'تم اختياره لك تلقائياً: لقد عرّفك أحد الشركاء، لذا تنضم إلى برنامجه وتبيع المنتجات نفسها. لا يوجد ما تملؤه هنا.',
   'partner.noAgenciesOffered':
     'لا توجد برامج شركاء متاحة حالياً. يُرجى المراجعة لاحقاً، أو التواصل مع الدعم إذا تمت دعوتك للتقديم.',
   'partner.chooseAgencyHint':
@@ -1108,7 +1105,6 @@ export const arMessages: Record<MessageKey, string> = {
     'حساب الشريك الخاص بك معلّق حالياً. لا يزال رابط الإحالة يعمل، لكنك لا تحصل على أرباح. تواصل مع الدعم لمزيد من التفاصيل.',
   'partner.ineligibleHeading': 'تحقّق من هويتك أولاً',
   'partner.verifyNow': 'التحقق من هويتي',
-  'partner.ineligibleChainFullHeading': 'لا توجد مستويات متاحة في البرنامج تحت الشريك الذي عرّفك',
   'partner.loadFailed': 'تعذّر تحميل حالة الشراكة الخاصة بك.',
   'partner.loading': 'جارٍ تحميل حالة الشراكة…',
   'partner.overviewLoading': 'جارٍ تحميل لوحة تحكم الشريك…',
