@@ -19,9 +19,38 @@ import { SelfieCamera } from './selfie-camera';
  * quality hint (which reads pixels) is switched off.
  */
 
-vi.mock('@/lib/image-quality', () => ({ findQualityProblem: () => null }));
+const camera = vi.hoisted(() => ({ blank: false, frames: true }));
+vi.mock('@/lib/image-quality', () => ({
+  findQualityProblem: () => null,
+  isBlankFrame: () => camera.blank,
+}));
+
+/*
+ * A video that PLAYS: jsdom's never does. `frames` decides whether the camera
+ * ever produces a frame — Snap must wait for one (a frame drawn too early is
+ * the black selfie phones reported).
+ */
+function fakeVideo() {
+  const playing = function (this: HTMLVideoElement) {
+    if (camera.frames) queueMicrotask(() => this.dispatchEvent(new Event('playing')));
+    return Promise.resolve();
+  };
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(playing);
+  vi.spyOn(HTMLVideoElement.prototype, 'videoWidth', 'get').mockImplementation(() =>
+    camera.frames ? 640 : 0,
+  );
+  vi.spyOn(HTMLVideoElement.prototype, 'videoHeight', 'get').mockImplementation(() =>
+    camera.frames ? 480 : 0,
+  );
+  vi.spyOn(HTMLMediaElement.prototype, 'readyState', 'get').mockImplementation(() =>
+    camera.frames ? 4 : 0,
+  );
+}
 
 beforeEach(() => {
+  camera.blank = false;
+  camera.frames = true;
+  fakeVideo();
   Object.defineProperty(navigator, 'mediaDevices', {
     configurable: true,
     value: {
@@ -83,5 +112,32 @@ describe('a selfie already on file', () => {
     await waitFor(() =>
       expect(onUpload).toHaveBeenCalledWith('customField_livecam', expect.any(File)),
     );
+  });
+});
+
+describe('a black selfie is never taken', () => {
+  it('keeps Snap disabled until the camera produces a frame', async () => {
+    camera.frames = false;
+    render(<SelfieCamera onUpload={vi.fn()} />);
+    const starting = await screen.findByRole('button', { name: /starting camera/i });
+    expect(starting).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /snap photo/i })).not.toBeInTheDocument();
+  });
+
+  it('refuses a blank frame, says so, and keeps the camera open', async () => {
+    camera.blank = true;
+    const onUpload = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<SelfieCamera onUpload={onUpload} />);
+    await user.click(await screen.findByRole('button', { name: /snap photo/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/black picture/i);
+    expect(onUpload).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /snap photo/i })).toBeEnabled();
+
+    // The next, real frame goes through.
+    camera.blank = false;
+    await user.click(screen.getByRole('button', { name: /snap photo/i }));
+    await waitFor(() => expect(onUpload).toHaveBeenCalledWith('selfie', expect.any(File)));
   });
 });

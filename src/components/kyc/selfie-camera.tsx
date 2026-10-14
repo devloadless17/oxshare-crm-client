@@ -5,7 +5,7 @@ import { AlertCircle, Camera, CheckCircle2, RefreshCw, VideoOff } from 'lucide-r
 import { Spinner } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import { apiErrorMessage } from '@/lib/api/errors';
-import { findQualityProblem, type QualityProblem } from '@/lib/image-quality';
+import { findQualityProblem, isBlankFrame, type QualityProblem } from '@/lib/image-quality';
 import { t } from '@/lib/i18n';
 
 export interface SelfieCameraProps {
@@ -73,6 +73,44 @@ export function SelfieCamera({
    * never took the new one, and the reviewer kept seeing the old photo).
    */
   const [retaking, setRetaking] = React.useState(false);
+  /*
+   * The camera is PRODUCING FRAMES — not merely granted. Snap waits for it.
+   *
+   * Snap used to work the moment the button appeared, and a tap before the first
+   * frame arrived drew nothing onto the canvas, which encodes as a solid black
+   * JPEG: the black selfies phones reported. iOS also leaves the video paused
+   * (Low Power Mode, or after a retake) unless it is told to play, with the
+   * same result.
+   */
+  const [ready, setReady] = React.useState(false);
+  const [blankFrame, setBlankFrame] = React.useState(false);
+
+  /*
+   * Attach the live stream to the <video> and PLAY it. Called both when the
+   * stream arrives and when the element mounts, because either can come first:
+   * after a retake the camera is asked for while the preview is still on
+   * screen, and the video element only appears once it is gone.
+   */
+  const attachStream = React.useCallback((video: HTMLVideoElement | null) => {
+    const stream = streamRef.current;
+    if (!video || !stream) return;
+    if (video.srcObject !== stream) video.srcObject = stream;
+    void video.play().catch(() => {
+      // Autoplay refused: `ready` stays false, so Snap stays disabled rather
+      // than capturing a paused (black) video.
+    });
+  }, []);
+  const setVideo = React.useCallback(
+    (video: HTMLVideoElement | null) => {
+      videoRef.current = video;
+      attachStream(video);
+    },
+    [attachStream],
+  );
+  const markReady = React.useCallback(() => {
+    const video = videoRef.current;
+    if (video && video.videoWidth > 0 && video.readyState >= 2) setReady(true);
+  }, []);
 
   /*
    * Follow the server's answer when it arrives AFTER this mounted.
@@ -95,6 +133,7 @@ export function SelfieCamera({
   }, [uploaded, captured, retaking]);
 
   const stopCamera = React.useCallback(() => {
+    setReady(false);
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -102,6 +141,7 @@ export function SelfieCamera({
   }, []);
 
   const startCamera = React.useCallback(async () => {
+    setReady(false);
     try {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
@@ -113,17 +153,14 @@ export function SelfieCamera({
       });
 
       streamRef.current = s;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = s;
-      }
+      attachStream(videoRef.current);
       // Cleared only once the camera is actually running. Resetting it up front
       // flashed the error away before we knew whether this attempt would work.
       setCameraError(false);
     } catch {
       setCameraError(true);
     }
-  }, []);
+  }, [attachStream]);
 
   // Acquiring the camera is external-system synchronisation — the textbook
   // case an effect is for. getUserMedia is also the only way to do it: there
@@ -146,9 +183,23 @@ export function SelfieCamera({
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    // No frame yet: drawing now would capture black (see `ready`).
+    if (video.readyState < 2 || video.videoWidth === 0) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
     canvas.getContext('2d')?.drawImage(video, 0, 0);
+
+    /*
+     * A BLANK frame is refused, not uploaded with a hint: it is not a dark
+     * photo of somebody, it is no photo at all, and a reviewer can only reject
+     * it. The camera stays on so the next tap can succeed.
+     */
+    if (isBlankFrame(canvas)) {
+      setBlankFrame(true);
+      attachStream(video);
+      return;
+    }
+    setBlankFrame(false);
 
     /*
      * ── A QUALITY HINT, CHECKED BEFORE THE UPLOAD AND NOT A GATE ────────────
@@ -216,13 +267,15 @@ export function SelfieCamera({
     }
   };
 
+  // The camera restarts from the effect once the preview is gone. Starting it
+  // here as well raced two streams, and the loser could leave the video black.
   const handleRetake = () => {
     setRetaking(true);
     setCaptured(null);
     setQualityProblem(null);
+    setBlankFrame(false);
     setUploadedSuccess(false);
     setUploadError(null);
-    void startCamera();
   };
 
   /** Back out of a retake: the photo on file stays, and nothing is uploaded. */
@@ -277,7 +330,10 @@ export function SelfieCamera({
             ) : (
               <>
                 <video
-                  ref={videoRef}
+                  ref={setVideo}
+                  onLoadedData={markReady}
+                  onPlaying={markReady}
+                  onCanPlay={markReady}
                   autoPlay
                   playsInline
                   muted
@@ -291,6 +347,11 @@ export function SelfieCamera({
           <p className="text-xs font-medium text-muted-foreground text-center">
             {t('kyc.cameraHint')}
           </p>
+          {blankFrame && (
+            <p role="alert" className="px-4 text-center text-xs font-semibold text-destructive">
+              {t('kyc.blankFrame')}
+            </p>
+          )}
 
           {/* A retake in progress: the photo on file is still the reviewer's. */}
           {retaking && uploaded && (
@@ -312,13 +373,18 @@ export function SelfieCamera({
             <Button
               type="button"
               onClick={() => void capture()}
-              disabled={uploading}
+              disabled={uploading || !ready}
               className="gap-2 rounded-full px-6 py-5 text-sm font-bold cursor-pointer"
             >
               {uploading ? (
                 <>
                   <Spinner size="md" />
                   <span>{t('kyc.processing')}</span>
+                </>
+              ) : !ready ? (
+                <>
+                  <Spinner size="md" />
+                  <span>{t('kyc.cameraStarting')}</span>
                 </>
               ) : (
                 <>

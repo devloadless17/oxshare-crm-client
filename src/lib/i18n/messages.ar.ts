@@ -851,6 +851,9 @@ export const arMessages: Record<MessageKey, string> = {
   'kyc.cameraRetry': 'إعادة تشغيل الكاميرا',
   'kyc.cameraHint': 'ضع وجهك في منتصف الدائرة ثم انقر على «التقاط الصورة».',
   'kyc.snapPhoto': 'التقاط الصورة',
+  'kyc.cameraStarting': 'جارٍ تشغيل الكاميرا…',
+  'kyc.blankFrame':
+    'أعطت الكاميرا صورة سوداء. ثبّت الهاتف لثانية ثم انقر على «التقاط الصورة» مرة أخرى.',
   'kyc.uploadingSelfie': 'جارٍ التحميل…',
   'kyc.selfieCaptured': 'تم التقاط الصورة الشخصية',
   'kyc.retakePhoto': 'إعادة التقاط الصورة',

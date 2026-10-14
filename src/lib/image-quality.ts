@@ -116,10 +116,68 @@ export function findQualityProblem(source: HTMLCanvasElement): QualityProblem | 
     if (!context) return null;
 
     context.drawImage(source, 0, 0, width, height);
-    return measureQuality(context.getImageData(0, 0, width, height).data, width, height);
+    const result = measureQuality(context.getImageData(0, 0, width, height).data, width, height);
+    releaseCanvas(sample);
+    return result;
   } catch {
     return null;
   }
+}
+
+/*
+ * A frame with NOTHING in it: every pixel black (or transparent, which encodes
+ * to black as a JPEG).
+ *
+ * Not "too dark": a dim room still has a lit face, a window, a highlight. This
+ * is what a phone hands back when a frame was drawn before the camera produced
+ * one, when the camera was paused, or when iOS ran out of canvas memory and
+ * gave a blank canvas — and it must never be uploaded as somebody's selfie or
+ * passport. Judged on the BRIGHTEST pixel of a small sample, so a real photo in
+ * poor light still passes.
+ */
+const BLANK_MAX_LUMINANCE = 16; // 0–255
+
+export function isBlankFrame(
+  source: CanvasImageSource & { width: number; height: number },
+): boolean {
+  try {
+    const scale = SAMPLE_EDGE / Math.max(source.width, source.height, 1);
+    const width = Math.max(1, Math.round(source.width * scale));
+    const height = Math.max(1, Math.round(source.height * scale));
+    const sample = document.createElement('canvas');
+    sample.width = width;
+    sample.height = height;
+    const context = sample.getContext('2d', { willReadFrequently: true });
+    if (!context) return false;
+    context.drawImage(source, 0, 0, width, height);
+    const blank = isBlankPixels(context.getImageData(0, 0, width, height).data);
+    releaseCanvas(sample);
+    return blank;
+  } catch {
+    // A canvas we cannot read is no evidence either way.
+    return false;
+  }
+}
+
+/** True when no pixel is brighter than near-black, or none is opaque. */
+export function isBlankPixels(rgba: Uint8ClampedArray): boolean {
+  for (let i = 0; i < rgba.length; i += 4) {
+    if ((rgba[i + 3] ?? 0) === 0) continue;
+    const y = 0.299 * (rgba[i] ?? 0) + 0.587 * (rgba[i + 1] ?? 0) + 0.114 * (rgba[i + 2] ?? 0);
+    if (y > BLANK_MAX_LUMINANCE) return false;
+  }
+  return true;
+}
+
+/*
+ * Give a canvas's pixel memory back now rather than at garbage collection.
+ * iOS Safari caps the TOTAL memory of live canvases, and past the cap every new
+ * canvas draws blank — so a client retaking photos would start producing black
+ * images. Zero size releases the backing store immediately.
+ */
+export function releaseCanvas(canvas: HTMLCanvasElement): void {
+  canvas.width = 0;
+  canvas.height = 0;
 }
 
 /**
