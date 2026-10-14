@@ -1396,6 +1396,9 @@ export const messages = {
   'kyc.cameraRetry': 'Retry Camera',
   'kyc.cameraHint': 'Center your face inside the circle and click snap photo.',
   'kyc.snapPhoto': 'Snap Photo',
+  'kyc.cameraStarting': 'Starting camera…',
+  'kyc.blankFrame':
+    'The camera gave a black picture. Hold the phone still for a second, then tap Snap Photo again.',
   'kyc.uploadingSelfie': 'Uploading…',
   'kyc.selfieCaptured': 'Selfie Captured',
   'kyc.retakePhoto': 'Retake Photo',
