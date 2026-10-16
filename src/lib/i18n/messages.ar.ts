@@ -1377,7 +1377,7 @@ export const arMessages: Record<MessageKey, string> = {
   'dashboard.largestBalanceNote': 'محفظتك ذات الرصيد الأكبر',
   'dashboard.statWallets': 'المحافظ',
   'dashboard.statWalletsNote': 'العملات التي تحتفظ بها',
-  'dashboard.statPendingTxNote': 'بانتظار مراجعتنا',
+  'dashboard.statPendingTxNote': 'قيد المعالجة',
   'dashboard.statReferred': 'العملاء الذين قدّمتهم',
   'dashboard.statReferredNote': 'عبر رمز الإحالة الخاص بك',
   'dashboard.statReferredClients': 'العملاء المُحالون',

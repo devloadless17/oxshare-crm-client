@@ -2299,7 +2299,7 @@ export const messages = {
   'dashboard.largestBalanceNote': 'Your biggest single wallet',
   'dashboard.statWallets': 'Wallets',
   'dashboard.statWalletsNote': 'Currencies you hold',
-  'dashboard.statPendingTxNote': 'Waiting on our review',
+  'dashboard.statPendingTxNote': 'Still being processed',
   'dashboard.statReferred': 'Clients introduced',
   'dashboard.statReferredNote': 'Through your referral code',
   'dashboard.statReferredClients': 'Clients referred',
