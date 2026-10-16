@@ -46,6 +46,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: translate(locale, 'meta.appTitle'),
     description: translate(locale, 'meta.appDescription'),
+    // With `translate="no"` below: no browser translation (see browser-language.ts).
+    other: { google: 'notranslate' },
   };
 }
 
@@ -100,6 +102,14 @@ export default async function RootLayout({
     <html
       lang={locale}
       dir={direction(locale)}
+      /*
+       * Never machine-translated. Chrome's translation rewrites the page's text
+       * behind React's back, and the next change on screen throws (NotFoundError:
+       * insertBefore), with a reload translating and crashing again — clients
+       * were stuck at sign-up and KYC on 16 Oct 2026. The portal speaks Arabic
+       * itself, and opens in it for an Arabic phone (lib/i18n/browser-language.ts).
+       */
+      translate="no"
       // globals.css scrolls the page smoothly; Next 16 keeps a page change instant
       // only when asked to (docs: upgrading to 16, "Scroll Behavior Override").
       data-scroll-behavior="smooth"
