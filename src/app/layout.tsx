@@ -11,6 +11,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { UserProvider } from '@/context/UserContext';
 import { SESSION_HINT_COOKIE } from '@/lib/session-hint';
 import { QueryProvider } from '@/components/query-provider';
+import { CrashReporter } from '@/components/crash-reporter';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -136,6 +137,8 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${plexArabic.variable} h-dvh overflow-hidden antialiased`}
       >
+        {/* First, and outside every provider: it must work when they do not. */}
+        <CrashReporter />
         {/* `defaultTheme` is NOT passed. It used to be `"light"` here, which
             overrode the provider's own default via the `{...props}` spread — so
             changing the default in theme-provider.tsx alone would have looked
