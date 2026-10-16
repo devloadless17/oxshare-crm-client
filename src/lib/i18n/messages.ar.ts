@@ -864,6 +864,7 @@ export const arMessages: Record<MessageKey, string> = {
   'kyc.selfieTooBlurry':
     'تبدو هذه الصورة غير واضحة قليلاً. الثبات للحظة يساعدنا على التحقق منها بشكل أسرع — أو حمّلها كما هي.',
   'kyc.encodeFailed': 'تعذّر ترميز الصورة الملتقطة.',
+  'kyc.uploadRetrying': 'انقطع الاتصال — جارٍ إعادة المحاولة…',
   'kyc.uploadingFile': 'جارٍ تحميل الملف…',
   'kyc.uploadWait': 'يرجى الانتظار قليلاً',
   'kyc.replaceHint': 'استبدال',

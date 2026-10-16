@@ -4,6 +4,8 @@ import * as React from 'react';
 import { Spinner } from '@/components/ui/loader';
 import { UploadCloud, CheckCircle2, FileText, RefreshCw, Camera, FolderOpen } from 'lucide-react';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { isNetworkError } from '@/components/kyc/kyc-errors';
+import { uploadWithRetry } from '@/components/kyc/upload-retry';
 import { buildKycDocUrl } from '@/lib/kyc-doc-url';
 import { normaliseDocumentImage } from '@/lib/image-capture';
 import { t } from '@/lib/i18n';
@@ -157,6 +159,16 @@ export function DocumentUploader({
   /** The normalised image is below the readable floor. A warning, not a block. */
   const [tooSmall, setTooSmall] = React.useState(false);
   const canCapture = useCanCapture();
+  /** The connection dropped and the upload is being tried again (upload-retry.ts). */
+  const [retrying, setRetrying] = React.useState(false);
+  /** False once this uploader is gone, so a retry never outlives the screen. */
+  const mounted = React.useRef(true);
+  React.useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   React.useEffect(() => {
     // Revoke nothing: `preview` is a data: URI from FileReader, not an object
@@ -217,7 +229,14 @@ export function DocumentUploader({
     setProgress(0);
     setUploadError(null);
     try {
-      await onUpload(field, pending, setProgress);
+      await uploadWithRetry(() => onUpload(field, pending, setProgress), {
+        onRetry: () => {
+          if (!mounted.current) return;
+          setRetrying(true);
+          setProgress(0);
+        },
+        stillWanted: () => mounted.current,
+      });
       setPending(null);
       // The replacement landed, so stop overriding the uploaded view — it now
       // shows the new document. Only on success: a failed upload must leave the
@@ -229,9 +248,13 @@ export function DocumentUploader({
       // like the others it had no `error.message` fallback — so a network failure,
       // which carries no `response`, showed the generic string instead of the
       // reason.
-      setUploadError(apiErrorMessage(err, t('kyc.uploadFailed')));
+      // Still no connection after every retry: say so in words a client can act on.
+      setUploadError(
+        isNetworkError(err) ? t('kyc.networkError') : apiErrorMessage(err, t('kyc.uploadFailed')),
+      );
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   }, [field, onUpload, pending]);
 
@@ -323,7 +346,9 @@ export function DocumentUploader({
         <div className="flex w-full flex-col items-center gap-3 py-2">
           <Spinner size="lg" className="text-link" />
           <div className="space-y-1 w-full max-w-[220px]">
-            <p className="text-xs font-semibold text-foreground">{t('kyc.uploadingFile')}</p>
+            <p className="text-xs font-semibold text-foreground">
+              {retrying ? t('kyc.uploadRetrying') : t('kyc.uploadingFile')}
+            </p>
             {/* Determinate, because "please wait" for two minutes on mobile data
                 is indistinguishable from a hung request. */}
             <div

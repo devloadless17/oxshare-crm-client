@@ -5,6 +5,8 @@ import { AlertCircle, Camera, CheckCircle2, RefreshCw, VideoOff } from 'lucide-r
 import { Spinner } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { isNetworkError } from '@/components/kyc/kyc-errors';
+import { uploadWithRetry } from '@/components/kyc/upload-retry';
 import { findQualityProblem, isBlankFrame, type QualityProblem } from '@/lib/image-quality';
 import { t } from '@/lib/i18n';
 
@@ -62,6 +64,15 @@ export function SelfieCamera({
 
   const [captured, setCaptured] = React.useState<string | null>(null);
   const [uploading, setUploading] = React.useState(false);
+  /** The connection dropped and the selfie is being sent again (upload-retry.ts). */
+  const [retrying, setRetrying] = React.useState(false);
+  const mounted = React.useRef(true);
+  React.useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [uploadedSuccess, setUploadedSuccess] = React.useState(uploaded);
   const [cameraError, setCameraError] = React.useState(false);
   const [uploadError, setUploadError] = React.useState<string | null>(null);
@@ -257,13 +268,21 @@ export function SelfieCamera({
        */
       const blob = await canvasToJpegBlob(canvas);
       const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
-      await onUpload(field, file);
+      await uploadWithRetry(() => onUpload(field, file), {
+        onRetry: () => {
+          if (mounted.current) setRetrying(true);
+        },
+        stillWanted: () => mounted.current,
+      });
       setUploadedSuccess(true);
       setRetaking(false);
     } catch (err: unknown) {
-      setUploadError(apiErrorMessage(err, t('kyc.selfieFailed')));
+      setUploadError(
+        isNetworkError(err) ? t('kyc.networkError') : apiErrorMessage(err, t('kyc.selfieFailed')),
+      );
     } finally {
       setUploading(false);
+      setRetrying(false);
     }
   };
 
@@ -445,7 +464,7 @@ export function SelfieCamera({
             ) : uploading ? (
               <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground px-4 py-2">
                 <Spinner />
-                <span>{t('kyc.uploadingSelfie')}</span>
+                <span>{retrying ? t('kyc.uploadRetrying') : t('kyc.uploadingSelfie')}</span>
               </div>
             ) : (
               // Only once the upload has actually landed.

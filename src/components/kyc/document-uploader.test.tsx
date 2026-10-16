@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/render';
 import { DocumentUploader } from './document-uploader';
@@ -109,5 +109,29 @@ describe('DocumentUploader — the camera button follows the device', () => {
 
     expect(screen.queryByLabelText(/take photo/i)).toBeNull();
     expect(screen.getByLabelText(/choose file/i)).toBeTruthy();
+  });
+});
+
+describe('DocumentUploader — a dropped connection is not the client’s problem', () => {
+  it('says it is trying again, and finishes the upload without the client doing anything', async () => {
+    const networkError = Object.assign(new Error('Network Error'), { code: 'ERR_NETWORK' });
+    const onUpload = vi
+      .fn<(field: string, file: File) => Promise<void>>()
+      .mockRejectedValueOnce(networkError)
+      .mockResolvedValueOnce(undefined);
+    const user = userEvent.setup();
+    const { container } = renderWithProviders(
+      <DocumentUploader label="Passport" field="document" onUpload={onUpload} />,
+    );
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, new File(['%PDF-1.4'], 'passport.pdf', { type: 'application/pdf' }));
+    await user.click(await screen.findByRole('button', { name: /use this/i }));
+
+    expect(await screen.findByText(/connection lost/i)).toBeInTheDocument();
+    await waitFor(() => expect(onUpload).toHaveBeenCalledTimes(2), { timeout: 5000 });
+    // Finished: no error was ever shown, and the same file went both times.
+    expect(screen.queryByText(/could not reach|failed/i)).not.toBeInTheDocument();
+    expect(onUpload.mock.calls[1]?.[1]).toBe(onUpload.mock.calls[0]?.[1]);
   });
 });
