@@ -18,6 +18,8 @@
  * the cookie is read directly (`oxshare-portal-locale`, see
  * lib/i18n/locale-storage), and an Arabic reader gets Arabic, right to left.
  */
+import { useEffect } from 'react';
+
 const COPY = {
   en: {
     title: 'Something went wrong',
@@ -45,6 +47,14 @@ export default function GlobalError({
 }) {
   const locale = cookieLocale();
   const copy = COPY[locale];
+  /*
+   * Reported through a DYNAMIC import: the reporter reads the app's config, and
+   * whatever broke the root layout may be that module. If it cannot load, the
+   * screen still renders and the report is simply lost.
+   */
+  useEffect(() => {
+    import('@/lib/crash-report').then((m) => m.reportCrash(error, 'global')).catch(() => undefined);
+  }, [error]);
   return (
     <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <body

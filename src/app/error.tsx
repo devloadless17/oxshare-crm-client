@@ -6,6 +6,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 import { isStaleBuildError, reloadOnceForStaleBuild } from '@/lib/stale-build';
+import { reportCrash } from '@/lib/crash-report';
 
 /**
  * What a render-time throw looks like, instead of nothing.
@@ -38,8 +39,10 @@ export default function PortalError({
    */
   const stale = isStaleBuildError(error);
   useEffect(() => {
+    // Before the reload below, so a stale tab is counted too (keepalive).
+    reportCrash(error, 'page');
     if (stale) reloadOnceForStaleBuild();
-  }, [stale]);
+  }, [error, stale]);
 
   return (
     <div
