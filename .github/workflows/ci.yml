@@ -600,6 +600,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=${{ secrets.API_ORIGIN }}
             NEXT_PUBLIC_REALTIME_ORIGIN=${{ secrets.API_ORIGIN }}
+            NEXT_DEPLOYMENT_ID=${{ github.sha }}
           tags: ${{ secrets.DOCKER_USERNAME }}/oxshare-crm-portal:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

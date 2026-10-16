@@ -37,6 +37,11 @@ COPY . .
 
 ARG NEXT_PUBLIC_API_BASE_URL
 ARG NEXT_PUBLIC_REALTIME_ORIGIN
+# The release's identity (CI passes the commit SHA). next.config.ts makes it the
+# deploymentId, so a tab still running the previous release reloads on its next
+# navigation instead of requesting chunks this image no longer has.
+ARG NEXT_DEPLOYMENT_ID
+ENV NEXT_DEPLOYMENT_ID=${NEXT_DEPLOYMENT_ID}
 # API_BASE_URL feeds the server-side /api rewrite in next.config.ts, which is read
 # at build time and serialised into server.js. The browser never uses it.
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL} \

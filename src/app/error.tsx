@@ -1,9 +1,11 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
+import { isStaleBuildError, reloadOnceForStaleBuild } from '@/lib/stale-build';
 
 /**
  * What a render-time throw looks like, instead of nothing.
@@ -29,6 +31,16 @@ export default function PortalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  /*
+   * A tab from before a release (16 Oct 2026, a client's phone): the chunk it
+   * asked for is gone, so `reset()` re-threw and the client was stuck here.
+   * Reload once by ourselves; if that already happened, Try again reloads.
+   */
+  const stale = isStaleBuildError(error);
+  useEffect(() => {
+    if (stale) reloadOnceForStaleBuild();
+  }, [stale]);
+
   return (
     <div
       role="alert"
@@ -53,7 +65,7 @@ export default function PortalError({
         whether the site is broken.
       */}
       <div className="flex items-center gap-2">
-        <Button type="button" onClick={reset}>
+        <Button type="button" onClick={stale ? () => window.location.reload() : reset}>
           {t('session.retry')}
         </Button>
         <Button asChild variant="outline">
