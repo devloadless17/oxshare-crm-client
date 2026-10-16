@@ -40,7 +40,6 @@ function cookieLocale(): 'en' | 'ar' {
 
 export default function GlobalError({
   error,
-  reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
@@ -79,7 +78,8 @@ export default function GlobalError({
         )}
         <button
           type="button"
-          onClick={reset}
+          // A reload, never `reset()`: see error.tsx for why a re-render keeps clients stuck.
+          onClick={() => window.location.reload()}
           style={{
             fontSize: '0.875rem',
             fontWeight: 600,

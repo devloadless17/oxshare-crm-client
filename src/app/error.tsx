@@ -22,20 +22,23 @@ import { reportCrash } from '@/lib/crash-report';
  * being confirmed lands here, and `RequireAuth` is mounted around every private
  * page.
  *
- * `reset()` re-renders the segment, which recovers a transient data-load failure
- * without a full reload. The link is the escape hatch for when it does not.
+ * Try again RELOADS the page; it never calls `reset()`. A re-render brings back
+ * whatever broke it: a tab from before a release, a page the browser translated,
+ * a state the client cannot see. Clients on phones did not know to pull down to
+ * refresh, pressed Try again and stayed stuck (16 Oct 2026). A reload loses
+ * nothing the crash had not already lost, and it is what support would ask for.
+ * The link is the way out for a page that fails every time.
  */
 export default function PortalError({
   error,
-  reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
   /*
    * A tab from before a release (16 Oct 2026, a client's phone): the chunk it
-   * asked for is gone, so `reset()` re-threw and the client was stuck here.
-   * Reload once by ourselves; if that already happened, Try again reloads.
+   * asked for is gone. Reload once by ourselves; if that already happened, the
+   * client's own Try again reloads.
    */
   const stale = isStaleBuildError(error);
   useEffect(() => {
@@ -68,7 +71,7 @@ export default function PortalError({
         whether the site is broken.
       */}
       <div className="flex items-center gap-2">
-        <Button type="button" onClick={stale ? () => window.location.reload() : reset}>
+        <Button type="button" onClick={() => window.location.reload()}>
           {t('session.retry')}
         </Button>
         <Button asChild variant="outline">
