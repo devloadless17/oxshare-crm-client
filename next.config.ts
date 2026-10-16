@@ -93,6 +93,15 @@ const nextConfig: NextConfig = {
    */
   poweredByHeader: false,
   /*
+   * Version skew. A tab opened before a release still runs the OLD build, and
+   * the new container no longer serves that build's chunks: the tab's next
+   * navigation threw into `error.tsx`, and Try again re-threw (reported from a
+   * client's phone, 16 Oct 2026). With an id, Next tags every navigation
+   * and, on a mismatch, reloads the page instead. CI passes the commit SHA;
+   * unset (dev, local builds) nothing changes.
+   */
+  ...(process.env.NEXT_DEPLOYMENT_ID ? { deploymentId: process.env.NEXT_DEPLOYMENT_ID } : {}),
+  /*
    * Self-hosted builds set NEXT_OUTPUT=standalone (see the Dockerfile). The build
    * then emits `.next/standalone`: a server.js plus only the node_modules it
    * traces, so the production image carries no dev dependencies. Unset, as in `npm run dev`,
