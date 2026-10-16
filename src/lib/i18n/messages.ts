@@ -1416,6 +1416,7 @@ export const messages = {
   'kyc.selfieTooBlurry':
     'This looks a little blurry. Holding still for a moment will help us verify it faster — or upload it as it is.',
   'kyc.encodeFailed': 'Could not encode the captured image.',
+  'kyc.uploadRetrying': 'Connection lost — trying again…',
   'kyc.uploadingFile': 'Uploading File…',
   'kyc.uploadWait': 'Please wait a moment',
   'kyc.replaceHint': 'Replace',
@@ -2298,7 +2299,7 @@ export const messages = {
   'dashboard.largestBalanceNote': 'Your biggest single wallet',
   'dashboard.statWallets': 'Wallets',
   'dashboard.statWalletsNote': 'Currencies you hold',
-  'dashboard.statPendingTxNote': 'Waiting on our review',
+  'dashboard.statPendingTxNote': 'Still being processed',
   'dashboard.statReferred': 'Clients introduced',
   'dashboard.statReferredNote': 'Through your referral code',
   'dashboard.statReferredClients': 'Clients referred',
